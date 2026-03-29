@@ -1,15 +1,14 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import { db } from "../../lib/firebase";
-import { collection, addDoc, onSnapshot } from "firebase/firestore";
-import { CreditCard, Printer, Save, Plus } from "lucide-react";
+import { collection, addDoc, onSnapshot, query, orderBy } from "firebase/firestore";
+import { CreditCard, Save, Printer, GraduationCap } from "lucide-react";
 
-export default function FeeManagement() {
+export default function FeesPage() {
   const [students, setStudents] = useState<any[]>([]);
-  const [selectedStudent, setSelectedStudent] = useState<any>(null);
-  const [feeCategory, setFeeCategory] = useState("Monthly Fee");
+  const [selectedId, setSelectedId] = useState("");
   const [amount, setAmount] = useState(0);
-  const [arrears, setArrears] = useState(0);
+  const [category, setCategory] = useState("Monthly Fee");
 
   useEffect(() => {
     return onSnapshot(collection(db, "students"), (snap) => {
@@ -18,73 +17,59 @@ export default function FeeManagement() {
   }, []);
 
   const handleSaveFee = async () => {
-    if (!selectedStudent || amount <= 0) return alert("Select student and amount!");
+    const student = students.find(s => s.id === selectedId);
+    if (!student || amount <= 0) return alert("Select student and enter amount");
     
-    const grandTotal = Number(amount) + Number(arrears);
-    
-    try {
-      await addDoc(collection(db, "fees"), {
-        studentId: selectedStudent.id,
-        studentName: selectedStudent.fullName,
-        category: feeCategory,
-        amount: Number(amount),
-        arrears: Number(arrears),
-        grandTotal: grandTotal,
-        date: new Date().toISOString()
-      });
-      alert("Fee Receipt Saved! Dashboard updated.");
-      setAmount(0);
-    } catch (e) { console.error(e); }
+    await addDoc(collection(db, "fees"), {
+      studentName: student.fullName,
+      grandTotal: Number(amount),
+      category,
+      date: new Date().toISOString()
+    });
+    alert("Receipt Saved! Dashboard Updated.");
+    setAmount(0);
   };
 
+  const selectedStudent = students.find(s => s.id === selectedId);
+
   return (
-    <div className="p-12">
-      <div className="flex gap-8">
-        {/* INPUT FORM */}
-        <div className="flex-1 bg-white p-10 rounded-[48px] shadow-sm">
-          <h2 className="text-2xl font-black mb-8 flex items-center gap-3"><CreditCard className="text-[#7166F9]"/> Generate Receipt</h2>
-          
+    <div className="p-10 font-sans max-w-7xl mx-auto">
+      <h1 className="text-3xl font-black text-[#302B52] mb-10 flex items-center gap-3"><CreditCard size={32} className="text-[#7166F9]"/> Finance Portal</h1>
+      
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+        <div className="bg-white p-10 rounded-[48px] shadow-sm border border-purple-50">
+          <h3 className="text-xl font-black mb-8">Generate Fee Receipt</h3>
           <div className="space-y-6">
-            <div>
-              <label className="text-xs font-black text-gray-400 uppercase">Select Student</label>
-              <select onChange={(e) => setSelectedStudent(students.find(s => s.id === e.target.value))} className="w-full mt-2 p-4 bg-[#F8F9FE] border-none rounded-2xl outline-none font-bold">
-                <option>Choose Student...</option>
-                {students.map(s => <option key={s.id} value={s.id}>{s.fullName} - {s.rollNo}</option>)}
-              </select>
-            </div>
-
+            <select onChange={(e) => setSelectedId(e.target.value)} className="w-full p-5 bg-[#F8F9FE] rounded-2xl border-none font-bold outline-none">
+              <option>Search Student...</option>
+              {students.map(s => <option key={s.id} value={s.id}>{s.fullName} - {s.rollNo}</option>)}
+            </select>
             <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="text-xs font-black text-gray-400 uppercase">Fee Category</label>
-                <select onChange={(e) => setFeeCategory(e.target.value)} className="w-full mt-2 p-4 bg-[#F8F9FE] border-none rounded-2xl outline-none font-bold">
-                  <option>Monthly Fee</option>
-                  <option>Admission Fee</option>
-                  <option>Exam Fee</option>
-                </select>
-              </div>
-              <div>
-                <label className="text-xs font-black text-gray-400 uppercase">Amount (Rs.)</label>
-                <input type="number" onChange={(e) => setAmount(Number(e.target.value))} className="w-full mt-2 p-4 bg-[#F8F9FE] border-none rounded-2xl outline-none font-bold" />
-              </div>
+               <select onChange={(e) => setCategory(e.target.value)} className="w-full p-5 bg-[#F8F9FE] rounded-2xl border-none font-bold outline-none">
+                 <option>Monthly Fee</option>
+                 <option>Exam Fee</option>
+                 <option>Admission Fee</option>
+               </select>
+               <input type="number" placeholder="Amount (Rs.)" value={amount} onChange={e => setAmount(Number(e.target.value))} className="w-full p-5 bg-[#F8F9FE] rounded-2xl border-none font-bold outline-none" />
             </div>
-
-            <button onClick={handleSaveFee} className="w-full bg-[#302B52] text-white py-5 rounded-2xl font-black flex items-center justify-center gap-3 hover:scale-105 transition-all">
-              <Save size={20} /> Save & Print Receipt
+            <button onClick={handleSaveFee} className="w-full bg-[#302B52] text-white py-6 rounded-3xl font-black text-lg flex items-center justify-center gap-3 shadow-xl hover:bg-[#7166F9] transition-all">
+              <Save size={24} /> Save & Print Receipt
             </button>
           </div>
         </div>
 
-        {/* LIVE PREVIEW - THEME MATCHED */}
-        <div className="w-[450px] bg-white p-8 rounded-[48px] border-4 border-dashed border-[#F8F9FE]">
-           <div className="text-center mb-6">
-             <h3 className="font-black text-xl text-[#302B52]">Fee Voucher</h3>
-             <p className="text-xs text-gray-400">EduPilot Digital Receipt</p>
-           </div>
-           <div className="space-y-4 text-sm font-bold">
-             <div className="flex justify-between border-b pb-2 text-gray-400"><span>Student:</span> <span className="text-[#302B52]">{selectedStudent?.fullName || "---"}</span></div>
-             <div className="flex justify-between border-b pb-2 text-gray-400"><span>Category:</span> <span className="text-[#302B52]">{feeCategory}</span></div>
-             <div className="flex justify-between pt-4 text-2xl text-[#7166F9] font-black"><span>GRAND TOTAL:</span> <span>Rs. {Number(amount) + Number(arrears)}</span></div>
-           </div>
+        {/* RECEIPT PREVIEW */}
+        <div className="bg-white p-10 rounded-[48px] border-4 border-dashed border-[#F8F9FE] text-[#302B52]">
+          <div className="text-center mb-8">
+            <GraduationCap className="mx-auto text-[#7166F9] mb-2" size={40} />
+            <h2 className="text-xl font-black uppercase tracking-tight">Fee Voucher</h2>
+          </div>
+          <div className="space-y-4 font-bold border-t border-b py-6 border-gray-100">
+             <div className="flex justify-between text-gray-400 text-sm uppercase"><span>Student</span> <span className="text-[#302B52]">{selectedStudent?.fullName || "---"}</span></div>
+             <div className="flex justify-between text-gray-400 text-sm uppercase"><span>Category</span> <span className="text-[#302B52]">{category}</span></div>
+             <div className="flex justify-between pt-4 text-3xl font-black text-[#7166F9]"><span>Total</span> <span>Rs. {amount}</span></div>
+          </div>
+          <p className="text-center mt-8 text-[10px] font-black text-gray-300 uppercase tracking-widest">System Generated by EduPilot</p>
         </div>
       </div>
     </div>
