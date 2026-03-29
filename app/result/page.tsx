@@ -1,82 +1,60 @@
 "use client";
-import React, { Suspense } from "react";
-import { GraduationCap, ArrowLeft, Download, Printer } from "lucide-react";
-import Link from "next/link";
+import React from "react";
+import { Award, ChevronRight, BookOpen } from "lucide-react";
 
-function ResultContent() {
+export default function ExamsPage() {
   return (
-    <div className="min-h-screen bg-[#F8F9FE] p-8 md:p-12 font-sans">
-      <div className="max-w-4xl mx-auto bg-white rounded-[40px] shadow-2xl border border-purple-50 overflow-hidden">
-        {/* HEADER */}
-        <div className="bg-[#302B52] p-10 text-white flex justify-between items-center">
-          <div className="flex items-center gap-4">
-            <div className="bg-white p-3 rounded-2xl">
-              <GraduationCap className="text-[#302B52] w-8 h-8" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-black">Student Result Card</h1>
-              <p className="opacity-70 text-sm">Academic Session 2025-26</p>
-            </div>
-          </div>
-          <Link href="/dashboard">
-            <button className="bg-white/10 hover:bg-white/20 p-3 rounded-xl transition-all">
-              <ArrowLeft size={20} />
-            </button>
-          </Link>
-        </div>
+    <div className="p-10 font-sans">
+      <div className="flex justify-between items-center mb-10">
+        <h1 className="text-3xl font-black text-[#302B52]">Exam & Results Portal</h1>
+        <div className="bg-[#7166F9] text-white px-6 py-2 rounded-xl font-bold text-sm">Session 2026-27</div>
+      </div>
 
-        {/* RESULT TABLE */}
-        <div className="p-10">
-          <div className="grid grid-cols-2 gap-8 mb-10 bg-[#F8F9FE] p-6 rounded-3xl border border-gray-100">
-            <div>
-              <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Student Name</p>
-              <p className="text-lg font-black text-[#302B52]">Searching Student...</p>
-            </div>
-            <div className="text-right">
-              <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Roll Number</p>
-              <p className="text-lg font-black text-[#302B52]">#0000</p>
-            </div>
+      <div className="max-w-4xl mx-auto">
+        <div className="bg-white p-12 rounded-[50px] shadow-2xl border border-purple-50">
+          <div className="flex items-center gap-4 mb-10">
+             <div className="bg-[#302B52] p-3 rounded-2xl text-white shadow-lg"><Award size={28}/></div>
+             <div>
+               <h3 className="text-xl font-black text-[#302B52]">Assessment Setup</h3>
+               <p className="text-gray-400 text-xs font-bold uppercase tracking-widest">Step 1: Configure Examination Details</p>
+             </div>
           </div>
 
-          <table className="w-full text-left border-separate border-spacing-y-3">
-            <thead>
-              <tr className="text-gray-400 text-xs uppercase tracking-widest">
-                <th className="pb-4 px-4">Subject</th>
-                <th className="pb-4 px-4">Total</th>
-                <th className="pb-4 px-4">Obtained</th>
-                <th className="pb-4 px-4 text-right">Grade</th>
-              </tr>
-            </thead>
-            <tbody>
-              {['English', 'Mathematics', 'Science', 'Urdu'].map((sub) => (
-                <tr key={sub} className="bg-[#F8F9FE] hover:bg-purple-50 transition-all group">
-                  <td className="py-4 px-6 rounded-l-2xl font-bold text-[#302B52]">{sub}</td>
-                  <td className="py-4 px-6 font-medium text-gray-500">100</td>
-                  <td className="py-4 px-6 font-medium text-gray-500">--</td>
-                  <td className="py-4 px-6 rounded-r-2xl text-right"><span className="bg-white px-3 py-1 rounded-lg shadow-sm font-bold text-[#7166F9]">A+</span></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <div className="space-y-8">
+            <div className="grid grid-cols-1 gap-6">
+              <label className="block">
+                <span className="text-xs font-black text-gray-400 uppercase px-4">1. Main Category</span>
+                <select className="mt-2 w-full p-5 bg-[#F8F9FE] border-none rounded-2xl font-bold text-[#302B52] outline-none focus:ring-4 focus:ring-purple-100 transition-all">
+                  <option>Periodic/Internal Examinations (School-Based)</option>
+                  <option>Final Board Examinations</option>
+                </select>
+              </label>
 
-          <div className="mt-12 flex gap-4">
-            <button className="flex-1 bg-[#7166F9] text-white py-4 rounded-2xl font-bold flex items-center justify-center gap-2 shadow-lg shadow-purple-100 hover:scale-[1.02] transition-all">
-              <Download size={20} /> Download PDF
-            </button>
-            <button className="px-8 bg-[#302B52] text-white py-4 rounded-2xl font-bold flex items-center justify-center gap-2 hover:opacity-90 transition-all">
-              <Printer size={20} /> Print
+              <label className="block">
+                <span className="text-xs font-black text-gray-400 uppercase px-4">2. Select Exam Type</span>
+                <select className="mt-2 w-full p-5 bg-[#F8F9FE] border-none rounded-2xl font-bold text-[#302B52] outline-none">
+                  <option>Terminals</option>
+                  <option>Monthly Tests</option>
+                  <option>Mock Exams</option>
+                </select>
+              </label>
+
+              <label className="block">
+                <span className="text-xs font-black text-gray-400 uppercase px-4">3. Select Term</span>
+                <select className="mt-2 w-full p-5 bg-[#F8F9FE] border-none rounded-2xl font-bold text-[#302B52] outline-none">
+                  <option>1st Term (Spring)</option>
+                  <option>2nd Term (Autumn)</option>
+                  <option>Final Term</option>
+                </select>
+              </label>
+            </div>
+
+            <button className="w-full bg-[#7166F9] text-white py-6 rounded-3xl font-black text-xl shadow-xl shadow-purple-100 hover:scale-[1.02] transition-all flex items-center justify-center gap-3 mt-6">
+              Confirm & Load Student Table <ChevronRight size={24}/>
             </button>
           </div>
         </div>
       </div>
     </div>
-  );
-}
-
-export default function ResultPage() {
-  return (
-    <Suspense fallback={<div className="flex items-center justify-center h-screen text-[#7166F9] font-bold">Loading Result Data...</div>}>
-      <ResultContent />
-    </Suspense>
   );
 }
