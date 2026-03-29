@@ -1,62 +1,53 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import { db } from "../../lib/firebase";
-import { collection, onSnapshot } from "firebase/firestore";
-import { ClipboardCheck, CheckCircle2, XCircle } from "lucide-react";
+import { collection, onSnapshot, addDoc } from "firebase/firestore";
+import { CreditCard, Printer, Save } from "lucide-react";
 
-export default function AttendancePage() {
+export default function FeesPage() {
   const [students, setStudents] = useState<any[]>([]);
-  const [attendance, setAttendance] = useState<Record<string, string>>({});
+  const [selectedId, setSelectedId] = useState("");
+  const [amount, setAmount] = useState(0);
 
   useEffect(() => {
-    return onSnapshot(collection(db, "students"), (snap) => {
+    // This listener prevents the "Client-side exception" by ensuring data exists
+    const unsub = onSnapshot(collection(db, "students"), (snap) => {
       setStudents(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     });
+    return () => unsub();
   }, []);
 
-  return (
-    <div className="p-8 md:p-12 font-sans">
-      <div className="flex justify-between items-center mb-10">
-        <h1 className="text-4xl font-black text-[#302B52]">Daily Attendance</h1>
-        <div className="text-sm font-bold bg-white px-6 py-3 rounded-xl shadow-sm">Date: {new Date().toLocaleDateString()}</div>
-      </div>
+  const handleSave = async () => {
+    const student = students.find(s => s.id === selectedId);
+    if (!student) return alert("Select a student first!");
+    await addDoc(collection(db, "fees"), {
+      studentName: student.fullName,
+      grandTotal: Number(amount),
+      date: new Date().toISOString()
+    });
+    alert("Fee Recorded!");
+  };
 
-      <div className="bg-white rounded-[48px] shadow-2xl overflow-hidden border border-purple-50">
-        <table className="w-full text-left">
-          <thead className="bg-[#302B52] text-white uppercase text-[10px] tracking-widest">
-            <tr>
-              <th className="p-8">Student</th>
-              <th className="p-8">Class</th>
-              <th className="p-8 text-center">Mark Status</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-50 font-bold text-[#302B52]">
-            {students.map(s => (
-              <tr key={s.id} className="hover:bg-purple-50 transition-all">
-                <td className="p-6 px-8 flex items-center gap-4">
-                  <div className="w-10 h-10 bg-[#7166F9]/10 rounded-lg flex items-center justify-center text-[#7166F9]">{s.fullName[0]}</div>
-                  {s.fullName}
-                </td>
-                <td className="p-6 px-8 text-gray-400 uppercase text-xs">{s.class}-{s.section}</td>
-                <td className="p-6 px-8">
-                  <div className="flex justify-center gap-4">
-                    {['P', 'A', 'L'].map(status => (
-                      <button 
-                        key={status}
-                        onClick={() => setAttendance({...attendance, [s.id]: status})}
-                        className={`w-12 h-12 rounded-xl flex items-center justify-center border-2 transition-all ${
-                          attendance[s.id] === status ? 'bg-[#7166F9] text-white border-[#7166F9]' : 'bg-white border-gray-100 text-gray-300'
-                        }`}
-                      >
-                        {status}
-                      </button>
-                    ))}
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+  return (
+    <div className="p-10">
+      <h1 className="text-4xl font-black text-[#302B52] mb-10 flex items-center gap-4"><CreditCard size={40} className="text-[#7166F9]"/> Finance Portal</h1>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+        <div className="bg-white p-10 rounded-[48px] shadow-2xl border border-purple-50">
+          <label className="text-xs font-black text-gray-400 uppercase tracking-widest">Select Student</label>
+          <select onChange={(e) => setSelectedId(e.target.value)} className="w-full mt-2 mb-6 p-4 bg-[#F8F9FE] rounded-2xl font-bold outline-none">
+            <option value="">Choose Student...</option>
+            {students.map(s => <option key={s.id} value={s.id}>{s.fullName} - {s.admissionNo}</option>)}
+          </select>
+          <label className="text-xs font-black text-gray-400 uppercase tracking-widest">Amount (Rs.)</label>
+          <input type="number" value={amount} onChange={(e) => setAmount(Number(e.target.value))} className="w-full mt-2 p-4 bg-[#F8F9FE] rounded-2xl font-bold outline-none mb-8" />
+          <button onClick={handleSave} className="w-full bg-[#302B52] text-white py-5 rounded-3xl font-black text-lg flex items-center justify-center gap-3 hover:bg-[#7166F9] transition-all">
+            <Save size={20} /> Save Fee Receipt
+          </button>
+        </div>
+        <div className="bg-white p-10 rounded-[48px] border-4 border-dashed border-gray-100 flex flex-col items-center justify-center text-gray-300">
+           <Printer size={48} className="mb-4 opacity-20" />
+           <p className="font-bold italic text-center">Receipt Preview will generate here <br/> upon student selection.</p>
+        </div>
       </div>
     </div>
   );
