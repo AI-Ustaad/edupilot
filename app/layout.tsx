@@ -1,12 +1,9 @@
-import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import React from "react";
 import "./globals.css";
 
-const inter = Inter({ subsets: ["latin"] });
-
-export const metadata: Metadata = {
-  title: "EduPilot - School Management System",
-  description: "The most advanced AI-powered education platform",
+export const metadata = {
+  title: "EduPilot",
+  description: "School Management System",
 };
 
 export default function RootLayout({
@@ -16,7 +13,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={`${inter.className} bg-[#F8F9FE] antialiased`}>
+      <body className="antialiased bg-[#F8F9FE]">
         {children}
       </body>
     </html>
