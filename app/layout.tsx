@@ -12,8 +12,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   const pathname = usePathname();
   const isLoginPage = pathname === "/login" || pathname === "/";
 
-  if (isLoginPage) return <html lang="en"><body>{children}</body></html>;
-
   const sections = [
     {
       title: "OVERVIEW",
@@ -43,12 +41,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     }
   ];
 
+  if (isLoginPage) return <html lang="en"><body>{children}</body></html>;
+
   return (
     <html lang="en">
       <body className="bg-[#F8F9FE] flex h-screen overflow-hidden font-sans">
         <aside className="w-72 bg-[#302B52] text-white flex flex-col p-6 rounded-r-[40px] shadow-2xl z-50 overflow-y-auto">
           <div className="flex items-center gap-3 mb-10 px-4">
-            <div className="bg-white p-2 rounded-xl text-[#302B52]"><GraduationCap size={24} /></div>
+            <div className="bg-white p-2 rounded-xl text-[#302B52] shadow-lg"><GraduationCap size={24} /></div>
             <span className="text-xl font-black tracking-tight uppercase">EduPilot</span>
           </div>
           
@@ -71,12 +71,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           </nav>
 
           <div className="pt-6 border-t border-white/10 mt-6">
-            <div className="flex items-center gap-3 px-4 py-2 opacity-50 hover:opacity-100 cursor-pointer text-red-300 transition-all">
-              <LogOut size={18} /> <span className="text-sm font-bold">Logout Securely</span>
-            </div>
+            <Link href="/login">
+              <div className="flex items-center gap-3 px-4 py-2 opacity-50 hover:opacity-100 cursor-pointer text-red-300 transition-all">
+                <LogOut size={18} /> <span className="text-sm font-bold">Logout</span>
+              </div>
+            </Link>
           </div>
         </aside>
-
         <main className="flex-1 overflow-y-auto">{children}</main>
       </body>
     </html>
