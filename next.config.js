@@ -6,10 +6,7 @@ const nextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
-  // This ensures Next.js uses the modern build system
-  experimental: {
-    appDir: true,
-  },
+  // We removed the 'experimental' block because it's now default!
 };
 
 module.exports = nextConfig;
