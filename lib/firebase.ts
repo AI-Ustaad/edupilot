@@ -11,11 +11,10 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
-// Initialize Firebase
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 
-// These exports are what Vercel is looking for!
+// These TWO lines are what Vercel is looking for
 export const auth = getAuth(app);
-export const db = getFirestore(app);
+export const db = getFirestore(app); 
 
 export default app;
