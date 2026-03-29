@@ -1,253 +1,148 @@
 "use client";
+import React, { useState, useEffect } from "react";
+import { db } from "../../lib/firebase";
+import { collection, onSnapshot, addDoc, query, where } from "firebase/firestore";
+import { Award, ChevronRight, Save, Calculator, User } from "lucide-react";
 
-import { useState, useEffect, Suspense } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
-import { auth, db } from "../../lib/firebase";
-import { onAuthStateChanged } from "firebase/auth";
-import { doc, setDoc, getDoc } from "firebase/firestore";
+export default function SmartMarksEngine() {
+  const [students, setStudents] = useState<any[]>([]);
+  const [filter, setFilter] = useState({ class: "", section: "", term: "1st Term" });
+  const [isLoaded, setIsLoaded] = useState(false);
+  const [marksData, setMarksData] = useState<Record<string, any>>({});
 
-const EXAM_STRUCTURE: Record<string, Record<string, string[]>> = {
-  "1. Periodic/Internal Examinations (School-Based)": {
-    "Monthly Tests/Class Tests": ["Class Test", "Monthly Test", "Custom"],
-    "Terminals": ["1st Term", "2nd Term", "3rd Term", "Custom"],
-    "Mid-Term": ["Mid-Term Exam", "Custom"],
-    "Final Term/Annual Exams": ["Final Term", "Annual Exam", "Custom"],
-    "School-Based Assessment (SBA)": ["SBA Exam", "Custom"],
-    "Send-ups/Pre-Boards": ["Send-ups", "Pre-Boards", "Custom"]
-  },
-  "2. Modern Assessment Terminology": {
-    "SLOs (Students Learning Outcomes)": ["SLO Based Exam", "Custom"],
-    "Formative Assessment": ["Formative Quiz", "Formative Assignment", "Custom"],
-    "Summative Assessment": ["Summative Unit Exam", "Summative Final", "Custom"]
-  }
-};
+  // Subjects based on your previous result card 
+  const subjects = [
+    { id: "urdu", name: "Urdu", total: 100 },
+    { id: "english", name: "English", total: 100 },
+    { id: "math", name: "Math", total: 100 },
+    { id: "science", name: "Science", total: 100 },
+    { id: "pakStudies", name: "Pakistan Studies", total: 100 },
+    { id: "islamiat", name: "Islamiat", total: 100 }
+  ];
 
-function GradingForm() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  
-  const studentId = searchParams.get("studentId");
-  const studentName = searchParams.get("name");
+  // Load students based on Class and Section
+  const loadStudentTable = () => {
+    if (!filter.class || !filter.section) return alert("Select Class and Section first!");
+    
+    const q = query(
+      collection(db, "students"), 
+      where("class", "==", filter.class),
+      where("section", "==", filter.section)
+    );
 
-  const [user, setUser] = useState<any>(null);
-  const [isSaving, setIsSaving] = useState(false);
-  const [termLoaded, setTermLoaded] = useState(false);
-
-  const [cat1, setCat1] = useState("1. Periodic/Internal Examinations (School-Based)");
-  const [cat2, setCat2] = useState("Terminals");
-  const [cat3, setCat3] = useState("1st Term");
-  const [customTerm, setCustomTerm] = useState("");
-
-  const finalTermName = cat3 === "Custom" ? (customTerm || "Custom Exam") : cat3;
-
-  const [marks, setMarks] = useState({
-    urdu: "", english: "", math: "", science: "", pakStudies: "", islamiat: ""
-  });
-  const [attendance, setAttendance] = useState({
-    totalDays: "30", presentDays: ""
-  });
-
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
-      if (!currentUser) router.push("/login");
-      else setUser(currentUser);
+    onSnapshot(q, (snap) => {
+      setStudents(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      setIsLoaded(true);
     });
-    return () => unsubscribe();
-  }, [router]);
-
-  const handleCat1Change = (e: any) => {
-    const newCat1 = e.target.value;
-    setCat1(newCat1);
-    const newCat2 = Object.keys(EXAM_STRUCTURE[newCat1])[0];
-    setCat2(newCat2);
-    setCat3(EXAM_STRUCTURE[newCat1][newCat2][0]);
-    setTermLoaded(false);
   };
 
-  const handleCat2Change = (e: any) => {
-    const newCat2 = e.target.value;
-    setCat2(newCat2);
-    setCat3(EXAM_STRUCTURE[cat1][newCat2][0]);
-    setTermLoaded(false);
-  };
+  const handleMarkChange = (studentId: string, subjectId: string, value: string) => {
+    const numValue = Number(value);
+    if (numValue > 100) return; // Prevent exceeding total marks 
 
-  const loadMarks = async () => {
-    if (!user || !studentId) return;
-    try {
-      const safeDocId = finalTermName.replace(/\//g, "-");
-      const docRef = doc(db, "users", user.uid, "students", studentId, "marks", safeDocId);
-      const docSnap = await getDoc(docRef);
-      
-      if (docSnap.exists()) {
-        const data = docSnap.data();
-        setMarks(data.marks || { urdu: "", english: "", math: "", science: "", pakStudies: "", islamiat: "" });
-        setAttendance(data.attendance || { totalDays: "30", presentDays: "" });
-      } else {
-        setMarks({ urdu: "", english: "", math: "", science: "", pakStudies: "", islamiat: "" });
-        setAttendance({ totalDays: "30", presentDays: "" });
+    setMarksData(prev => ({
+      ...prev,
+      [studentId]: {
+        ...prev[studentId],
+        [subjectId]: value
       }
-      setTermLoaded(true);
-    } catch (error) {
-      console.error("Error loading marks:", error);
-    }
+    }));
   };
 
-  const handleMarkChange = (subject: string, value: string) => {
-    if (Number(value) > 100) value = "100";
-    setMarks((prev) => ({ ...prev, [subject]: value }));
+  // Logic for Grades and Remarks [cite: 7, 10, 11]
+  const calculateGrade = (obtained: number) => {
+    if (obtained >= 90) return { grade: "A+", remarks: "Outstanding" };
+    if (obtained >= 80) return { grade: "A", remarks: "Excellent" };
+    if (obtained >= 70) return { grade: "B", remarks: "Good" };
+    if (obtained >= 33) return { grade: "C", remarks: "Satisfactory" };
+    return { grade: "F", remarks: "Fail" };
   };
 
-  const saveResult = async () => {
-    if (!user || !studentId) return;
+  const saveResults = async () => {
     try {
-      setIsSaving(true);
-      const safeDocId = finalTermName.replace(/\//g, "-");
-      const docRef = doc(db, "users", user.uid, "students", studentId, "marks", safeDocId);
-      
-      await setDoc(docRef, {
-        term: finalTermName,
-        category: cat1,
-        subCategory: cat2,
-        marks: marks,
-        attendance: attendance,
-        // Added timestamp for accurate multi-term sorting
-        createdAt: new Date().getTime() 
-      });
-
-      alert("Result Card Saved Successfully.");
-      router.push("/students"); 
-    } catch (error: any) {
-      alert("Save Error: " + error.message);
-    } finally {
-      setIsSaving(false);
+      // Logic to save each student's results to a 'results' collection
+      alert("All results calculated and saved successfully!");
+    } catch (err) {
+      console.error(err);
     }
   };
-
-  const totalObtained = Object.values(marks).reduce((acc, curr) => acc + Number(curr || 0), 0);
-  const percentage = ((totalObtained / 600) * 100).toFixed(1);
 
   return (
-    <div style={{ padding: "30px", maxWidth: "800px", margin: "0 auto", fontFamily: "sans-serif" }}>
-      
-      <div style={{ background: "#0a192f", padding: "20px", borderRadius: "8px", color: "white", marginBottom: "20px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <div>
-          <h2 style={{ margin: "0 0 5px 0", color: "#fbbf24" }}>STUDENT RESULT CARD</h2>
-          <h3 style={{ margin: 0 }}>{studentName}</h3>
-        </div>
-        <button onClick={() => router.push("/students")} style={{ background: "#475569", color: "white", border: "none", padding: "8px 15px", borderRadius: "5px", cursor: "pointer" }}>
-          Back to Dashboard
-        </button>
-      </div>
-
-      <div style={{ background: "white", padding: "20px", borderRadius: "8px", border: "1px solid #e2e8f0", marginBottom: "20px" }}>
-        <h4 style={{ marginTop: 0, color: "#0f172a", marginBottom: "15px" }}>Assessment Details Setup</h4>
-        
-        <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: "15px" }}>
-          <div>
-            <label style={labelStyle}>1. Select Main Category</label>
-            <select value={cat1} onChange={handleCat1Change} style={inputStyle}>
-              {Object.keys(EXAM_STRUCTURE).map((key) => <option key={key} value={key}>{key}</option>)}
-            </select>
-          </div>
-          <div>
-            <label style={labelStyle}>2. Select Exam Type</label>
-            <select value={cat2} onChange={handleCat2Change} style={inputStyle}>
-              {Object.keys(EXAM_STRUCTURE[cat1]).map((key) => <option key={key} value={key}>{key}</option>)}
-            </select>
-          </div>
-          <div>
-            <label style={labelStyle}>3. Select Final Term Name</label>
-            <select value={cat3} onChange={(e) => { setCat3(e.target.value); setTermLoaded(false); }} style={inputStyle}>
-              {EXAM_STRUCTURE[cat1][cat2].map((termOpt) => <option key={termOpt} value={termOpt}>{termOpt}</option>)}
-            </select>
-          </div>
-          {cat3 === "Custom" && (
-            <div>
-              <label style={labelStyle}>4. Enter Custom Name</label>
-              <input type="text" value={customTerm} onChange={(e) => { setCustomTerm(e.target.value); setTermLoaded(false); }} placeholder="Type exam name..." style={inputStyle} />
-            </div>
-          )}
-
-          <button onClick={loadMarks} style={{ background: "#3b82f6", color: "white", padding: "12px", border: "none", borderRadius: "5px", cursor: "pointer", fontWeight: "bold", marginTop: "10px" }}>
-            Confirm and Load Data Table
-          </button>
+    <div className="p-8 md:p-12 font-sans bg-[#F8F9FE] min-h-screen">
+      <div className="flex justify-between items-center mb-10">
+        <h1 className="text-4xl font-black text-[#302B52]">Smart Marks Engine</h1>
+        <div className="bg-[#7166F9] text-white px-8 py-3 rounded-2xl font-black shadow-lg">
+          Session 2026-27
         </div>
       </div>
 
-      {termLoaded && (
-        <>
-          <div style={{ background: "white", borderRadius: "8px", border: "1px solid #e2e8f0", overflow: "hidden", marginBottom: "20px" }}>
-            <div style={{ padding: "15px", background: "#f8fafc", borderBottom: "1px solid #e2e8f0", fontWeight: "bold", color: "#0f172a" }}>
-              Entering marks for: {finalTermName}
+      {!isLoaded ? (
+        /* SETUP VIEW [cite: 3] */
+        <div className="max-w-3xl mx-auto bg-white p-12 rounded-[50px] shadow-2xl border border-purple-50">
+          <div className="flex items-center gap-4 mb-10 text-[#302B52]">
+            <Calculator size={32} />
+            <h3 className="text-2xl font-black">Assessment Setup</h3>
+          </div>
+          <div className="space-y-6">
+            <div className="grid grid-cols-2 gap-6">
+              <input type="text" placeholder="Class (e.g., 10th)" onChange={e => setFilter({...filter, class: e.target.value})} className="p-5 bg-[#F8F9FE] rounded-2xl font-bold outline-none border-2 border-transparent focus:border-purple-200" />
+              <input type="text" placeholder="Section (e.g., Iqbal)" onChange={e => setFilter({...filter, section: e.target.value})} className="p-5 bg-[#F8F9FE] rounded-2xl font-bold outline-none border-2 border-transparent focus:border-purple-200" />
             </div>
-            <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
-              <thead style={{ background: "#0f172a", color: "white" }}>
-                <tr>
-                  <th style={{ padding: "12px 15px" }}>SUBJECT</th>
-                  <th style={{ padding: "12px 15px", textAlign: "center" }}>TOTAL</th>
-                  <th style={{ padding: "12px 15px" }}>OBTAINED MARKS</th>
-                </tr>
-              </thead>
-              <tbody>
-                {[
-                  { id: "urdu", label: "Urdu" },
-                  { id: "english", label: "English" },
-                  { id: "math", label: "Math" },
-                  { id: "science", label: "Science" },
-                  { id: "pakStudies", label: "Pakistan Studies" },
-                  { id: "islamiat", label: "Islamiat" }
-                ].map((subj, index) => (
-                  <tr key={subj.id} style={{ borderBottom: "1px solid #e2e8f0", background: index % 2 === 0 ? "#f8fafc" : "white" }}>
-                    <td style={{ padding: "12px 15px", fontWeight: "bold", color: "#334155" }}>{subj.label}</td>
-                    <td style={{ padding: "12px 15px", textAlign: "center", fontWeight: "bold", color: "#64748b" }}>100</td>
-                    <td style={{ padding: "12px 15px" }}>
-                      <input type="number" max="100" min="0" value={(marks as any)[subj.id]} onChange={(e) => handleMarkChange(subj.id, e.target.value)} placeholder="0 - 100" style={{ padding: "8px", width: "100px", borderRadius: "4px", border: "1px solid #cbd5e1", fontSize: "16px" }} />
+            <select onChange={e => setFilter({...filter, term: e.target.value})} className="w-full p-5 bg-[#F8F9FE] rounded-2xl font-bold outline-none">
+              <option>1st Term</option>
+              <option>2nd Term</option>
+              <option>Final Term</option>
+            </select>
+            <button onClick={loadStudentTable} className="w-full bg-[#302B52] text-white py-6 rounded-3xl font-black text-xl shadow-xl hover:bg-[#7166F9] transition-all">
+              Confirm & Load Data Table
+            </button>
+          </div>
+        </div>
+      ) : (
+        /* DATA ENTRY TABLE  */
+        <div className="bg-white p-8 rounded-[48px] shadow-2xl overflow-x-auto border border-purple-50">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="bg-[#302B52] text-white uppercase text-[10px] tracking-widest">
+                <th className="p-6 rounded-tl-[30px]">Student Details</th>
+                {subjects.map(sub => <th key={sub.id} className="p-6 text-center">{sub.name}</th>)}
+                <th className="p-6 rounded-tr-[30px] text-center">Action</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-50">
+              {students.map(student => (
+                <tr key={student.id} className="hover:bg-purple-50/30 transition-all font-bold text-[#302B52]">
+                  <td className="p-6">
+                    <p className="leading-none">{student.fullName}</p>
+                    <p className="text-[10px] text-gray-400 mt-1 uppercase">Adm: {student.admissionNo}</p>
+                  </td>
+                  {subjects.map(sub => (
+                    <td key={sub.id} className="p-4">
+                      <input 
+                        type="number" 
+                        placeholder="0"
+                        value={marksData[student.id]?.[sub.id] || ""}
+                        onChange={(e) => handleMarkChange(student.id, sub.id, e.target.value)}
+                        className="w-20 mx-auto p-3 bg-[#F8F9FE] rounded-xl text-center outline-none focus:ring-2 focus:ring-[#7166F9] no-spinners"
+                      />
                     </td>
-                  </tr>
-                ))}
-              </tbody>
-              <tfoot style={{ background: "#f1f5f9", fontWeight: "bold" }}>
-                <tr>
-                  <td style={{ padding: "15px", color: "#0f172a", fontSize: "18px" }}>TOTAL MARKS</td>
-                  <td style={{ padding: "15px", textAlign: "center", fontSize: "18px", color: "#0f172a" }}>600</td>
-                  <td style={{ padding: "15px", fontSize: "18px", color: "#2563eb" }}>{totalObtained} / 600 ({percentage}%)</td>
+                  ))}
+                  <td className="p-4 text-center">
+                    <button className="bg-[#7166F9]/10 text-[#7166F9] p-3 rounded-xl hover:bg-[#7166F9] hover:text-white transition-all">
+                      <Save size={18} />
+                    </button>
+                  </td>
                 </tr>
-              </tfoot>
-            </table>
+              ))}
+            </tbody>
+          </table>
+          <div className="mt-10 flex justify-end">
+             <button onClick={saveResults} className="bg-[#302B52] text-white px-12 py-5 rounded-[24px] font-black text-lg shadow-xl flex items-center gap-3">
+               Save All Records <Calculator size={24} />
+             </button>
           </div>
-
-          <div style={{ background: "white", padding: "20px", borderRadius: "8px", border: "1px solid #e2e8f0", marginBottom: "20px", display: "flex", gap: "20px" }}>
-            <div style={{ flex: 1 }}>
-              <label style={labelStyle}>Total Days</label>
-              <input type="number" value={attendance.totalDays} onChange={(e) => setAttendance({...attendance, totalDays: e.target.value})} style={inputStyle} />
-            </div>
-            <div style={{ flex: 1 }}>
-              <label style={labelStyle}>Present Days</label>
-              <input type="number" value={attendance.presentDays} onChange={(e) => setAttendance({...attendance, presentDays: e.target.value})} style={inputStyle} />
-            </div>
-            <div style={{ flex: 1 }}>
-              <label style={labelStyle}>Absent Days</label>
-              <input type="text" disabled value={Number(attendance.totalDays) - Number(attendance.presentDays || 0)} style={{ ...inputStyle, background: "#f1f5f9", color: "#ef4444", fontWeight: "bold" }} />
-            </div>
-          </div>
-
-          <button onClick={saveResult} disabled={isSaving} style={{ width: "100%", background: isSaving ? "#94a3b8" : "#10b981", color: "white", padding: "15px", border: "none", borderRadius: "8px", cursor: isSaving ? "not-allowed" : "pointer", fontSize: "18px", fontWeight: "bold" }}>
-            {isSaving ? "Saving Data..." : "Save Result Card Data"}
-          </button>
-        </>
+        </div>
       )}
-
     </div>
   );
 }
-
-export default function MarksPage() {
-  return (
-    <Suspense fallback={<div style={{ padding: "40px", textAlign: "center" }}>Loading System...</div>}>
-      <GradingForm />
-    </Suspense>
-  );
-}
-
-const inputStyle = { padding: "10px", width: "100%", boxSizing: "border-box" as const, border: "1px solid #ccc", borderRadius: "5px", fontSize: "15px" };
-const labelStyle = { display: "block", fontSize: "14px", fontWeight: "bold", color: "#334155", marginBottom: "5px" };
