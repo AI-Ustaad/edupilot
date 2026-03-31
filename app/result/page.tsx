@@ -1,150 +1,148 @@
 "use client";
-import React, { useRef } from "react";
-import { useReactToPrint } from "react-to-print";
-import { GraduationCap, Award, Calendar, MessageSquare, Printer } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { db } from "../../lib/firebase";
+import { collection, onSnapshot, query, where, addDoc } from "firebase/firestore";
+import { Award, Calculator, Save, FileText, CheckCircle, AlertCircle } from "lucide-react";
 
-export default function ResultCard({ student, marks, attendance }) {
-  const componentRef = useRef();
-  
-  // PDF/Print Trigger
-  const handlePrint = useReactToPrint({
-    content: () => componentRef.current,
-    documentTitle: `${student.fullName}_Result_Card`,
-  });
+export default function ExamsSystem() {
+  const [students, setStudents] = useState<any[]>([]);
+  const [filter, setFilter] = useState({ class: "1", section: "", term: "1st Term" });
+  const [marks, setMarks] = useState<Record<string, any>>({});
+  const [isLoaded, setIsLoaded] = useState(false);
 
-  const totalObtained = Object.values(marks).reduce((a, b) => Number(a) + Number(b), 0);
-  const totalPossible = 600; // Based on 6 subjects 
-  const overallPercentage = ((totalObtained / totalPossible) * 100).toFixed(2);
+  // Subects based on your professional result model 
+  const subjects = [
+    { id: "urdu", name: "Urdu", total: 100 },
+    { id: "english", name: "English", total: 100 },
+    { id: "math", name: "Math", total: 100 },
+    { id: "science", name: "Science", total: 100 },
+    { id: "pakStudies", name: "Pak Studies", total: 100 },
+    { id: "islamiat", name: "Islamiat", total: 100 }
+  ];
+
+  const loadStudents = () => {
+    if (!filter.section) return alert("Please enter the Section Name first!");
+    const q = query(
+      collection(db, "students"), 
+      where("class", "==", filter.class),
+      where("section", "==", filter.section)
+    );
+
+    return onSnapshot(q, (snap) => {
+      setStudents(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      setIsLoaded(true);
+    });
+  };
+
+  const handleMarkChange = (studentId: string, subjectId: string, val: string) => {
+    // Prevent non-numeric "up/down" steppers as requested
+    const num = val === "" ? "" : Number(val);
+    if (num !== "" && (num < 0 || num > 100)) return;
+
+    setMarks(prev => ({
+      ...prev,
+      [studentId]: { ...prev[studentId], [subjectId]: num }
+    }));
+  };
+
+  // Smart Calculation Logic 
+  const getStats = (studentId: string) => {
+    const sMarks = marks[studentId] || {};
+    const obtained = Object.values(sMarks).reduce((a: any, b: any) => a + (Number(b) || 0), 0);
+    const percentage = ((obtained / 600) * 100).toFixed(1);
+    let grade = "F";
+    if (Number(percentage) >= 90) grade = "A+";
+    else if (Number(percentage) >= 80) grade = "A";
+    else if (Number(percentage) >= 70) grade = "B";
+    else if (Number(percentage) >= 33) grade = "C";
+    return { obtained, percentage, grade };
+  };
 
   return (
-    <div className="p-10 bg-gray-50 min-h-screen flex flex-col items-center">
-      {/* ACTION BAR */}
-      <div className="w-full max-w-[800px] mb-6 flex justify-end">
-        <button onClick={handlePrint} className="bg-[#302B52] text-white px-10 py-4 rounded-2xl font-black shadow-xl flex items-center gap-3 hover:bg-[#7166F9] transition-all">
-          <Printer size={20} /> Print or Save as PDF
-        </button>
+    <div className="p-8 md:p-12 font-sans bg-gradient-to-br from-[#F8F9FE] to-[#F1F0FF] min-h-screen">
+      <div className="flex justify-between items-center mb-10">
+        <div>
+          <h1 className="text-4xl font-black text-[#302B52]">Exams & Grading</h1>
+          <p className="text-[#7166F9] font-bold text-xs uppercase tracking-[4px] mt-1">Smart Marks Calculation Engine</p>
+        </div>
+        <div className="bg-[#302B52] text-white px-8 py-3 rounded-2xl font-black shadow-xl">
+          Term: {filter.term}
+        </div>
       </div>
 
-      {/* ONE-PAGE RESULT SHEET  */}
-      <div ref={componentRef} className="w-[800px] bg-white border-[10px] border-[#302B52] p-12 shadow-2xl relative overflow-hidden print:border-[5px] print:shadow-none">
-        
-        {/* HEADER: Institutional Identity [cite: 3, 5] */}
-        <div className="flex justify-between items-center border-b-4 border-gray-50 pb-8 mb-8">
-          <div className="flex items-center gap-5">
-            <div className="bg-[#302B52] p-5 rounded-[30px] text-white shadow-lg">
-              <GraduationCap size={50} />
-            </div>
-            <div>
-              <h1 className="text-4xl font-black text-[#302B52] tracking-tighter">EDUPILOT</h1>
-              <p className="text-[#7166F9] font-black text-sm uppercase tracking-[4px]">Student Result Card</p>
-              <p className="text-gray-400 text-[10px] font-bold mt-1">FIRST TERM EXAMINATION 2026 [cite: 5]</p>
-            </div>
+      {!isLoaded ? (
+        /* 1. SETUP PHASE */
+        <div className="max-w-3xl mx-auto bg-white/90 backdrop-blur-xl p-12 rounded-[50px] shadow-2xl border border-white">
+          <div className="flex items-center gap-4 mb-10 text-[#302B52]">
+            <Award size={32} className="text-[#7166F9]" />
+            <h3 className="text-2xl font-black">Configure Assessment</h3>
           </div>
-          <div className="w-28 h-28 bg-[#F8F9FE] rounded-3xl border-2 border-dashed border-purple-100 flex items-center justify-center text-gray-300 text-[10px] font-black uppercase text-center p-4">
-             Student Photo
+          <div className="grid grid-cols-2 gap-6 mb-6">
+            <select value={filter.class} onChange={e => setFilter({...filter, class: e.target.value})} className="p-5 bg-[#F8F9FE] rounded-2xl font-bold outline-none border-2 border-transparent focus:border-purple-200">
+              {[...Array(10)].map((_, i) => <option key={i+1} value={i+1}>Class {i+1}</option>)}
+            </select>
+            <input type="text" placeholder="Section Name (e.g. Iqbal)" value={filter.section} onChange={e => setFilter({...filter, section: e.target.value})} className="p-5 bg-[#F8F9FE] rounded-2xl font-bold outline-none border-b-4 border-[#7166F9]" />
           </div>
+          <select value={filter.term} onChange={e => setFilter({...filter, term: e.target.value})} className="w-full p-5 bg-[#F8F9FE] rounded-2xl font-bold outline-none mb-8">
+            <option>1st Term</option>
+            <option>2nd Term</option>
+            <option>Final Term</option>
+          </select>
+          <button onClick={loadStudents} className="w-full bg-[#302B52] text-white py-6 rounded-3xl font-black text-xl shadow-xl hover:bg-[#7166F9] transition-all">
+            Open Grading Table
+          </button>
         </div>
-
-        {/* STUDENT INFO [cite: 6] */}
-        <div className="grid grid-cols-2 gap-6 mb-8 bg-[#F8F9FE] p-8 rounded-[40px]">
-          <div>
-            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Name</p>
-            <p className="text-xl font-black text-[#302B52]">{student.fullName || "Imran Haider Sandhu"}</p>
-          </div>
-          <div className="text-right">
-            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Father's Name</p>
-            <p className="text-xl font-black text-[#302B52]">{student.fatherName || "Muhammad Saleem"}</p>
-          </div>
-          <div>
-            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Class / Section</p>
-            <p className="text-xl font-black text-[#302B52]">{student.class} - {student.section}</p>
-          </div>
-          <div className="text-right">
-            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Admission No</p>
-            <p className="text-xl font-black text-[#302B52]">{student.admissionNo || "786-1-26"}</p>
-          </div>
-        </div>
-
-        {/* MARKS TABLE  */}
-        <div className="rounded-[35px] border-2 border-gray-50 overflow-hidden mb-8">
-          <table className="w-full text-left">
-            <thead className="bg-[#302B52] text-white text-[10px] font-black uppercase tracking-widest">
+      ) : (
+        /* 2. GRADING TABLE */
+        <div className="bg-white rounded-[50px] shadow-2xl overflow-hidden border border-purple-50">
+          <table className="w-full text-left border-collapse">
+            <thead className="bg-[#302B52] text-white uppercase text-[10px] tracking-widest">
               <tr>
-                <th className="p-5">Subject</th>
-                <th className="p-5 text-center">Total</th>
-                <th className="p-5 text-center">Obtained</th>
-                <th className="p-5 text-center">Grade</th>
-                <th className="p-5 text-right">Remarks</th>
+                <th className="p-6 px-8">Student Name</th>
+                {subjects.map(sub => <th key={sub.id} className="p-6 text-center">{sub.name}</th>)}
+                <th className="p-6 text-center bg-[#7166F9]">Total / %</th>
               </tr>
             </thead>
-            <tbody className="text-[#302B52] font-bold">
-              {/* This maps your subjects like Urdu, Math, etc.  */}
-              <tr className="border-b border-gray-50">
-                <td className="p-5">Mathematics</td>
-                <td className="p-5 text-center">100</td>
-                <td className="p-5 text-center">{marks.math}</td>
-                <td className="p-5 text-center text-green-500">A</td>
-                <td className="p-5 text-right italic text-gray-400 text-xs">Excellent </td>
-              </tr>
-              {/* TOTAL ROW */}
-              <tr className="bg-[#302B52] text-white">
-                <td className="p-5 font-black uppercase">Grand Total </td>
-                <td className="p-5 text-center font-black">{totalPossible}</td>
-                <td className="p-5 text-center font-black">{totalObtained}</td>
-                <td className="p-5 text-center font-black">{overallPercentage}%</td>
-                <td className="p-5 text-right font-black uppercase text-[10px]">Result: Pass</td>
-              </tr>
+            <tbody className="divide-y divide-gray-50 font-bold text-[#302B52]">
+              {students.map(s => {
+                const stats = getStats(s.id);
+                return (
+                  <tr key={s.id} className="hover:bg-purple-50/30 transition-all">
+                    <td className="p-6 px-8 leading-tight">
+                      {s.fullName} <br/>
+                      <span className="text-[9px] text-gray-400 uppercase">Roll: {s.rollNo}</span>
+                    </td>
+                    {subjects.map(sub => (
+                      <td key={sub.id} className="p-4 text-center">
+                        <input 
+                          type="text" 
+                          placeholder="0"
+                          value={marks[s.id]?.[sub.id] || ""}
+                          onChange={(e) => handleMarkChange(s.id, sub.id, e.target.value)}
+                          className="w-16 p-3 bg-[#F8F9FE] rounded-xl text-center outline-none border-b-2 border-transparent focus:border-[#7166F9] font-black text-sm"
+                        />
+                      </td>
+                    ))}
+                    <td className="p-6 text-center bg-purple-50/50">
+                       <div className="text-sm font-black text-[#7166F9]">{stats.obtained}/600</div>
+                       <div className="text-[10px] uppercase text-gray-400">{stats.percentage}% | Grade: {stats.grade}</div>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
-        </div>
-
-        {/* ATTENDANCE & AI INSIGHTS [cite: 8, 10] */}
-        <div className="grid grid-cols-2 gap-8 mb-12">
-          <div className="bg-[#F8F9FE] p-6 rounded-[35px] border border-purple-50">
-            <h4 className="flex items-center gap-2 text-xs font-black text-[#302B52] uppercase mb-4">
-              <Calendar size={16} className="text-[#7166F9]"/> Attendance Record [cite: 8]
-            </h4>
-            <div className="flex justify-between font-black text-[#302B52]">
-              <div className="text-center">
-                <p className="text-[10px] text-gray-400 uppercase">Total</p>
-                <p className="text-xl">30 [cite: 9]</p>
-              </div>
-              <div className="text-center">
-                <p className="text-[10px] text-gray-400 uppercase">Present</p>
-                <p className="text-xl text-green-500">26 [cite: 9]</p>
-              </div>
-              <div className="text-center">
-                <p className="text-[10px] text-gray-400 uppercase">Absent</p>
-                <p className="text-xl text-red-500">4 [cite: 9]</p>
-              </div>
-            </div>
-          </div>
-          <div className="bg-[#302B52] p-6 rounded-[35px] text-white shadow-xl relative overflow-hidden">
-            <h4 className="flex items-center gap-2 text-xs font-black uppercase mb-4">
-              <MessageSquare size={16} className="text-[#7166F9]"/> Teacher Recommendations [cite: 10]
-            </h4>
-            <p className="text-[11px] leading-relaxed italic opacity-80">
-              "Math: Exceptional problem-solving skills! Encourage advanced puzzles." [cite: 11]
+          
+          <div className="p-10 bg-gray-50 flex justify-between items-center">
+            <p className="text-gray-400 text-xs italic font-bold max-w-sm">
+              * Calculations are performed in real-time. Result cards will follow the one-page professional layout.
             </p>
+            <button className="bg-[#302B52] text-white px-12 py-5 rounded-[30px] font-black text-xl shadow-2xl hover:bg-[#7166F9] transition-all flex items-center gap-3">
+              <Save size={24} /> Save & Generate Cards
+            </button>
           </div>
         </div>
-
-        {/* SIGNATURES [cite: 18, 19, 20] */}
-        <div className="flex justify-between items-end px-4 mt-4">
-          <div className="text-center">
-            <div className="w-32 border-b-2 border-gray-100 mb-2"></div>
-            <p className="text-[9px] font-black text-gray-400 uppercase">Class Teacher [cite: 18]</p>
-          </div>
-          <div className="text-center">
-            <div className="w-40 border-b-2 border-[#302B52] mb-2"></div>
-            <p className="text-[9px] font-black text-[#302B52] uppercase tracking-[3px]">Principal [cite: 19]</p>
-          </div>
-          <div className="text-center">
-            <div className="w-32 border-b-2 border-gray-100 mb-2"></div>
-            <p className="text-[9px] font-black text-gray-400 uppercase">Parent [cite: 20]</p>
-          </div>
-        </div>
-      </div>
+      )}
     </div>
   );
 }
