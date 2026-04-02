@@ -1,99 +1,126 @@
 "use client";
 import React, { useState } from "react";
-import { useRouter } from "next/navigation";
-import { GraduationCap, ArrowRight, Users, ClipboardCheck, CreditCard, BookOpen, Globe, ShieldCheck } from "lucide-react";
+import Link from "next/link";
+import { 
+  Languages, GraduationCap, Users, 
+  ClipboardCheck, CreditCard, Award, ArrowRight,
+  ShieldCheck, Zap, Database
+} from "lucide-react";
 
 export default function LandingPage() {
-  const [lang, setLang] = useState("en");
-  const router = useRouter();
+  const [language, setLanguage] = useState("EN");
 
-  const translations = {
-    en: {
-      heroTitle: "Digitize Your School with",
-      heroSub: "Pakistan's most advanced AI-powered school management system.",
-      getStarted: "Get Started Now",
-      navFeatures: "Features",
-      navAbout: "About Us",
-      loginBtn: "Admin Login",
-      box1: "Students & Staff",
-      box1Desc: "Manage complete student profiles, admissions, and teacher records in one secure database.",
-      box2: "Smart Attendance",
-      box2Desc: "Record daily attendance in seconds with an easy-to-use interface for all classes.",
-      box3: "Fees & Budget",
-      box3Desc: "Track collected fees, manage pending dues, staff salaries, and overall school budget.",
-      box4: "AI Result Cards",
-      box4Desc: "Automatically generate beautiful PDF report cards with AI-driven parent instructions.",
+  const content = {
+    EN: {
+      title: "EduPilot: Institutional Command",
+      subtitle: "The Elite Choice for Modern School Management. A Project by Imran Haider Sandhu.",
+      getStarted: "Admin Login",
+      features: [
+        { title: "Student Management", desc: "High-detail enrollment with B-Form masking and photo sync.", icon: <Users /> },
+        { title: "Smart Attendance", desc: "Real-time daily registers for Classes 1-10 with custom sections.", icon: <ClipboardCheck /> },
+        { title: "Fee Management", desc: "Professional ledger for Private Fees, NSB, and FTF records.", icon: <CreditCard /> },
+        { title: "AI Result Cards", desc: "One-page smart marksheets with automated grading and AI remarks.", icon: <Award /> }
+      ],
+      stats: ["Real-Time Data", "Secure Cloud", "Multi-User", "Audit Ready"]
     },
-    ur: {
-      heroTitle: "اپنے اسکول کو ڈیجیٹائز کریں",
-      heroSub: "پاکستان کا سب سے جدید AI سے لیس اسکول مینجمنٹ سسٹم۔",
-      getStarted: "ابھی شروع کریں",
-      navFeatures: "خصوصیات",
-      navAbout: "ہمارے بارے میں",
-      loginBtn: "لاگ ان",
-      box1: "طلباء اور عملہ",
-      box1Desc: "ایک محفوظ ڈیٹا بیس میں طلباء کے پروفائلز، داخلوں اور اساتذہ کے ریکارڈ کا انتظام کریں۔",
-      box2: "سمارٹ حاضری",
-      box2Desc: "تمام کلاسوں کے لیے استعمال میں آسان انٹرفیس کے ساتھ سیکنڈوں میں روزانہ کی حاضری ریکارڈ کریں۔",
-      box3: "فیس اور بجٹ",
-      box3Desc: "جمع شدہ فیسوں کا ٹریک رکھیں، واجب الادا فیس، عملے کی تنخواہوں اور اسکول کے بجٹ کا انتظام کریں۔",
-      box4: "اے آئی رزلٹ کارڈ",
-      box4Desc: "خودکار طور پر خوبصورت PDF رپورٹ کارڈز تیار کریں جن میں والدین کے لیے ہدایات بھی شامل ہوں۔",
+    UR: {
+      title: "ایڈو پائلٹ: ادارہ جاتی کمانڈ",
+      subtitle: "جدید اسکول مینجمنٹ کے لیے بہترین انتخاب۔ عمران حیدر سندھو کا ایک پروجیکٹ۔",
+      getStarted: "ایڈمن لاگ ان",
+      features: [
+        { title: "طالب علم کا انتظام", desc: "بی فارم ماسکنگ اور فوٹو سنک کے ساتھ اعلیٰ داخلہ نظام۔", icon: <Users /> },
+        { title: "سمارٹ حاضری", desc: "کلاس 1 تا 10 کے لیے ریئل ٹائم روزانہ رجسٹر۔", icon: <ClipboardCheck /> },
+        { title: "فیس کا انتظام", desc: "پرائیویٹ فیس، NSB، اور FTF ریکارڈز کے لیے پروفیشنل لیجر۔", icon: <CreditCard /> },
+        { title: "AI رزلٹ کارڈز", desc: "خودکار گریڈنگ اور تبصروں کے ساتھ ون پیج سمارٹ مارک شیٹس۔", icon: <Award /> }
+      ],
+      stats: ["فوری ڈیٹا", "محفوظ کلاؤڈ", "کثیر صارفین", "آڈٹ کے لیے تیار"]
     }
   };
 
-  const t = translations[lang];
+  const current = language === "EN" ? content.EN : content.UR;
 
   return (
-    <div className={`min-h-screen bg-[#F8F9FE] text-[#302B52] font-sans ${lang === "ur" ? "rtl font-urdu" : ""}`} dir={lang === "ur" ? "rtl" : "ltr"}>
-      {/* NAVBAR */}
-      <nav className="flex justify-between items-center px-6 md:px-12 py-6 bg-white shadow-sm sticky top-0 z-50">
-        <div className="flex items-center gap-3">
-          <div className="bg-[#7166F9] p-2 rounded-xl text-white shadow-lg"><GraduationCap size={28} /></div>
-          <span className="text-2xl font-black tracking-tighter">EduPilot</span>
-        </div>
-        
-        <div className="hidden md:flex gap-8 font-bold text-gray-400">
-           <button onClick={() => setLang(lang === "en" ? "ur" : "en")} className="flex items-center gap-2 text-[#7166F9] hover:bg-purple-50 px-4 py-2 rounded-xl transition-all">
-             <Globe size={18} /> {lang === "en" ? "اردو" : "English"}
-           </button>
+    <div className={`min-h-screen bg-[#F8F9FE] font-sans transition-all duration-500 ${language === "UR" ? "rtl" : "ltr"}`} dir={language === "UR" ? "rtl" : "ltr"}>
+      {/* ELITE NAV BAR */}
+      <nav className="p-6 md:p-10 flex justify-between items-center max-w-7xl mx-auto">
+        <div className="flex items-center gap-4">
+          <div className="bg-[#302B52] p-4 rounded-[24px] text-white shadow-2xl shadow-purple-200">
+            <GraduationCap size={35} />
+          </div>
+          <div>
+            <span className="text-2xl font-black text-[#302B52] tracking-tighter block leading-none">EDUPILOT</span>
+            <span className="text-[9px] font-black text-[#7166F9] uppercase tracking-[3px]">System Official</span>
+          </div>
         </div>
 
-        <button onClick={() => router.push("/login")} className="bg-[#302B52] text-white px-8 py-3 rounded-2xl font-black hover:bg-[#7166F9] transition-all shadow-xl shadow-purple-100">
-          {t.loginBtn}
-        </button>
+        <div className="flex items-center gap-4 md:gap-8">
+          <button 
+            onClick={() => setLanguage(language === "EN" ? "UR" : "EN")}
+            className="flex items-center gap-2 bg-white px-6 py-3 rounded-2xl font-black text-xs text-[#7166F9] shadow-xl shadow-purple-100/50 border border-purple-50 hover:scale-105 transition-all"
+          >
+            <Languages size={18} /> {language === "EN" ? "اردو" : "English"}
+          </button>
+          <Link href="/login" className="hidden md:block bg-[#302B52] text-white px-10 py-4 rounded-2xl font-black text-sm shadow-2xl hover:bg-[#7166F9] transition-all">
+            {current.getStarted}
+          </Link>
+        </div>
       </nav>
 
-      {/* HERO */}
-      <section className="px-6 py-20 text-center max-w-6xl mx-auto">
-        <h1 className="text-5xl md:text-8xl font-black mb-8 leading-[1.1]">
-          {t.heroTitle} <span className="text-[#7166F9]">EduPilot</span>
+      {/* HERO SECTION */}
+      <main className="max-w-7xl mx-auto px-8 py-16 md:py-24 text-center">
+        <div className="inline-flex items-center gap-2 bg-white px-4 py-2 rounded-full shadow-sm mb-8 border border-purple-50">
+          <ShieldCheck size={16} className="text-green-500" />
+          <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Enterprise Grade Security Enabled</span>
+        </div>
+        
+        <h1 className="text-6xl md:text-8xl font-black text-[#302B52] mb-8 leading-[0.9] tracking-tighter">
+          {current.title}
         </h1>
-        <p className="text-xl md:text-2xl text-gray-500 mb-12 max-w-3xl mx-auto leading-relaxed">
-          {t.heroSub}
+        <p className="text-xl md:text-2xl text-gray-400 font-bold max-w-3xl mx-auto mb-14 leading-relaxed">
+          {current.subtitle}
         </p>
-        <button onClick={() => router.push("/login")} className="bg-[#7166F9] text-white px-12 py-6 rounded-[32px] font-black text-xl flex items-center gap-4 mx-auto shadow-2xl shadow-purple-200 hover:scale-105 transition-all">
-          {t.getStarted} <ArrowRight size={24} />
-        </button>
-      </section>
 
-      {/* DETAILED FEATURES GRID */}
-      <section className="px-6 pb-24 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 max-w-7xl mx-auto">
-        {[
-          { title: t.box1, desc: t.box1Desc, icon: <Users/>, color: "bg-purple-50" },
-          { title: t.box2, desc: t.box2Desc, icon: <ClipboardCheck/>, color: "bg-green-50" },
-          { title: t.box3, desc: t.box3Desc, icon: <CreditCard/>, color: "bg-yellow-50" },
-          { title: t.box4, desc: t.box4Desc, icon: <BookOpen/>, color: "bg-blue-50" },
-        ].map((feature, i) => (
-          <div key={i} className="bg-white p-10 rounded-[40px] shadow-sm border border-gray-100 hover:shadow-2xl transition-all group">
-            <div className={`${feature.color} w-16 h-16 rounded-2xl flex items-center justify-center mb-8 text-[#302B52] group-hover:scale-110 transition-transform`}>
-              {feature.icon}
+        {/* QUICK STATS BAR */}
+        <div className="flex flex-wrap justify-center gap-4 md:gap-12 mb-20">
+          {current.stats.map((s, i) => (
+            <div key={i} className="flex items-center gap-2 text-[#7166F9] font-black text-xs uppercase tracking-widest">
+              <Zap size={14} /> {s}
             </div>
-            <h3 className="text-2xl font-black mb-4">{feature.title}</h3>
-            <p className="text-gray-400 font-medium leading-relaxed">{feature.desc}</p>
-          </div>
-        ))}
-      </section>
+          ))}
+        </div>
+
+        {/* FEATURE GRID */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-24">
+          {current.features.map((f, i) => (
+            <div key={i} className="bg-white p-10 rounded-[50px] border border-transparent hover:border-[#7166F9]/20 shadow-sm hover:shadow-2xl hover:-translate-y-2 transition-all duration-500 group">
+              <div className="bg-[#F8F9FE] w-16 h-16 rounded-[24px] flex items-center justify-center text-[#7166F9] mb-8 group-hover:bg-[#302B52] group-hover:text-white transition-all duration-500">
+                {React.cloneElement(f.icon as React.ReactElement, { size: 30 })}
+              </div>
+              <h3 className="text-xl font-black text-[#302B52] mb-4">{f.title}</h3>
+              <p className="text-sm text-gray-400 font-bold leading-relaxed">{f.desc}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* PRIMARY ACTION */}
+        <div className="flex flex-col items-center gap-6">
+          <Link href="/login" className="group relative inline-flex items-center gap-6 bg-[#7166F9] text-white px-16 py-8 rounded-[35px] font-black text-3xl shadow-2xl shadow-purple-300 hover:bg-[#302B52] transition-all duration-500">
+            {current.getStarted} 
+            <ArrowRight size={32} className="group-hover:translate-x-2 transition-transform" />
+          </Link>
+          <p className="text-gray-300 text-[10px] font-black uppercase tracking-[5px]">Authorized Access Only</p>
+        </div>
+      </main>
+
+      {/* FOOTER */}
+      <footer className="max-w-7xl mx-auto px-8 py-12 flex justify-between items-center opacity-30 border-t border-purple-50">
+        <div className="flex items-center gap-4 font-black text-[#302B52] text-xs uppercase tracking-[3px]">
+          <Database size={16} /> Data Grounded in Firebase
+        </div>
+        <div className="font-black text-[#302B52] text-xs uppercase tracking-[3px]">
+          v3.0 ELITE BUILD
+        </div>
+      </footer>
     </div>
   );
 }
