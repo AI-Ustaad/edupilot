@@ -1,7 +1,8 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { db } from "../../lib/firebase"; // Firebase Connection for Live Data
+// VERCEL BUILD ERROR FIXED: Changed path to ../lib/firebase
+import { db } from "../lib/firebase"; 
 import { collection, onSnapshot } from "firebase/firestore";
 import { 
   Globe, Menu, X, CheckCircle2, ChevronDown, ChevronUp,
@@ -15,11 +16,11 @@ export default function EduPilotLanding() {
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  // 6th Fix: Live Real-Time Data Syncing State
+  // Live Real-Time Data Syncing State
   const [liveStats, setLiveStats] = useState({
     students: 0,
     fees: 0,
-    attendance: "94.2%" // Placeholder until attendance calculation is fully complex
+    attendance: "94.2%" 
   });
 
   // Fetch Real Data from Firebase
@@ -37,7 +38,7 @@ export default function EduPilotLanding() {
 
   const isUrdu = lang === "UR";
   const dir = isUrdu ? "rtl" : "ltr";
-  const whatsappLink = "https://wa.me/923004134853"; // 2nd Fix: Functional WhatsApp Link
+  const whatsappLink = "https://wa.me/923004134853"; 
 
   // --- CONTENT DICTIONARY ---
   const content = {
@@ -82,7 +83,6 @@ export default function EduPilotLanding() {
       faqs: {
         title: "سوالات؟ ہمارے پاس جوابات ہیں۔",
         desc: "دیکھیں EduPilot آپ کے اسکول کا بہتر انتظام کرنے میں کیسے مدد کر سکتا ہے۔",
-        // 3rd Fix: All 7 questions added directly from your Image 3
         questions: [
           { q: "کیا میرا عملہ تکنیکی ٹریننگ کے بغیر استعمال کر سکتا ہے؟", a: "جی ہاں۔ EduPilot اسکول ٹیموں کے لیے بنایا گیا ہے، آئی ٹی ماہرین کے لیے نہیں۔ زیادہ تر اسکول منٹوں میں استعمال شروع کر دیتے ہیں۔" },
           { q: "کیا EduPilot اردو سپورٹ کرتا ہے؟", a: "بالکل، ہمارا سسٹم اردو زبان کو 100% سپورٹ کرتا ہے۔" },
@@ -99,7 +99,6 @@ export default function EduPilotLanding() {
       }
     },
     EN: {
-      // English translations kept minimal for brevity in logic
       nav: { features: "Features", blog: "Blog", faqs: "FAQs", city: "Cities", demoBtn: "Try Demo", loginBtn: "Sign In" },
       hero: { badge: "For Pakistani Schools", title1: "Pakistan's First AI", title2: "Powered School", title3: "Management System", desc: "Manage everything from fees to AI generated results in Urdu & English.", demoBtn: "Book Free Demo", waBtn: "WhatsApp Us", liveDemo: "Live Demo", stats: { schools: "Schools", attendance: "Today's Attendance", students: "Students Enrolled", fee: "Fee Collected" } },
       why: { title: "Why School Owners Choose EduPilot", cards: [ { title: "Simplify Fee Collection", desc: "Track payments and dues." }, { title: "Reduce Office Work", desc: "Manage records from one place." }, { title: "Fast Results", desc: "Generate report cards instantly." }, { title: "Bilingual UI", desc: "Use comfortably in Urdu or English." } ] },
@@ -158,7 +157,6 @@ export default function EduPilotLanding() {
              </h1>
              <p className="text-gray-400 text-lg mb-10 leading-relaxed max-w-xl">{t.hero.desc}</p>
              
-             {/* 2nd Fix: Functional Action Buttons */}
              <div className="flex flex-wrap items-center gap-4">
                <Link href="/login" className="bg-[#EAB308] text-[#0F172A] px-8 py-4 rounded-xl font-bold hover:bg-yellow-400 transition-all flex items-center gap-2">
                  {t.hero.demoBtn}
@@ -172,7 +170,6 @@ export default function EduPilotLanding() {
              </div>
            </div>
 
-           {/* 6th Fix: Real Data Syncing in Floating Cards */}
            <div className="lg:w-1/2 relative w-full h-[400px] lg:h-[500px]">
               <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[80%] h-[60%] bg-[#1E293B] rounded-xl border-4 border-gray-800 shadow-2xl flex flex-col overflow-hidden z-10">
                  <div className="h-6 bg-gray-800 flex items-center px-2 gap-1.5 border-b border-gray-700">
@@ -230,7 +227,7 @@ export default function EduPilotLanding() {
         </div>
       </div>
 
-      {/* 3. INTERACTIVE TABS (5th Fix: Real Previews) */}
+      {/* 3. INTERACTIVE TABS */}
       <div className="py-24 bg-gray-50 container mx-auto px-6">
         <div className="text-center mb-12">
           <p className="text-[#EAB308] text-sm font-bold mb-2">پروڈکٹ</p>
@@ -259,7 +256,6 @@ export default function EduPilotLanding() {
             </Link>
           </div>
 
-          {/* 5th FIX: Detailed Mockup Visuals instead of blank bars */}
           <div className="lg:w-2/3 bg-white rounded-3xl shadow-xl border border-gray-200 p-2 overflow-hidden h-[400px] w-full flex flex-col">
              <div className="h-10 bg-gray-50 flex items-center px-4 gap-2 border-b border-gray-200">
                 <div className="w-3 h-3 rounded-full bg-red-400"></div><div className="w-3 h-3 rounded-full bg-yellow-400"></div><div className="w-3 h-3 rounded-full bg-green-400"></div>
@@ -267,21 +263,21 @@ export default function EduPilotLanding() {
              </div>
              
              <div className="flex-1 bg-[#F8F9FE] p-6 overflow-hidden">
-                {activeTab === 0 && ( /* FEE MOCKUP */
+                {activeTab === 0 && ( 
                   <div className="space-y-3 font-sans">
                     <div className="flex justify-between items-center bg-white p-4 rounded-xl shadow-sm"><span className="font-bold text-sm text-[#0F172A]">Ahmad Khan (Class 5)</span><span className="bg-green-100 text-green-600 px-3 py-1 rounded text-xs font-bold">Paid: 5000</span></div>
                     <div className="flex justify-between items-center bg-white p-4 rounded-xl shadow-sm"><span className="font-bold text-sm text-[#0F172A]">Fatima Ali (Class 6)</span><span className="bg-yellow-100 text-yellow-600 px-3 py-1 rounded text-xs font-bold">Pending: 3000</span></div>
                     <div className="flex justify-between items-center bg-white p-4 rounded-xl shadow-sm"><span className="font-bold text-sm text-[#0F172A]">Usman Raza (Class 9)</span><span className="bg-red-100 text-red-600 px-3 py-1 rounded text-xs font-bold">Overdue: 8000</span></div>
                   </div>
                 )}
-                {activeTab === 1 && ( /* ATTENDANCE MOCKUP */
+                {activeTab === 1 && ( 
                   <div className="space-y-3 font-sans">
                     <div className="flex justify-between items-center bg-white p-4 rounded-xl shadow-sm"><span className="font-bold text-sm text-[#0F172A]">Ahmad Khan</span><div className="flex gap-2"><div className="w-8 h-8 rounded bg-green-500 text-white flex items-center justify-center font-bold text-xs shadow-md">P</div><div className="w-8 h-8 rounded border text-gray-300 flex items-center justify-center font-bold text-xs">A</div></div></div>
                     <div className="flex justify-between items-center bg-white p-4 rounded-xl shadow-sm"><span className="font-bold text-sm text-[#0F172A]">Zainab Bibi</span><div className="flex gap-2"><div className="w-8 h-8 rounded border text-gray-300 flex items-center justify-center font-bold text-xs">P</div><div className="w-8 h-8 rounded bg-red-500 text-white flex items-center justify-center font-bold text-xs shadow-md">A</div></div></div>
                     <div className="flex justify-between items-center bg-white p-4 rounded-xl shadow-sm"><span className="font-bold text-sm text-[#0F172A]">Usman Raza</span><div className="flex gap-2"><div className="w-8 h-8 rounded border text-gray-300 flex items-center justify-center font-bold text-xs">P</div><div className="w-8 h-8 rounded bg-yellow-400 text-white flex items-center justify-center font-bold text-xs shadow-md">L</div></div></div>
                   </div>
                 )}
-                {activeTab === 2 && ( /* RESULT MOCKUP */
+                {activeTab === 2 && ( 
                   <div className="bg-white border-[6px] border-[#0F172A] p-4 h-full shadow-sm font-sans flex flex-col">
                     <div className="text-center border-b pb-2 mb-2"><h4 className="font-black text-[#0F172A] text-lg">EDUPILOT SCHOOL</h4><p className="text-[8px] text-gray-400 uppercase tracking-widest">Result Card 2026</p></div>
                     <table className="w-full text-left text-xs mb-2">
@@ -290,7 +286,7 @@ export default function EduPilotLanding() {
                     </table>
                   </div>
                 )}
-                {activeTab === 3 && ( /* STAFF MOCKUP */
+                {activeTab === 3 && ( 
                   <div className="grid grid-cols-2 gap-4 font-sans">
                     <div className="bg-white p-4 rounded-xl shadow-sm flex items-center gap-3"><div className="w-10 h-10 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center font-bold">FA</div><div><p className="font-bold text-sm text-[#0F172A]">Faisal Ali</p><p className="text-[10px] text-gray-400">Math Teacher</p></div></div>
                     <div className="bg-white p-4 rounded-xl shadow-sm flex items-center gap-3"><div className="w-10 h-10 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center font-bold">SA</div><div><p className="font-bold text-sm text-[#0F172A]">Sara Ahmed</p><p className="text-[10px] text-gray-400">Principal</p></div></div>
@@ -301,7 +297,7 @@ export default function EduPilotLanding() {
         </div>
       </div>
 
-      {/* 4. DUAL FEATURE HIGHLIGHT (4th Fix: Removed second card, centered the first) */}
+      {/* 4. DUAL FEATURE HIGHLIGHT */}
       <div className="py-24 bg-white container mx-auto px-6 flex justify-center">
         <div className="max-w-4xl w-full">
           <div className="bg-gray-50 rounded-[40px] p-10 border border-gray-100 flex flex-col md:flex-row items-center gap-10 overflow-hidden relative">
@@ -365,7 +361,6 @@ export default function EduPilotLanding() {
           </div>
         </div>
 
-        {/* 1st Fix: Footer Phone Number Changed */}
         <footer className="container mx-auto px-6 border-t border-white/10 pt-12 flex flex-col md:flex-row justify-between items-center md:items-start gap-8">
            <div className="flex items-center gap-2 text-white">
             <div className="bg-[#EAB308] p-1 rounded-sm"><ShieldCheck size={16} className="text-[#0F172A]" /></div>
