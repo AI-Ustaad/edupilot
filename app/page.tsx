@@ -37,7 +37,7 @@ export default function EduPilotLanding() {
   // --- CONTENT DICTIONARY ---
   const content = {
     UR: {
-      nav: { features: "خصوصیات", faqs: "سوالات", demoBtn: "لائیو ڈیمو", loginBtn: "سائن ان" },
+      nav: { features: "خصوصیات", faqs: "سوالات", loginBtn: "سائن ان" },
       hero: {
         badge: "پاکستانی اسکولوں کے لیے",
         title1: "پاکستان کا پہلا AI سے",
@@ -58,13 +58,12 @@ export default function EduPilotLanding() {
         title: "EduPilot عمل میں دیکھیں",
         menus: ["فیس مینجمنٹ", "حاضری", "نتائج اور رپورٹ کارڈ", "طلباء اور عملہ"],
         data: [
-          { title: "ادائیگیاں اور واجبات ٹریک کریں", desc: "ادائیگیاں اور واجبات ٹریک کریں\nادائیگی کی حالت فوری دیکھیں\nصاف مالی ریکارڈ رکھیں", btn: "مفت ڈیمو بک کریں" },
-          { title: "سمارٹ حاضری کا نظام", desc: "روزانہ حاضری سیکنڈوں میں لگائیں\nغائب طلباء کی رپورٹس\nوالدین کو آٹو ایس ایم ایس", btn: "مفت ڈیمو بک کریں" },
-          { title: "AI رزلٹ کارڈ جنریٹر", desc: "خودکار گریڈنگ اور پرسنٹیج\nٹیچر کے سمارٹ تبصرے\nون پیج پرنٹ ایبل رزلٹ", btn: "مفت ڈیمو بک کریں" },
-          { title: "مکمل ایچ آر مینجمنٹ", desc: "اسٹاف کی مکمل بائیو ڈیٹا\nتنخواہوں کا ریکارڈ\nطلباء کی تفصیلی پروفائلز", btn: "مفت ڈیمو بک کریں" }
+          { title: "ادائیگیاں اور واجبات ٹریک کریں", desc: "ادائیگیاں اور واجبات ٹریک کریں\nادائیگی کی حالت فوری دیکھیں\nصاف مالی ریکارڈ رکھیں" },
+          { title: "سمارٹ حاضری کا نظام", desc: "روزانہ حاضری سیکنڈوں میں لگائیں\nغائب طلباء کی رپورٹس\nوالدین کو آٹو ایس ایم ایس" },
+          { title: "AI رزلٹ کارڈ جنریٹر", desc: "خودکار گریڈنگ اور پرسنٹیج\nٹیچر کے سمارٹ تبصرے\nون پیج پرنٹ ایبل رزلٹ" },
+          { title: "مکمل ایچ آر مینجمنٹ", desc: "اسٹاف کی مکمل بائیو ڈیٹا\nتنخواہوں کا ریکارڈ\nطلباء کی تفصیلی پروفائلز" }
         ]
       },
-      dual: { card1: { title: "جہاں اسکول کا کام ہوتا ہے وہاں کام کرتا ہے", desc: "EduPilot فون، ٹیبلٹ یا ڈیسک ٹاپ پر استعمال کریں۔ بغیر کمپیوٹر کے حاضری لگائیں اور فیس چیک کریں۔", list: ["فون سے حاضری لگائیں", "فیس کی صورتحال دیکھیں", "مالکان اور ایڈمن ایک ہی سسٹم میں"] } },
       faqs: {
         title: "سوالات؟ ہمارے پاس جوابات ہیں۔",
         questions: [
@@ -77,16 +76,15 @@ export default function EduPilotLanding() {
           { q: "کیا آپ آن بورڈنگ سپورٹ فراہم کرتے ہیں؟", a: "جی ہاں، ہماری ٹیم مکمل آن بورڈنگ اور سیٹ اپ میں آپ کی رہنمائی کرتی ہے۔" }
         ]
       },
-      footer: { rights: "EduPilot. All rights reserved 2026 ©", links: ["پروڈکٹ", "فیچرز", "ڈیمو آزمائیں", "بلاگ", "پرائیویسی پالیسی", "رابطہ"] }
+      footer: { rights: "EduPilot. All rights reserved 2026 ©", links: ["پروڈکٹ", "فیچرز", "بلاگ", "پرائیویسی پالیسی", "رابطہ"] }
     },
     EN: {
-      nav: { features: "Features", faqs: "FAQs", demoBtn: "Live Demo", loginBtn: "Sign In" },
+      nav: { features: "Features", faqs: "FAQs", loginBtn: "Sign In" },
       hero: { badge: "For Pakistani Schools", title1: "Pakistan's First AI Powered", title2: "School Management System", desc: "Manage everything from fees to AI generated results in Urdu & English.", stats: { schools: "Schools", attendance: "Today's Attendance", students: "Students Enrolled", fee: "Fee Collected" } },
       why: { title: "Why School Owners Choose EduPilot", cards: [ { title: "Simplify Fee Collection", desc: "Track payments and dues." }, { title: "Reduce Office Work", desc: "Manage records from one place." }, { title: "Fast Results", desc: "Generate report cards instantly." }, { title: "Bilingual UI", desc: "Use comfortably in Urdu or English." } ] },
-      tabs: { title: "See EduPilot in Action", menus: ["Fee Management", "Attendance", "Results & Cards", "Students & Staff"], data: [ { title: "Track Payments", desc: "Track payments\nSee payment status\nClean financial records", btn: "Book Demo" }, { title: "Smart Attendance", desc: "Mark daily attendance\nAbsent reports\nAuto SMS", btn: "Book Demo" }, { title: "AI Result Cards", desc: "Auto grading\nSmart remarks\nPrintable results", btn: "Book Demo" }, { title: "HR Management", desc: "Staff biodata\nSalary records\nStudent profiles", btn: "Book Demo" } ] },
-      dual: { card1: { title: "Works wherever school work happens", desc: "Use on phone, tablet or desktop.", list: ["Mark attendance from phone", "Check fee status", "Owners & admins combined"] } },
+      tabs: { title: "See EduPilot in Action", menus: ["Fee Management", "Attendance", "Results & Cards", "Students & Staff"], data: [ { title: "Track Payments", desc: "Track payments\nSee payment status\nClean financial records" }, { title: "Smart Attendance", desc: "Mark daily attendance\nAbsent reports\nAuto SMS" }, { title: "AI Result Cards", desc: "Auto grading\nSmart remarks\nPrintable results" }, { title: "HR Management", desc: "Staff biodata\nSalary records\nStudent profiles" } ] },
       faqs: { title: "Questions? We have answers.", questions: [ { q: "No technical training needed?", a: "Yes, it is designed for ease of use." }, { q: "Does it support Urdu?", a: "Yes 100%." }, { q: "Mobile friendly?", a: "Yes, fully responsive." }, { q: "Setup time?", a: "Takes just a few minutes." }, { q: "All in one place?", a: "Yes, complete ERP." }, { q: "Made for Pakistan?", a: "Yes, tailored for local needs." }, { q: "Onboarding support?", a: "Yes, full support provided." } ] },
-      footer: { rights: "EduPilot. All rights reserved 2026 ©", links: ["Product", "Features", "Try Demo", "Blog", "Privacy", "Contact"] }
+      footer: { rights: "EduPilot. All rights reserved 2026 ©", links: ["Product", "Features", "Blog", "Privacy", "Contact"] }
     }
   };
 
@@ -114,7 +112,7 @@ export default function EduPilotLanding() {
           </div>
 
           <div className="hidden lg:flex items-center gap-4">
-             <Link href="/login?mode=demo" className="text-gray-300 hover:text-white text-sm border border-white/20 px-4 py-2 rounded-lg">{t.nav.demoBtn}</Link>
+             {/* Only Sign In button remains */}
              <Link href="/login" className="bg-[#EAB308] text-[#0F172A] px-6 py-2 rounded-lg font-bold text-sm hover:bg-yellow-400 transition-colors">
                {t.nav.loginBtn}
              </Link>
@@ -128,21 +126,29 @@ export default function EduPilotLanding() {
                <span className="text-gray-300 text-xs">{t.hero.badge}</span>
              </div>
              
+             {/* THE ULTIMATE CLIPPING/OVERLAP FIX */}
+             {/* 1. bg-clip-text is REMOVED for Urdu so text is never cut off vertically */}
+             {/* 2. Used explicit inline styles for line-height to force Nastaliq breathing room */}
              <div className="mb-12">
-                 <div className={`${isUrdu ? "pb-12" : "pb-4"}`}>
-                    <h1 className={`font-bold text-white ${isUrdu ? "text-3xl lg:text-5xl leading-relaxed" : "text-4xl lg:text-6xl leading-tight"}`}>
-                      {t.hero.title1}
-                    </h1>
-                 </div>
-                 <div>
-                    <h1 className={`font-bold text-transparent bg-clip-text bg-gradient-to-r from-gray-100 to-gray-400 ${isUrdu ? "text-3xl lg:text-5xl leading-relaxed" : "text-4xl lg:text-6xl leading-tight"}`}>
-                      {t.hero.title2}
-                    </h1>
-                 </div>
+                 <h1 
+                    className="font-bold text-white text-3xl lg:text-5xl"
+                    style={{ lineHeight: isUrdu ? '2.5' : '1.3', paddingBottom: isUrdu ? '1.5rem' : '0.5rem' }}
+                 >
+                   {t.hero.title1}
+                 </h1>
+                 <h1 
+                    className={`font-bold ${isUrdu ? 'text-gray-300 text-3xl lg:text-4xl' : 'text-transparent bg-clip-text bg-gradient-to-r from-gray-100 to-gray-400 text-4xl lg:text-5xl'}`}
+                    style={{ lineHeight: isUrdu ? '2.5' : '1.3' }}
+                 >
+                   {t.hero.title2}
+                 </h1>
              </div>
              
-             <p className={`text-gray-400 text-lg max-w-xl ${isUrdu ? "leading-[2.5]" : "leading-relaxed"}`}>{t.hero.desc}</p>
+             <p className="text-gray-400 text-lg max-w-xl" style={{ lineHeight: isUrdu ? '2.2' : '1.6' }}>
+               {t.hero.desc}
+             </p>
              
+             {/* ALL CTAs REMOVED HERE */}
            </div>
 
            <div className="lg:w-1/2 relative w-full h-[400px] lg:h-[500px]">
@@ -187,7 +193,7 @@ export default function EduPilotLanding() {
 
       {/* 2. FEATURES SECTION */}
       <div id="features" className="py-24 bg-white container mx-auto px-6">
-        <h2 className="text-3xl lg:text-5xl font-bold text-[#0F172A] text-center mb-16 leading-normal pb-4">{t.why.title}</h2>
+        <h2 className="text-3xl lg:text-4xl font-bold text-[#0F172A] text-center mb-16 pb-4" style={{ lineHeight: isUrdu ? '2.5' : '1.3' }}>{t.why.title}</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-5xl mx-auto">
           {t.why.cards.map((card, i) => (
             <div key={i} className="bg-gray-50 rounded-[35px] p-10 hover:shadow-xl hover:-translate-y-2 transition-all duration-300 border border-gray-100">
@@ -195,7 +201,7 @@ export default function EduPilotLanding() {
                 {i === 0 ? <CreditCard size={28}/> : i === 1 ? <Users size={28}/> : i === 2 ? <FileText size={28}/> : <Globe size={28}/>}
               </div>
               <h3 className="text-2xl font-bold text-[#0F172A] mb-4 pb-2">{card.title}</h3>
-              <p className="text-gray-500 text-base leading-loose">{card.desc}</p>
+              <p className="text-gray-500 text-base" style={{ lineHeight: isUrdu ? '2.2' : '1.6' }}>{card.desc}</p>
             </div>
           ))}
         </div>
@@ -205,7 +211,7 @@ export default function EduPilotLanding() {
       <div className="py-24 bg-gray-50 container mx-auto px-6">
         <div className="text-center mb-16">
           <p className="text-[#EAB308] text-sm font-bold mb-4">پروڈکٹ</p>
-          <h2 className="text-3xl lg:text-5xl font-bold text-[#0F172A] mb-12 leading-normal pb-4">{t.tabs.title}</h2>
+          <h2 className="text-3xl lg:text-4xl font-bold text-[#0F172A] mb-12 pb-4" style={{ lineHeight: isUrdu ? '2.5' : '1.3' }}>{t.tabs.title}</h2>
           <div className="flex flex-wrap justify-center gap-2 bg-white p-2 rounded-full max-w-fit mx-auto border border-gray-200 shadow-sm">
             {t.tabs.menus.map((menu, i) => (
               <button key={i} onClick={() => setActiveTab(i)} className={`px-8 py-3 rounded-full text-base font-bold transition-all ${activeTab === i ? 'bg-[#0F172A] text-white shadow-md' : 'text-gray-500 hover:bg-gray-100'}`}>
@@ -220,11 +226,12 @@ export default function EduPilotLanding() {
             <h3 className="text-3xl font-bold text-[#0F172A] mb-8 pb-4 border-b border-gray-50">{t.tabs.data[activeTab].title}</h3>
             <ul className="space-y-6 mb-10">
               {t.tabs.data[activeTab].desc.split('\n').map((line, i) => (
-                <li key={i} className="flex items-start gap-4 text-gray-600 text-base leading-relaxed">
+                <li key={i} className="flex items-start gap-4 text-gray-600 text-base" style={{ lineHeight: isUrdu ? '2.2' : '1.6' }}>
                   <CheckCircle2 size={24} className="text-green-500 shrink-0 mt-1" /><span>{line}</span>
                 </li>
               ))}
             </ul>
+            {/* BUTTONS REMOVED FROM HERE */}
           </div>
 
           <div className="lg:w-2/3 bg-white rounded-3xl shadow-xl border border-gray-200 p-2 overflow-hidden h-[400px] w-full flex flex-col">
@@ -253,7 +260,7 @@ export default function EduPilotLanding() {
       {/* 4. FAQs SECTION */}
       <div id="faqs" className="bg-white py-24">
         <div className="max-w-4xl mx-auto px-6">
-          <h2 className="text-3xl lg:text-5xl font-bold text-[#0F172A] text-center mb-16 leading-normal pb-4">{t.faqs.title}</h2>
+          <h2 className="text-3xl lg:text-4xl font-bold text-[#0F172A] text-center mb-16 pb-4" style={{ lineHeight: isUrdu ? '2.5' : '1.3' }}>{t.faqs.title}</h2>
           <div className="space-y-6">
             {t.faqs.questions.map((faq, i) => (
               <div key={i} className="bg-white border-2 border-gray-100 rounded-2xl overflow-hidden transition-all shadow-sm hover:border-[#EAB308]">
@@ -265,7 +272,7 @@ export default function EduPilotLanding() {
                   {openFaq === i ? <ChevronUp size={24} className="text-[#EAB308] shrink-0 ml-4"/> : <ChevronDown size={24} className="text-gray-400 shrink-0 ml-4"/>}
                 </button>
                 {openFaq === i && (
-                  <div className={`px-8 pb-8 text-gray-600 text-base leading-loose border-t border-gray-50 pt-4 ${isUrdu ? "text-right" : "text-left"}`}>
+                  <div className={`px-8 pb-8 text-gray-600 text-base border-t border-gray-50 pt-4 ${isUrdu ? "text-right" : "text-left"}`} style={{ lineHeight: isUrdu ? '2.2' : '1.6' }}>
                     {faq.a}
                   </div>
                 )}
@@ -278,9 +285,10 @@ export default function EduPilotLanding() {
       {/* 5. FINAL CTA SECTION */}
       <div className="bg-[#0F172A] pt-24 pb-12">
         <div className="max-w-4xl mx-auto px-6 text-center mb-16">
-          <h2 className="text-3xl lg:text-5xl font-bold text-white mb-10 leading-normal pb-4">
+          <h2 className="text-3xl lg:text-4xl font-bold text-white mb-10 pb-4" style={{ lineHeight: isUrdu ? '2.5' : '1.3' }}>
             {isUrdu ? "اسکول مینجمنٹ آسان بنانے کے لیے تیار ہیں؟" : "Ready to simplify school management?"}
           </h2>
+          {/* BUTTONS REMOVED FROM HERE TOO */}
         </div>
 
         <footer className="container mx-auto px-6 border-t border-white/10 pt-12 flex flex-col md:flex-row justify-between items-center md:items-start gap-8">
