@@ -6,15 +6,19 @@
 
 .font-urdu {
   font-family: 'Noto Nastaliq Urdu', serif;
-  line-height: 2.2;
 }
 
 body {
   background-color: #F8F9FE;
   color: #0F172A;
+  direction: ltr; /* Default for English */
 }
 
-/* Hide scrollbar for a cleaner look but keep functionality */
+/* Fix RTL for Urdu */
+[dir="rtl"] {
+  direction: rtl;
+}
+
 .custom-scrollbar::-webkit-scrollbar {
   width: 6px;
 }
