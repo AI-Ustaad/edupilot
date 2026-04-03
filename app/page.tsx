@@ -19,6 +19,7 @@ export default function EduPilotLanding() {
     attendance: "94.2%" 
   });
 
+  // Firebase Live Sync
   useEffect(() => {
     const unsubStudents = onSnapshot(collection(db, "students"), (snap) => {
       setLiveStats(prev => ({ ...prev, students: snap.size }));
@@ -93,7 +94,7 @@ export default function EduPilotLanding() {
   return (
     <div className={`min-h-screen font-sans overflow-x-hidden ${isUrdu ? "font-urdu" : ""}`} dir={dir}>
       
-      {/* 1. HERO SECTION WITH BACKGROUND IMAGE */}
+      {/* 1. HERO SECTION (WITH BACKGROUND IMAGE) */}
       <div 
         className="relative min-h-screen flex flex-col overflow-hidden"
         style={{
@@ -103,10 +104,8 @@ export default function EduPilotLanding() {
           backgroundAttachment: 'fixed'
         }}
       >
-        {/* Dark Premium Overlay */}
         <div className="absolute inset-0 bg-[#0F172A]/85 z-0"></div>
 
-        {/* Navbar */}
         <nav className="container mx-auto px-6 py-6 flex justify-between items-center relative z-20">
           <div className="flex items-center gap-2 text-white">
             <div className="bg-[#EAB308] p-1.5 rounded-md"><ShieldCheck size={20} className="text-[#0F172A]" /></div>
@@ -130,7 +129,6 @@ export default function EduPilotLanding() {
           </div>
         </nav>
 
-        {/* Centered Hero Content */}
         <div className="container mx-auto px-6 py-12 flex flex-col items-center text-center relative z-10 flex-1">
              <div className="inline-flex items-center gap-2 bg-white/10 border border-white/20 rounded-full px-4 py-1.5 mb-10 backdrop-blur-sm">
                <span className="w-2 h-2 rounded-full bg-[#EAB308] animate-pulse"></span>
@@ -138,48 +136,33 @@ export default function EduPilotLanding() {
              </div>
              
              <div className="mb-6 max-w-4xl">
-                 <div className={`${isUrdu ? "pb-8" : "pb-4"}`}>
-                    <h1 
-                      className={`font-bold text-white ${isUrdu ? "text-4xl lg:text-6xl" : "text-4xl lg:text-6xl"}`}
-                      style={{ lineHeight: isUrdu ? '2.2' : '1.2' }}
-                    >
-                      {t.hero.title1}
-                    </h1>
-                 </div>
-                 <div>
-                    <h1 
-                      className={`font-bold ${isUrdu ? 'text-gray-300 text-4xl lg:text-5xl' : 'text-transparent bg-clip-text bg-gradient-to-r from-gray-100 to-gray-400 text-4xl lg:text-6xl'}`}
-                      style={{ lineHeight: isUrdu ? '2.2' : '1.2' }}
-                    >
-                      {t.hero.title2}
-                    </h1>
-                 </div>
+                 <h1 className={`font-bold text-white ${isUrdu ? "text-4xl lg:text-5xl" : "text-4xl lg:text-6xl"}`} style={{ lineHeight: isUrdu ? '2.5' : '1.3', paddingBottom: isUrdu ? '1.5rem' : '0.5rem' }}>
+                   {t.hero.title1}
+                 </h1>
+                 <h1 className={`font-bold ${isUrdu ? 'text-gray-300 text-3xl lg:text-4xl' : 'text-transparent bg-clip-text bg-gradient-to-r from-gray-100 to-gray-400 text-4xl lg:text-5xl'}`} style={{ lineHeight: isUrdu ? '2.5' : '1.3' }}>
+                   {t.hero.title2}
+                 </h1>
              </div>
              
              <p className="text-gray-300 text-lg max-w-2xl mx-auto" style={{ lineHeight: isUrdu ? '2.2' : '1.6' }}>
                {t.hero.desc}
              </p>
              
-             {/* Centered Mockup with Floating Cards */}
              <div className="relative w-full max-w-5xl mt-20 h-[350px] lg:h-[450px]">
-                {/* Main Laptop Frame */}
                 <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[90%] md:w-[70%] h-full bg-[#1E293B] rounded-t-2xl border-[6px] border-b-0 border-gray-800 shadow-[0_20px_50px_rgba(0,0,0,0.5)] flex flex-col overflow-hidden z-10">
                    <div className="h-6 bg-gray-800 flex items-center px-3 gap-2 border-b border-gray-700">
                       <div className="w-2.5 h-2.5 rounded-full bg-red-500"></div><div className="w-2.5 h-2.5 rounded-full bg-yellow-500"></div><div className="w-2.5 h-2.5 rounded-full bg-green-500"></div>
                    </div>
-                   <div className="flex-1 bg-[#F8F9FE] p-4 flex flex-col gap-3">
+                   <div className="flex-1 bg-[#F8F9FE] p-4 flex flex-col gap-3 opacity-80">
                       <div className="h-6 w-1/3 bg-gray-200 rounded-md"></div>
                       <div className="flex gap-3 h-24">
                         <div className="flex-1 bg-white shadow-sm border border-gray-100 rounded-lg"></div>
                         <div className="flex-1 bg-white shadow-sm border border-gray-100 rounded-lg"></div>
                       </div>
-                      <div className="flex-1 bg-white shadow-sm border border-gray-100 rounded-lg mt-2"></div>
                    </div>
                 </div>
-                {/* Laptop Base */}
                 <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-[98%] md:w-[80%] h-4 bg-gray-300 rounded-b-xl z-20 shadow-2xl"></div>
 
-                {/* Floating Glass Cards - Positioned Around */}
                 <div className="absolute top-10 right-0 md:right-10 bg-white/10 backdrop-blur-md border border-white/20 p-5 rounded-2xl shadow-xl z-30">
                   <p className="text-gray-200 text-xs mb-1 font-bold uppercase tracking-wider">{t.hero.stats.schools}</p>
                   <p className="text-white font-black text-2xl">1 (EduPilot)</p>
