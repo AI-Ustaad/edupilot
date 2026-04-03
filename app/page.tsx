@@ -93,8 +93,20 @@ export default function EduPilotLanding() {
   return (
     <div className={`min-h-screen font-sans overflow-x-hidden ${isUrdu ? "font-urdu" : ""}`} dir={dir}>
       
-      {/* 1. HERO SECTION */}
-      <div className="bg-[#0F172A] min-h-screen relative overflow-hidden flex flex-col">
+      {/* 1. HERO SECTION WITH BACKGROUND IMAGE */}
+      <div 
+        className="relative min-h-screen flex flex-col overflow-hidden"
+        style={{
+          backgroundImage: "url('https://images.unsplash.com/photo-1509062522246-3755977927d7?auto=format&fit=crop&q=80&w=2000')",
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          backgroundAttachment: 'fixed'
+        }}
+      >
+        {/* Dark Premium Overlay */}
+        <div className="absolute inset-0 bg-[#0F172A]/85 z-0"></div>
+
+        {/* Navbar */}
         <nav className="container mx-auto px-6 py-6 flex justify-between items-center relative z-20">
           <div className="flex items-center gap-2 text-white">
             <div className="bg-[#EAB308] p-1.5 rounded-md"><ShieldCheck size={20} className="text-[#0F172A]" /></div>
@@ -105,89 +117,95 @@ export default function EduPilotLanding() {
             <a href="#features" className="cursor-pointer hover:text-white transition-colors">{t.nav.features}</a>
             <a href="#faqs" className="cursor-pointer hover:text-white transition-colors">{t.nav.faqs}</a>
             
-            <div className="flex bg-white/10 rounded-full p-1 ml-4 border border-white/20">
+            <div className="flex bg-white/10 rounded-full p-1 ml-4 border border-white/20 backdrop-blur-sm">
               <button onClick={() => setLang("EN")} className={`px-4 py-1 rounded-full text-xs transition-colors ${!isUrdu ? "bg-white text-[#0F172A] font-bold" : "text-white"}`}>English</button>
               <button onClick={() => setLang("UR")} className={`px-4 py-1 rounded-full text-xs transition-colors ${isUrdu ? "bg-white text-[#0F172A] font-bold" : "text-white"}`}>اردو</button>
             </div>
           </div>
 
           <div className="hidden lg:flex items-center gap-4">
-             {/* Only Sign In button remains */}
-             <Link href="/login" className="bg-[#EAB308] text-[#0F172A] px-6 py-2 rounded-lg font-bold text-sm hover:bg-yellow-400 transition-colors">
+             <Link href="/login" className="bg-[#EAB308] text-[#0F172A] px-6 py-2 rounded-lg font-bold text-sm hover:bg-yellow-400 transition-colors shadow-lg">
                {t.nav.loginBtn}
              </Link>
           </div>
         </nav>
 
-        <div className="container mx-auto px-6 py-12 flex flex-col lg:flex-row items-center gap-16 relative z-10 flex-1">
-           <div className={`lg:w-1/2 ${isUrdu ? "lg:pl-10" : "lg:pr-10"}`}>
-             <div className="inline-flex items-center gap-2 bg-white/10 border border-white/20 rounded-full px-4 py-1.5 mb-8">
-               <span className="w-2 h-2 rounded-full bg-[#EAB308]"></span>
-               <span className="text-gray-300 text-xs">{t.hero.badge}</span>
+        {/* Centered Hero Content */}
+        <div className="container mx-auto px-6 py-12 flex flex-col items-center text-center relative z-10 flex-1">
+             <div className="inline-flex items-center gap-2 bg-white/10 border border-white/20 rounded-full px-4 py-1.5 mb-10 backdrop-blur-sm">
+               <span className="w-2 h-2 rounded-full bg-[#EAB308] animate-pulse"></span>
+               <span className="text-gray-200 text-xs font-bold tracking-wider uppercase">{t.hero.badge}</span>
              </div>
              
-             {/* THE ULTIMATE CLIPPING/OVERLAP FIX */}
-             {/* 1. bg-clip-text is REMOVED for Urdu so text is never cut off vertically */}
-             {/* 2. Used explicit inline styles for line-height to force Nastaliq breathing room */}
-             <div className="mb-12">
-                 <h1 
-                    className="font-bold text-white text-3xl lg:text-5xl"
-                    style={{ lineHeight: isUrdu ? '2.5' : '1.3', paddingBottom: isUrdu ? '1.5rem' : '0.5rem' }}
-                 >
-                   {t.hero.title1}
-                 </h1>
-                 <h1 
-                    className={`font-bold ${isUrdu ? 'text-gray-300 text-3xl lg:text-4xl' : 'text-transparent bg-clip-text bg-gradient-to-r from-gray-100 to-gray-400 text-4xl lg:text-5xl'}`}
-                    style={{ lineHeight: isUrdu ? '2.5' : '1.3' }}
-                 >
-                   {t.hero.title2}
-                 </h1>
+             <div className="mb-6 max-w-4xl">
+                 <div className={`${isUrdu ? "pb-8" : "pb-4"}`}>
+                    <h1 
+                      className={`font-bold text-white ${isUrdu ? "text-4xl lg:text-6xl" : "text-4xl lg:text-6xl"}`}
+                      style={{ lineHeight: isUrdu ? '2.2' : '1.2' }}
+                    >
+                      {t.hero.title1}
+                    </h1>
+                 </div>
+                 <div>
+                    <h1 
+                      className={`font-bold ${isUrdu ? 'text-gray-300 text-4xl lg:text-5xl' : 'text-transparent bg-clip-text bg-gradient-to-r from-gray-100 to-gray-400 text-4xl lg:text-6xl'}`}
+                      style={{ lineHeight: isUrdu ? '2.2' : '1.2' }}
+                    >
+                      {t.hero.title2}
+                    </h1>
+                 </div>
              </div>
              
-             <p className="text-gray-400 text-lg max-w-xl" style={{ lineHeight: isUrdu ? '2.2' : '1.6' }}>
+             <p className="text-gray-300 text-lg max-w-2xl mx-auto" style={{ lineHeight: isUrdu ? '2.2' : '1.6' }}>
                {t.hero.desc}
              </p>
              
-             {/* ALL CTAs REMOVED HERE */}
-           </div>
-
-           <div className="lg:w-1/2 relative w-full h-[400px] lg:h-[500px]">
-              <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[80%] h-[60%] bg-[#1E293B] rounded-xl border-4 border-gray-800 shadow-2xl flex flex-col overflow-hidden z-10">
-                 <div className="h-6 bg-gray-800 flex items-center px-2 gap-1.5 border-b border-gray-700">
-                    <div className="w-2 h-2 rounded-full bg-red-500"></div><div className="w-2 h-2 rounded-full bg-yellow-500"></div><div className="w-2 h-2 rounded-full bg-green-500"></div>
-                 </div>
-                 <div className="flex-1 bg-white p-4 flex flex-col gap-2 opacity-50">
-                    <div className="h-4 w-1/3 bg-gray-200 rounded"></div>
-                    <div className="flex gap-2 h-20"><div className="flex-1 bg-blue-50 rounded"></div><div className="flex-1 bg-green-50 rounded"></div></div>
-                 </div>
-              </div>
-
-              <div className="absolute top-10 right-0 lg:-right-10 bg-white/10 backdrop-blur-md border border-white/20 p-4 rounded-2xl shadow-xl z-20">
-                <p className="text-gray-300 text-xs mb-1">{t.hero.stats.schools}</p>
-                <p className="text-white font-bold text-2xl">1 (EduPilot)</p>
-              </div>
-
-              <div className="absolute top-20 left-0 lg:-left-10 bg-white/10 backdrop-blur-md border border-white/20 p-4 rounded-2xl shadow-xl z-20">
-                <div className="flex items-center gap-2 mb-1">
-                  <p className="text-gray-300 text-xs">{t.hero.stats.attendance}</p>
-                  <span className="w-2 h-2 rounded-full bg-green-400"></span>
+             {/* Centered Mockup with Floating Cards */}
+             <div className="relative w-full max-w-5xl mt-20 h-[350px] lg:h-[450px]">
+                {/* Main Laptop Frame */}
+                <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[90%] md:w-[70%] h-full bg-[#1E293B] rounded-t-2xl border-[6px] border-b-0 border-gray-800 shadow-[0_20px_50px_rgba(0,0,0,0.5)] flex flex-col overflow-hidden z-10">
+                   <div className="h-6 bg-gray-800 flex items-center px-3 gap-2 border-b border-gray-700">
+                      <div className="w-2.5 h-2.5 rounded-full bg-red-500"></div><div className="w-2.5 h-2.5 rounded-full bg-yellow-500"></div><div className="w-2.5 h-2.5 rounded-full bg-green-500"></div>
+                   </div>
+                   <div className="flex-1 bg-[#F8F9FE] p-4 flex flex-col gap-3">
+                      <div className="h-6 w-1/3 bg-gray-200 rounded-md"></div>
+                      <div className="flex gap-3 h-24">
+                        <div className="flex-1 bg-white shadow-sm border border-gray-100 rounded-lg"></div>
+                        <div className="flex-1 bg-white shadow-sm border border-gray-100 rounded-lg"></div>
+                      </div>
+                      <div className="flex-1 bg-white shadow-sm border border-gray-100 rounded-lg mt-2"></div>
+                   </div>
                 </div>
-                <p className="text-white font-bold text-xl">{liveStats.attendance}</p>
-              </div>
+                {/* Laptop Base */}
+                <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-[98%] md:w-[80%] h-4 bg-gray-300 rounded-b-xl z-20 shadow-2xl"></div>
 
-              <div className="absolute bottom-10 right-10 bg-[#EAB308]/90 backdrop-blur-md border border-[#EAB308]/50 p-4 rounded-2xl shadow-xl z-20">
-                <p className="text-[#0F172A] text-xs mb-1 font-bold">{t.hero.stats.students} (Live)</p>
-                <p className="text-[#0F172A] font-black text-3xl">{liveStats.students}</p>
-              </div>
-
-              <div className="absolute bottom-4 left-4 lg:-left-4 bg-green-500/90 backdrop-blur-md border border-green-400 p-4 rounded-2xl shadow-xl z-20 flex items-center gap-3">
-                <div className="bg-white p-2 rounded-lg"><CreditCard size={16} className="text-green-600"/></div>
-                <div>
-                  <p className="text-green-50 text-xs font-bold">{t.hero.stats.fee} (Live)</p>
-                  <p className="text-white font-black text-lg">PKR {liveStats.fees.toLocaleString()}</p>
+                {/* Floating Glass Cards - Positioned Around */}
+                <div className="absolute top-10 right-0 md:right-10 bg-white/10 backdrop-blur-md border border-white/20 p-5 rounded-2xl shadow-xl z-30">
+                  <p className="text-gray-200 text-xs mb-1 font-bold uppercase tracking-wider">{t.hero.stats.schools}</p>
+                  <p className="text-white font-black text-2xl">1 (EduPilot)</p>
                 </div>
-              </div>
-           </div>
+
+                <div className="absolute top-1/4 left-0 md:left-10 bg-white/10 backdrop-blur-md border border-white/20 p-5 rounded-2xl shadow-xl z-30">
+                  <div className="flex items-center gap-2 mb-1">
+                    <p className="text-gray-200 text-xs font-bold uppercase tracking-wider">{t.hero.stats.attendance}</p>
+                    <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse"></span>
+                  </div>
+                  <p className="text-white font-black text-2xl">{liveStats.attendance}</p>
+                </div>
+
+                <div className="absolute bottom-16 left-4 md:left-20 bg-white/10 backdrop-blur-md border border-white/20 p-5 rounded-2xl shadow-xl z-30">
+                  <p className="text-gray-200 text-xs mb-1 font-bold uppercase tracking-wider">{t.hero.stats.students} (Live)</p>
+                  <p className="text-white font-black text-3xl">{liveStats.students}</p>
+                </div>
+
+                <div className="absolute bottom-20 right-4 md:right-16 bg-[#EAB308]/90 backdrop-blur-md border border-[#EAB308]/50 p-5 rounded-2xl shadow-2xl z-30 flex items-center gap-4 hover:scale-105 transition-transform">
+                  <div className="bg-white p-2.5 rounded-lg"><CreditCard size={20} className="text-[#0F172A]"/></div>
+                  <div className="text-left">
+                    <p className="text-[#0F172A] text-xs font-bold uppercase tracking-wider opacity-80">{t.hero.stats.fee} (Live)</p>
+                    <p className="text-[#0F172A] font-black text-xl">PKR {liveStats.fees.toLocaleString()}</p>
+                  </div>
+                </div>
+             </div>
         </div>
       </div>
 
@@ -231,7 +249,6 @@ export default function EduPilotLanding() {
                 </li>
               ))}
             </ul>
-            {/* BUTTONS REMOVED FROM HERE */}
           </div>
 
           <div className="lg:w-2/3 bg-white rounded-3xl shadow-xl border border-gray-200 p-2 overflow-hidden h-[400px] w-full flex flex-col">
@@ -288,7 +305,6 @@ export default function EduPilotLanding() {
           <h2 className="text-3xl lg:text-4xl font-bold text-white mb-10 pb-4" style={{ lineHeight: isUrdu ? '2.5' : '1.3' }}>
             {isUrdu ? "اسکول مینجمنٹ آسان بنانے کے لیے تیار ہیں؟" : "Ready to simplify school management?"}
           </h2>
-          {/* BUTTONS REMOVED FROM HERE TOO */}
         </div>
 
         <footer className="container mx-auto px-6 border-t border-white/10 pt-12 flex flex-col md:flex-row justify-between items-center md:items-start gap-8">
