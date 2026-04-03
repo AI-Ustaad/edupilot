@@ -1,12 +1,3 @@
-یہ نستعلیق (Nastaliq) فونٹ کی سب سے بڑی خاصیت اور مسئلہ ہے کہ اس کے الفاظ (جیسے 'پاکستان' کا نون غنہ) بہت نیچے تک جاتے ہیں اور نیچے والے الفاظ (جیسے 'تقویت' کے نقطے) بہت اوپر تک آتے ہیں۔ 
-
-آپ کی تصویر دیکھ کر میں نے اندازہ لگا لیا ہے کہ اسے کتنی جگہ درکار ہے۔ آپ کے حکم کے مطابق میں نے:
-1. **اردو ہیڈنگ کا سائز:** تھوڑا سا چھوٹا کیا ہے (`text-5xl`) اور دونوں لائنوں کے درمیان ایک بہت بڑا اور واضح فاصلہ (`pb-12`) رکھ دیا ہے تاکہ اب الفاظ زندگی میں کبھی ایک دوسرے سے نہ ٹکرائیں۔
-2. **بٹنز کا اخراج (Removal):** آپ کی ہدایت کے مطابق ہیرو سیکشن (اوپر) اور فائنل سیکشن (نیچے) دونوں جگہوں سے تینوں بٹنز (واٹس ایپ، لائیو ڈیمو، مفت ڈیمو) کو اردو اور انگریزی دونوں ورژنز سے مکمل طور پر ہٹا دیا ہے۔
-
-یہ رہا آپ کا اپڈیٹڈ اور صاف ستھرا کوڈ، اسے کاپی کر کے اپنی **`app/page.tsx`** میں پیسٹ کر لیں:
-
-```tsx
 "use client";
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
@@ -137,7 +128,6 @@ export default function EduPilotLanding() {
                <span className="text-gray-300 text-xs">{t.hero.badge}</span>
              </div>
              
-             {/* THE ULTIMATE TEXT OVERLAP FIX: Slightly smaller font (text-5xl) and very large explicit gap (pb-12) */}
              <div className="mb-12">
                  <div className={`${isUrdu ? "pb-12" : "pb-4"}`}>
                     <h1 className={`font-bold text-white ${isUrdu ? "text-3xl lg:text-5xl leading-relaxed" : "text-4xl lg:text-6xl leading-tight"}`}>
@@ -153,7 +143,6 @@ export default function EduPilotLanding() {
              
              <p className={`text-gray-400 text-lg max-w-xl ${isUrdu ? "leading-[2.5]" : "leading-relaxed"}`}>{t.hero.desc}</p>
              
-             {/* BUTTONS REMOVED FROM HERO SECTION AS REQUESTED */}
            </div>
 
            <div className="lg:w-1/2 relative w-full h-[400px] lg:h-[500px]">
@@ -286,13 +275,12 @@ export default function EduPilotLanding() {
         </div>
       </div>
 
-      {/* 5. FINAL CTA SECTION (BUTTONS REMOVED AS REQUESTED) */}
+      {/* 5. FINAL CTA SECTION */}
       <div className="bg-[#0F172A] pt-24 pb-12">
         <div className="max-w-4xl mx-auto px-6 text-center mb-16">
           <h2 className="text-3xl lg:text-5xl font-bold text-white mb-10 leading-normal pb-4">
             {isUrdu ? "اسکول مینجمنٹ آسان بنانے کے لیے تیار ہیں؟" : "Ready to simplify school management?"}
           </h2>
-          {/* BUTTONS REMOVED FROM HERE */}
         </div>
 
         <footer className="container mx-auto px-6 border-t border-white/10 pt-12 flex flex-col md:flex-row justify-between items-center md:items-start gap-8">
@@ -309,4 +297,3 @@ export default function EduPilotLanding() {
     </div>
   );
 }
-```
