@@ -1,14 +1,13 @@
 "use client";
 import React, { useEffect, useState } from "react";
 import { signInWithPopup, onAuthStateChanged } from "firebase/auth";
-import { auth, provider } from "../../lib/firebase";
+import { auth, provider } from "@/lib/firebase"; 
 import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
   const router = useRouter();
   const [isChecking, setIsChecking] = useState(true);
 
-  // Check if user is already logged in
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
