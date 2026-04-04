@@ -1,9 +1,9 @@
 import "./globals.css";
-import type { Metadata } from "next";
+import ClientWrapper from "./ClientWrapper";
 
-export const metadata: Metadata = {
+export const metadata = {
   title: "EduPilot - School Management System",
-  description: "Pakistan's First AI Powered School Management System",
+  description: "Pakistan's first AI Powered School Management System",
 };
 
 export default function RootLayout({
@@ -13,7 +13,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        <ClientWrapper>{children}</ClientWrapper>
+      </body>
     </html>
   );
 }
