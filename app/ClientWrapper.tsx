@@ -1,28 +1,27 @@
 "use client";
 import React, { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { auth } from "../lib/firebase";
+import { auth } from "@/lib/firebase";
 import { onAuthStateChanged } from "firebase/auth";
-import SidebarLayout from "./components/SidebarLayout";
+import SidebarLayout from "@/app/components/SidebarLayout";
 
 export default function ClientWrapper({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const [loading, setLoading] = useState(true);
 
-  // وہ پیجز جہاں ہمیں سائیڈ بار نہیں چاہیے (Landing & Login)
+  // Landing page or Login page
   const isPublicPage = pathname === "/" || pathname === "/login";
 
-  // سیکیورٹی چیک (Security Check)
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
-        setLoading(false); // یوزر لاگ ان ہے، جانے دو
+        setLoading(false); 
       } else {
         if (!isPublicPage) {
-          router.push("/login"); // لاگ ان نہیں ہے تو لاگ ان پر بھیجو
+          router.push("/login"); 
         } else {
-          setLoading(false); // پبلک پیج پر ہے تو کوئی مسئلہ نہیں
+          setLoading(false); 
         }
       }
     });
@@ -37,11 +36,9 @@ export default function ClientWrapper({ children }: { children: React.ReactNode 
     );
   }
 
-  // اگر لینڈنگ پیج یا لاگ ان پیج ہے تو سائیڈ بار مت لگاؤ
   if (isPublicPage) {
     return <>{children}</>;
   }
 
-  // باقی ہر پیج (Students, Fees, Dashboard etc) پر آٹو سائیڈ بار لگا دو!
   return <SidebarLayout>{children}</SidebarLayout>;
 }
