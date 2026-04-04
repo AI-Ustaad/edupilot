@@ -12,13 +12,12 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const pathname = usePathname();
 
-  // آپ کے تمام لنکس اب بالکل صحیح روٹس پر ہیں
   const menuItems = [
-    { name: "Dashboard", icon: LayoutDashboard, path: "/dashboard" },
+    { name: "Analytics", icon: LayoutDashboard, path: "/dashboard" },
     { name: "Students", icon: GraduationCap, path: "/students" },
     { name: "Staff", icon: Users, path: "/staff" },
     { name: "Attendance", icon: CheckSquare, path: "/attendance" },
-    { name: "Fees", icon: CreditCard, path: "/fees" },
+    { name: "Fee Collection", icon: CreditCard, path: "/fees" },
     { name: "Settings", icon: Settings, path: "/settings" },
   ];
 
@@ -27,29 +26,27 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
   };
 
   return (
-    <div className="flex h-screen bg-[#F8F9FE] font-sans overflow-hidden">
+    <div className="flex h-screen bg-[#f1f4f6] font-sans overflow-hidden">
       
       {/* Sidebar Mobile Overlay */}
       {sidebarOpen && (
         <div className="fixed inset-0 bg-gray-900/50 z-40 lg:hidden" onClick={() => setSidebarOpen(false)} />
       )}
 
-      {/* Sidebar */}
-      <aside className={`fixed lg:static inset-y-0 left-0 z-50 w-72 bg-[#0F172A] text-gray-300 flex flex-col transition-transform duration-300 ease-in-out ${sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}`}>
-        <div className="h-20 flex items-center justify-between px-6 border-b border-gray-800/50">
-          <div className="flex items-center gap-3 text-white">
-            <div className="bg-[#EAB308] p-1.5 rounded-lg shadow-sm">
-              <ShieldCheck size={24} className="text-[#0F172A]" />
-            </div>
-            <span className="text-2xl font-bold tracking-wider">EduPilot</span>
+      {/* Sidebar - NEW GREEN THEME (#3ac47d) */}
+      <aside className={`fixed lg:static inset-y-0 left-0 z-50 w-64 bg-[#3ac47d] text-white flex flex-col transition-transform duration-300 ease-in-out shadow-xl ${sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}`}>
+        <div className="h-20 flex items-center justify-center px-6 border-b border-white/10 shadow-sm bg-[#3ac47d]">
+          <div className="flex items-center gap-3">
+            <ShieldCheck size={28} className="text-white" />
+            <span className="text-2xl font-bold tracking-wide">EduPilot</span>
           </div>
-          <button className="lg:hidden text-gray-400 hover:text-white" onClick={() => setSidebarOpen(false)}>
+          <button className="lg:hidden absolute right-4 text-white/70 hover:text-white" onClick={() => setSidebarOpen(false)}>
             <X size={24} />
           </button>
         </div>
 
-        <nav className="flex-1 px-4 py-8 space-y-2 overflow-y-auto custom-scrollbar">
-          <p className="px-4 text-xs font-bold text-gray-500 uppercase tracking-widest mb-4">Main Menu</p>
+        <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto custom-scrollbar">
+          <p className="px-4 text-[10px] font-bold text-white/60 uppercase tracking-widest mb-4">Dashboard Widgets</p>
           {menuItems.map((item, index) => {
             const isActive = pathname === item.path || pathname?.startsWith(`${item.path}/`);
             return (
@@ -57,21 +54,25 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
                 key={index} 
                 href={item.path}
                 onClick={() => setSidebarOpen(false)}
-                className={`flex items-center gap-4 px-4 py-3.5 rounded-xl transition-all font-medium ${isActive ? "bg-[#EAB308] text-[#0F172A] shadow-md" : "hover:bg-white/5 hover:text-white"}`}
+                className={`flex items-center gap-4 px-4 py-3 rounded-lg transition-all font-medium text-sm ${
+                  isActive 
+                    ? "bg-white text-[#3ac47d] shadow-md" 
+                    : "text-white hover:bg-white/10"
+                }`}
               >
-                <item.icon size={20} className={isActive ? "text-[#0F172A]" : "text-gray-400"} />
+                <item.icon size={18} className={isActive ? "text-[#3ac47d]" : "text-white/80"} />
                 {item.name}
               </Link>
             );
           })}
         </nav>
 
-        <div className="p-4 border-t border-gray-800/50">
+        <div className="p-4 border-t border-white/10">
           <button 
             onClick={handleLogout}
-            className="w-full flex items-center gap-4 px-4 py-3 rounded-xl text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-all font-medium"
+            className="w-full flex items-center gap-4 px-4 py-3 rounded-lg text-white/80 hover:bg-white/10 hover:text-white transition-all font-medium text-sm"
           >
-            <LogOut size={20} />
+            <LogOut size={18} />
             Logout
           </button>
         </div>
@@ -79,37 +80,35 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col h-screen overflow-hidden">
-        {/* Topbar */}
-        <header className="h-20 bg-white border-b border-gray-100 flex items-center justify-between px-6 lg:px-10 shrink-0 z-10">
+        {/* Topbar - CLEAN WHITE */}
+        <header className="h-20 bg-white border-b border-gray-200 flex items-center justify-between px-6 lg:px-8 shrink-0 z-10 shadow-sm">
           <div className="flex items-center gap-4">
-            <button className="lg:hidden text-gray-500 hover:text-[#0F172A]" onClick={() => setSidebarOpen(true)}>
-              <Menu size={28} />
+            <button className="lg:hidden text-gray-500 hover:text-[#3ac47d]" onClick={() => setSidebarOpen(true)}>
+              <Menu size={24} />
             </button>
-            <div className="hidden md:flex items-center bg-gray-50 rounded-full px-4 py-2.5 w-64 lg:w-96 border border-gray-100 focus-within:border-gray-300 focus-within:bg-white transition-all">
-              <Search size={18} className="text-gray-400" />
-              <input type="text" placeholder="Search students, fees..." className="bg-transparent border-none outline-none text-sm w-full ml-3 text-gray-700 placeholder-gray-400" />
+            <div className="hidden md:flex items-center bg-gray-100 rounded-full px-4 py-2 w-64 lg:w-80 border border-transparent focus-within:border-[#3ac47d] focus-within:bg-white transition-all">
+              <Search size={16} className="text-gray-400" />
+              <input type="text" placeholder="Search data..." className="bg-transparent border-none outline-none text-sm w-full ml-3 text-gray-700 placeholder-gray-400" />
             </div>
           </div>
 
-          <div className="flex items-center gap-6">
-            <button className="relative text-gray-400 hover:text-[#0F172A] transition-colors">
-              <Bell size={24} />
-              <span className="absolute top-0 right-0 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white"></span>
+          <div className="flex items-center gap-5">
+            <button className="relative text-gray-400 hover:text-[#3ac47d] transition-colors">
+              <Bell size={20} />
+              <span className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full border border-white"></span>
             </button>
-            <div className="flex items-center gap-3 border-l border-gray-100 pl-6 cursor-pointer">
+            <div className="flex items-center gap-3 border-l border-gray-200 pl-5 cursor-pointer">
               <div className="text-right hidden md:block">
-                <p className="text-sm font-bold text-[#0F172A]">Admin</p>
-                <p className="text-xs text-gray-500 font-medium">EduPilot</p>
+                <p className="text-sm font-bold text-gray-700">Admin</p>
+                <p className="text-xs text-gray-400 font-medium">VP Manager</p>
               </div>
-              <div className="w-11 h-11 rounded-full bg-[#0F172A] text-[#EAB308] flex items-center justify-center font-bold text-lg shadow-sm border-2 border-white">
-                A
-              </div>
+              <img src="https://ui-avatars.com/api/?name=Admin&background=3ac47d&color=fff" alt="Profile" className="w-9 h-9 rounded-full shadow-sm" />
             </div>
           </div>
         </header>
 
         {/* Page Content */}
-        <main className="flex-1 overflow-x-hidden overflow-y-auto bg-[#F8F9FE] p-6 lg:p-10">
+        <main className="flex-1 overflow-x-hidden overflow-y-auto bg-[#f1f4f6] p-6 lg:p-8">
           {children}
         </main>
       </div>
