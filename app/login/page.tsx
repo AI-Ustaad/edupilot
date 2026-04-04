@@ -1,16 +1,15 @@
 "use client";
-
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { signInWithPopup, onAuthStateChanged } from "firebase/auth";
-import { auth, provider } from "@/lib/firebase"; // اپنا پاتھ چیک کر لیں
+import { auth, provider } from "../lib/firebase"; 
 import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
   const router = useRouter();
   const [isChecking, setIsChecking] = useState(true);
 
+  // Check if user is already logged in
   useEffect(() => {
-    // چیک کریں کہ کیا یوزر پہلے سے لاگ ان ہے
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
         router.push("/dashboard");
@@ -35,7 +34,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="h-screen flex items-center justify-center bg-gray-50">
+    <div className="h-screen flex items-center justify-center bg-gray-50 font-sans">
       <div className="bg-white p-10 rounded-2xl shadow-lg w-full max-w-md text-center border border-gray-100">
         <h1 className="text-2xl font-bold text-[#0F172A] mb-2">Sign In</h1>
         <p className="text-gray-500 text-sm mb-8">Access your EduPilot Dashboard</p>
