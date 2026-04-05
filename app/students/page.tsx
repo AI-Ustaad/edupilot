@@ -1,12 +1,14 @@
 "use client";
 import React, { useState, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation"; // <-- ہم نے راؤٹر امپورٹ کر لیا
 import { collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot } from "firebase/firestore";
-// ہم نے deleteObject کو امپورٹ کر لیا ہے تاکہ تصویر بھی ڈیلیٹ ہو سکے
 import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 import { db } from "@/lib/firebase";
 import { Camera, Search, Pencil, Trash2, User } from "lucide-react";
 
 export default function StudentsPage() {
+  const router = useRouter(); // <-- راؤٹر کو ایکٹو کر لیا
+  
   const [students, setStudents] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(false);
@@ -90,22 +92,18 @@ export default function StudentsPage() {
     window.scrollTo({ top: 0, behavior: 'smooth' }); 
   };
 
-  // یہ ہے نیا طاقتور ڈیلیٹ فنکشن! (تصویر اور ڈیٹا دونوں اڑائے گا)
   const handleDelete = async (student: any) => {
     if (window.confirm("Are you sure you want to delete this student and their photo permanently?")) {
       try {
-        // 1. پہلے Storage سے تصویر ڈیلیٹ کریں (اگر موجود ہے)
         if (student.photoUrl) {
           const storage = getStorage();
           const photoRef = ref(storage, student.photoUrl);
           try {
             await deleteObject(photoRef);
           } catch (e) {
-            console.log("Photo already deleted or not found in storage.");
+            console.log("Photo already deleted or not found.");
           }
         }
-        
-        // 2. پھر ڈیٹا بیس سے ریکارڈ ڈیلیٹ کریں
         await deleteDoc(doc(db, "students", student.id));
       } catch (error) {
         console.error("Error deleting: ", error);
@@ -119,7 +117,7 @@ export default function StudentsPage() {
   );
 
   return (
-    <div className="animate-fade-in max-w-7xl mx-auto">
+    <div className="animate-fade-in max-w-7xl mx-auto pb-20">
       <div className="mb-8">
         <h1 className="text-3xl font-extrabold text-[#0F172A]">Full Student Enrollment</h1>
         <p className="text-gray-500 mt-1 font-medium">Add new students or update existing records.</p>
@@ -215,16 +213,18 @@ export default function StudentsPage() {
               filteredStudents.map((student) => (
                 <div key={student.id} className="group bg-white border border-gray-100 hover:border-[#3ac47d]/30 p-4 rounded-2xl flex items-center gap-4 transition-all hover:shadow-sm relative">
                   
+                  {/* Photo Profile Link */}
                   {student.photoUrl ? (
-                    <img src={student.photoUrl} alt={student.fullName} className="w-12 h-12 rounded-full object-cover border-2 border-white shadow-sm" />
+                    <img onClick={() => router.push(`/student-profile?id=${student.id}`)} src={student.photoUrl} alt={student.fullName} className="w-12 h-12 rounded-full object-cover border-2 border-white shadow-sm cursor-pointer" />
                   ) : (
-                    <div className="w-12 h-12 rounded-full bg-[#e8f8f0] text-[#3ac47d] flex items-center justify-center font-bold text-xs shrink-0">
+                    <div onClick={() => router.push(`/student-profile?id=${student.id}`)} className="w-12 h-12 rounded-full bg-[#e8f8f0] text-[#3ac47d] flex items-center justify-center font-bold text-xs shrink-0 cursor-pointer">
                       {student.admNo || <User size={16} />}
                     </div>
                   )}
                   
-                  <div className="flex-1 min-w-0">
-                    <h4 className="font-bold text-[#0F172A] truncate text-sm">{student.fullName}</h4>
+                  {/* Name Profile Link */}
+                  <div className="flex-1 min-w-0 cursor-pointer" onClick={() => router.push(`/student-profile?id=${student.id}`)}>
+                    <h4 className="font-bold text-[#0F172A] truncate text-sm hover:text-[#3ac47d] transition-colors">{student.fullName}</h4>
                     <p className="text-[10px] text-gray-400 font-medium uppercase tracking-wider truncate">Class {student.studentClass} {student.section && `- ${student.section}`}</p>
                   </div>
 
