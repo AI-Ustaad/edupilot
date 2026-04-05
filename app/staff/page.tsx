@@ -3,7 +3,8 @@ import React, { useState, useEffect, useRef } from "react";
 import { collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot } from "firebase/firestore";
 import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 import { db } from "@/lib/firebase";
-import { Camera, Search, Pencil, Trash2, User, FileText, ScanLine, Printer, CheckCircle2, Building2, Landmark } from "lucide-react";
+// ShieldCheck added to the imports!
+import { Camera, Search, Pencil, Trash2, User, FileText, ScanLine, Printer, CheckCircle2, Building2, Landmark, ShieldCheck } from "lucide-react";
 
 export default function StaffPage() {
   const [staffList, setStaffList] = useState<any[]>([]);
@@ -12,7 +13,6 @@ export default function StaffPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [staffType, setStaffType] = useState<"Government" | "Private">("Government");
   
-  // OCR & Image States
   const [isScanning, setIsScanning] = useState(false);
   const [scanSuccess, setScanSuccess] = useState(false);
   const [imageFile, setImageFile] = useState<File | null>(null);
@@ -25,9 +25,7 @@ export default function StaffPage() {
   const initialForm = {
     fullName: "", fatherName: "", cnic: "", dob: "", phone: "", designation: "", 
     joinDate: "", type: "Government", photoUrl: "",
-    // Govt Specific
     personnelNo: "", bps: "", ddoCode: "", 
-    // Financials
     basicPay: 0, houseRent: 0, conveyance: 0, medical: 0, otherAllowances: 0,
     incomeTax: 0, gpf: 0, otherDeductions: 0,
     bankName: "", accountNo: ""
@@ -48,7 +46,6 @@ export default function StaffPage() {
     setFormData({ ...formData, [name]: ["basicPay", "houseRent", "conveyance", "medical", "otherAllowances", "incomeTax", "gpf", "otherDeductions"].includes(name) ? Number(value) : value });
   };
 
-  // 1. Photo Upload Fix
   const handleImageClick = () => fileInputRef.current?.click();
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -58,17 +55,14 @@ export default function StaffPage() {
     }
   };
 
-  // 2. Smart OCR Scanner (Simulated for Govt Slips)
   const handleSlipUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       setIsScanning(true);
       setScanSuccess(false);
       
-      // Simulate OCR Processing Delay
       setTimeout(() => {
         setIsScanning(false);
         setScanSuccess(true);
-        // Auto-fill fields based on the uploaded slip template
         setFormData({
           ...formData,
           fullName: "Ghazanfar Ali",
@@ -84,10 +78,10 @@ export default function StaffPage() {
           houseRent: 1818,
           conveyance: 5000,
           medical: 1500,
-          otherAllowances: 15479, // Personal, Science, Adhoc etc.
+          otherAllowances: 15479,
           incomeTax: 371,
           gpf: 3340,
-          otherDeductions: 5613, // Recovery, Benevolent, Group Ins
+          otherDeductions: 5613,
           bankName: "UNITED BANK LIMITED",
           accountNo: "10069225"
         });
@@ -96,12 +90,10 @@ export default function StaffPage() {
     }
   };
 
-  // Calculate Net Pay dynamically
   const grossPay = formData.basicPay + formData.houseRent + formData.conveyance + formData.medical + formData.otherAllowances;
   const totalDeductions = formData.incomeTax + formData.gpf + formData.otherDeductions;
   const netPay = grossPay - totalDeductions;
 
-  // 3. Save Data
   const handleSubmit = async (e: any) => {
     e.preventDefault();
     setLoading(true);
@@ -153,7 +145,6 @@ export default function StaffPage() {
   return (
     <div className="animate-fade-in max-w-7xl mx-auto pb-20">
       
-      {/* Header & Tabs */}
       <div className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
           <h1 className="text-3xl font-extrabold text-[#0F172A]">Staff HR & Payroll</h1>
@@ -172,10 +163,8 @@ export default function StaffPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         
-        {/* LEFT PANEL: Form */}
         <div className="lg:col-span-2 bg-white rounded-3xl p-8 shadow-sm border border-gray-100">
           
-          {/* OCR Scanner Section (Only for Govt) */}
           {staffType === "Government" && !editingId && (
             <div className="mb-8 p-6 bg-[#f8fbfa] border border-[#e8f8f0] rounded-2xl flex flex-col items-center justify-center text-center">
               <input type="file" accept="application/pdf, image/*" className="hidden" ref={slipInputRef} onChange={handleSlipUpload} />
@@ -205,12 +194,10 @@ export default function StaffPage() {
 
           <form onSubmit={handleSubmit} className="space-y-8">
             
-            {/* Identity */}
             <div>
               <p className="text-[11px] font-bold text-[#3ac47d] uppercase tracking-widest mb-5">Personal Information</p>
               <div className="flex flex-col md:flex-row gap-6">
                 
-                {/* Active Photo Upload */}
                 <div onClick={handleImageClick} className="w-32 h-32 bg-[#f1f4f6] rounded-3xl flex flex-col items-center justify-center text-gray-400 shrink-0 cursor-pointer hover:bg-gray-200 transition-all overflow-hidden border-2 border-dashed border-gray-300 relative group">
                   <input type="file" accept="image/*" className="hidden" ref={fileInputRef} onChange={handleImageChange} />
                   {imagePreview ? <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" /> : <><Camera size={28} className="mb-2 text-[#3ac47d]" /><span className="text-xs font-semibold">PHOTO</span></>}
@@ -225,7 +212,6 @@ export default function StaffPage() {
               </div>
             </div>
 
-            {/* Employment Details */}
             <div>
               <p className="text-[11px] font-bold text-[#3ac47d] uppercase tracking-widest mb-5">Employment Profile</p>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -244,7 +230,6 @@ export default function StaffPage() {
               </div>
             </div>
 
-            {/* Payroll & Financials */}
             <div>
               <div className="flex items-center justify-between mb-5">
                 <p className="text-[11px] font-bold text-[#3ac47d] uppercase tracking-widest">Financials & Payroll</p>
@@ -252,7 +237,6 @@ export default function StaffPage() {
               </div>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-gray-50 p-5 rounded-2xl border border-gray-100">
-                {/* Earnings */}
                 <div className="space-y-3">
                   <h4 className="text-xs font-bold text-gray-400 uppercase">Allowances (Earnings)</h4>
                   <div className="flex items-center gap-2"><span className="text-sm text-gray-500 w-28">Basic Pay:</span><input name="basicPay" type="number" value={formData.basicPay} onChange={handleInputChange} className="flex-1 px-3 py-1.5 rounded-lg border border-gray-200 outline-none focus:border-[#3ac47d]" /></div>
@@ -262,7 +246,6 @@ export default function StaffPage() {
                   <div className="flex items-center gap-2"><span className="text-sm text-gray-500 w-28">Others:</span><input name="otherAllowances" type="number" value={formData.otherAllowances} onChange={handleInputChange} className="flex-1 px-3 py-1.5 rounded-lg border border-gray-200 outline-none focus:border-[#3ac47d]" /></div>
                 </div>
 
-                {/* Deductions */}
                 <div className="space-y-3">
                   <h4 className="text-xs font-bold text-gray-400 uppercase">Deductions</h4>
                   <div className="flex items-center gap-2"><span className="text-sm text-gray-500 w-28">Income Tax:</span><input name="incomeTax" type="number" value={formData.incomeTax} onChange={handleInputChange} className="flex-1 px-3 py-1.5 rounded-lg border border-gray-200 outline-none focus:border-[#3ac47d]" /></div>
@@ -280,7 +263,6 @@ export default function StaffPage() {
           </form>
         </div>
 
-        {/* RIGHT PANEL: Directory */}
         <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 flex flex-col h-[800px]">
           <h2 className="text-xl font-bold text-[#0F172A] mb-4">Directory</h2>
           <div className="relative mb-6">
@@ -301,7 +283,6 @@ export default function StaffPage() {
                   <p className="text-[10px] text-gray-400 font-medium uppercase truncate">{staff.designation} | {staff.type}</p>
                 </div>
                 
-                {/* Actions */}
                 <div className="flex flex-col gap-2">
                   <button onClick={() => setSelectedStaffForSlip(staff)} className="text-[#3ac47d] hover:bg-[#e8f8f0] p-1.5 rounded-md" title="Generate Slip"><FileText size={16} /></button>
                   <div className="hidden group-hover:flex gap-1 absolute right-14 bg-white px-2">
@@ -316,11 +297,9 @@ export default function StaffPage() {
         
       </div>
 
-      {/* Auto Generated Salary Slip Modal (For Private/All Staff) */}
       {selectedStaffForSlip && (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
           <div className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden animate-fade-in">
-            {/* Slip Header */}
             <div className="bg-[#0F172A] p-6 flex justify-between items-center text-white">
               <div className="flex items-center gap-3">
                 <ShieldCheck size={32} className="text-[#3ac47d]" />
@@ -332,7 +311,6 @@ export default function StaffPage() {
               <button onClick={() => {window.print()}} className="flex items-center gap-2 bg-[#3ac47d] px-4 py-2 rounded-lg text-sm font-bold print:hidden"><Printer size={16} /> Print</button>
             </div>
 
-            {/* Slip Body */}
             <div className="p-8 print:p-0">
               <div className="flex gap-6 mb-8 border-b border-gray-100 pb-6">
                 {selectedStaffForSlip.photoUrl ? (
@@ -348,7 +326,6 @@ export default function StaffPage() {
               </div>
 
               <div className="grid grid-cols-2 gap-8">
-                {/* Earnings */}
                 <div>
                   <h4 className="font-bold text-[#3ac47d] border-b-2 border-[#3ac47d] pb-2 mb-4 uppercase text-xs tracking-wider">Earnings</h4>
                   <div className="space-y-2 text-sm">
@@ -360,7 +337,6 @@ export default function StaffPage() {
                   </div>
                 </div>
 
-                {/* Deductions */}
                 <div>
                   <h4 className="font-bold text-red-500 border-b-2 border-red-500 pb-2 mb-4 uppercase text-xs tracking-wider">Deductions</h4>
                   <div className="space-y-2 text-sm">
@@ -372,7 +348,6 @@ export default function StaffPage() {
                 </div>
               </div>
 
-              {/* Net Pay */}
               <div className="mt-8 bg-[#f8fbfa] border border-[#e8f8f0] p-4 rounded-xl flex justify-between items-center">
                 <span className="font-bold text-gray-500 uppercase tracking-widest text-xs">Net Payable Amount</span>
                 <span className="text-3xl font-extrabold text-[#3ac47d]">Rs {selectedStaffForSlip.netPay?.toLocaleString()}</span>
