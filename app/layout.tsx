@@ -1,7 +1,6 @@
-// app/layout.tsx
 import "./globals.css";
 import ClientWrapper from "./ClientWrapper";
-import { AuthProvider } from "@/context/AuthContext"; // <-- نیا امپورٹ
+import { AuthProvider } from "@/context/AuthContext";
 
 export const metadata = {
   title: "EduPilot - School Management System",
@@ -12,7 +11,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <body>
-        {/* AuthProvider پوری ایپ کو سیکیور کرے گا */}
         <AuthProvider>
           <ClientWrapper>{children}</ClientWrapper>
         </AuthProvider>
