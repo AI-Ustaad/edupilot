@@ -1,14 +1,21 @@
 "use client";
 import React, { useState, useEffect, useRef } from "react";
-import { useRouter } from "next/navigation"; // <-- ہم نے راؤٹر امپورٹ کر لیا
-import { collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot } from "firebase/firestore";
+import { useRouter } from "next/navigation";
+import { updateDoc, deleteDoc, doc, onSnapshot } from "firebase/firestore";
 import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 import { db } from "@/lib/firebase";
 import { Camera, Search, Pencil, Trash2, User } from "lucide-react";
 
+// SaaS Imports (یہ دو لائنیں سسٹم کو SaaS بناتی ہیں)
+import { useAuth } from "@/app/context/AuthContext";
+import { getTenantQuery, addTenantDoc } from "@/lib/db-helpers";
+
 export default function StudentsPage() {
-  const router = useRouter(); // <-- راؤٹر کو ایکٹو کر لیا
+  const router = useRouter();
   
+  // SaaS Auth (یہاں سے ہم سکول کی ID نکال رہے ہیں)
+  const { schoolId } = useAuth(); 
+
   const [students, setStudents] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(false);
@@ -24,13 +31,18 @@ export default function StudentsPage() {
     admNo: "", rollNo: "", studentClass: "", section: "", photoUrl: ""
   });
 
+  // SaaS Logic: صرف اسی سکول کے بچے لائیں جس کا ایڈمن لاگ ان ہے
   useEffect(() => {
-    const unsub = onSnapshot(collection(db, "students"), (snapshot) => {
+    if (!schoolId) return; // اگر سکول ID نہیں ہے تو رکو
+
+    const q = getTenantQuery("students", schoolId); // ہمارا نیا ہیلپر فنکشن
+    
+    const unsub = onSnapshot(q, (snapshot) => {
       const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setStudents(data);
     });
     return () => unsub();
-  }, []);
+  }, [schoolId]);
 
   const handleInputChange = (e: any) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -50,13 +62,18 @@ export default function StudentsPage() {
 
   const handleSubmit = async (e: any) => {
     e.preventDefault();
+    if (!schoolId) {
+      alert("Error: No School ID found. Please relogin.");
+      return;
+    }
+
     setLoading(true);
     try {
       let finalPhotoUrl = formData.photoUrl;
 
       if (imageFile) {
         const storage = getStorage();
-        const storageRef = ref(storage, `students/${Date.now()}_${imageFile.name}`);
+        const storageRef = ref(storage, `students/${schoolId}_${Date.now()}_${imageFile.name}`);
         await uploadBytes(storageRef, imageFile);
         finalPhotoUrl = await getDownloadURL(storageRef);
       }
@@ -64,9 +81,11 @@ export default function StudentsPage() {
       const finalData = { ...formData, photoUrl: finalPhotoUrl };
 
       if (editingId) {
+        // پرانا ریکارڈ اپڈیٹ کریں
         await updateDoc(doc(db, "students", editingId), finalData);
       } else {
-        await addDoc(collection(db, "students"), finalData);
+        // SaaS Logic: نیا بچہ اسی سکول کی ID کے ساتھ سیو کریں
+        await addTenantDoc("students", finalData, schoolId);
       }
 
       setFormData({
@@ -98,11 +117,7 @@ export default function StudentsPage() {
         if (student.photoUrl) {
           const storage = getStorage();
           const photoRef = ref(storage, student.photoUrl);
-          try {
-            await deleteObject(photoRef);
-          } catch (e) {
-            console.log("Photo already deleted or not found.");
-          }
+          try { await deleteObject(photoRef); } catch (e) { }
         }
         await deleteDoc(doc(db, "students", student.id));
       } catch (error) {
@@ -124,7 +139,6 @@ export default function StudentsPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* LEFT PANEL: Form */}
         <div className="lg:col-span-2 bg-white rounded-3xl p-8 shadow-sm border border-gray-100">
           <form onSubmit={handleSubmit} className="space-y-10">
             
@@ -132,18 +146,12 @@ export default function StudentsPage() {
               <p className="text-[11px] font-bold text-[#3ac47d] uppercase tracking-widest mb-5">Basic Identity</p>
               <div className="flex flex-col md:flex-row gap-6">
                 
-                <div 
-                  onClick={handleImageClick}
-                  className="w-32 h-32 bg-[#f1f4f6] rounded-3xl flex flex-col items-center justify-center text-gray-400 shrink-0 cursor-pointer hover:bg-gray-200 transition-all overflow-hidden relative border-2 border-dashed border-gray-300 group"
-                >
+                <div onClick={handleImageClick} className="w-32 h-32 bg-[#f1f4f6] rounded-3xl flex flex-col items-center justify-center text-gray-400 shrink-0 cursor-pointer hover:bg-gray-200 transition-all overflow-hidden relative border-2 border-dashed border-gray-300 group">
                   <input type="file" accept="image/*" className="hidden" ref={fileInputRef} onChange={handleImageChange} />
                   {imagePreview ? (
                     <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
                   ) : (
-                    <>
-                      <Camera size={28} className="mb-2 group-hover:scale-110 transition-transform text-[#3ac47d]" />
-                      <span className="text-xs font-semibold tracking-wide text-gray-500">PHOTO</span>
-                    </>
+                    <><Camera size={28} className="mb-2 group-hover:scale-110 transition-transform text-[#3ac47d]" /><span className="text-xs font-semibold tracking-wide text-gray-500">PHOTO</span></>
                   )}
                 </div>
 
@@ -155,7 +163,7 @@ export default function StudentsPage() {
                     <option>Male</option>
                     <option>Female</option>
                   </select>
-                  <input name="religion" value={formData.religion} onChange={handleInputChange} type="text" placeholder="Religion (e.g. Islam, Christianity)" className="bg-gray-50 border border-transparent focus:border-[#3ac47d] outline-none rounded-xl px-4 py-3 text-sm font-medium md:col-span-2" />
+                  <input name="religion" value={formData.religion} onChange={handleInputChange} type="text" placeholder="Religion" className="bg-gray-50 border border-transparent focus:border-[#3ac47d] outline-none rounded-xl px-4 py-3 text-sm font-medium md:col-span-2" />
                 </div>
               </div>
             </div>
@@ -191,19 +199,12 @@ export default function StudentsPage() {
           </form>
         </div>
 
-        {/* RIGHT PANEL: Directory */}
         <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 flex flex-col h-[800px]">
           <h2 className="text-xl font-bold text-[#0F172A] mb-4">Directory ({filteredStudents.length})</h2>
           
           <div className="relative mb-6">
             <Search size={18} className="absolute left-3 top-3 text-gray-400" />
-            <input 
-              type="text" 
-              placeholder="Search..." 
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full bg-gray-50 border border-transparent focus:border-[#3ac47d] outline-none rounded-full pl-10 pr-4 py-2.5 text-sm font-medium"
-            />
+            <input type="text" placeholder="Search..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full bg-gray-50 border border-transparent focus:border-[#3ac47d] outline-none rounded-full pl-10 pr-4 py-2.5 text-sm font-medium" />
           </div>
 
           <div className="flex-1 overflow-y-auto space-y-3 custom-scrollbar pr-2">
@@ -213,7 +214,6 @@ export default function StudentsPage() {
               filteredStudents.map((student) => (
                 <div key={student.id} className="group bg-white border border-gray-100 hover:border-[#3ac47d]/30 p-4 rounded-2xl flex items-center gap-4 transition-all hover:shadow-sm relative">
                   
-                  {/* Photo Profile Link */}
                   {student.photoUrl ? (
                     <img onClick={() => router.push(`/student-profile?id=${student.id}`)} src={student.photoUrl} alt={student.fullName} className="w-12 h-12 rounded-full object-cover border-2 border-white shadow-sm cursor-pointer" />
                   ) : (
@@ -222,20 +222,14 @@ export default function StudentsPage() {
                     </div>
                   )}
                   
-                  {/* Name Profile Link */}
                   <div className="flex-1 min-w-0 cursor-pointer" onClick={() => router.push(`/student-profile?id=${student.id}`)}>
                     <h4 className="font-bold text-[#0F172A] truncate text-sm hover:text-[#3ac47d] transition-colors">{student.fullName}</h4>
                     <p className="text-[10px] text-gray-400 font-medium uppercase tracking-wider truncate">Class {student.studentClass} {student.section && `- ${student.section}`}</p>
                   </div>
 
-                  {/* Actions (Edit & Delete) */}
                   <div className="opacity-0 group-hover:opacity-100 transition-opacity flex flex-col gap-2 absolute right-4 bg-white/90 pl-2">
-                    <button onClick={() => handleEdit(student)} className="text-blue-500 hover:text-blue-700 bg-blue-50 p-1.5 rounded-md transition-colors" title="Edit">
-                      <Pencil size={14} />
-                    </button>
-                    <button onClick={() => handleDelete(student)} className="text-red-500 hover:text-red-700 bg-red-50 p-1.5 rounded-md transition-colors" title="Delete">
-                      <Trash2 size={14} />
-                    </button>
+                    <button onClick={() => handleEdit(student)} className="text-blue-500 hover:text-blue-700 bg-blue-50 p-1.5 rounded-md transition-colors" title="Edit"><Pencil size={14} /></button>
+                    <button onClick={() => handleDelete(student)} className="text-red-500 hover:text-red-700 bg-red-50 p-1.5 rounded-md transition-colors" title="Delete"><Trash2 size={14} /></button>
                   </div>
 
                 </div>
@@ -243,7 +237,6 @@ export default function StudentsPage() {
             )}
           </div>
         </div>
-        
       </div>
     </div>
   );
