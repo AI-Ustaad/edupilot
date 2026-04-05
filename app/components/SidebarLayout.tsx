@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { auth } from "@/lib/firebase";
 import { signOut } from "firebase/auth";
-import { useAuth } from "@/app/context/AuthContext";
+import { useAuth } from "../context/AuthContext";
 import { 
   LayoutDashboard, Users, GraduationCap, CheckSquare, CreditCard, Settings, LogOut, Menu, X, Bell, Search, ShieldCheck, ClipboardEdit, Award
 } from "lucide-react";
