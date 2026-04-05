@@ -1,6 +1,7 @@
 import "./globals.css";
 import ClientWrapper from "./ClientWrapper";
 import { AuthProvider } from "@/app/context/AuthContext";
+
 export const metadata = {
   title: "EduPilot - School Management System",
   description: "Pakistan's first AI Powered School Management System",
