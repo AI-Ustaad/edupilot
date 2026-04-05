@@ -1,47 +1,39 @@
-// context/AuthContext.tsx
 "use client";
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { auth, db } from "@/lib/firebase";
 import { onAuthStateChanged, User } from "firebase/auth";
-import { doc, getDoc, setDoc } from "firebase/firestore";
+import { doc, getDoc } from "firebase/firestore";
 
 interface AuthContextType {
   user: User | null;
   role: string | null;
+  schoolId: string | null;
   loading: boolean;
 }
 
-const AuthContext = createContext<AuthContextType>({ user: null, role: null, loading: true });
+const AuthContext = createContext<AuthContextType>({ user: null, role: null, schoolId: null, loading: true });
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [role, setRole] = useState<string | null>(null);
+  const [schoolId, setSchoolId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
         setUser(firebaseUser);
-        
-        // Firestore سے یوزر کا رول اور ڈیٹا چیک کریں
         const userDocRef = doc(db, "users", firebaseUser.uid);
         const userDoc = await getDoc(userDocRef);
 
         if (userDoc.exists()) {
           setRole(userDoc.data().role);
-        } else {
-          // اگر نیا یوزر ہے تو اسے بائی ڈیفالٹ 'student' بنا کر سیو کر دیں
-          await setDoc(userDocRef, {
-            name: firebaseUser.displayName,
-            email: firebaseUser.email,
-            role: "student", // ڈیفالٹ رول
-            schoolId: "default_school"
-          });
-          setRole("student");
+          setSchoolId(userDoc.data().schoolId); // Fetching School ID
         }
       } else {
         setUser(null);
         setRole(null);
+        setSchoolId(null);
       }
       setLoading(false);
     });
@@ -50,7 +42,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, role, loading }}>
+    <AuthContext.Provider value={{ user, role, schoolId, loading }}>
       {children}
     </AuthContext.Provider>
   );
