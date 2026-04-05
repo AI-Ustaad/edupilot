@@ -5,19 +5,22 @@ import { usePathname } from "next/navigation";
 import { auth } from "@/lib/firebase";
 import { signOut } from "firebase/auth";
 import { 
-  LayoutDashboard, Users, GraduationCap, CheckSquare, CreditCard, Settings, LogOut, Menu, X, Bell, Search, ShieldCheck
+  LayoutDashboard, Users, GraduationCap, CheckSquare, CreditCard, Settings, LogOut, Menu, X, Bell, Search, ShieldCheck, ClipboardEdit, Award
 } from "lucide-react";
 
 export default function SidebarLayout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const pathname = usePathname();
 
+  // آپ کے تمام لنکس Exams اور Results کے ساتھ!
   const menuItems = [
     { name: "Analytics", icon: LayoutDashboard, path: "/dashboard" },
     { name: "Students", icon: GraduationCap, path: "/students" },
     { name: "Staff", icon: Users, path: "/staff" },
     { name: "Attendance", icon: CheckSquare, path: "/attendance" },
     { name: "Fee Collection", icon: CreditCard, path: "/fees" },
+    { name: "Exams & Marks", icon: ClipboardEdit, path: "/marks" },
+    { name: "Results", icon: Award, path: "/result" },
     { name: "Settings", icon: Settings, path: "/settings" },
   ];
 
@@ -33,7 +36,7 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
         <div className="fixed inset-0 bg-gray-900/50 z-40 lg:hidden" onClick={() => setSidebarOpen(false)} />
       )}
 
-      {/* Sidebar - NEW GREEN THEME (#3ac47d) */}
+      {/* Sidebar - GREEN THEME */}
       <aside className={`fixed lg:static inset-y-0 left-0 z-50 w-64 bg-[#3ac47d] text-white flex flex-col transition-transform duration-300 ease-in-out shadow-xl ${sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}`}>
         <div className="h-20 flex items-center justify-center px-6 border-b border-white/10 shadow-sm bg-[#3ac47d]">
           <div className="flex items-center gap-3">
@@ -80,7 +83,7 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col h-screen overflow-hidden">
-        {/* Topbar - CLEAN WHITE */}
+        {/* Topbar */}
         <header className="h-20 bg-white border-b border-gray-200 flex items-center justify-between px-6 lg:px-8 shrink-0 z-10 shadow-sm">
           <div className="flex items-center gap-4">
             <button className="lg:hidden text-gray-500 hover:text-[#3ac47d]" onClick={() => setSidebarOpen(true)}>
