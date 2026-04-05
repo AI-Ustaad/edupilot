@@ -1,44 +1,50 @@
+// app/ClientWrapper.tsx
 "use client";
-import React, { useEffect, useState } from "react";
+import React, { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { auth } from "@/lib/firebase";
-import { onAuthStateChanged } from "firebase/auth";
+import { useAuth } from "@/context/AuthContext";
 import SidebarLayout from "@/app/components/SidebarLayout";
+
+// Role-based Access Rules (رولز کی سیٹنگ)
+const allowedRoutes: Record<string, string[]> = {
+  admin: ["/dashboard", "/students", "/staff", "/attendance", "/fees", "/marks", "/result", "/settings"],
+  teacher: ["/dashboard", "/marks", "/attendance", "/profile"],
+  student: ["/dashboard", "/result", "/profile"],
+};
 
 export default function ClientWrapper({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const [loading, setLoading] = useState(true);
+  const { user, role, loading } = useAuth();
 
-  // Landing page or Login page
   const isPublicPage = pathname === "/" || pathname === "/login";
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (user) {
-        setLoading(false); 
-      } else {
-        if (!isPublicPage) {
-          router.push("/login"); 
-        } else {
-          setLoading(false); 
+    if (!loading) {
+      if (!user && !isPublicPage) {
+        router.push("/login"); // لاگ ان نہیں ہے تو باہر نکالو
+      } else if (user && role && !isPublicPage) {
+        // چیک کریں کیا اس یوزر کے پاس اس پیج کی پرمیشن ہے؟
+        const userAllowedRoutes = allowedRoutes[role] || [];
+        const hasAccess = userAllowedRoutes.some(route => pathname.startsWith(route));
+
+        if (!hasAccess) {
+          alert("Access Denied: You do not have permission to view this page.");
+          router.push("/dashboard"); // واپس ڈیش بورڈ پر بھیج دو
         }
       }
-    });
-    return () => unsubscribe();
-  }, [isPublicPage, router]);
+    }
+  }, [user, role, loading, pathname, router, isPublicPage]);
 
   if (loading) {
     return (
-      <div className="h-screen flex items-center justify-center bg-[#F8F9FE]">
-        <h1 className="text-2xl font-bold text-[#0F172A] animate-pulse">Loading EduPilot...</h1>
+      <div className="h-screen flex items-center justify-center bg-[#f1f4f6]">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#3ac47d]"></div>
       </div>
     );
   }
 
-  if (isPublicPage) {
-    return <>{children}</>;
-  }
+  if (isPublicPage) return <>{children}</>;
 
   return <SidebarLayout>{children}</SidebarLayout>;
 }
