@@ -1,7 +1,7 @@
 "use client";
 import React, { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { useAuth } from "@/app/context/AuthContext";
+import { useAuth } from "./context/AuthContext";
 import SidebarLayout from "@/app/components/SidebarLayout";
 
 const allowedRoutes: Record<string, string[]> = {
