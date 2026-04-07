@@ -1,5 +1,6 @@
+export const dynamic = 'force-dynamic';
 import { NextResponse } from "next/server";
-import { adminAuth } from "../../../lib/firebase-admin"; 
+import { adminAuth } from "@/lib/firebase-admin"; 
 import { cookies } from "next/headers";
 
 export async function POST(req: Request) {
