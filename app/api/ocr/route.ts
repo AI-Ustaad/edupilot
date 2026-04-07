@@ -1,9 +1,13 @@
 export const dynamic = 'force-dynamic';
 import { NextResponse } from "next/server";
-import { adminAuth } from "@/lib/firebase-admin"; 
+import { adminAuth } from "../../../lib/firebase-admin"; // <-- پکا دیسی راستہ
 import { cookies } from "next/headers";
 
 export async function POST(req: Request) {
+  if (!adminAuth) {
+    return NextResponse.json({ error: "Firebase Admin is not configured." }, { status: 500 });
+  }
+
   const session = cookies().get("session")?.value;
 
   if (!session) {
