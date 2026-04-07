@@ -21,24 +21,20 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // onIdTokenChanged ہر بار چلتا ہے جب یوزر لاگ ان ہوتا ہے یا اس کا ٹوکن ریفریش ہوتا ہے
     const unsubscribe = onIdTokenChanged(auth, async (firebaseUser) => {
       try {
         if (firebaseUser) {
-          
-          // 1. یوزر کا رول اور سکول آئی ڈی فائر سٹور سے منگوائیں
           const userDocRef = doc(db, "users", firebaseUser.uid);
           const userDoc = await getDoc(userDocRef);
 
           if (userDoc.exists()) {
             setRole(userDoc.data().role);
             setSchoolId(userDoc.data().schoolId);
-          } else {
-            setRole("student"); // اگر ڈیٹا نہ ملے تو ڈیفالٹ سٹوڈنٹ
           }
 
-          // 2. سیکیورٹی کے لیے ٹوکن بیک اینڈ (API) کو بھیجیں تاکہ کوکی (Cookie) بن سکے
           const idToken = await firebaseUser.getIdToken();
+          
+          // API کو ٹوکن بھیجیں تاکہ کوکی بنے
           await fetch('/api/auth/login', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -47,7 +43,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
           setUser(firebaseUser);
         } else {
-          // 3. اگر یوزر لاگ آؤٹ ہو جائے تو سیشن کوکی بھی ڈیلیٹ کر دیں
           await fetch('/api/auth/logout', { method: 'POST' });
           setUser(null);
           setRole(null);
@@ -56,8 +51,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       } catch (error) {
         console.error("Auth Sync Error:", error);
       } finally {
-        // 4. یہ سب سے اہم لائن ہے! چاہے ایرر آئے یا لاگ ان ہو، لوڈنگ سکرین کو بند کر دو
-        setLoading(false);
+        setLoading(false); // یہ لائن سکرین کو ہینگ ہونے سے بچائے گی
       }
     });
 
