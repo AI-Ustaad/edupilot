@@ -1,9 +1,14 @@
 export const dynamic = 'force-dynamic';
 import { NextResponse } from "next/server";
-import { adminAuth } from "@/lib/firebase-admin"; 
+import { adminAuth } from "../../../../lib/firebase-admin"; // <-- پکا دیسی راستہ
 import { cookies } from "next/headers";
 
 export async function POST(req: Request) {
+  // اگر فائر بیس ریڈی نہیں ہے تو ایرر دے دو، لیکن ایپ کو کریش مت کرو
+  if (!adminAuth) {
+    return NextResponse.json({ error: "Firebase Admin is not configured. Add env variables in Vercel." }, { status: 500 });
+  }
+
   try {
     const { idToken } = await req.json();
     const expiresIn = 60 * 60 * 24 * 5 * 1000; 
