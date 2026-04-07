@@ -17,12 +17,9 @@ export default function LoginPage() {
     setError("");
 
     try {
-      // 1. Firebase Auth
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const idToken = await userCredential.user.getIdToken();
 
-      // 2. Create Secure Cookie (API)
-      // نوٹ: تصویر کے مطابق آپ کی API کا راستہ شاید /api/login ہے، اگر ایرر آئے تو اسے /api/auth/login کر لیجیے گا
       const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -48,8 +45,8 @@ export default function LoginPage() {
       <div className="bg-white p-8 rounded-3xl shadow-xl w-full max-w-md border-t-4 border-[#3ac47d]">
         
         <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-[#e8f8f0] rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">
-            🔒
+          <div className="w-16 h-16 bg-[#e8f8f0] rounded-full flex items-center justify-center mx-auto mb-4 text-3xl">
+            🛡️
           </div>
           <h1 className="text-2xl font-extrabold text-[#0F172A]">Welcome Back</h1>
           <p className="text-sm text-gray-500 mt-1">Sign in to EduPilot SaaS</p>
@@ -66,7 +63,7 @@ export default function LoginPage() {
             required 
             type="email" 
             placeholder="Email Address" 
-            className="w-full bg-gray-50 outline-none rounded-xl px-4 py-3 text-sm focus:border-[#3ac47d] border border-transparent" 
+            className="w-full bg-gray-50 outline-none rounded-xl px-4 py-3 text-sm focus:border-[#3ac47d] border border-transparent transition-all" 
             value={email}
             onChange={(e) => setEmail(e.target.value)} 
           />
@@ -75,7 +72,7 @@ export default function LoginPage() {
             required 
             type="password" 
             placeholder="Password" 
-            className="w-full bg-gray-50 outline-none rounded-xl px-4 py-3 text-sm focus:border-[#3ac47d] border border-transparent" 
+            className="w-full bg-gray-50 outline-none rounded-xl px-4 py-3 text-sm focus:border-[#3ac47d] border border-transparent transition-all" 
             value={password}
             onChange={(e) => setPassword(e.target.value)} 
           />
@@ -83,9 +80,9 @@ export default function LoginPage() {
           <button 
             disabled={loading} 
             type="submit" 
-            className="w-full bg-[#3ac47d] hover:bg-[#2eaa6a] text-white py-3.5 rounded-xl font-bold shadow-md shadow-green-500/20 transition-all mt-4 disabled:opacity-70"
+            className="w-full bg-[#3ac47d] hover:bg-[#2eaa6a] text-white py-3.5 rounded-xl font-bold shadow-md transition-all mt-4 disabled:opacity-70"
           >
-            {loading ? "Loading Security..." : "Sign In"}
+            {loading ? "Authenticating..." : "Sign In"}
           </button>
         </form>
 
