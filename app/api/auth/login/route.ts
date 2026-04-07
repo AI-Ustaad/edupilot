@@ -1,5 +1,6 @@
+export const dynamic = 'force-dynamic';
 import { NextResponse } from "next/server";
-import { adminAuth } from "../../../../lib/firebase-admin"; 
+import { adminAuth } from "@/lib/firebase-admin"; 
 import { cookies } from "next/headers";
 
 export async function POST(req: Request) {
@@ -18,6 +19,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ status: "success" }, { status: 200 });
   } catch (error) {
+    console.log("Login Error:", error);
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 }
