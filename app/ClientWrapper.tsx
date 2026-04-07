@@ -2,7 +2,7 @@
 import React, { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "./context/AuthContext";
-import SidebarLayout from "@/app/components/SidebarLayout";
+import SidebarLayout from "./components/SidebarLayout";
 
 const allowedRoutes: Record<string, string[]> = {
   admin: ["/dashboard", "/students", "/staff", "/attendance", "/fees", "/marks", "/result", "/settings"],
@@ -15,7 +15,7 @@ export default function ClientWrapper({ children }: { children: React.ReactNode 
   const router = useRouter();
   const { user, role, loading } = useAuth();
 
-  const isPublicPage = pathname === "/" || pathname === "/login";
+  const isPublicPage = pathname === "/" || pathname === "/login" || pathname === "/signup";
 
   useEffect(() => {
     if (!loading) {
