@@ -1,15 +1,24 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { signInWithEmailAndPassword, signOut } from "firebase/auth";
 import { auth } from "../../lib/firebase";
 
 export default function LoginPage() {
   const router = useRouter();
+  
+  // 1. یہ وہ جادوئی سٹیٹ ہے جو Vercel کو دھوکہ دے گی (SSR Bypass)
+  const [mounted, setMounted] = useState(false);
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [errMsg, setErrMsg] = useState("");
+
+  // 2. یہ صرف تب چلے گا جب پیج براؤزر میں کھلے گا، سرور پر نہیں!
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,6 +49,12 @@ export default function LoginPage() {
     }
   };
 
+  // 3. VERCEL BUILD FIX: جب تک پیج براؤزر میں نہیں کھلتا، خالی سکرین دکھاؤ
+  if (!mounted) {
+    return <div className="min-h-screen bg-[#f1f4f6]"></div>;
+  }
+
+  // 4. اصل یوزر کے لیے لاگ ان فارم
   return (
     <div className="min-h-screen bg-[#f1f4f6] flex items-center justify-center p-4">
       <div className="bg-white p-8 rounded-3xl shadow-xl w-full max-w-md border-t-4 border-[#3ac47d]">
@@ -49,12 +64,11 @@ export default function LoginPage() {
           <p className="text-sm text-gray-500 mt-1">Sign in to EduPilot SaaS</p>
         </div>
 
-        {/* Error handling fixed for Next.js strict rendering */}
-        {errMsg ? (
+        {errMsg && (
           <div className="bg-red-50 text-red-500 p-3 rounded-xl text-sm font-medium mb-4 text-center border border-red-100">
             {errMsg}
           </div>
-        ) : null}
+        )}
 
         <form onSubmit={handleLogin} className="space-y-4">
           <input 
