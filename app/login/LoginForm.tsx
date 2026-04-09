@@ -1,6 +1,7 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link"; // <-- یہ Next.js کا محفوظ لنک ہے
 import { signInWithEmailAndPassword, signOut } from "firebase/auth";
 import { auth } from "../../lib/firebase";
 
@@ -45,7 +46,7 @@ export default function LoginForm() {
     }
   };
 
-  if (!mounted) return null; // Vercel SSR Bypass
+  if (!mounted) return null;
 
   return (
     <div className="min-h-screen bg-[#f1f4f6] flex items-center justify-center p-4">
@@ -84,11 +85,19 @@ export default function LoginForm() {
           <button 
             disabled={loading} 
             type="submit" 
-            className="w-full bg-[#3ac47d] hover:bg-[#2eaa6a] text-white py-3.5 rounded-xl font-bold shadow-md mt-4 disabled:opacity-70"
+            className="w-full bg-[#3ac47d] hover:bg-[#2eaa6a] text-white py-3.5 rounded-xl font-bold shadow-md mt-4 disabled:opacity-70 transition-all"
           >
             {loading ? "Authenticating..." : "Sign In"}
           </button>
         </form>
+
+        {/* سائن اپ کا لنک یہاں لگا دیا گیا ہے */}
+        <div className="mt-6 text-center text-sm text-gray-500">
+          Don't have an account?{" "}
+          <Link href="/signup" className="text-[#3ac47d] font-bold hover:underline">
+            Register your School
+          </Link>
+        </div>
 
       </div>
     </div>
