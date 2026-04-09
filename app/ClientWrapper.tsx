@@ -26,7 +26,6 @@ export default function ClientWrapper({ children }: { children: React.ReactNode 
         const hasAccess = userAllowedRoutes.some(route => pathname.startsWith(route));
 
         if (!hasAccess) {
-          alert("Access Denied: You do not have permission to view this page.");
           router.push("/dashboard");
         }
       }
@@ -41,7 +40,10 @@ export default function ClientWrapper({ children }: { children: React.ReactNode 
     );
   }
 
-  if (isPublicPage) return <>{children}</>;
+  // اگر پبلک پیج (جیسے لاگ ان) ہے تو بغیر سائیڈ بار کے دکھاؤ
+  if (isPublicPage) {
+    return <>{children}</>;
+  }
 
   return <SidebarLayout>{children}</SidebarLayout>;
 }
