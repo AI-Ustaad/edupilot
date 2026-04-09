@@ -14,6 +14,7 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType>({} as AuthContextType);
 
+// یہ Export بالکل اسی طرح ہونا چاہیے
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [role, setRole] = useState<string | null>(null);
@@ -30,11 +31,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           if (userDoc.exists()) {
             setRole(userDoc.data().role);
             setSchoolId(userDoc.data().schoolId);
+          } else {
+            setRole("student");
           }
 
           const idToken = await firebaseUser.getIdToken();
           
-          // API کو ٹوکن بھیجیں تاکہ کوکی بنے
           await fetch('/api/auth/login', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -51,7 +53,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       } catch (error) {
         console.error("Auth Sync Error:", error);
       } finally {
-        setLoading(false); // یہ لائن سکرین کو ہینگ ہونے سے بچائے گی
+        setLoading(false);
       }
     });
 
