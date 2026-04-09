@@ -3,8 +3,8 @@ import ClientWrapper from "./ClientWrapper";
 import { AuthProvider } from "./context/AuthContext";
 
 export const metadata = {
-  title: "EduPilot - School Management System",
-  description: "Pakistan's first AI Powered School Management System",
+  title: "EduPilot - SaaS",
+  description: "School Management System",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
