@@ -1,158 +1,164 @@
 "use client";
 import React, { useState, useEffect } from "react";
+import { collection, onSnapshot, query, orderBy, serverTimestamp, setDoc, doc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { collection, onSnapshot, query, where, addDoc } from "firebase/firestore";
-import { ClipboardCheck, Users, Search, CheckCircle2, XCircle, Clock } from "lucide-react";
+import { CheckCircle2, Search, Users, CalendarDays, Check, X, Clock } from "lucide-react";
 
-export default function AttendanceRegister() {
+export default function AttendancePage() {
   const [students, setStudents] = useState<any[]>([]);
-  const [attendance, setAttendance] = useState<Record<string, string>>({});
-  const [filter, setFilter] = useState({ class: "1", section: "" });
-  const [isLoaded, setIsLoaded] = useState(false);
+  const [loading, setLoading] = useState(true);
+  
+  // Filters State
+  const [selectedClass, setSelectedClass] = useState("");
+  const [selectedSection, setSelectedSection] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+  
+  // Attendance State
+  const [attendanceDate, setAttendanceDate] = useState(new Date().toISOString().split('T')[0]);
+  const [attendanceRecords, setAttendanceRecords] = useState<Record<string, string>>({});
+  const [isSaving, setIsSaving] = useState(false);
 
-  // REAL-TIME SYNC: Only loads students for the selected Class/Section
-  const loadRegister = () => {
-    if (!filter.section) return alert("Please type your Section Name first!");
-    
-    const q = query(
-      collection(db, "students"), 
-      where("class", "==", filter.class),
-      where("section", "==", filter.section)
-    );
-
-    const unsub = onSnapshot(q, (snap) => {
-      const list = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setStudents(list);
-      setIsLoaded(true);
-      // Initialize all as Present ('P') by default to save teacher time
-      const initial: Record<string, string> = {};
-      list.forEach(s => initial[s.id] = "P");
-      setAttendance(initial);
+  // 1. Fetch All Students Once
+  useEffect(() => {
+    const q = query(collection(db, "students"), orderBy("rollNumber", "asc"));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      setStudents(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      setLoading(false);
     });
-    return () => unsub();
+    return () => unsubscribe();
+  }, []);
+
+  // 2. Dynamic Dropdowns Logic (The Magic)
+  const availableClasses = Array.from(new Set(students.map(s => s.classGrade))).filter(Boolean);
+  
+  // جب کلاس سیلیکٹ ہو، تو صرف اسی کلاس کے سیکشنز دکھاؤ
+  const availableSections = Array.from(
+    new Set(students.filter(s => s.classGrade === selectedClass).map(s => s.section))
+  ).filter(Boolean);
+
+  // 3. Filter Students for List
+  const filteredStudents = students.filter(s => {
+    const matchClass = selectedClass ? s.classGrade === selectedClass : false;
+    const matchSection = selectedSection ? s.section === selectedSection : true; // Section is optional
+    const matchSearch = searchQuery ? s.name.toLowerCase().includes(searchQuery.toLowerCase()) || s.rollNumber?.toString().includes(searchQuery) : true;
+    return matchClass && matchSection && matchSearch;
+  });
+
+  const handleMarkAttendance = (studentId: string, status: string) => {
+    setAttendanceRecords(prev => ({ ...prev, [studentId]: status }));
   };
 
-  const handleSave = async () => {
+  const handleSaveAttendance = async () => {
+    if (Object.keys(attendanceRecords).length === 0) return alert("Please mark attendance for at least one student.");
+    setIsSaving(true);
     try {
-      await addDoc(collection(db, "attendance"), {
-        date: new Date().toISOString().split('T')[0],
-        class: filter.class,
-        section: filter.section,
-        records: attendance,
-        timestamp: new Date().toISOString()
-      });
-      alert("Daily Register Saved Successfully!");
-    } catch (err) {
-      console.error("Attendance Error:", err);
+      // Save each record to Firestore
+      for (const [studentId, status] of Object.entries(attendanceRecords)) {
+        const recordId = `${studentId}_${attendanceDate}`;
+        await setDoc(doc(db, "attendance", recordId), {
+          studentId,
+          date: attendanceDate,
+          status,
+          classGrade: selectedClass,
+          section: selectedSection,
+          markedAt: serverTimestamp()
+        });
+      }
+      alert("Attendance Saved Successfully!");
+    } catch (error) {
+      console.error("Error saving attendance", error);
+      alert("Failed to save attendance.");
+    } finally {
+      setIsSaving(false);
     }
   };
 
   return (
-    <div className="p-8 md:p-12 font-sans bg-gradient-to-br from-[#F8F9FE] to-[#F1F0FF] min-h-screen">
-      <div className="flex justify-between items-center mb-10">
-        <div>
-          <h1 className="text-4xl font-black text-[#302B52]">Daily Attendance</h1>
-          <p className="text-[#7166F9] font-bold text-xs uppercase tracking-[4px] mt-1">Smart Register System</p>
-        </div>
-        <div className="bg-white px-6 py-4 rounded-[24px] shadow-xl flex items-center gap-3 border border-purple-50 font-black text-[#302B52]">
-          <Clock className="text-[#7166F9]" />
-          {new Date().toLocaleDateString('en-GB')}
-        </div>
+    <div className="animate-fade-in space-y-6 pb-20">
+      <div>
+        <h1 className="text-2xl font-extrabold text-[#0F172A] tracking-tight">Daily Attendance</h1>
+        <p className="text-sm text-slate-500 mt-1">Smart register with dynamic sections and quick search.</p>
       </div>
 
-      {/* FILTER HEADER */}
-      <div className="bg-white/80 backdrop-blur-xl p-8 rounded-[40px] shadow-2xl border border-white mb-10 flex flex-wrap gap-6 items-end">
-        <div className="flex-1 min-w-[200px]">
-          <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Select Class</label>
-          <select 
-            value={filter.class} 
-            onChange={(e) => setFilter({...filter, class: e.target.value})}
-            className="w-full mt-2 p-4 bg-[#F8F9FE] rounded-2xl font-bold text-[#302B52] outline-none border-2 border-transparent focus:border-purple-200"
-          >
-            {[...Array(10)].map((_, i) => (
-              <option key={i+1} value={i+1}>Class {i+1}</option>
-            ))}
+      {/* Control Panel */}
+      <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 flex flex-col md:flex-row gap-4 items-center justify-between">
+        <div className="flex flex-col sm:flex-row gap-4 w-full md:w-auto">
+          {/* Class Dropdown (Dynamic) */}
+          <select value={selectedClass} onChange={(e) => { setSelectedClass(e.target.value); setSelectedSection(""); }} className="bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-[#3ac47d]/50 font-bold text-slate-700 min-w-[150px]">
+            <option value="" disabled>Select Class</option>
+            {availableClasses.map(c => <option key={c as string} value={c as string}>{c as string}</option>)}
+          </select>
+
+          {/* Section Dropdown (Cascading - Only shows if class is selected) */}
+          <select value={selectedSection} onChange={(e) => setSelectedSection(e.target.value)} disabled={!selectedClass || availableSections.length === 0} className="bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-[#3ac47d]/50 font-bold text-slate-700 disabled:opacity-50 min-w-[150px]">
+            <option value="">All Sections</option>
+            {availableSections.map(s => <option key={s as string} value={s as string}>Section {s as string}</option>)}
           </select>
         </div>
-        <div className="flex-1 min-w-[200px]">
-          <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Type Section Name</label>
-          <input 
-            type="text" 
-            placeholder="e.g. Iqbal" 
-            value={filter.section}
-            onChange={(e) => setFilter({...filter, section: e.target.value})}
-            className="w-full mt-2 p-4 bg-[#F8F9FE] rounded-2xl font-bold text-[#302B52] outline-none border-b-4 border-[#7166F9]"
-          />
+
+        {/* Date & Search */}
+        <div className="flex flex-col sm:flex-row gap-4 w-full md:w-auto">
+          <div className="relative flex items-center w-full md:w-64">
+            <Search className="absolute left-3 text-slate-400" size={18} />
+            <input type="text" placeholder="Search by name or roll..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full bg-slate-50 border border-slate-100 rounded-xl pl-10 pr-4 py-3 text-sm outline-none focus:ring-2 focus:ring-[#3ac47d]/50" />
+          </div>
+          <div className="relative flex items-center">
+            <CalendarDays className="absolute left-3 text-slate-400" size={18} />
+            <input type="date" value={attendanceDate} onChange={(e) => setAttendanceDate(e.target.value)} className="bg-slate-50 border border-slate-100 rounded-xl pl-10 pr-4 py-3 text-sm outline-none focus:ring-2 focus:ring-[#3ac47d]/50 font-medium text-slate-600" />
+          </div>
         </div>
-        <button 
-          onClick={loadRegister}
-          className="bg-[#302B52] text-white px-10 py-4 rounded-2xl font-black shadow-xl hover:bg-[#7166F9] transition-all"
-        >
-          Load Students
-        </button>
       </div>
 
-      {/* ATTENDANCE TABLE */}
-      {isLoaded && (
-        <div className="bg-white rounded-[50px] shadow-2xl overflow-hidden border border-purple-50">
-          <table className="w-full text-left">
-            <thead className="bg-[#302B52] text-white uppercase text-[10px] tracking-[3px]">
-              <tr>
-                <th className="p-8">Adm No</th>
-                <th className="p-8">Student Name</th>
-                <th className="p-8 text-center">Status (P / A / L)</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
-              {students.length > 0 ? students.map(s => (
-                <tr key={s.id} className="hover:bg-purple-50/30 transition-all font-bold text-[#302B52]">
-                  <td className="p-6 px-8 text-[#7166F9]">#{s.admissionNo}</td>
-                  <td className="p-6 px-8">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-[#F8F9FE] rounded-xl flex items-center justify-center text-[10px] uppercase">{s.fullName[0]}</div>
-                      {s.fullName}
-                    </div>
-                  </td>
-                  <td className="p-6 px-8">
-                    <div className="flex justify-center gap-3">
-                      {['P', 'A', 'L'].map(status => (
-                        <button 
-                          key={status}
-                          onClick={() => setAttendance({...attendance, [s.id]: status})}
-                          className={`w-12 h-12 rounded-xl border-2 flex items-center justify-center transition-all ${
-                            attendance[s.id] === status 
-                            ? 'bg-[#7166F9] text-white border-[#7166F9] shadow-lg scale-110' 
-                            : 'bg-white border-gray-100 text-gray-300 hover:border-purple-200'
-                          }`}
-                        >
-                          {status}
-                        </button>
-                      ))}
-                    </div>
-                  </td>
-                </tr>
-              )) : (
-                <tr>
-                  <td colSpan={3} className="p-20 text-center text-gray-300 italic font-bold">
-                    No students found in Class {filter.class}-{filter.section}. Check your enrollment data.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-          
-          {students.length > 0 && (
-            <div className="p-10 bg-[#F8F9FE] flex justify-end">
-              <button 
-                onClick={handleSave}
-                className="bg-[#7166F9] text-white px-12 py-5 rounded-[30px] font-black text-xl shadow-2xl hover:bg-[#302B52] transition-all flex items-center gap-3"
-              >
-                <ClipboardCheck size={24} /> Submit Today's Register
-              </button>
+      {/* Attendance Register */}
+      <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="bg-[#0F172A] px-6 py-4 grid grid-cols-12 gap-4 items-center">
+          <div className="col-span-2 text-xs font-bold text-slate-400 uppercase tracking-widest">Roll No</div>
+          <div className="col-span-6 text-xs font-bold text-slate-400 uppercase tracking-widest">Student Name</div>
+          <div className="col-span-4 text-xs font-bold text-slate-400 uppercase tracking-widest text-center">Status (P / A / L)</div>
+        </div>
+
+        <div className="divide-y divide-slate-100">
+          {!selectedClass ? (
+            <div className="py-16 text-center flex flex-col items-center opacity-50">
+              <Users size={48} className="text-slate-300 mb-4" />
+              <p className="font-bold text-slate-500">Please select a class to load students.</p>
             </div>
+          ) : filteredStudents.length === 0 ? (
+            <div className="py-16 text-center">
+              <p className="font-bold text-slate-500">No students found matching your criteria.</p>
+            </div>
+          ) : (
+            filteredStudents.map((student) => (
+              <div key={student.id} className="px-6 py-4 grid grid-cols-12 gap-4 items-center hover:bg-slate-50 transition-colors">
+                <div className="col-span-2 font-black text-slate-300 text-lg">{student.rollNumber || "-"}</div>
+                <div className="col-span-6 flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-slate-100 overflow-hidden shrink-0 border border-slate-200">
+                    {student.photoBase64 ? <img src={student.photoBase64} className="w-full h-full object-cover" /> : <UserIcon className="w-full h-full p-2 text-slate-400" />}
+                  </div>
+                  <div>
+                    <p className="font-bold text-slate-800">{student.name}</p>
+                    <p className="text-[11px] text-slate-500">Class {student.classGrade} {student.section && `- ${student.section}`}</p>
+                  </div>
+                </div>
+                <div className="col-span-4 flex items-center justify-center gap-2">
+                  <button onClick={() => handleMarkAttendance(student.id, "Present")} className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${attendanceRecords[student.id] === 'Present' ? 'bg-[#3ac47d] text-white shadow-md shadow-[#3ac47d]/30 scale-110' : 'bg-green-50 text-green-500 hover:bg-green-100'}`}><Check size={18} /></button>
+                  <button onClick={() => handleMarkAttendance(student.id, "Absent")} className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${attendanceRecords[student.id] === 'Absent' ? 'bg-red-500 text-white shadow-md shadow-red-500/30 scale-110' : 'bg-red-50 text-red-500 hover:bg-red-100'}`}><X size={18} /></button>
+                  <button onClick={() => handleMarkAttendance(student.id, "Leave")} className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${attendanceRecords[student.id] === 'Leave' ? 'bg-blue-500 text-white shadow-md shadow-blue-500/30 scale-110' : 'bg-blue-50 text-blue-500 hover:bg-blue-100'}`}><Clock size={18} /></button>
+                </div>
+              </div>
+            ))
           )}
         </div>
-      )}
+        
+        {/* Save Button */}
+        {filteredStudents.length > 0 && (
+          <div className="p-6 bg-slate-50 border-t border-slate-100 flex justify-end">
+            <button onClick={handleSaveAttendance} disabled={isSaving} className="bg-[#0F172A] hover:bg-slate-800 text-white px-8 py-3.5 rounded-xl font-bold shadow-md transition-all flex items-center gap-2 disabled:opacity-70">
+              {isSaving ? "Saving Records..." : <><CheckCircle2 size={18} /> Save Register</>}
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
