@@ -1,16 +1,17 @@
 "use client";
 import React, { useState } from "react";
-import { auth, db } from "@/lib/firebase";
+import { auth, db } from "@/lib/firebase"; 
 import { createUserWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, updateProfile } from "firebase/auth";
 import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import { useAuth } from "../context/AuthContext";
 import Link from "next/link";
-import { GraduationCap } from "lucide-react";
+import { GraduationCap, LogOut } from "lucide-react";
 
 export default function SignupPage() {
   const router = useRouter();
-  const { user, role } = useAuth();
+  // ہم نے AuthContext سے logout کا فنکشن بھی منگوا لیا ہے
+  const { user, role, logout } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -22,6 +23,7 @@ export default function SignupPage() {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
+  // 1. گوگل والے یوزر کی رجسٹریشن مکمل کرنا
   const completeGoogleRegistration = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.schoolName) return setError("Please enter your School Name!");
@@ -41,6 +43,7 @@ export default function SignupPage() {
     }
   };
 
+  // 2. کسٹم ای میل (Yahoo, .edu.pk) سے سائن اپ کرنا
   const handleEmailSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -63,6 +66,7 @@ export default function SignupPage() {
     }
   };
 
+  // 3. گوگل بٹن پر کلک
   const handleGoogleSignup = async () => {
     setLoading(true);
     setError("");
@@ -75,6 +79,13 @@ export default function SignupPage() {
     }
   };
 
+  // 4. آدھے راستے سے واپس جانا (Cancel Session)
+  const handleCancelGoogleSession = async () => {
+    await logout();
+    setFormData({ schoolName: "", fullName: "", email: "", password: "" });
+    setError("");
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#f8fafc] px-4">
       <div className="w-full max-w-md bg-white rounded-[2rem] shadow-xl border border-gray-100 p-8 sm:p-10 animate-fade-in-down">
@@ -83,7 +94,7 @@ export default function SignupPage() {
           <div className="w-14 h-14 bg-[#3ac47d] rounded-2xl flex items-center justify-center shadow-lg shadow-[#3ac47d]/30 mb-4">
             <GraduationCap size={32} className="text-white" />
           </div>
-          <h1 className="text-2xl font-extrabold text-slate-800">
+          <h1 className="text-2xl font-extrabold text-slate-800 text-center">
             {isGoogleHalfRegistered ? "Complete Registration" : "Register Your School"}
           </h1>
           <p className="text-sm text-slate-500 mt-1 text-center">
@@ -97,10 +108,11 @@ export default function SignupPage() {
           
           <input required name="schoolName" value={formData.schoolName} onChange={handleInputChange} type="text" placeholder="School Name" className="w-full bg-slate-50 outline-none rounded-xl px-4 py-3.5 text-sm focus:bg-white focus:ring-2 focus:ring-[#3ac47d]/50 border border-slate-100" />
           
+          {/* اگر نارمل سائن اپ ہے تو باقی فیلڈز دکھاؤ */}
           {!isGoogleHalfRegistered && (
             <>
               <input required name="fullName" value={formData.fullName} onChange={handleInputChange} type="text" placeholder="Admin Full Name" className="w-full bg-slate-50 outline-none rounded-xl px-4 py-3.5 text-sm focus:bg-white focus:ring-2 focus:ring-[#3ac47d]/50 border border-slate-100" />
-              <input required name="email" value={formData.email} onChange={handleInputChange} type="email" placeholder="Admin Email" className="w-full bg-slate-50 outline-none rounded-xl px-4 py-3.5 text-sm focus:bg-white focus:ring-2 focus:ring-[#3ac47d]/50 border border-slate-100" />
+              <input required name="email" value={formData.email} onChange={handleInputChange} type="email" placeholder="Admin Email (Any provider)" className="w-full bg-slate-50 outline-none rounded-xl px-4 py-3.5 text-sm focus:bg-white focus:ring-2 focus:ring-[#3ac47d]/50 border border-slate-100" />
               <input required name="password" value={formData.password} onChange={handleInputChange} type="password" placeholder="Password (Min 6 chars)" className="w-full bg-slate-50 outline-none rounded-xl px-4 py-3.5 text-sm focus:bg-white focus:ring-2 focus:ring-[#3ac47d]/50 border border-slate-100" />
             </>
           )}
@@ -110,7 +122,16 @@ export default function SignupPage() {
           </button>
         </form>
 
-        {!isGoogleHalfRegistered && (
+        {/* --- دی میجک فکس: واپس جانے کا بٹن --- */}
+        {isGoogleHalfRegistered ? (
+          <button 
+            onClick={handleCancelGoogleSession} 
+            type="button" 
+            className="w-full mt-4 flex items-center justify-center gap-2 text-sm text-slate-500 hover:text-red-500 font-medium transition-colors"
+          >
+            <LogOut size={16} /> Not you? Use a different email
+          </button>
+        ) : (
           <>
             <div className="flex items-center gap-3 my-6">
               <div className="h-px flex-1 bg-gray-100"></div>
