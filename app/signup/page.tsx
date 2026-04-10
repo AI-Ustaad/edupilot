@@ -1,6 +1,6 @@
 "use client";
 import React, { useState } from "react";
-import { auth, db } from "../lib/firebase";
+import { auth, db } from "@/lib/firebase"; // <-- پاتھ بالکل ٹھیک کر دیا گیا ہے
 import { createUserWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, updateProfile } from "firebase/auth";
 import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 import { useRouter } from "next/navigation";
@@ -10,20 +10,18 @@ import { GraduationCap } from "lucide-react";
 
 export default function SignupPage() {
   const router = useRouter();
-  const { user, role } = useAuth(); // AuthContext سے یوزر چیک کریں
+  const { user, role } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
   const [formData, setFormData] = useState({ schoolName: "", fullName: "", email: "", password: "" });
 
-  // اگر بندہ گوگل سے لاگ ان کر چکا ہے لیکن رجسٹرڈ نہیں ہے
   const isGoogleHalfRegistered = user && role === "unregistered";
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  // گوگل والے یوزر کا سکول رجسٹر کرنے کا فنکشن
   const completeGoogleRegistration = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.schoolName) return setError("Please enter your School Name!");
@@ -32,18 +30,17 @@ export default function SignupPage() {
       await setDoc(doc(db, "users", user!.uid), {
         name: user!.displayName || "Admin",
         email: user!.email,
-        role: "admin", // نیا سکول بنانے والا ہمیشہ ایڈمن ہوگا
+        role: "admin",
         schoolName: formData.schoolName,
         createdAt: serverTimestamp()
       });
-      window.location.href = "/dashboard"; // ڈیٹا بیس اپڈیٹ ہونے کے بعد ڈیش بورڈ پر جاؤ
+      window.location.href = "/dashboard";
     } catch (err) {
       setError("Failed to register school.");
       setLoading(false);
     }
   };
 
-  // نارمل ای میل سے سائن اپ کرنے کا فنکشن
   const handleEmailSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -66,14 +63,12 @@ export default function SignupPage() {
     }
   };
 
-  // گوگل بٹن پر کلک کرنے کا فنکشن
   const handleGoogleSignup = async () => {
     setLoading(true);
     setError("");
     try {
       const provider = new GoogleAuthProvider();
       await signInWithPopup(auth, provider);
-      // جیسے ہی پاپ اپ بند ہوگا، AuthContext خود اسے ہینڈل کر لے گا
     } catch (err: any) {
       setError(err.message);
       setLoading(false);
@@ -102,7 +97,6 @@ export default function SignupPage() {
           
           <input required name="schoolName" value={formData.schoolName} onChange={handleInputChange} type="text" placeholder="School Name" className="w-full bg-slate-50 outline-none rounded-xl px-4 py-3.5 text-sm focus:bg-white focus:ring-2 focus:ring-[#3ac47d]/50 border border-slate-100" />
           
-          {/* اگر بندہ گوگل سے نہیں آیا، تو باقی فیلڈز بھی دکھاؤ */}
           {!isGoogleHalfRegistered && (
             <>
               <input required name="fullName" value={formData.fullName} onChange={handleInputChange} type="text" placeholder="Admin Full Name" className="w-full bg-slate-50 outline-none rounded-xl px-4 py-3.5 text-sm focus:bg-white focus:ring-2 focus:ring-[#3ac47d]/50 border border-slate-100" />
@@ -116,7 +110,6 @@ export default function SignupPage() {
           </button>
         </form>
 
-        {/* اگر گوگل سے پہلے ہی آدھا لاگ ان ہے، تو مزید گوگل بٹن نہ دکھاؤ */}
         {!isGoogleHalfRegistered && (
           <>
             <div className="flex items-center gap-3 my-6">
