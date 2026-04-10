@@ -6,8 +6,7 @@ import { db } from "@/lib/firebase";
 import { useAuth } from "../context/AuthContext";
 import { UploadCloud, CheckCircle2, AlertCircle, Image as ImageIcon, Search, User as UserIcon, Edit2, Trash2, FileText, Zap, Paperclip } from "lucide-react";
 
-// Helper Functions
-const convertToBase64 = (file: any): Promise<string> => {
+const convertToBase64 = (file: File): Promise<string> => {
   return new Promise((resolve, reject) => {
     const fileReader = new FileReader();
     fileReader.readAsDataURL(file);
@@ -27,9 +26,6 @@ export default function StaffPage() {
   const router = useRouter(); 
   const { user } = useAuth();
   
-  // VERCEL BYPASS: SSR Prerendering Killer
-  const [isMounted, setIsMounted] = useState(false);
-  
   const [schoolCategory, setSchoolCategory] = useState("");
   const [photoBase64, setPhotoBase64] = useState<string>("");
   const [documentBase64, setDocumentBase64] = useState<string>(""); 
@@ -47,12 +43,10 @@ export default function StaffPage() {
     name: "", cnic: "", phone: "", email: "", dob: "", gender: "Male",
     personnelNo: "", scale: "", employmentCategory: "", designation: "", education: "", experience: "",
     bankAccount: "", basicPay: "", grossPay: "", netPay: "", deductionsTotal: "",
-    allowances: [], deductionsList: [] 
+    allowances: [] as any[], deductionsList: [] as any[] 
   });
 
   useEffect(() => {
-    setIsMounted(true); // یہ Vercel کو بتائے گا کہ پیج براؤزر میں آ چکا ہے
-    
     const fetchInitData = async () => {
       if (user) {
         const userDoc = await getDoc(doc(db, "users", user.uid));
@@ -151,9 +145,6 @@ export default function StaffPage() {
     e.stopPropagation(); 
     if (window.confirm("Delete this staff member?")) await deleteDoc(doc(db, "staff", id));
   };
-
-  // اگر پیج سرور پر ہے، تو اسے بالکل خالی دکھاؤ تاکہ Vercel کریش نہ ہو
-  if (!isMounted) return null;
 
   return (
     <div className="animate-fade-in space-y-6 pb-20">
