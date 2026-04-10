@@ -1,8 +1,9 @@
 "use client";
 import React, { useState, useEffect } from "react";
-import { collection, addDoc, serverTimestamp, onSnapshot, query, orderBy } from "firebase/firestore";
+import { useRouter } from "next/navigation"; // پروفائل پر جانے کے لیے
+import { collection, addDoc, serverTimestamp, onSnapshot, query, orderBy, deleteDoc, doc } from "firebase/firestore";
 import { db } from "../../lib/firebase"; 
-import { UploadCloud, CheckCircle2, AlertCircle, Image as ImageIcon, Search, User as UserIcon } from "lucide-react";
+import { UploadCloud, CheckCircle2, AlertCircle, Image as ImageIcon, Search, User as UserIcon, Edit2, Trash2, ChevronRight } from "lucide-react";
 
 const convertToBase64 = (file: File): Promise<string> => {
   return new Promise((resolve, reject) => {
@@ -13,37 +14,48 @@ const convertToBase64 = (file: File): Promise<string> => {
   });
 };
 
+// پاکستانی CNIC / B-Form کو آٹو فارمیٹ کرنے کا فنکشن (00000-0000000-0)
+const formatCNIC = (value: string) => {
+  const numericValue = value.replace(/\D/g, "");
+  if (numericValue.length <= 5) return numericValue;
+  if (numericValue.length <= 12) return `${numericValue.slice(0, 5)}-${numericValue.slice(5)}`;
+  return `${numericValue.slice(0, 5)}-${numericValue.slice(5, 12)}-${numericValue.slice(12, 13)}`;
+};
+
 export default function StudentsPage() {
+  const router = useRouter(); // راؤٹر انیشلائز کیا
   const [photoBase64, setPhotoBase64] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   
-  // یہاں ہم فائر بیس سے آنے والے سٹوڈنٹس کو سیو کریں گے
   const [studentsList, setStudentsList] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
 
   const [formData, setFormData] = useState({
     name: "", idNumber: "", dob: "", gender: "Male", religion: "Islam",
     fatherName: "", fatherProfession: "", phone: "", address: "",
-    admissionDate: "", rollNumber: "", classGrade: ""
+    admissionDate: "", rollNumber: "", classGrade: "", section: "" // Section کا اضافہ
   });
 
-  // --- Real-time Data Fetching (یہ کوڈ پہلے غائب تھا) ---
+  // Real-time Data Fetching
   useEffect(() => {
     const q = query(collection(db, "students"), orderBy("createdAt", "desc"));
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const studentsData = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
+      const studentsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setStudentsList(studentsData);
     });
     return () => unsubscribe();
   }, []);
 
+  // ان پٹ ہینڈلر (CNIC کی سپیشل ہینڈلنگ کے ساتھ)
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    if (name === "idNumber") {
+      setFormData({ ...formData, [name]: formatCNIC(value) });
+    } else {
+      setFormData({ ...formData, [name]: value });
+    }
   };
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -63,6 +75,7 @@ export default function StudentsPage() {
     }
   };
 
+  // سٹوڈنٹ سیو کرنا
   const handleSaveStudent = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -83,7 +96,7 @@ export default function StudentsPage() {
       setFormData({
         name: "", idNumber: "", dob: "", gender: "Male", religion: "Islam",
         fatherName: "", fatherProfession: "", phone: "", address: "",
-        admissionDate: "", rollNumber: "", classGrade: ""
+        admissionDate: "", rollNumber: "", classGrade: "", section: ""
       });
 
       setTimeout(() => setSuccess(false), 3000);
@@ -94,10 +107,27 @@ export default function StudentsPage() {
     }
   };
 
-  // سرچ فلٹر
+  // ڈیلیٹ سٹوڈنٹ فنکشن
+  const handleDelete = async (e: React.MouseEvent, id: string) => {
+    e.stopPropagation(); // پروفائل پر جانے سے روکنے کے لیے
+    if (window.confirm("Are you sure you want to delete this student?")) {
+      try {
+        await deleteDoc(doc(db, "students", id));
+      } catch (error) {
+        alert("Failed to delete student.");
+      }
+    }
+  };
+
+  // پروفائل پر جانے کا فنکشن
+  const handleViewProfile = (id: string) => {
+    router.push(`/student-profile?id=${id}`);
+  };
+
   const filteredStudents = studentsList.filter(student => 
     student.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    student.rollNumber?.includes(searchTerm)
+    student.rollNumber?.includes(searchTerm) ||
+    student.idNumber?.includes(searchTerm)
   );
 
   return (
@@ -146,7 +176,7 @@ export default function StudentsPage() {
 
                 <div className="flex-1 w-full grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <input required name="name" value={formData.name} onChange={handleInputChange} type="text" placeholder="Full Name" className="w-full bg-slate-50/50 outline-none rounded-xl px-4 py-3 text-sm focus:bg-white focus:ring-2 focus:ring-[#3ac47d]/50 border border-slate-100" />
-                  <input required name="idNumber" value={formData.idNumber} onChange={handleInputChange} type="text" placeholder="B-Form / ID" className="w-full bg-slate-50/50 outline-none rounded-xl px-4 py-3 text-sm focus:bg-white focus:ring-2 focus:ring-[#3ac47d]/50 border border-slate-100" />
+                  <input required name="idNumber" value={formData.idNumber} onChange={handleInputChange} type="text" placeholder="CNIC / B-Form (00000-0000000-0)" maxLength={15} className="w-full bg-slate-50/50 outline-none rounded-xl px-4 py-3 text-sm focus:bg-white focus:ring-2 focus:ring-[#3ac47d]/50 border border-slate-100" />
                   <input required name="dob" value={formData.dob} onChange={handleInputChange} type="date" className="w-full bg-slate-50/50 outline-none rounded-xl px-4 py-3 text-sm focus:bg-white focus:ring-2 focus:ring-[#3ac47d]/50 border border-slate-100 text-slate-500" />
                   <select name="gender" value={formData.gender} onChange={handleInputChange} className="w-full bg-slate-50/50 outline-none rounded-xl px-4 py-3 text-sm focus:bg-white focus:ring-2 focus:ring-[#3ac47d]/50 border border-slate-100 text-slate-700">
                     <option>Male</option><option>Female</option>
@@ -156,21 +186,22 @@ export default function StudentsPage() {
             </section>
 
             <section>
-              <h3 className="text-[11px] font-bold text-[#3ac47d] uppercase tracking-widest mb-4">Contact Info</h3>
+              <h3 className="text-[11px] font-bold text-[#3ac47d] uppercase tracking-widest mb-4">Family & Contact</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <input required name="fatherName" value={formData.fatherName} onChange={handleInputChange} type="text" placeholder="Father's Name" className="w-full bg-slate-50/50 outline-none rounded-xl px-4 py-3 text-sm border border-slate-100 focus:bg-white focus:ring-2 focus:ring-[#3ac47d]/50" />
-                <input required name="fatherProfession" value={formData.fatherProfession} onChange={handleInputChange} type="text" placeholder="Profession" className="w-full bg-slate-50/50 outline-none rounded-xl px-4 py-3 text-sm border border-slate-100 focus:bg-white focus:ring-2 focus:ring-[#3ac47d]/50" />
-                <input required name="phone" value={formData.phone} onChange={handleInputChange} type="tel" placeholder="Phone" className="w-full bg-slate-50/50 outline-none rounded-xl px-4 py-3 text-sm border border-slate-100 focus:bg-white focus:ring-2 focus:ring-[#3ac47d]/50" />
-                <input required name="address" value={formData.address} onChange={handleInputChange} type="text" placeholder="Address" className="w-full bg-slate-50/50 outline-none rounded-xl px-4 py-3 text-sm border border-slate-100 focus:bg-white focus:ring-2 focus:ring-[#3ac47d]/50" />
+                <input required name="fatherProfession" value={formData.fatherProfession} onChange={handleInputChange} type="text" placeholder="Father's Profession" className="w-full bg-slate-50/50 outline-none rounded-xl px-4 py-3 text-sm border border-slate-100 focus:bg-white focus:ring-2 focus:ring-[#3ac47d]/50" />
+                <input required name="phone" value={formData.phone} onChange={handleInputChange} type="tel" placeholder="Phone Number" className="w-full bg-slate-50/50 outline-none rounded-xl px-4 py-3 text-sm border border-slate-100 focus:bg-white focus:ring-2 focus:ring-[#3ac47d]/50" />
+                <input required name="address" value={formData.address} onChange={handleInputChange} type="text" placeholder="Home Address" className="w-full bg-slate-50/50 outline-none rounded-xl px-4 py-3 text-sm border border-slate-100 focus:bg-white focus:ring-2 focus:ring-[#3ac47d]/50" />
               </div>
             </section>
 
             <section>
-              <h3 className="text-[11px] font-bold text-[#3ac47d] uppercase tracking-widest mb-4">Placement</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <input required name="admissionDate" value={formData.admissionDate} onChange={handleInputChange} type="date" className="w-full bg-[#f0fdf4] outline-none rounded-xl px-4 py-3 text-sm border border-green-100 focus:ring-2 focus:ring-[#3ac47d]/50 text-green-700" />
-                <input required name="rollNumber" value={formData.rollNumber} onChange={handleInputChange} type="number" placeholder="Roll No." className="w-full bg-slate-50/50 outline-none rounded-xl px-4 py-3 text-sm border border-slate-100 focus:bg-white focus:ring-2 focus:ring-[#3ac47d]/50" />
-                <input required name="classGrade" value={formData.classGrade} onChange={handleInputChange} type="text" placeholder="Class" className="w-full bg-slate-50/50 outline-none rounded-xl px-4 py-3 text-sm border border-slate-100 focus:bg-white focus:ring-2 focus:ring-[#3ac47d]/50" />
+              <h3 className="text-[11px] font-bold text-[#3ac47d] uppercase tracking-widest mb-4">School Placement</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+                <input required name="admissionDate" value={formData.admissionDate} onChange={handleInputChange} type="date" className="sm:col-span-2 w-full bg-[#f0fdf4] outline-none rounded-xl px-4 py-3 text-sm border border-green-100 focus:ring-2 focus:ring-[#3ac47d]/50 text-green-700" />
+                <input required name="classGrade" value={formData.classGrade} onChange={handleInputChange} type="text" placeholder="Class (e.g. 9th)" className="w-full bg-slate-50/50 outline-none rounded-xl px-4 py-3 text-sm border border-slate-100 focus:bg-white focus:ring-2 focus:ring-[#3ac47d]/50" />
+                <input name="section" value={formData.section} onChange={handleInputChange} type="text" placeholder="Section (A, B)" className="w-full bg-slate-50/50 outline-none rounded-xl px-4 py-3 text-sm border border-slate-100 focus:bg-white focus:ring-2 focus:ring-[#3ac47d]/50" />
+                <input required name="rollNumber" value={formData.rollNumber} onChange={handleInputChange} type="number" placeholder="Roll No. (e.g. 15)" className="sm:col-span-2 w-full bg-slate-50/50 outline-none rounded-xl px-4 py-3 text-sm border border-slate-100 focus:bg-white focus:ring-2 focus:ring-[#3ac47d]/50" />
               </div>
             </section>
 
@@ -182,7 +213,7 @@ export default function StudentsPage() {
           </form>
         </div>
 
-        {/* Right Column: Directory (اب یہ 100% کام کر رہا ہے) */}
+        {/* Right Column: Directory with Edit/Delete & Navigation */}
         <div className="lg:col-span-1">
           <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 h-full max-h-[800px] flex flex-col">
              <div className="flex items-center justify-between mb-4">
@@ -194,7 +225,7 @@ export default function StudentsPage() {
                <Search size={16} className="text-slate-400" />
                <input 
                  type="text" 
-                 placeholder="Search by name or roll..." 
+                 placeholder="Search name, roll, CNIC..." 
                  value={searchTerm}
                  onChange={(e) => setSearchTerm(e.target.value)}
                  className="bg-transparent border-none outline-none text-sm w-full text-slate-700 placeholder-slate-400" 
@@ -212,7 +243,11 @@ export default function StudentsPage() {
                  </div>
                ) : (
                  filteredStudents.map((student) => (
-                   <div key={student.id} className="flex items-center gap-3 p-3 bg-slate-50 hover:bg-slate-100 transition-colors rounded-xl border border-slate-100/50 cursor-pointer group">
+                   <div 
+                     key={student.id} 
+                     onClick={() => handleViewProfile(student.id)} // پروفائل پر جانے کے لیے کلک
+                     className="flex items-center gap-3 p-3 bg-slate-50 hover:bg-[#f0fdf4] hover:border-[#3ac47d]/30 transition-all rounded-xl border border-slate-100/50 cursor-pointer group relative"
+                   >
                      <div className="w-12 h-12 rounded-full bg-white border border-slate-200 overflow-hidden shrink-0">
                        {student.photoBase64 ? (
                          <img src={student.photoBase64} alt={student.name} className="w-full h-full object-cover" />
@@ -222,11 +257,23 @@ export default function StudentsPage() {
                          </div>
                        )}
                      </div>
-                     <div className="flex-1 min-w-0">
+                     <div className="flex-1 min-w-0 pr-12">
                        <p className="text-sm font-bold text-slate-800 truncate group-hover:text-[#3ac47d] transition-colors">{student.name}</p>
-                       <p className="text-xs text-slate-500 truncate mt-0.5">
-                         Roll: {student.rollNumber} • Class {student.classGrade}
+                       <p className="text-[11px] text-slate-500 truncate mt-0.5">
+                         Roll: {student.rollNumber} • Class {student.classGrade} {student.section}
                        </p>
+                     </div>
+                     
+                     {/* Edit & Delete Actions (Hover پر ظاہر ہوں گے) */}
+                     <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        {/* Edit Button (اسے ہم بعد میں پاپ اپ کے ساتھ اٹیچ کریں گے) */}
+                        <button onClick={(e) => { e.stopPropagation(); alert("Edit function coming soon!"); }} className="p-1.5 text-blue-500 hover:bg-blue-100 rounded-md transition-colors">
+                          <Edit2 size={14} />
+                        </button>
+                        {/* Delete Button */}
+                        <button onClick={(e) => handleDelete(e, student.id)} className="p-1.5 text-red-500 hover:bg-red-100 rounded-md transition-colors">
+                          <Trash2 size={14} />
+                        </button>
                      </div>
                    </div>
                  ))
