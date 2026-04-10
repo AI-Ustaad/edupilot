@@ -1,6 +1,6 @@
 "use client";
 import React, { useState } from "react";
-import { auth, db } from "@/lib/firebase"; // <-- پاتھ بالکل ٹھیک کر دیا گیا ہے
+import { auth, db } from "@/lib/firebase";
 import { createUserWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, updateProfile } from "firebase/auth";
 import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 import { useRouter } from "next/navigation";
