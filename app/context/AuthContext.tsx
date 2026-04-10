@@ -14,7 +14,6 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType>({} as AuthContextType);
 
-// یہ Export بالکل اسی طرح ہونا چاہیے
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [role, setRole] = useState<string | null>(null);
@@ -25,18 +24,22 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const unsubscribe = onIdTokenChanged(auth, async (firebaseUser) => {
       try {
         if (firebaseUser) {
+          // 1. Check if user exists in Firestore Database
           const userDocRef = doc(db, "users", firebaseUser.uid);
           const userDoc = await getDoc(userDocRef);
 
-          if (userDoc.exists()) {
+          if (userDoc.exists() && userDoc.data().role) {
+            // User is registered properly
             setRole(userDoc.data().role);
-            setSchoolId(userDoc.data().schoolId);
+            setSchoolId(userDoc.data().schoolId || null);
           } else {
-            setRole("student");
+            // THE FIX: Do not default to student! Mark them as unregistered.
+            setRole("unregistered");
+            setSchoolId(null);
           }
 
+          // 2. Create Vercel Cookie Session
           const idToken = await firebaseUser.getIdToken();
-          
           await fetch('/api/auth/login', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -45,6 +48,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
           setUser(firebaseUser);
         } else {
+          // User is logged out
           await fetch('/api/auth/logout', { method: 'POST' });
           setUser(null);
           setRole(null);
