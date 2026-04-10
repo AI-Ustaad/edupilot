@@ -11,7 +11,6 @@ export default function ResultPage() {
   const [students, setStudents] = useState<any[]>([]);
   const [allMarks, setAllMarks] = useState<any[]>([]);
   
-  // School Details (Fetched from DB)
   const [schoolDetails, setSchoolDetails] = useState({ name: "EDUPILOT SCHOOL SYSTEM", address: "Main Campus, Pakistan" });
 
   const [selectedTerm, setSelectedTerm] = useState("SBA - Final Term");
@@ -19,12 +18,10 @@ export default function ResultPage() {
   const [selectedSection, setSelectedSection] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
 
-  const [selectedResult, setSelectedResult] = useState<any>(null); // Holds BOTH student and marks data
+  const [selectedResult, setSelectedResult] = useState<any>(null); 
 
   useEffect(() => {
     setIsMounted(true);
-    
-    // Fetch School Name from Admin Profile
     if (user) {
       getDoc(doc(db, "users", user.uid)).then(docSnap => {
         if (docSnap.exists() && docSnap.data().schoolName) {
@@ -45,13 +42,11 @@ export default function ResultPage() {
   const availableClasses = Array.from(new Set(students.map(s => s.classGrade))).filter(Boolean);
   const availableSections = Array.from(new Set(students.filter(s => s.classGrade === selectedClass).map(s => s.section))).filter(Boolean);
 
-  // Filter students based on selection
   let filteredStudents = students.filter(s => s.classGrade === selectedClass && s.section === selectedSection);
   if (searchQuery) {
     filteredStudents = filteredStudents.filter(s => s.name.toLowerCase().includes(searchQuery.toLowerCase()) || s.rollNumber?.toString().includes(searchQuery));
   }
 
-  // Combine Students with their Marks
   const classResults = filteredStudents.map(student => {
     const studentMarkRecord = allMarks.find(m => m.studentId === student.id && m.term === selectedTerm);
     return { ...student, resultRecord: studentMarkRecord || null };
@@ -60,7 +55,8 @@ export default function ResultPage() {
   if (!isMounted) return null;
 
   return (
-    <div className="animate-fade-in space-y-6 pb-20">
+    // Added print:space-y-0 and print:pb-0 to remove gaps in printing
+    <div className="animate-fade-in space-y-6 pb-20 print:space-y-0 print:pb-0">
       
       {/* Header */}
       <div className="flex justify-between items-end print:hidden">
@@ -149,7 +145,6 @@ export default function ResultPage() {
                 <div className="col-span-2 flex justify-end">
                   <button 
                     disabled={!student.resultRecord}
-                    // We pass the FULL student object AND the result record to the modal
                     onClick={() => setSelectedResult({ ...student, resultRecord: student.resultRecord })}
                     className="bg-blue-50 text-blue-600 hover:bg-blue-100 px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
@@ -164,8 +159,9 @@ export default function ResultPage() {
 
       {/* --- OFFICIAL RESULT CARD MODAL (Printable Area) --- */}
       {selectedResult && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 print:p-0 print:bg-white print:block print:inset-auto">
-          <div id="printable-card" className="bg-white rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden relative print:rounded-none print:shadow-none print:max-w-none print:border-none p-8 print:p-0">
+        // The magic happens here: print:static removes the "fixed" overlay behavior during printing, putting it in normal flow.
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 print:static print:bg-white print:block print:p-0 print:m-0 print:w-full print:h-auto">
+          <div className="bg-white rounded-3xl w-full max-w-2xl shadow-2xl overflow-hidden relative print:rounded-none print:shadow-none print:max-w-full print:border-none p-8 print:p-0">
             
             {/* Modal Controls (Hidden in Print) */}
             <div className="absolute top-4 right-4 flex gap-2 print:hidden z-10">
@@ -177,7 +173,7 @@ export default function ResultPage() {
             <div className="print:w-full print:mx-auto">
               
               {/* School Header with Logo */}
-              <div className="flex justify-between items-center border-b-2 border-black pb-4 mb-4">
+              <div className="flex justify-between items-center border-b-2 border-black pb-4 mb-4 mt-4">
                 <div className="w-16 h-16 bg-slate-100 border border-black rounded-full flex items-center justify-center shrink-0">
                   <Award size={28} className="text-black" />
                 </div>
@@ -212,7 +208,7 @@ export default function ResultPage() {
                 </div>
               </div>
 
-              {/* Marks Table (Compacted for Single Page Print) */}
+              {/* Marks Table */}
               <table className="w-full border-collapse border border-black mb-4 text-sm">
                 <thead>
                   <tr className="bg-gray-100">
@@ -257,50 +253,21 @@ export default function ResultPage() {
         </div>
       )}
 
-      {/* --- STRICT PRINT CSS FIXES (SINGLE PAGE GUARANTEE) --- */}
+      {/* FIXED CSS FOR PERFECT PRINTING */}
       <style jsx global>{`
         @media print {
-          body * { visibility: hidden; }
-          .print\\:hidden { display: none !important; }
-          .print\\:block { display: block !important; }
-          
-          /* Prevent 2 pages by removing all margins and scrollbars from body */
-          html, body {
-            height: max-content;
-            overflow: visible;
-            margin: 0;
-            padding: 0;
-            background-color: white;
-          }
-
-          /* Force the modal to act as the main document */
-          .fixed {
-            position: absolute !important;
-            left: 0 !important;
-            top: 0 !important;
-            width: 100vw !important;
-            height: auto !important;
-            background: white !important;
-            padding: 0 !important;
-          }
-
-          #printable-card, #printable-card * {
-            visibility: visible;
-          }
-
-          #printable-card {
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 100%;
-            margin: 0;
-            padding: 5mm; /* Small padding so it doesn't touch the paper edges */
-          }
-
           /* Force A4 Size */
           @page {
             size: A4 portrait;
-            margin: 5mm; /* Removes default browser headers/footers */
+            margin: 10mm; 
+          }
+          /* Ensure the background stays white */
+          body, html {
+            background-color: white !important;
+            margin: 0;
+            padding: 0;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
           }
         }
       `}</style>
