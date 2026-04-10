@@ -1,10 +1,11 @@
 "use client";
 import React, { useState, useEffect } from "react";
-import { useRouter } from "next/navigation"; // پروفائل پر جانے کے لیے
+import { useRouter } from "next/navigation";
 import { collection, addDoc, serverTimestamp, onSnapshot, query, orderBy, deleteDoc, doc } from "firebase/firestore";
-import { db } from "@/lib/firebase";
-import { UploadCloud, CheckCircle2, AlertCircle, Image as ImageIcon, Search, User as UserIcon, Edit2, Trash2, ChevronRight } from "lucide-react";
+import { db } from "@/lib/firebase"; // <-- فائر بیس کا پاتھ بالکل ٹھیک کر دیا گیا ہے
+import { UploadCloud, CheckCircle2, AlertCircle, Image as ImageIcon, Search, User as UserIcon, Edit2, Trash2 } from "lucide-react";
 
+// تصویر کو Base64 میں بدلنے کا فنکشن
 const convertToBase64 = (file: File): Promise<string> => {
   return new Promise((resolve, reject) => {
     const fileReader = new FileReader();
@@ -23,7 +24,7 @@ const formatCNIC = (value: string) => {
 };
 
 export default function StudentsPage() {
-  const router = useRouter(); // راؤٹر انیشلائز کیا
+  const router = useRouter(); 
   const [photoBase64, setPhotoBase64] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -35,10 +36,10 @@ export default function StudentsPage() {
   const [formData, setFormData] = useState({
     name: "", idNumber: "", dob: "", gender: "Male", religion: "Islam",
     fatherName: "", fatherProfession: "", phone: "", address: "",
-    admissionDate: "", rollNumber: "", classGrade: "", section: "" // Section کا اضافہ
+    admissionDate: "", rollNumber: "", classGrade: "", section: ""
   });
 
-  // Real-time Data Fetching
+  // فائر بیس سے سٹوڈنٹس کا ڈیٹا لائیو لانا
   useEffect(() => {
     const q = query(collection(db, "students"), orderBy("createdAt", "desc"));
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -48,7 +49,6 @@ export default function StudentsPage() {
     return () => unsubscribe();
   }, []);
 
-  // ان پٹ ہینڈلر (CNIC کی سپیشل ہینڈلنگ کے ساتھ)
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     if (name === "idNumber") {
@@ -75,7 +75,6 @@ export default function StudentsPage() {
     }
   };
 
-  // سٹوڈنٹ سیو کرنا
   const handleSaveStudent = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -107,9 +106,8 @@ export default function StudentsPage() {
     }
   };
 
-  // ڈیلیٹ سٹوڈنٹ فنکشن
   const handleDelete = async (e: React.MouseEvent, id: string) => {
-    e.stopPropagation(); // پروفائل پر جانے سے روکنے کے لیے
+    e.stopPropagation(); 
     if (window.confirm("Are you sure you want to delete this student?")) {
       try {
         await deleteDoc(doc(db, "students", id));
@@ -119,7 +117,6 @@ export default function StudentsPage() {
     }
   };
 
-  // پروفائل پر جانے کا فنکشن
   const handleViewProfile = (id: string) => {
     router.push(`/student-profile?id=${id}`);
   };
@@ -213,7 +210,7 @@ export default function StudentsPage() {
           </form>
         </div>
 
-        {/* Right Column: Directory with Edit/Delete & Navigation */}
+        {/* Right Column: Directory */}
         <div className="lg:col-span-1">
           <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 h-full max-h-[800px] flex flex-col">
              <div className="flex items-center justify-between mb-4">
@@ -232,7 +229,6 @@ export default function StudentsPage() {
                />
              </div>
 
-             {/* Students List */}
              <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 space-y-3">
                {filteredStudents.length === 0 ? (
                  <div className="flex flex-col items-center justify-center h-48 text-center opacity-60">
@@ -245,7 +241,7 @@ export default function StudentsPage() {
                  filteredStudents.map((student) => (
                    <div 
                      key={student.id} 
-                     onClick={() => handleViewProfile(student.id)} // پروفائل پر جانے کے لیے کلک
+                     onClick={() => handleViewProfile(student.id)} 
                      className="flex items-center gap-3 p-3 bg-slate-50 hover:bg-[#f0fdf4] hover:border-[#3ac47d]/30 transition-all rounded-xl border border-slate-100/50 cursor-pointer group relative"
                    >
                      <div className="w-12 h-12 rounded-full bg-white border border-slate-200 overflow-hidden shrink-0">
@@ -264,13 +260,10 @@ export default function StudentsPage() {
                        </p>
                      </div>
                      
-                     {/* Edit & Delete Actions (Hover پر ظاہر ہوں گے) */}
                      <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        {/* Edit Button (اسے ہم بعد میں پاپ اپ کے ساتھ اٹیچ کریں گے) */}
                         <button onClick={(e) => { e.stopPropagation(); alert("Edit function coming soon!"); }} className="p-1.5 text-blue-500 hover:bg-blue-100 rounded-md transition-colors">
                           <Edit2 size={14} />
                         </button>
-                        {/* Delete Button */}
                         <button onClick={(e) => handleDelete(e, student.id)} className="p-1.5 text-red-500 hover:bg-red-100 rounded-md transition-colors">
                           <Trash2 size={14} />
                         </button>
