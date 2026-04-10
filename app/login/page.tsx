@@ -1,6 +1,6 @@
 "use client";
 import React, { useState } from "react";
-import { auth } from "../lib/firebase";
+import { auth } from "@/lib/firebase"; // <-- پاتھ بالکل ٹھیک کر دیا گیا ہے
 import { signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider } from "firebase/auth";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
