@@ -6,7 +6,7 @@ import { useAuth } from "../context/AuthContext";
 import { 
   Building2, GraduationCap, Wallet, ShieldCheck, 
   CheckCircle2, AlertCircle, Save, Image as ImageIcon, 
-  PenTool, MonitorSmartphone, Banknote
+  PenTool, MonitorSmartphone, Banknote, User
 } from "lucide-react";
 
 // Helper for Base64 Image Conversion
@@ -32,6 +32,7 @@ export default function SettingsPage() {
   const [settings, setSettings] = useState({
     // Tab 1: Branding
     schoolCategory: "Private School",
+    governmentType: "", // NEW: For Govt Schools
     schoolName: "",
     tagline: "",
     schoolAddress: "",
@@ -52,9 +53,10 @@ export default function SettingsPage() {
     accountNumber: "",
     feeInstructions: "Please pay the fee before the 10th of every month to avoid late fines.",
     
-    // Tab 4: Admin Profile (Read-only email from Auth)
+    // Tab 4: Admin Profile
     adminName: "Principal / Admin",
-    adminPhone: ""
+    adminPhone: "",
+    adminPhoto: "" // NEW: Admin Profile Picture
   });
 
   // Fetch Existing Settings on Mount
@@ -72,7 +74,17 @@ export default function SettingsPage() {
   }, [user]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    setSettings({ ...settings, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    let newSettings = { ...settings, [name]: value };
+
+    // --- MAGIC LOGIC: Auto Tagline for Punjab Govt ---
+    if (name === "governmentType" && value === "Government of Punjab") {
+      newSettings.tagline = "سرکاری سکول ،معیاری سکول";
+    } else if (name === "schoolCategory" && value !== "Government School") {
+      newSettings.governmentType = ""; // Reset govt type if changed to Private
+    }
+
+    setSettings(newSettings);
   };
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, fieldName: string) => {
@@ -174,28 +186,51 @@ export default function SettingsPage() {
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                  
+                  {/* Category Dropdown */}
                   <div className="space-y-2">
                     <label className="text-xs font-bold text-slate-400 uppercase">School Category</label>
                     <select name="schoolCategory" value={settings.schoolCategory} onChange={handleInputChange} className="w-full bg-slate-50 outline-none rounded-xl px-4 py-3 text-sm border font-medium text-slate-700">
-                      <option>Private School</option><option>Government School</option><option>Academy / Institute</option>
+                      <option>Private School</option>
+                      <option>Government School</option>
+                      <option>Academy / Institute</option>
                     </select>
                   </div>
+
+                  {/* --- NEW: DYNAMIC GOVT TYPE DROPDOWN --- */}
+                  {settings.schoolCategory === "Government School" ? (
+                    <div className="space-y-2 animate-fade-in">
+                      <label className="text-xs font-bold text-[#3ac47d] uppercase">Government Type</label>
+                      <select name="governmentType" value={settings.governmentType} onChange={handleInputChange} className="w-full bg-[#f0fdf4] outline-none rounded-xl px-4 py-3 text-sm border border-green-200 font-bold text-green-700">
+                        <option value="">-- Select Govt Type --</option>
+                        <option value="Government of Punjab">Government of Punjab</option>
+                        <option value="Federal Government">Federal Government</option>
+                      </select>
+                    </div>
+                  ) : (
+                    <div className="hidden sm:block"></div> /* Empty div to keep grid aligned */
+                  )}
+
                   <div className="space-y-2">
                     <label className="text-xs font-bold text-slate-400 uppercase">Registered School Name</label>
-                    <input name="schoolName" value={settings.schoolName} onChange={handleInputChange} placeholder="e.g. EduPilot High School" className="w-full bg-slate-50 outline-none rounded-xl px-4 py-3 text-sm border font-bold text-[#0F172A]" />
+                    <input name="schoolName" value={settings.schoolName} onChange={handleInputChange} placeholder="e.g. Govt High School" className="w-full bg-slate-50 outline-none rounded-xl px-4 py-3 text-sm border font-bold text-[#0F172A]" />
                   </div>
+                  
                   <div className="space-y-2 sm:col-span-2">
                     <label className="text-xs font-bold text-slate-400 uppercase">Tagline / Subtitle</label>
-                    <input name="tagline" value={settings.tagline} onChange={handleInputChange} placeholder="e.g. A Project of Education Foundation" className="w-full bg-slate-50 outline-none rounded-xl px-4 py-3 text-sm border" />
+                    <input name="tagline" value={settings.tagline} onChange={handleInputChange} placeholder="e.g. A Project of Education Foundation" className="w-full bg-slate-50 outline-none rounded-xl px-4 py-3 text-sm border" dir={settings.tagline.includes("سرکاری") ? "rtl" : "ltr"} />
                   </div>
+                  
                   <div className="space-y-2 sm:col-span-2">
                     <label className="text-xs font-bold text-slate-400 uppercase">Official Campus Address</label>
                     <input name="schoolAddress" value={settings.schoolAddress} onChange={handleInputChange} placeholder="Main Campus, City, Country" className="w-full bg-slate-50 outline-none rounded-xl px-4 py-3 text-sm border" />
                   </div>
+                  
                   <div className="space-y-2">
                     <label className="text-xs font-bold text-slate-400 uppercase">Contact Number</label>
                     <input name="schoolPhone" value={settings.schoolPhone} onChange={handleInputChange} placeholder="+92 300 0000000" className="w-full bg-slate-50 outline-none rounded-xl px-4 py-3 text-sm border" />
                   </div>
+                  
                   <div className="space-y-2">
                     <label className="text-xs font-bold text-slate-400 uppercase">Principal Name</label>
                     <input name="principalName" value={settings.principalName} onChange={handleInputChange} placeholder="Name of Head" className="w-full bg-slate-50 outline-none rounded-xl px-4 py-3 text-sm border" />
@@ -309,7 +344,28 @@ export default function SettingsPage() {
               <div className="space-y-8 animate-fade-in-down">
                 <div className="border-b border-slate-100 pb-4">
                   <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2"><ShieldCheck size={20} className="text-[#3ac47d]"/> Admin Profile & Security</h2>
-                  <p className="text-sm text-slate-500 mt-1">Manage your personal admin account access.</p>
+                  <p className="text-sm text-slate-500 mt-1">Manage your personal admin account access and profile picture.</p>
+                </div>
+
+                {/* --- NEW: ADMIN PROFILE PICTURE UPLOAD --- */}
+                <div className="flex items-center gap-6 mb-6 bg-slate-50 p-5 rounded-2xl border border-slate-100">
+                  <div className="w-20 h-20 bg-white rounded-full border-2 border-slate-200 overflow-hidden shrink-0 flex items-center justify-center shadow-sm relative group">
+                    {settings.adminPhoto ? (
+                      <img src={settings.adminPhoto} className="w-full h-full object-cover"/>
+                    ) : (
+                      <User size={32} className="text-slate-300"/>
+                    )}
+                    {/* Hover Overlay */}
+                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
+                      <PenTool size={16} className="text-white" />
+                    </div>
+                    <input type="file" accept="image/*" onChange={(e) => handleImageUpload(e, "adminPhoto")} className="absolute inset-0 opacity-0 cursor-pointer w-full h-full" title="Change Profile Picture" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-slate-800">Profile Picture</h3>
+                    <p className="text-xs text-slate-500 mt-0.5">Update your dashboard avatar.</p>
+                    <p className="text-[10px] text-slate-400 mt-1">JPG or PNG. Max size 500KB.</p>
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
