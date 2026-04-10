@@ -1,279 +1,254 @@
 "use client";
 import React, { useState, useEffect } from "react";
-import { collection, addDoc, onSnapshot, query, where } from "firebase/firestore";
+import { collection, addDoc, serverTimestamp, onSnapshot, query, orderBy, deleteDoc, doc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { ClipboardEdit, Save, CheckCircle2, AlertCircle } from "lucide-react";
+import { CheckCircle2, AlertCircle, FileSignature, Search, Calculator, Trash2, History, BookOpen } from "lucide-react";
 
-export default function MarksEntryPage() {
+// مضامین اور ان کے کل نمبر (آسانی کے لیے)
+const SUBJECTS_TEMPLATE = [
+  { id: "english", name: "English", total: 100 },
+  { id: "urdu", name: "Urdu", total: 100 },
+  { id: "math", name: "Mathematics", total: 100 },
+  { id: "science", name: "Science / General Science", total: 100 },
+  { id: "computer", name: "Computer / Arts", total: 100 },
+  { id: "islamiat", name: "Islamic Studies", total: 50 },
+];
+
+export default function MarksPage() {
+  // Vercel SSR Bypass
+  const [isMounted, setIsMounted] = useState(false);
+
+  // Data States
   const [students, setStudents] = useState<any[]>([]);
+  const [recentMarks, setRecentMarks] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
+
+  // Filters State
   const [selectedTerm, setSelectedTerm] = useState("1st Term");
   const [selectedClass, setSelectedClass] = useState("");
-  const [selectedStudent, setSelectedStudent] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [successMsg, setSuccessMsg] = useState("");
+  const [selectedSection, setSelectedSection] = useState("");
+  const [selectedStudentId, setSelectedStudentId] = useState("");
 
-  const [marksData, setMarksData] = useState<any[]>([]);
+  // Marks State
+  const [marks, setMarks] = useState<Record<string, string>>({});
 
-  // 1. Fetch Students Automatically
+  // 1. Fetch Data on Mount
   useEffect(() => {
-    const unsub = onSnapshot(collection(db, "students"), (snapshot) => {
-      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setStudents(data);
+    setIsMounted(true);
+
+    const unsubStudents = onSnapshot(query(collection(db, "students"), orderBy("rollNumber", "asc")), (snapshot) => {
+      setStudents(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     });
-    return () => unsub();
+
+    const unsubMarks = onSnapshot(query(collection(db, "marks"), orderBy("createdAt", "desc")), (snapshot) => {
+      setRecentMarks(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    });
+
+    return () => { unsubStudents(); unsubMarks(); };
   }, []);
 
-  // 2. Dynamic Subject Generator based on Class
-  useEffect(() => {
-    if (!selectedClass) {
-      setMarksData([]);
-      return;
-    }
+  // 2. Cascading Dropdowns Logic
+  const availableClasses = Array.from(new Set(students.map(s => s.classGrade))).filter(Boolean);
+  const availableSections = Array.from(new Set(students.filter(s => s.classGrade === selectedClass).map(s => s.section))).filter(Boolean);
+  const availableStudents = students.filter(s => s.classGrade === selectedClass && s.section === selectedSection);
+  const activeStudent = students.find(s => s.id === selectedStudentId);
 
-    let subjs: any[] = [];
-    const addComp = (name: string) => subjs.push({ id: Math.random(), subject: name, type: "Compulsory", total: 100, obtained: "" });
-    const addElective = (options: string[], label: string) => subjs.push({ id: Math.random(), subject: "", type: "Elective", options, label, total: 100, obtained: "" });
+  // 3. Handlers & Calculations
+  const handleMarkChange = (subjectId: string, value: string) => {
+    setMarks(prev => ({ ...prev, [subjectId]: value }));
+  };
 
-    const islamiatOptions = ["Islamiyat", "Religious Education"];
-
-    if (["1", "2", "3"].includes(selectedClass)) {
-      ["Urdu", "English", "Mathematics", "General Knowledge", "Nazra Quran"].forEach(addComp);
-      addElective(islamiatOptions, "Select Religion Sub");
-    } 
-    else if (["4", "5"].includes(selectedClass)) {
-      ["Urdu", "English", "Mathematics", "General Science", "Social Studies", "Nazra Quran"].forEach(addComp);
-      addElective(islamiatOptions, "Select Religion Sub");
-    } 
-    else if (["6", "7", "8"].includes(selectedClass)) {
-      ["Urdu", "English", "Mathematics", "General Science", "History", "Geography", "Computer Education", "Tarjuma-tul-Quran"].forEach(addComp);
-      addElective(islamiatOptions, "Select Religion Sub");
-      addElective(["Arabic", "Persian", "Punjabi", "Agriculture", "Home Economics", "Fine Arts"], "Select Elective");
-    } 
-    else if (selectedClass === "9") {
-      ["Urdu", "English", "Tarjuma-tul-Quran"].forEach(addComp);
-      addElective(islamiatOptions, "Select Religion/Pak Studies");
-      addElective(["Mathematics (Science)", "General Mathematics"], "Select Math");
-      const highElectives = ["Physics", "Chemistry", "Biology", "Computer Science", "General Science", "Civics", "Economics", "Education", "Advanced Urdu", "Advanced Punjabi"];
-      addElective(highElectives, "Elective 1");
-      addElective(highElectives, "Elective 2");
-      addElective(highElectives, "Elective 3");
-    } 
-    else if (selectedClass === "10") {
-      ["Urdu", "English", "Pakistan Studies", "Tarjuma-tul-Quran"].forEach(addComp);
-      addElective(["Mathematics (Science)", "General Mathematics"], "Select Math");
-      const highElectives = ["Physics", "Chemistry", "Biology", "Computer Science", "General Science", "Civics", "Economics", "Education", "Advanced Urdu", "Advanced Punjabi"];
-      addElective(highElectives, "Elective 1");
-      addElective(highElectives, "Elective 2");
-      addElective(highElectives, "Elective 3");
-    }
-
-    setMarksData(subjs);
-  }, [selectedClass]);
-
-  // Handle Mark Inputs
-  const handleMarkChange = (id: number, value: string) => {
-    // Only allow numbers and empty string
-    if (value !== "" && (isNaN(Number(value)) || Number(value) < 0 || Number(value) > 100)) return;
+  const calculateTotal = () => {
+    let obtained = 0;
+    let max = 0;
+    SUBJECTS_TEMPLATE.forEach(sub => {
+      max += sub.total;
+      obtained += Number(marks[sub.id]) || 0;
+    });
+    const percentage = max > 0 ? ((obtained / max) * 100).toFixed(1) : "0";
     
-    setMarksData(marksData.map(m => m.id === id ? { ...m, obtained: value } : m));
+    let grade = "F";
+    const p = Number(percentage);
+    if (p >= 80) grade = "A+";
+    else if (p >= 70) grade = "A";
+    else if (p >= 60) grade = "B";
+    else if (p >= 50) grade = "C";
+    else if (p >= 40) grade = "D";
+
+    return { obtained, max, percentage, grade };
   };
 
-  // Handle Elective Selection
-  const handleSubjectSelect = (id: number, value: string) => {
-    setMarksData(marksData.map(m => m.id === id ? { ...m, subject: value } : m));
-  };
+  const handleSaveMarks = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!activeStudent) return setErrorMsg("Please select a student.");
+    
+    setLoading(true); setErrorMsg(""); setSuccess(false);
 
-  // 3. Save Final Result (Only Filled Subjects)
-  const handleSaveResult = async () => {
-    if (!selectedStudent) {
-      alert("Please select a student first.");
-      return;
-    }
+    const calc = calculateTotal();
 
-    // MAGIC FILTER: Only save subjects that have a name AND obtained is NOT empty (allows "0")
-    const validMarks = marksData.filter(m => m.subject !== "" && m.obtained !== "");
-
-    if (validMarks.length === 0) {
-      alert("Please enter marks for at least one subject.");
-      return;
-    }
-
-    setLoading(true);
     try {
-      let totalMax = 0;
-      let totalObt = 0;
-
-      validMarks.forEach(m => {
-        totalMax += m.total;
-        totalObt += Number(m.obtained);
+      await addDoc(collection(db, "marks"), {
+        studentId: activeStudent.id,
+        studentName: activeStudent.name,
+        rollNumber: activeStudent.rollNumber,
+        classGrade: activeStudent.classGrade,
+        section: activeStudent.section || "",
+        term: selectedTerm,
+        marks: marks,
+        totalObtained: calc.obtained,
+        totalMax: calc.max,
+        percentage: calc.percentage,
+        grade: calc.grade,
+        createdAt: serverTimestamp()
       });
 
-      const percentage = (totalObt / totalMax) * 100;
-      let grade = "F";
-      if (percentage >= 80) grade = "A+";
-      else if (percentage >= 70) grade = "A";
-      else if (percentage >= 60) grade = "B";
-      else if (percentage >= 50) grade = "C";
-      else if (percentage >= 40) grade = "D";
-
-      const studentInfo = students.find(s => s.id === selectedStudent);
-
-      const resultPayload = {
-        studentId: studentInfo.id,
-        studentName: studentInfo.fullName,
-        admNo: studentInfo.admNo,
-        studentClass: selectedClass,
-        term: selectedTerm,
-        date: new Date().toISOString(),
-        subjects: validMarks, // ONLY SAVING THE FILLED ONES!
-        grandTotal: totalMax,
-        obtainedTotal: totalObt,
-        percentage: percentage.toFixed(2),
-        grade: grade
-      };
-
-      await addDoc(collection(db, "marks"), resultPayload);
-      
-      setSuccessMsg("Marks saved successfully! Ready for printing.");
-      setTimeout(() => setSuccessMsg(""), 4000);
-      
-      // Reset inputs but keep class and student for fast entry
-      setMarksData(marksData.map(m => ({ ...m, obtained: "" })));
-      
+      setSuccess(true);
+      setMarks({}); // Reset marks
+      setTimeout(() => setSuccess(false), 3000);
     } catch (error) {
-      console.error("Error saving marks: ", error);
-      alert("Failed to save marks.");
+      setErrorMsg("Failed to save marks.");
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
-  // Filter students based on selected class
-  const classStudents = students.filter(s => s.studentClass === selectedClass);
+  const handleDeleteRecord = async (id: string) => {
+    if (window.confirm("Delete this mark sheet record?")) await deleteDoc(doc(db, "marks", id));
+  };
+
+  if (!isMounted) return null;
+
+  const currentCalc = calculateTotal();
 
   return (
-    <div className="animate-fade-in max-w-5xl mx-auto">
-      <div className="mb-8 flex items-center gap-4">
-        <div className="bg-[#e8f8f0] p-3 rounded-xl">
-          <ClipboardEdit size={32} className="text-[#3ac47d]" />
-        </div>
+    <div className="animate-fade-in space-y-6 pb-20">
+      
+      {/* Header */}
+      <div className="flex justify-between items-end">
         <div>
-          <h1 className="text-3xl font-extrabold text-[#0F172A]">Smart Marks Engine</h1>
-          <p className="text-gray-500 font-medium mt-1">Dynamic grading system aligned with Pakistan's National Curriculum.</p>
+          <h1 className="text-2xl font-extrabold text-[#0F172A] tracking-tight">Smart Marks Engine</h1>
+          <p className="text-sm text-slate-500 mt-1">Dynamic grading system connected to Central Database.</p>
+        </div>
+        <div className="bg-white px-4 py-2 rounded-xl shadow-sm border border-slate-100 flex items-center gap-2 font-bold text-sm text-slate-600">
+          <History size={18} /> {recentMarks.length} Records Saved
         </div>
       </div>
 
-      {successMsg && (
-        <div className="mb-6 bg-green-50 text-green-700 p-4 rounded-xl flex items-center gap-3 border border-green-200">
-          <CheckCircle2 size={20} />
-          <span className="font-bold">{successMsg}</span>
-        </div>
-      )}
-
-      {/* TOP FILTERS */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-8 grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div>
-          <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Examination Term</label>
-          <select value={selectedTerm} onChange={(e) => setSelectedTerm(e.target.value)} className="w-full bg-gray-50 border border-transparent focus:border-[#3ac47d] outline-none rounded-xl px-4 py-3 text-sm font-bold text-[#0F172A]">
-            <option>1st Term</option>
-            <option>2nd Term</option>
-            <option>Final Exams</option>
-          </select>
-        </div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         
-        <div>
-          <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Select Class</label>
-          <select value={selectedClass} onChange={(e) => {setSelectedClass(e.target.value); setSelectedStudent("");}} className="w-full bg-gray-50 border border-transparent focus:border-[#3ac47d] outline-none rounded-xl px-4 py-3 text-sm font-bold text-[#0F172A]">
-            <option value="">-- Choose Class --</option>
-            {[...Array(10)].map((_, i) => (
-              <option key={i+1} value={`${i+1}`}>Class {i+1}</option>
-            ))}
-          </select>
+        {/* LEFT COLUMN: Filters & Inputs */}
+        <div className="lg:col-span-2 space-y-6">
+          
+          <div className="bg-white rounded-3xl p-8 shadow-sm border border-gray-100">
+            <h2 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2"><FileSignature size={20} className="text-[#3ac47d]"/> Configure Assessment</h2>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-6 bg-slate-50 p-4 rounded-2xl border border-slate-100">
+              <select value={selectedTerm} onChange={(e) => setSelectedTerm(e.target.value)} className="w-full bg-white outline-none rounded-xl px-4 py-3 text-sm border font-bold text-[#0F172A]">
+                <option>1st Term</option><option>2nd Term</option><option>Final Term</option>
+              </select>
+              
+              <select value={selectedClass} onChange={(e) => { setSelectedClass(e.target.value); setSelectedSection(""); setSelectedStudentId(""); }} className="w-full bg-white outline-none rounded-xl px-4 py-3 text-sm border">
+                <option value="" disabled>Select Class</option>
+                {availableClasses.map(c => <option key={c as string} value={c as string}>{c as string}</option>)}
+              </select>
+              
+              <select value={selectedSection} onChange={(e) => { setSelectedSection(e.target.value); setSelectedStudentId(""); }} disabled={!selectedClass} className="w-full bg-white outline-none rounded-xl px-4 py-3 text-sm border disabled:opacity-50">
+                <option value="">Section</option>
+                {availableSections.map(s => <option key={s as string} value={s as string}>{s as string}</option>)}
+              </select>
+
+              <select required value={selectedStudentId} onChange={(e) => setSelectedStudentId(e.target.value)} disabled={!selectedSection} className="w-full bg-white outline-none rounded-xl px-4 py-3 text-sm border disabled:opacity-50 font-bold text-[#3ac47d]">
+                <option value="" disabled>-- Select Student --</option>
+                {availableStudents.map(s => <option key={s.id} value={s.id}>{s.name} (Roll: {s.rollNumber})</option>)}
+              </select>
+            </div>
+
+            {!activeStudent ? (
+               <div className="h-48 border-2 border-dashed border-slate-200 rounded-2xl flex flex-col items-center justify-center text-slate-400">
+                 <BookOpen size={40} className="mb-3 opacity-50" />
+                 <p className="font-medium text-sm">Select a Student to start entering marks.</p>
+               </div>
+            ) : (
+               <form onSubmit={handleSaveMarks} className="space-y-6 animate-fade-in-down">
+                 {success && <div className="bg-green-50 text-green-700 p-4 rounded-xl flex gap-3"><CheckCircle2/> Marks saved successfully!</div>}
+                 {errorMsg && <div className="bg-red-50 text-red-600 p-4 rounded-xl flex gap-3"><AlertCircle/> {errorMsg}</div>}
+
+                 <div className="grid grid-cols-12 gap-4 text-xs font-bold text-slate-400 uppercase tracking-widest px-4 pb-2 border-b border-slate-100">
+                   <div className="col-span-6">Subject</div>
+                   <div className="col-span-3 text-center">Total Marks</div>
+                   <div className="col-span-3 text-center">Obtained</div>
+                 </div>
+
+                 <div className="space-y-3">
+                   {SUBJECTS_TEMPLATE.map(sub => (
+                     <div key={sub.id} className="grid grid-cols-12 gap-4 items-center px-4 py-2 hover:bg-slate-50 rounded-xl transition-colors">
+                       <div className="col-span-6 font-bold text-slate-700">{sub.name}</div>
+                       <div className="col-span-3 text-center text-slate-500 font-medium">{sub.total}</div>
+                       <div className="col-span-3">
+                         <input 
+                           type="number" 
+                           min="0" max={sub.total}
+                           value={marks[sub.id] || ""}
+                           onChange={(e) => handleMarkChange(sub.id, e.target.value)}
+                           className="w-full bg-white outline-none rounded-lg px-3 py-2 text-sm border border-slate-200 text-center focus:ring-2 focus:ring-[#3ac47d]/50 font-bold" 
+                         />
+                       </div>
+                     </div>
+                   ))}
+                 </div>
+
+                 {/* Live Result Calculation */}
+                 <div className="bg-[#0F172A] rounded-2xl p-6 text-white mt-6 grid grid-cols-3 gap-4 text-center">
+                   <div><p className="text-[10px] text-slate-400 uppercase tracking-widest">Total</p><p className="text-xl font-black">{currentCalc.obtained} <span className="text-sm font-medium text-slate-500">/ {currentCalc.max}</span></p></div>
+                   <div><p className="text-[10px] text-slate-400 uppercase tracking-widest">Percentage</p><p className="text-xl font-black text-blue-400">{currentCalc.percentage}%</p></div>
+                   <div><p className="text-[10px] text-slate-400 uppercase tracking-widest">Grade</p><p className="text-xl font-black text-[#3ac47d]">{currentCalc.grade}</p></div>
+                 </div>
+
+                 <button disabled={loading} type="submit" className="w-full bg-[#3ac47d] hover:bg-[#2eaa6a] text-white py-4 rounded-xl font-bold flex justify-center gap-2 shadow-md transition-all">
+                   {loading ? "Processing..." : "Save Mark Sheet"}
+                 </button>
+               </form>
+            )}
+          </div>
         </div>
 
-        <div>
-          <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Select Student</label>
-          <select value={selectedStudent} onChange={(e) => setSelectedStudent(e.target.value)} disabled={!selectedClass} className="w-full bg-gray-50 border border-transparent focus:border-[#3ac47d] outline-none rounded-xl px-4 py-3 text-sm font-bold text-[#0F172A] disabled:opacity-50">
-            <option value="">-- Choose Student --</option>
-            {classStudents.map(s => (
-              <option key={s.id} value={s.id}>{s.fullName} (Roll: {s.rollNo || s.admNo})</option>
-            ))}
-          </select>
+        {/* RIGHT COLUMN: Recent Entries Ledger */}
+        <div className="lg:col-span-1">
+          <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 h-full max-h-[800px] flex flex-col">
+             <div className="flex items-center justify-between mb-4"><h2 className="text-lg font-bold text-slate-800">Recent Entries</h2></div>
+             
+             <div className="flex-1 overflow-y-auto custom-scrollbar space-y-3">
+               {recentMarks.length === 0 ? (
+                 <div className="flex flex-col items-center justify-center h-48 text-center opacity-60">
+                   <Calculator size={40} className="text-slate-300 mb-3" />
+                   <p className="text-sm font-medium text-slate-500">No marks entered yet.</p>
+                 </div>
+               ) : (
+                 recentMarks.map((record) => (
+                   <div key={record.id} className="flex flex-col gap-2 p-4 bg-slate-50 hover:bg-[#f0fdf4] transition-all rounded-xl border border-slate-100/50 group relative">
+                     <div className="flex justify-between items-start">
+                       <div>
+                         <p className="text-sm font-bold text-[#0F172A]">{record.studentName}</p>
+                         <p className="text-[10px] text-slate-500 mt-0.5">{record.classGrade} {record.section} • {record.term}</p>
+                       </div>
+                       <div className="text-right">
+                         <span className="font-black text-[#3ac47d] text-lg">{record.percentage}%</span>
+                         <p className="text-[10px] font-bold text-slate-400">Grade: {record.grade}</p>
+                       </div>
+                     </div>
+                     <button onClick={() => handleDeleteRecord(record.id)} className="absolute bottom-3 right-3 p-1.5 text-red-500 hover:bg-red-100 rounded-md opacity-0 group-hover:opacity-100 transition-opacity">
+                       <Trash2 size={14} />
+                     </button>
+                   </div>
+                 ))
+               )}
+             </div>
+          </div>
         </div>
+
       </div>
-
-      {/* MARKS ENTRY TABLE */}
-      {selectedClass && selectedStudent ? (
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className="bg-[#0F172A] px-6 py-4 flex items-center justify-between">
-            <h3 className="text-white font-bold tracking-wide">Enter Marks</h3>
-            <span className="text-[#3ac47d] text-sm font-medium flex items-center gap-2">
-              <AlertCircle size={16} /> Only filled subjects will be saved
-            </span>
-          </div>
-
-          <div className="p-6">
-            <div className="grid grid-cols-12 gap-4 mb-4 px-4 text-xs font-bold text-gray-400 uppercase tracking-wider">
-              <div className="col-span-6">Subject Name</div>
-              <div className="col-span-3 text-center">Total Marks</div>
-              <div className="col-span-3 text-center">Obtained Marks</div>
-            </div>
-
-            <div className="space-y-3">
-              {marksData.map((subj) => (
-                <div key={subj.id} className="grid grid-cols-12 gap-4 items-center bg-gray-50 rounded-xl p-2 hover:bg-gray-100 transition-colors">
-                  
-                  {/* Subject Name / Selection */}
-                  <div className="col-span-6 px-2">
-                    {subj.type === "Compulsory" ? (
-                      <span className="font-bold text-[#0F172A]">{subj.subject} <span className="text-[10px] ml-2 bg-gray-200 text-gray-500 px-2 py-0.5 rounded-full">Compulsory</span></span>
-                    ) : (
-                      <select 
-                        value={subj.subject} 
-                        onChange={(e) => handleSubjectSelect(subj.id, e.target.value)}
-                        className="w-full bg-white border border-gray-200 focus:border-[#3ac47d] outline-none rounded-lg px-3 py-2 text-sm font-medium text-[#0F172A]"
-                      >
-                        <option value="">-- {subj.label} --</option>
-                        {subj.options.map((opt: string) => <option key={opt} value={opt}>{opt}</option>)}
-                      </select>
-                    )}
-                  </div>
-
-                  {/* Total Marks (Locked) */}
-                  <div className="col-span-3">
-                    <input type="text" value={subj.total} readOnly className="w-full text-center bg-transparent border-none text-gray-500 font-bold outline-none" />
-                  </div>
-
-                  {/* Obtained Marks (No Spinners, Allow Empty) */}
-                  <div className="col-span-3">
-                    <input 
-                      type="number" 
-                      value={subj.obtained} 
-                      onChange={(e) => handleMarkChange(subj.id, e.target.value)}
-                      placeholder="--"
-                      className="w-full text-center bg-white border border-gray-200 focus:border-[#3ac47d] focus:ring-2 focus:ring-[#3ac47d]/20 outline-none rounded-lg py-2 font-bold text-[#0F172A] text-lg transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div className="mt-8 pt-6 border-t border-gray-100 flex justify-end">
-              <button 
-                onClick={handleSaveResult} 
-                disabled={loading}
-                className="bg-[#3ac47d] hover:bg-[#2eaa6a] text-white px-8 py-3.5 rounded-xl text-sm font-bold shadow-lg shadow-green-500/30 transition-all flex items-center gap-2"
-              >
-                {loading ? "Saving Records..." : <><Save size={18} /> Save & Finalize Result</>}
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : (
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-12 text-center">
-          <ClipboardEdit size={48} className="mx-auto text-gray-200 mb-4" />
-          <h3 className="text-lg font-bold text-gray-400">Select a Class and Student to start entering marks.</h3>
-        </div>
-      )}
     </div>
   );
 }
