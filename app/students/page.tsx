@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation"; // پروفائل پر جانے کے لیے
 import { collection, addDoc, serverTimestamp, onSnapshot, query, orderBy, deleteDoc, doc } from "firebase/firestore";
-import { db } from "../../lib/firebase"; 
+import { db } from "@/lib/firebase";
 import { UploadCloud, CheckCircle2, AlertCircle, Image as ImageIcon, Search, User as UserIcon, Edit2, Trash2, ChevronRight } from "lucide-react";
 
 const convertToBase64 = (file: File): Promise<string> => {
