@@ -1,6 +1,6 @@
 "use client";
 import React, { createContext, useContext, useEffect, useState } from "react";
-import { auth, db } from "../../lib/firebase"; 
+import { auth, db } from "@/lib/firebase"; // <-- Corrected Path
 import { onIdTokenChanged, User, signOut } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 
@@ -24,21 +24,17 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const unsubscribe = onIdTokenChanged(auth, async (firebaseUser) => {
       try {
         if (firebaseUser) {
-          // 1. Check if user exists in Firestore Database
           const userDocRef = doc(db, "users", firebaseUser.uid);
           const userDoc = await getDoc(userDocRef);
 
           if (userDoc.exists() && userDoc.data().role) {
-            // User is registered properly
             setRole(userDoc.data().role);
             setSchoolId(userDoc.data().schoolId || null);
           } else {
-            // THE FIX: Do not default to student! Mark them as unregistered.
             setRole("unregistered");
             setSchoolId(null);
           }
 
-          // 2. Create Vercel Cookie Session
           const idToken = await firebaseUser.getIdToken();
           await fetch('/api/auth/login', {
             method: 'POST',
@@ -48,7 +44,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
           setUser(firebaseUser);
         } else {
-          // User is logged out
           await fetch('/api/auth/logout', { method: 'POST' });
           setUser(null);
           setRole(null);
