@@ -27,26 +27,28 @@ export default function ClientWrapper({ children }: { children: React.ReactNode 
       // 2. اگر یوزر لاگ ان ہے
       else if (user && role) {
         
-        // --- A. اگر یوزر ڈیٹا بیس میں نہیں ہے (نئی رجسٹریشن یا ڈیلیٹ شدہ) ---
+        // --- A. Unregistered User (جس نے ابھی سکول رجسٹر نہیں کیا) ---
         if (role === "unregistered") {
-          if (pathname !== "/signup") {
-            router.push("/signup"); // زبردستی سائن اپ پر پھینکو
+          // THE FIX: اگر وہ لینڈنگ پیج (/) یا سائن اپ (/signup) پر ہے تو اسے مت چھیڑیں!
+          // صرف تب سائن اپ پر پھینکیں جب وہ کسی اور پیج (جیسے لاگ ان یا ڈیش بورڈ) پر جانے کی کوشش کرے۔
+          if (pathname !== "/" && pathname !== "/signup") {
+            router.push("/signup");
           }
         } 
         
-        // --- B. اگر یوزر رجسٹرڈ ہے (پراپر رول موجود ہے) ---
+        // --- B. Registered User (مکمل رجسٹرڈ یوزر) ---
         else {
-          // رجسٹرڈ بندہ دوبارہ لاگ ان پیج پر نہیں جا سکتا
-          if (pathname === "/login") {
+          // اگر رجسٹرڈ بندہ لاگ ان یا سائن اپ پیج کھولنے کی کوشش کرے تو اسے ڈیش بورڈ پر بھیج دو
+          if (pathname === "/login" || pathname === "/signup") {
             router.push("/dashboard");
           } 
-          // پرمیشنز چیک کریں
+          // اندرونی پیجز کی سیکیورٹی
           else if (!isPublicPage) {
             const userAllowedRoutes = allowedRoutes[role] || [];
             const hasAccess = userAllowedRoutes.some(route => pathname.startsWith(route));
 
             if (!hasAccess) {
-              router.push("/dashboard"); // اگر اجازت نہیں تو واپس ڈیش بورڈ پر
+              router.push("/dashboard");
             }
           }
         }
@@ -62,7 +64,7 @@ export default function ClientWrapper({ children }: { children: React.ReactNode 
     );
   }
 
-  // اگر پبلک پیج ہے یا بندہ ابھی رجسٹر نہیں ہوا تو سائیڈ بار (Main Menu) مت دکھاؤ
+  // لینڈنگ پیج، پبلک پیجز، یا ان رجسٹرڈ یوزرز کے لیے سائیڈ بار (Main Menu) مت دکھاؤ
   if (isPublicPage || role === "unregistered") {
     return <>{children}</>;
   }
