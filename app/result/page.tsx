@@ -136,93 +136,102 @@ export default function ResultPage() {
 
       {/* --- OFFICIAL RESULT CARD MODAL (Printable Area) --- */}
       {selectedResult && (
-        <div id="print-overlay" className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-3xl w-full max-w-3xl shadow-2xl overflow-hidden relative print:rounded-none print:shadow-none print:max-w-none print:w-full print:border-none p-10 print:p-0">
+        <div id="print-overlay" className="fixed inset-0 z-[99999] bg-black/80 backdrop-blur-sm overflow-y-auto print:overflow-visible print:bg-white print:static">
+          
+          {/* Changed items-center to items-start so it scrolls properly if it's too tall */}
+          <div className="min-h-screen flex items-start justify-center p-4 sm:p-8 print:p-0 print:block">
             
-            {/* Modal Controls (Hidden in Print) */}
-            <div className="absolute top-4 right-4 flex gap-2 print:hidden z-10">
-              <button onClick={() => window.print()} className="bg-[#3ac47d] text-white px-5 py-2.5 rounded-lg text-sm font-bold flex items-center gap-2 shadow-md hover:bg-[#2eaa6a]"><Printer size={18}/> Print Card</button>
-              <button onClick={() => setSelectedResult(null)} className="bg-slate-800 text-white w-10 h-10 rounded-lg flex items-center justify-center shadow-md hover:bg-red-500 transition-colors"><X size={20}/></button>
-            </div>
-
-            {/* --- THE A4 REPORT CARD DESIGN --- */}
-            <div className="print:w-full print:mx-auto print:max-w-[210mm] print:px-8 print:py-6">
+            <div className="bg-white rounded-3xl w-full max-w-3xl shadow-2xl relative mt-4 mb-4 sm:mt-10 sm:mb-10 p-6 sm:p-10 print:m-0 print:p-0 print:rounded-none print:shadow-none print:border-none">
               
-              {/* School Header with Logo */}
-              <div className="flex justify-between items-center border-b-[3px] border-black pb-6 mb-8 mt-2">
-                <div className="w-24 h-24 bg-slate-50 border-2 border-black rounded-full flex items-center justify-center shrink-0 shadow-sm">
-                  <Award size={40} className="text-black" />
-                </div>
-                <div className="text-center flex-1 px-4">
-                  <h1 className="text-3xl sm:text-4xl font-black text-black uppercase tracking-widest">{schoolDetails.name}</h1>
-                  <p className="text-sm font-bold text-gray-600 uppercase tracking-widest mt-1.5">Official Report Card</p>
-                  <p className="text-xs text-gray-500 uppercase mt-1">{schoolDetails.address}</p>
-                </div>
-                <div className="w-24 h-24 flex items-center justify-center shrink-0">
-                  <div className="bg-black text-white px-3 py-2.5 text-xs font-bold uppercase text-center rounded-lg w-full shadow-md">{selectedResult.resultRecord.term}</div>
-                </div>
+              {/* Modal Controls (Hidden in Print) - Now safely inside the scrolling area */}
+              <div className="flex justify-end gap-3 mb-6 print:hidden border-b border-slate-100 pb-4">
+                <button onClick={() => window.print()} className="bg-[#3ac47d] text-white px-5 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 shadow-md hover:bg-[#2eaa6a] transition-colors">
+                  <Printer size={18}/> Print Card
+                </button>
+                <button onClick={() => setSelectedResult(null)} className="bg-slate-800 text-white px-5 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 shadow-md hover:bg-red-500 transition-colors">
+                  <X size={18}/> Close
+                </button>
               </div>
 
-              {/* Student Info & Photo Layout */}
-              <div className="flex justify-between items-end mb-8 border-b-2 border-gray-200 pb-6">
-                <div className="grid grid-cols-2 gap-x-8 gap-y-5 text-sm flex-1">
-                  <div><span className="font-bold text-gray-500 uppercase text-xs">Student Name:</span> <p className="font-black text-xl uppercase text-black mt-1">{selectedResult.name}</p></div>
-                  <div><span className="font-bold text-gray-500 uppercase text-xs">Roll Number:</span> <p className="font-black text-xl text-black mt-1">{selectedResult.rollNumber}</p></div>
-                  <div><span className="font-bold text-gray-500 uppercase text-xs">Father's Name:</span> <p className="font-bold text-sm uppercase mt-0.5">{selectedResult.fatherName || "N/A"}</p></div>
-                  <div><span className="font-bold text-gray-500 uppercase text-xs">Date of Birth:</span> <p className="font-bold text-sm mt-0.5">{selectedResult.dob || "N/A"}</p></div>
-                  <div><span className="font-bold text-gray-500 uppercase text-xs">Class / Section:</span> <p className="font-bold text-sm mt-0.5">{selectedResult.classGrade} - {selectedResult.section}</p></div>
-                  <div><span className="font-bold text-gray-500 uppercase text-xs">Academic Level:</span> <p className="font-bold text-sm mt-0.5">{selectedResult.resultRecord.level}</p></div>
-                </div>
+              {/* --- THE A4 REPORT CARD DESIGN --- */}
+              <div className="print:w-full print:mx-auto print:max-w-[210mm] print:px-8 print:py-6">
                 
-                {/* Passport Size Picture */}
-                <div className="w-32 h-36 border-[3px] border-black rounded-lg overflow-hidden shrink-0 ml-6 flex items-center justify-center bg-gray-50 shadow-md">
-                  {selectedResult.photoBase64 ? (
-                    <img src={selectedResult.photoBase64} className="w-full h-full object-cover" />
-                  ) : (
-                    <User size={50} className="text-gray-300" />
-                  )}
+                {/* School Header with Logo */}
+                <div className="flex justify-between items-center border-b-[3px] border-black pb-6 mb-8 mt-2">
+                  <div className="w-24 h-24 bg-slate-50 border-2 border-black rounded-full flex items-center justify-center shrink-0 shadow-sm">
+                    <Award size={40} className="text-black" />
+                  </div>
+                  <div className="text-center flex-1 px-4">
+                    <h1 className="text-3xl sm:text-4xl font-black text-black uppercase tracking-widest">{schoolDetails.name}</h1>
+                    <p className="text-sm font-bold text-gray-600 uppercase tracking-widest mt-1.5">Official Report Card</p>
+                    <p className="text-xs text-gray-500 uppercase mt-1">{schoolDetails.address}</p>
+                  </div>
+                  <div className="w-24 h-24 flex items-center justify-center shrink-0">
+                    <div className="bg-black text-white px-3 py-2.5 text-[11px] font-bold uppercase text-center rounded-lg w-full shadow-md leading-tight">{selectedResult.resultRecord.term}</div>
+                  </div>
                 </div>
-              </div>
 
-              {/* Marks Table */}
-              <table className="w-full border-collapse border-2 border-black mb-8 text-sm">
-                <thead>
-                  <tr className="bg-gray-100">
-                    <th className="border-2 border-black py-3 px-4 text-left font-black uppercase text-sm tracking-wider">Subjects</th>
-                    <th className="border-2 border-black py-3 px-4 text-center font-black uppercase text-sm w-32 tracking-wider">Total</th>
-                    <th className="border-2 border-black py-3 px-4 text-center font-black uppercase text-sm w-32 tracking-wider">Obtained</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {Object.entries(selectedResult.resultRecord.marks).map(([subject, mark]) => (
-                    <tr key={subject}>
-                      <td className="border-2 border-black py-2.5 px-4 font-bold text-gray-800 text-sm uppercase">{subject}</td>
-                      <td className="border-2 border-black py-2.5 px-4 text-center text-sm font-bold text-gray-600">100</td>
-                      <td className="border-2 border-black py-2.5 px-4 text-center font-black text-base">{mark as string}</td>
+                {/* Student Info & Photo Layout */}
+                <div className="flex justify-between items-end mb-8 border-b-2 border-gray-200 pb-6">
+                  <div className="grid grid-cols-2 gap-x-8 gap-y-5 text-sm flex-1">
+                    <div><span className="font-bold text-gray-500 uppercase text-xs">Student Name:</span> <p className="font-black text-xl uppercase text-black mt-1">{selectedResult.name}</p></div>
+                    <div><span className="font-bold text-gray-500 uppercase text-xs">Roll Number:</span> <p className="font-black text-xl text-black mt-1">{selectedResult.rollNumber}</p></div>
+                    <div><span className="font-bold text-gray-500 uppercase text-xs">Father's Name:</span> <p className="font-bold text-sm uppercase mt-0.5">{selectedResult.fatherName || "N/A"}</p></div>
+                    <div><span className="font-bold text-gray-500 uppercase text-xs">Date of Birth:</span> <p className="font-bold text-sm mt-0.5">{selectedResult.dob || "N/A"}</p></div>
+                    <div><span className="font-bold text-gray-500 uppercase text-xs">Class / Section:</span> <p className="font-bold text-sm mt-0.5">{selectedResult.classGrade} - {selectedResult.section}</p></div>
+                    <div><span className="font-bold text-gray-500 uppercase text-xs">Academic Level:</span> <p className="font-bold text-sm mt-0.5">{selectedResult.resultRecord.level}</p></div>
+                  </div>
+                  
+                  {/* Passport Size Picture */}
+                  <div className="w-32 h-36 border-[3px] border-black rounded-lg overflow-hidden shrink-0 ml-6 flex items-center justify-center bg-gray-50 shadow-md">
+                    {selectedResult.photoBase64 ? (
+                      <img src={selectedResult.photoBase64} className="w-full h-full object-cover" />
+                    ) : (
+                      <User size={50} className="text-gray-300" />
+                    )}
+                  </div>
+                </div>
+
+                {/* Marks Table */}
+                <table className="w-full border-collapse border-2 border-black mb-8 text-sm">
+                  <thead>
+                    <tr className="bg-gray-100">
+                      <th className="border-2 border-black py-3 px-4 text-left font-black uppercase text-sm tracking-wider">Subjects</th>
+                      <th className="border-2 border-black py-3 px-4 text-center font-black uppercase text-sm w-32 tracking-wider">Total</th>
+                      <th className="border-2 border-black py-3 px-4 text-center font-black uppercase text-sm w-32 tracking-wider">Obtained</th>
                     </tr>
-                  ))}
-                  <tr className="bg-gray-200 font-black">
-                    <td className="border-2 border-black py-4 px-4 text-right uppercase tracking-widest text-sm">Grand Total</td>
-                    <td className="border-2 border-black py-4 px-4 text-center text-base">{selectedResult.resultRecord.totalMax}</td>
-                    <td className="border-2 border-black py-4 px-4 text-center text-xl">{selectedResult.resultRecord.totalObtained}</td>
-                  </tr>
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {Object.entries(selectedResult.resultRecord.marks).map(([subject, mark]) => (
+                      <tr key={subject}>
+                        <td className="border-2 border-black py-2.5 px-4 font-bold text-gray-800 text-sm uppercase">{subject}</td>
+                        <td className="border-2 border-black py-2.5 px-4 text-center text-sm font-bold text-gray-600">100</td>
+                        <td className="border-2 border-black py-2.5 px-4 text-center font-black text-base">{mark as string}</td>
+                      </tr>
+                    ))}
+                    <tr className="bg-gray-200 font-black">
+                      <td className="border-2 border-black py-4 px-4 text-right uppercase tracking-widest text-sm">Grand Total</td>
+                      <td className="border-2 border-black py-4 px-4 text-center text-base">{selectedResult.resultRecord.totalMax}</td>
+                      <td className="border-2 border-black py-4 px-4 text-center text-xl">{selectedResult.resultRecord.totalObtained}</td>
+                    </tr>
+                  </tbody>
+                </table>
 
-              {/* Grading Summary */}
-              <div className="flex justify-between items-center bg-gray-50 p-6 border-2 border-black rounded-xl print:rounded-none">
-                <div className="text-center w-1/3"><p className="text-xs font-bold text-gray-500 uppercase tracking-widest">Percentage</p><p className="text-3xl font-black mt-2 text-black">{selectedResult.resultRecord.percentage}%</p></div>
-                <div className="text-center w-1/3 border-x-2 border-black"><p className="text-xs font-bold text-gray-500 uppercase tracking-widest">2026 Grade</p><p className="text-5xl font-black text-black mt-1">{selectedResult.resultRecord.grade}</p></div>
-                <div className="text-center w-1/3"><p className="text-xs font-bold text-gray-500 uppercase tracking-widest">Remarks</p><p className="text-xl font-black uppercase tracking-widest mt-2 text-black">{selectedResult.resultRecord.grade === 'U' ? 'Needs Work' : 'Promoted'}</p></div>
+                {/* Grading Summary */}
+                <div className="flex justify-between items-center bg-gray-50 p-6 border-2 border-black rounded-xl print:rounded-none">
+                  <div className="text-center w-1/3"><p className="text-xs font-bold text-gray-500 uppercase tracking-widest">Percentage</p><p className="text-3xl font-black mt-2 text-black">{selectedResult.resultRecord.percentage}%</p></div>
+                  <div className="text-center w-1/3 border-x-2 border-black"><p className="text-xs font-bold text-gray-500 uppercase tracking-widest">2026 Grade</p><p className="text-5xl font-black text-black mt-1">{selectedResult.resultRecord.grade}</p></div>
+                  <div className="text-center w-1/3"><p className="text-xs font-bold text-gray-500 uppercase tracking-widest">Remarks</p><p className="text-xl font-black uppercase tracking-widest mt-2 text-black">{selectedResult.resultRecord.grade === 'U' ? 'Needs Work' : 'Promoted'}</p></div>
+                </div>
+
+                {/* Signatures */}
+                <div className="mt-20 flex justify-between items-end px-10">
+                  <div className="text-center"><div className="w-56 border-b-[3px] border-black mb-3"></div><p className="text-xs font-bold uppercase tracking-widest text-black">Class Teacher</p></div>
+                  <div className="text-center"><div className="w-56 border-b-[3px] border-black mb-3"></div><p className="text-xs font-bold uppercase tracking-widest text-black">Principal Signature</p></div>
+                </div>
+
+                <div className="mt-10 text-center text-[10px] text-gray-400 uppercase tracking-widest font-bold print:block hidden">System Generated Report Card - Aligned with IBCC 2026 Standards</div>
               </div>
-
-              {/* Signatures */}
-              <div className="mt-20 flex justify-between items-end px-10">
-                <div className="text-center"><div className="w-56 border-b-[3px] border-black mb-3"></div><p className="text-xs font-bold uppercase tracking-widest text-black">Class Teacher</p></div>
-                <div className="text-center"><div className="w-56 border-b-[3px] border-black mb-3"></div><p className="text-xs font-bold uppercase tracking-widest text-black">Principal Signature</p></div>
-              </div>
-
-              <div className="mt-10 text-center text-[10px] text-gray-400 uppercase tracking-widest font-bold print:block hidden">System Generated Report Card - Aligned with IBCC 2026 Standards</div>
             </div>
           </div>
         </div>
@@ -235,14 +244,14 @@ export default function ResultPage() {
           body {
             visibility: hidden !important;
           }
-          /* Show ONLY the print overlay and make it fill the screen absolutely */
+          /* Show ONLY the print overlay */
           #print-overlay {
             visibility: visible !important;
-            position: fixed !important;
+            position: absolute !important;
             left: 0 !important;
             top: 0 !important;
             width: 100vw !important;
-            height: 100vh !important;
+            min-height: 100vh !important;
             background: white !important;
             z-index: 999999 !important;
           }
@@ -250,7 +259,7 @@ export default function ResultPage() {
           #print-overlay * {
             visibility: visible !important;
           }
-          /* Standardize the paper size and margin */
+          /* Ensure it fits on a single A4 page */
           @page {
             size: A4 portrait;
             margin: 15mm; 
