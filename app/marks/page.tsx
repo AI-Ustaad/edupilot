@@ -36,8 +36,8 @@ const calculateGrade2026 = (percentage: number) => {
   if (percentage >= 71) return "B";
   if (percentage >= 61) return "C+";
   if (percentage >= 51) return "C";
-  if (percentage >= 40) return "D"; // Passing mark is now 40%
-  return "U"; // Fail / Ungraded
+  if (percentage >= 40) return "D"; 
+  return "U"; 
 };
 
 export default function MarksPage() {
@@ -48,7 +48,8 @@ export default function MarksPage() {
   const [success, setSuccess] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
 
-  const [selectedTerm, setSelectedTerm] = useState("1st Term");
+  // Default term set to SBA - 1st Term
+  const [selectedTerm, setSelectedTerm] = useState("SBA - 1st Term");
   const [selectedClass, setSelectedClass] = useState("");
   const [selectedSection, setSelectedSection] = useState("");
   const [selectedStudentId, setSelectedStudentId] = useState("");
@@ -87,7 +88,6 @@ export default function MarksPage() {
 
   // Handlers
   const handleMarkChange = (subjectName: string, value: string) => {
-    // Only allow manual entry, max 100
     if (value && Number(value) > 100) return;
     if (value && Number(value) < 0) return;
     setMarks(prev => ({ ...prev, [subjectName]: value }));
@@ -95,7 +95,6 @@ export default function MarksPage() {
 
   const handleElectiveChange = (index: number, value: string) => {
     const newElectives = [...selectedElectives];
-    // If subject was changed, clear its previous marks
     if (newElectives[index] !== value) {
       setMarks(prev => { const m = { ...prev }; delete m[newElectives[index]]; return m; });
     }
@@ -103,7 +102,6 @@ export default function MarksPage() {
     setSelectedElectives(newElectives);
   };
 
-  // The Calculator (Empty Subjects Filtered)
   const calculateResult = () => {
     let obtained = 0;
     let max = 0;
@@ -115,7 +113,7 @@ export default function MarksPage() {
       const m = marks[sub];
       if (m && m.trim() !== "" && !isNaN(Number(m))) {
         obtained += Number(m);
-        max += 100; // Each attempted subject carries 100 marks
+        max += 100; 
         validCount++;
       }
     });
@@ -137,7 +135,6 @@ export default function MarksPage() {
 
     setLoading(true); setErrorMsg(""); setSuccess(false);
 
-    // Save ONLY filled subjects
     const finalMarksRecord: Record<string, number> = {};
     const allActiveSubjects = [...compulsorySubjects, ...selectedElectives.filter(Boolean)];
     allActiveSubjects.forEach(sub => {
@@ -200,9 +197,21 @@ export default function MarksPage() {
             <h2 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2"><FileSignature size={20} className="text-[#3ac47d]"/> Configure Assessment</h2>
             
             <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-6 bg-slate-50 p-4 rounded-2xl border border-slate-100">
-              <select value={selectedTerm} onChange={(e) => setSelectedTerm(e.target.value)} className="w-full bg-white outline-none rounded-xl px-4 py-3 text-sm border font-bold text-[#0F172A]">
-                <option>1st Term</option><option>2nd Term</option><option>Final Term</option>
+              
+              {/* --- UPDATED: PROFESSIONAL EXAM CATEGORIES --- */}
+              <select value={selectedTerm} onChange={(e) => setSelectedTerm(e.target.value)} className="w-full bg-white outline-none rounded-xl px-4 py-3 text-sm border font-bold text-[#0F172A] cursor-pointer">
+                <optgroup label="School Based Assessment (SBA)">
+                  <option value="SBA - 1st Term">1st Term</option>
+                  <option value="SBA - 2nd Term">2nd Term</option>
+                  <option value="SBA - Final Term">Final Term</option>
+                </optgroup>
+                <optgroup label="Other Assessments">
+                  <option value="Monthly Test">Monthly Test</option>
+                  <option value="Pre-Board / Mock Exams">Pre-Board / Mock Exams</option>
+                  <option value="Admission Test">Admission Test</option>
+                </optgroup>
               </select>
+              
               <select value={selectedClass} onChange={(e) => { setSelectedClass(e.target.value); setSelectedSection(""); setSelectedStudentId(""); }} className="w-full bg-white outline-none rounded-xl px-4 py-3 text-sm border">
                 <option value="" disabled>Select Class</option>
                 {availableClasses.map(c => <option key={c as string} value={c as string}>{c as string}</option>)}
@@ -227,7 +236,6 @@ export default function MarksPage() {
                  {success && <div className="bg-green-50 text-green-700 p-4 rounded-xl flex gap-3"><CheckCircle2/> Marks saved successfully!</div>}
                  {errorMsg && <div className="bg-red-50 text-red-600 p-4 rounded-xl flex gap-3"><AlertCircle/> {errorMsg}</div>}
 
-                 {/* COMPULSORY SUBJECTS (Locked) */}
                  <div>
                    <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2"><Lock size={14}/> Compulsory Subjects ({currentLevel})</h3>
                    <div className="space-y-3">
@@ -236,7 +244,6 @@ export default function MarksPage() {
                          <div className="col-span-6 font-bold text-slate-700 pl-2">{sub}</div>
                          <div className="col-span-3 text-center text-slate-400 text-xs font-bold uppercase">100 Marks</div>
                          <div className="col-span-3">
-                           {/* Spinner Hidden by Tailwind classes */}
                            <input type="number" min="0" max="100" placeholder="-" value={marks[sub] || ""} onChange={(e) => handleMarkChange(sub, e.target.value)} className="w-full bg-white outline-none rounded-lg px-3 py-2 text-sm border border-slate-200 text-center focus:ring-2 focus:ring-[#3ac47d]/50 font-bold [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
                          </div>
                        </div>
@@ -244,7 +251,6 @@ export default function MarksPage() {
                    </div>
                  </div>
 
-                 {/* ELECTIVE SUBJECTS (Duplicate Proof) */}
                  {availableElectiveOptions.length > 0 && (
                    <div>
                      <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Elective Subjects (Max 3)</h3>
@@ -255,7 +261,7 @@ export default function MarksPage() {
                              <select value={selectedElectives[index]} onChange={(e) => handleElectiveChange(index, e.target.value)} className="w-full bg-white outline-none rounded-lg px-3 py-2 text-sm border border-slate-200 font-bold text-slate-700">
                                <option value="">-- Select Elective --</option>
                                {availableElectiveOptions
-                                 .filter(opt => !selectedElectives.includes(opt) || selectedElectives[index] === opt) // MAGIC FILTER
+                                 .filter(opt => !selectedElectives.includes(opt) || selectedElectives[index] === opt)
                                  .map(opt => <option key={opt} value={opt}>{opt}</option>)}
                              </select>
                            </div>
@@ -269,7 +275,6 @@ export default function MarksPage() {
                    </div>
                  )}
 
-                 {/* 2026 Grading Result Panel */}
                  <div className="bg-[#0F172A] rounded-2xl p-6 text-white mt-6 grid grid-cols-3 gap-4 text-center shadow-lg relative overflow-hidden">
                    <div className="absolute top-0 right-0 p-2 opacity-5"><Calculator size={100} /></div>
                    <div className="relative z-10"><p className="text-[10px] text-slate-400 uppercase tracking-widest">Total</p><p className="text-xl font-black">{calc.obtained} <span className="text-sm font-medium text-slate-500">/ {calc.max}</span></p></div>
@@ -285,7 +290,6 @@ export default function MarksPage() {
           </div>
         </div>
 
-        {/* RIGHT COLUMN: Ledger */}
         <div className="lg:col-span-1">
           <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 h-full max-h-[800px] flex flex-col">
              <div className="flex items-center justify-between mb-4"><h2 className="text-lg font-bold text-slate-800">Recent Entries</h2></div>
