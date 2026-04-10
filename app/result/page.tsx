@@ -55,82 +55,84 @@ export default function ResultPage() {
   if (!isMounted) return null;
 
   return (
-    <div className="animate-fade-in space-y-6 pb-20">
+    <div className="animate-fade-in pb-20 print:pb-0 print:bg-white">
       
-      {/* --- HEADER & CONTROLS --- */}
-      <div className="flex justify-between items-end">
-        <div>
-          <h1 className="text-2xl font-extrabold text-[#0F172A] tracking-tight">Exams & Grading</h1>
-          <p className="text-sm text-slate-500 mt-1">Smart Results Generation & Printing Engine.</p>
-        </div>
-      </div>
-
-      <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100">
-        <h2 className="text-sm font-bold text-[#3ac47d] uppercase tracking-widest mb-4 flex items-center gap-2"><Award size={16}/> Configure Result Board</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-100">
-          <select value={selectedTerm} onChange={(e) => setSelectedTerm(e.target.value)} className="w-full bg-white outline-none rounded-xl px-4 py-3 text-sm border font-bold text-[#0F172A] cursor-pointer">
-            <optgroup label="School Based Assessment (SBA)">
-              <option value="SBA - 1st Term">1st Term</option>
-              <option value="SBA - 2nd Term">2nd Term</option>
-              <option value="SBA - Final Term">Final Term</option>
-            </optgroup>
-            <optgroup label="Other Assessments">
-              <option value="Monthly Test">Monthly Test</option>
-              <option value="Pre-Board / Mock Exams">Pre-Board / Mock Exams</option>
-              <option value="Admission Test">Admission Test</option>
-            </optgroup>
-          </select>
-          <select value={selectedClass} onChange={(e) => { setSelectedClass(e.target.value); setSelectedSection(""); }} className="w-full bg-white outline-none rounded-xl px-4 py-3 text-sm border cursor-pointer">
-            <option value="" disabled>Select Class</option>
-            {availableClasses.map(c => <option key={c as string} value={c as string}>{c as string}</option>)}
-          </select>
-          <select value={selectedSection} onChange={(e) => setSelectedSection(e.target.value)} disabled={!selectedClass} className="w-full bg-white outline-none rounded-xl px-4 py-3 text-sm border disabled:opacity-50 cursor-pointer">
-            <option value="">Select Section</option>
-            {availableSections.map(s => <option key={s as string} value={s as string}>{s as string}</option>)}
-          </select>
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-            <input type="text" placeholder="Search student..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full bg-white outline-none rounded-xl pl-10 pr-4 py-3 text-sm border" />
+      {/* --- WRAPPER FOR MAIN PAGE (HIDDEN IN PRINT) --- */}
+      <div className={`${selectedResult ? "print:hidden" : ""} space-y-6`}>
+        <div className="flex justify-between items-end print:hidden">
+          <div>
+            <h1 className="text-2xl font-extrabold text-[#0F172A] tracking-tight">Exams & Grading</h1>
+            <p className="text-sm text-slate-500 mt-1">Smart Results Generation & Printing Engine.</p>
           </div>
         </div>
-      </div>
 
-      <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="bg-[#0F172A] px-6 py-4 grid grid-cols-12 gap-4 items-center">
-          <div className="col-span-1 text-xs font-bold text-slate-400 uppercase tracking-widest">Roll</div>
-          <div className="col-span-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Student Details</div>
-          <div className="col-span-2 text-xs font-bold text-slate-400 uppercase tracking-widest text-center">Status</div>
-          <div className="col-span-3 text-xs font-bold text-slate-400 uppercase tracking-widest text-center">Score & Grade</div>
-          <div className="col-span-2 text-xs font-bold text-slate-400 uppercase tracking-widest text-right">Action</div>
+        <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 print:hidden">
+          <h2 className="text-sm font-bold text-[#3ac47d] uppercase tracking-widest mb-4 flex items-center gap-2"><Award size={16}/> Configure Result Board</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-100">
+            <select value={selectedTerm} onChange={(e) => setSelectedTerm(e.target.value)} className="w-full bg-white outline-none rounded-xl px-4 py-3 text-sm border font-bold text-[#0F172A] cursor-pointer">
+              <optgroup label="School Based Assessment (SBA)">
+                <option value="SBA - 1st Term">1st Term</option>
+                <option value="SBA - 2nd Term">2nd Term</option>
+                <option value="SBA - Final Term">Final Term</option>
+              </optgroup>
+              <optgroup label="Other Assessments">
+                <option value="Monthly Test">Monthly Test</option>
+                <option value="Pre-Board / Mock Exams">Pre-Board / Mock Exams</option>
+                <option value="Admission Test">Admission Test</option>
+              </optgroup>
+            </select>
+            <select value={selectedClass} onChange={(e) => { setSelectedClass(e.target.value); setSelectedSection(""); }} className="w-full bg-white outline-none rounded-xl px-4 py-3 text-sm border cursor-pointer">
+              <option value="" disabled>Select Class</option>
+              {availableClasses.map(c => <option key={c as string} value={c as string}>{c as string}</option>)}
+            </select>
+            <select value={selectedSection} onChange={(e) => setSelectedSection(e.target.value)} disabled={!selectedClass} className="w-full bg-white outline-none rounded-xl px-4 py-3 text-sm border disabled:opacity-50 cursor-pointer">
+              <option value="">Select Section</option>
+              {availableSections.map(s => <option key={s as string} value={s as string}>{s as string}</option>)}
+            </select>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+              <input type="text" placeholder="Search student..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full bg-white outline-none rounded-xl pl-10 pr-4 py-3 text-sm border" />
+            </div>
+          </div>
         </div>
 
-        <div className="divide-y divide-slate-100">
-          {!selectedClass || !selectedSection ? (
-            <div className="py-20 text-center opacity-50 flex flex-col items-center"><FileText size={48} className="text-slate-300 mb-4" /><p className="font-bold text-slate-500">Select Class and Section to view results.</p></div>
-          ) : classResults.length === 0 ? (
-            <div className="py-20 text-center"><p className="font-bold text-slate-500">No students found.</p></div>
-          ) : (
-            classResults.map((student) => (
-              <div key={student.id} className="px-6 py-4 grid grid-cols-12 gap-4 items-center hover:bg-slate-50 transition-colors">
-                <div className="col-span-1 font-black text-slate-400 text-lg">{student.rollNumber || "-"}</div>
-                <div className="col-span-4 flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-slate-100 overflow-hidden shrink-0 border border-slate-200">{student.photoBase64 ? <img src={student.photoBase64} className="w-full h-full object-cover" /> : <div className="w-full h-full bg-slate-100 text-slate-400 flex items-center justify-center"><BookOpen size={16}/></div>}</div>
-                  <div><p className="font-bold text-slate-800">{student.name}</p><p className="text-[11px] text-slate-500">Class {student.classGrade} - {student.section}</p></div>
+        <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden print:hidden">
+          <div className="bg-[#0F172A] px-6 py-4 grid grid-cols-12 gap-4 items-center">
+            <div className="col-span-1 text-xs font-bold text-slate-400 uppercase tracking-widest">Roll</div>
+            <div className="col-span-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Student Details</div>
+            <div className="col-span-2 text-xs font-bold text-slate-400 uppercase tracking-widest text-center">Status</div>
+            <div className="col-span-3 text-xs font-bold text-slate-400 uppercase tracking-widest text-center">Score & Grade</div>
+            <div className="col-span-2 text-xs font-bold text-slate-400 uppercase tracking-widest text-right">Action</div>
+          </div>
+
+          <div className="divide-y divide-slate-100">
+            {!selectedClass || !selectedSection ? (
+              <div className="py-20 text-center opacity-50 flex flex-col items-center"><FileText size={48} className="text-slate-300 mb-4" /><p className="font-bold text-slate-500">Select Class and Section to view results.</p></div>
+            ) : classResults.length === 0 ? (
+              <div className="py-20 text-center"><p className="font-bold text-slate-500">No students found.</p></div>
+            ) : (
+              classResults.map((student) => (
+                <div key={student.id} className="px-6 py-4 grid grid-cols-12 gap-4 items-center hover:bg-slate-50 transition-colors">
+                  <div className="col-span-1 font-black text-slate-400 text-lg">{student.rollNumber || "-"}</div>
+                  <div className="col-span-4 flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-slate-100 overflow-hidden shrink-0 border border-slate-200">{student.photoBase64 ? <img src={student.photoBase64} className="w-full h-full object-cover" /> : <div className="w-full h-full bg-slate-100 text-slate-400 flex items-center justify-center"><BookOpen size={16}/></div>}</div>
+                    <div><p className="font-bold text-slate-800">{student.name}</p><p className="text-[11px] text-slate-500">Class {student.classGrade} - {student.section}</p></div>
+                  </div>
+                  <div className="col-span-2 flex justify-center">
+                    {student.resultRecord ? <span className="bg-green-100 text-green-700 text-[10px] font-bold px-3 py-1 rounded-full flex items-center gap-1"><CheckCircle2 size={12}/> Generated</span> : <span className="bg-red-50 text-red-500 text-[10px] font-bold px-3 py-1 rounded-full flex items-center gap-1"><XCircle size={12}/> Pending</span>}
+                  </div>
+                  <div className="col-span-3 flex flex-col items-center justify-center">
+                    {student.resultRecord ? <><p className="font-black text-[#0F172A]">{student.resultRecord.percentage}% <span className={`text-sm ${student.resultRecord.grade === 'U' ? 'text-red-500' : 'text-[#3ac47d]'}`}>({student.resultRecord.grade})</span></p><p className="text-[10px] text-slate-500 font-medium">{student.resultRecord.totalObtained} / {student.resultRecord.totalMax}</p></> : <span className="text-slate-400 font-medium text-sm">-</span>}
+                  </div>
+                  <div className="col-span-2 flex justify-end">
+                    <button disabled={!student.resultRecord} onClick={() => setSelectedResult({ ...student, resultRecord: student.resultRecord })} className="bg-blue-50 text-blue-600 hover:bg-blue-100 px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                      <Printer size={16} /> View Card
+                    </button>
+                  </div>
                 </div>
-                <div className="col-span-2 flex justify-center">
-                  {student.resultRecord ? <span className="bg-green-100 text-green-700 text-[10px] font-bold px-3 py-1 rounded-full flex items-center gap-1"><CheckCircle2 size={12}/> Generated</span> : <span className="bg-red-50 text-red-500 text-[10px] font-bold px-3 py-1 rounded-full flex items-center gap-1"><XCircle size={12}/> Pending</span>}
-                </div>
-                <div className="col-span-3 flex flex-col items-center justify-center">
-                  {student.resultRecord ? <><p className="font-black text-[#0F172A]">{student.resultRecord.percentage}% <span className={`text-sm ${student.resultRecord.grade === 'U' ? 'text-red-500' : 'text-[#3ac47d]'}`}>({student.resultRecord.grade})</span></p><p className="text-[10px] text-slate-500 font-medium">{student.resultRecord.totalObtained} / {student.resultRecord.totalMax}</p></> : <span className="text-slate-400 font-medium text-sm">-</span>}
-                </div>
-                <div className="col-span-2 flex justify-end">
-                  <button disabled={!student.resultRecord} onClick={() => setSelectedResult({ ...student, resultRecord: student.resultRecord })} className="bg-blue-50 text-blue-600 hover:bg-blue-100 px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-                    <Printer size={16} /> View Card
-                  </button>
-                </div>
-              </div>
-            ))
-          )}
+              ))
+            )}
+          </div>
         </div>
       </div>
 
@@ -246,7 +248,7 @@ export default function ResultPage() {
             visibility: visible;
           }
           
-          /* Pull the overlay to the absolute top-left, making it act like the physical page */
+          /* Pull the overlay to the absolute top-left */
           #print-overlay {
             position: absolute !important;
             left: 0 !important;
@@ -254,10 +256,10 @@ export default function ResultPage() {
             width: 100% !important;
             height: auto !important;
             margin: 0 !important;
-            padding: 0 !important;
+            padding: 10mm !important; /* Internal padding so it doesn't touch the physical paper edge */
             background-color: white !important;
-            /* CRITICAL: This removes the scrollbar */
             overflow: visible !important;
+            box-sizing: border-box !important;
           }
 
           /* Strip the inner container's styling so it sits flat on the paper */
@@ -285,10 +287,11 @@ export default function ResultPage() {
             border-radius: 0 !important;
           }
 
-          /* Force A4 Size */
+          /* --- THIS IS THE MAGIC LINE --- */
+          /* Setting margin to 0mm forces Chrome to hide the Header (URL) and Footer (Date) automatically! */
           @page {
             size: A4 portrait;
-            margin: 10mm;
+            margin: 0mm !important;
           }
         }
       `}</style>
