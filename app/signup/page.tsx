@@ -10,32 +10,46 @@ import { GraduationCap, LogOut } from "lucide-react";
 
 export default function SignupPage() {
   const router = useRouter();
-  // ہم نے AuthContext سے logout کا فنکشن بھی منگوا لیا ہے
   const { user, role, logout } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const [formData, setFormData] = useState({ schoolName: "", fullName: "", email: "", password: "" });
+  // سٹیٹ میں schoolCategory اور governmentType کا اضافہ کیا گیا ہے
+  const [formData, setFormData] = useState({ 
+    schoolName: "", 
+    fullName: "", 
+    email: "", 
+    password: "",
+    schoolCategory: "", 
+    governmentType: "" 
+  });
 
   const isGoogleHalfRegistered = user && role === "unregistered";
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  // 1. گوگل والے یوزر کی رجسٹریشن مکمل کرنا
+  const saveUserDataToFirestore = async (uid: string, name: string, email: string) => {
+    await setDoc(doc(db, "users", uid), {
+      name: name || "Admin",
+      email: email,
+      role: "admin",
+      schoolName: formData.schoolName,
+      schoolCategory: formData.schoolCategory, // Government, Private, Madrissa
+      governmentType: formData.schoolCategory === "Government" ? formData.governmentType : null,
+      createdAt: serverTimestamp()
+    });
+  };
+
   const completeGoogleRegistration = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.schoolName) return setError("Please enter your School Name!");
+    if (!formData.schoolName || !formData.schoolCategory) return setError("Please fill all required fields!");
+    if (formData.schoolCategory === "Government" && !formData.governmentType) return setError("Please select Government Type!");
+    
     setLoading(true);
     try {
-      await setDoc(doc(db, "users", user!.uid), {
-        name: user!.displayName || "Admin",
-        email: user!.email,
-        role: "admin",
-        schoolName: formData.schoolName,
-        createdAt: serverTimestamp()
-      });
+      await saveUserDataToFirestore(user!.uid, user!.displayName || "", user!.email || "");
       window.location.href = "/dashboard";
     } catch (err) {
       setError("Failed to register school.");
@@ -43,22 +57,16 @@ export default function SignupPage() {
     }
   };
 
-  // 2. کسٹم ای میل (Yahoo, .edu.pk) سے سائن اپ کرنا
   const handleEmailSignup = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (formData.schoolCategory === "Government" && !formData.governmentType) return setError("Please select Government Type!");
+    
     setLoading(true);
     setError("");
     try {
       const res = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
       await updateProfile(res.user, { displayName: formData.fullName });
-
-      await setDoc(doc(db, "users", res.user.uid), {
-        name: formData.fullName,
-        email: formData.email,
-        role: "admin",
-        schoolName: formData.schoolName,
-        createdAt: serverTimestamp()
-      });
+      await saveUserDataToFirestore(res.user.uid, formData.fullName, formData.email);
       window.location.href = "/dashboard";
     } catch (err: any) {
       setError(err.message);
@@ -66,7 +74,6 @@ export default function SignupPage() {
     }
   };
 
-  // 3. گوگل بٹن پر کلک
   const handleGoogleSignup = async () => {
     setLoading(true);
     setError("");
@@ -79,15 +86,14 @@ export default function SignupPage() {
     }
   };
 
-  // 4. آدھے راستے سے واپس جانا (Cancel Session)
   const handleCancelGoogleSession = async () => {
     await logout();
-    setFormData({ schoolName: "", fullName: "", email: "", password: "" });
+    setFormData({ schoolName: "", fullName: "", email: "", password: "", schoolCategory: "", governmentType: "" });
     setError("");
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#f8fafc] px-4">
+    <div className="min-h-screen flex items-center justify-center bg-[#f8fafc] px-4 py-10">
       <div className="w-full max-w-md bg-white rounded-[2rem] shadow-xl border border-gray-100 p-8 sm:p-10 animate-fade-in-down">
         
         <div className="flex flex-col items-center mb-8">
@@ -98,7 +104,7 @@ export default function SignupPage() {
             {isGoogleHalfRegistered ? "Complete Registration" : "Register Your School"}
           </h1>
           <p className="text-sm text-slate-500 mt-1 text-center">
-            {isGoogleHalfRegistered ? `Welcome ${user?.displayName}! Enter school name to continue.` : "Join EduPilot SaaS Platform"}
+            {isGoogleHalfRegistered ? `Welcome ${user?.displayName}! Complete your details.` : "Join EduPilot SaaS Platform"}
           </p>
         </div>
 
@@ -108,11 +114,27 @@ export default function SignupPage() {
           
           <input required name="schoolName" value={formData.schoolName} onChange={handleInputChange} type="text" placeholder="School Name" className="w-full bg-slate-50 outline-none rounded-xl px-4 py-3.5 text-sm focus:bg-white focus:ring-2 focus:ring-[#3ac47d]/50 border border-slate-100" />
           
-          {/* اگر نارمل سائن اپ ہے تو باقی فیلڈز دکھاؤ */}
+          {/* --- SCHOOL CATEGORY DROPDOWN --- */}
+          <select required name="schoolCategory" value={formData.schoolCategory} onChange={handleInputChange} className="w-full bg-slate-50 outline-none rounded-xl px-4 py-3.5 text-sm focus:bg-white focus:ring-2 focus:ring-[#3ac47d]/50 border border-slate-100 text-slate-700 cursor-pointer">
+            <option value="" disabled>Select School Category</option>
+            <option value="Government">Government School</option>
+            <option value="Private">Private School</option>
+            <option value="Madrissa">Madrissa</option>
+          </select>
+
+          {/* --- CONDITIONAL: GOVERNMENT TYPE DROPDOWN --- */}
+          {formData.schoolCategory === "Government" && (
+            <select required name="governmentType" value={formData.governmentType} onChange={handleInputChange} className="w-full bg-[#f0fdf4] outline-none rounded-xl px-4 py-3.5 text-sm focus:bg-white focus:ring-2 focus:ring-[#3ac47d]/50 border border-green-100 text-green-800 cursor-pointer animate-fade-in-down">
+              <option value="" disabled>Select Government Type</option>
+              <option value="Federal">Federal Government</option>
+              <option value="Punjab">Punjab Government</option>
+            </select>
+          )}
+          
           {!isGoogleHalfRegistered && (
             <>
               <input required name="fullName" value={formData.fullName} onChange={handleInputChange} type="text" placeholder="Admin Full Name" className="w-full bg-slate-50 outline-none rounded-xl px-4 py-3.5 text-sm focus:bg-white focus:ring-2 focus:ring-[#3ac47d]/50 border border-slate-100" />
-              <input required name="email" value={formData.email} onChange={handleInputChange} type="email" placeholder="Admin Email (Any provider)" className="w-full bg-slate-50 outline-none rounded-xl px-4 py-3.5 text-sm focus:bg-white focus:ring-2 focus:ring-[#3ac47d]/50 border border-slate-100" />
+              <input required name="email" value={formData.email} onChange={handleInputChange} type="email" placeholder="Admin Email" className="w-full bg-slate-50 outline-none rounded-xl px-4 py-3.5 text-sm focus:bg-white focus:ring-2 focus:ring-[#3ac47d]/50 border border-slate-100" />
               <input required name="password" value={formData.password} onChange={handleInputChange} type="password" placeholder="Password (Min 6 chars)" className="w-full bg-slate-50 outline-none rounded-xl px-4 py-3.5 text-sm focus:bg-white focus:ring-2 focus:ring-[#3ac47d]/50 border border-slate-100" />
             </>
           )}
@@ -122,13 +144,8 @@ export default function SignupPage() {
           </button>
         </form>
 
-        {/* --- دی میجک فکس: واپس جانے کا بٹن --- */}
         {isGoogleHalfRegistered ? (
-          <button 
-            onClick={handleCancelGoogleSession} 
-            type="button" 
-            className="w-full mt-4 flex items-center justify-center gap-2 text-sm text-slate-500 hover:text-red-500 font-medium transition-colors"
-          >
+          <button onClick={handleCancelGoogleSession} type="button" className="w-full mt-4 flex items-center justify-center gap-2 text-sm text-slate-500 hover:text-red-500 font-medium transition-colors">
             <LogOut size={16} /> Not you? Use a different email
           </button>
         ) : (
