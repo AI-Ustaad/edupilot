@@ -5,9 +5,11 @@ import { useAuth } from "./context/AuthContext";
 import SidebarLayout from "./components/SidebarLayout";
 
 const allowedRoutes: Record<string, string[]> = {
-  admin: ["/dashboard", "/students", "/staff", "/attendance", "/fees", "/marks", "/result", "/settings"],
-  teacher: ["/dashboard", "/marks", "/attendance", "/profile"],
-  student: ["/dashboard", "/result", "/profile"],
+  // ہم نے ان سب میں "/student-profile" کا راستہ کھول دیا ہے
+  admin: ["/dashboard", "/students", "/student-profile", "/staff", "/attendance", "/fees", "/marks", "/result", "/settings"],
+  staff: ["/dashboard", "/students", "/student-profile", "/fees", "/attendance"],
+  teacher: ["/dashboard", "/marks", "/attendance", "/profile", "/students", "/student-profile"],
+  student: ["/dashboard", "/result", "/profile", "/student-profile"], 
 };
 
 export default function ClientWrapper({ children }: { children: React.ReactNode }) {
@@ -23,10 +25,11 @@ export default function ClientWrapper({ children }: { children: React.ReactNode 
         router.push("/login");
       } else if (user && role && !isPublicPage) {
         const userAllowedRoutes = allowedRoutes[role] || [];
+        // Check if current path matches any allowed route
         const hasAccess = userAllowedRoutes.some(route => pathname.startsWith(route));
 
         if (!hasAccess) {
-          router.push("/dashboard");
+          router.push("/dashboard"); // اگر راستہ لسٹ میں نہیں ہے تو ڈیش بورڈ پر پھینک دو
         }
       }
     }
@@ -40,7 +43,6 @@ export default function ClientWrapper({ children }: { children: React.ReactNode 
     );
   }
 
-  // اگر پبلک پیج (جیسے لاگ ان) ہے تو بغیر سائیڈ بار کے دکھاؤ
   if (isPublicPage) {
     return <>{children}</>;
   }
