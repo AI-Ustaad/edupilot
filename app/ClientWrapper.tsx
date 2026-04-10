@@ -5,11 +5,10 @@ import { useAuth } from "./context/AuthContext";
 import SidebarLayout from "./components/SidebarLayout";
 
 const allowedRoutes: Record<string, string[]> = {
-  // ہم نے ان سب میں "/student-profile" کا راستہ کھول دیا ہے
   admin: ["/dashboard", "/students", "/student-profile", "/staff", "/attendance", "/fees", "/marks", "/result", "/settings"],
   staff: ["/dashboard", "/students", "/student-profile", "/fees", "/attendance"],
   teacher: ["/dashboard", "/marks", "/attendance", "/profile", "/students", "/student-profile"],
-  student: ["/dashboard", "/result", "/profile", "/student-profile"], 
+  student: ["/dashboard", "/result", "/profile", "/student-profile"],
 };
 
 export default function ClientWrapper({ children }: { children: React.ReactNode }) {
@@ -21,15 +20,35 @@ export default function ClientWrapper({ children }: { children: React.ReactNode 
 
   useEffect(() => {
     if (!loading) {
+      // 1. اگر یوزر لاگ ان نہیں ہے
       if (!user && !isPublicPage) {
         router.push("/login");
-      } else if (user && role && !isPublicPage) {
-        const userAllowedRoutes = allowedRoutes[role] || [];
-        // Check if current path matches any allowed route
-        const hasAccess = userAllowedRoutes.some(route => pathname.startsWith(route));
+      } 
+      // 2. اگر یوزر لاگ ان ہے
+      else if (user && role) {
+        
+        // --- A. اگر یوزر ڈیٹا بیس میں نہیں ہے (نئی رجسٹریشن یا ڈیلیٹ شدہ) ---
+        if (role === "unregistered") {
+          if (pathname !== "/signup") {
+            router.push("/signup"); // زبردستی سائن اپ پر پھینکو
+          }
+        } 
+        
+        // --- B. اگر یوزر رجسٹرڈ ہے (پراپر رول موجود ہے) ---
+        else {
+          // رجسٹرڈ بندہ دوبارہ لاگ ان پیج پر نہیں جا سکتا
+          if (pathname === "/login") {
+            router.push("/dashboard");
+          } 
+          // پرمیشنز چیک کریں
+          else if (!isPublicPage) {
+            const userAllowedRoutes = allowedRoutes[role] || [];
+            const hasAccess = userAllowedRoutes.some(route => pathname.startsWith(route));
 
-        if (!hasAccess) {
-          router.push("/dashboard"); // اگر راستہ لسٹ میں نہیں ہے تو ڈیش بورڈ پر پھینک دو
+            if (!hasAccess) {
+              router.push("/dashboard"); // اگر اجازت نہیں تو واپس ڈیش بورڈ پر
+            }
+          }
         }
       }
     }
@@ -43,7 +62,8 @@ export default function ClientWrapper({ children }: { children: React.ReactNode 
     );
   }
 
-  if (isPublicPage) {
+  // اگر پبلک پیج ہے یا بندہ ابھی رجسٹر نہیں ہوا تو سائیڈ بار (Main Menu) مت دکھاؤ
+  if (isPublicPage || role === "unregistered") {
     return <>{children}</>;
   }
 
