@@ -31,6 +31,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  // --- MENU ITEMS (Exams & Marks Link Fixed to /marks) ---
   const MENU_ITEMS = [
     { name: "Analytics", href: "/dashboard", icon: LayoutDashboard },
     { name: "Students", href: "/students", icon: GraduationCap },
@@ -38,7 +39,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
     { name: "Staff", href: "/staff", icon: Users },
     { name: "Attendance", href: "/attendance", icon: ClipboardCheck },
     { name: "Fee Collection", href: "/fees", icon: Wallet },
-    { name: "Exams & Marks", href: "/exams", icon: PenTool },
+    { name: "Exams & Marks", href: "/marks", icon: PenTool }, // FIXED ROUTE
     { name: "Results", href: "/result", icon: Award },
     { name: "Time Table", href: "/timetable", icon: Clock },
   ];
