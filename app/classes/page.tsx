@@ -10,10 +10,13 @@ import Link from "next/link";
 
 const PREDEFINED_CLASSES = ["Nursery", "Prep", "Class 1", "Class 2", "Class 3", "Class 4", "Class 5", "Class 6", "Class 7", "Class 8", "Class 9", "Class 10"];
 
+// 🧠 THE MAGIC FUNCTION: It ignores capital/small letters and extra spaces
+const norm = (str?: string) => (str || "").trim().toLowerCase();
+
 export default function ClassesDirectoryPage() {
   const [isMounted, setIsMounted] = useState(false);
   
-  // Data States (Fetched from Global Database)
+  // Data States
   const [sections, setSections] = useState<any[]>([]);
   const [allStudents, setAllStudents] = useState<any[]>([]);
 
@@ -25,36 +28,64 @@ export default function ClassesDirectoryPage() {
 
   useEffect(() => {
     setIsMounted(true);
-    // 1. Fetch Sections (Created by Admin in Settings)
+    // Fetch Admin Defined Sections
     const unsubSections = onSnapshot(query(collection(db, "sections")), (snapshot) => {
       setSections(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
     });
-    // 2. Fetch All Students (Admitted by Clerk)
+    // Fetch All Students
     const unsubStudents = onSnapshot(query(collection(db, "students")), (snapshot) => {
       setAllStudents(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
     });
     return () => { unsubSections(); unsubStudents(); };
   }, []);
 
-  // Helper Functions to interlink data
-  const getSectionsForClass = (cls: string) => sections.filter(s => s.classGrade === cls);
-  const getStudentsForClass = (cls: string) => allStudents.filter(s => s.classGrade === cls);
-  const getStudentsForSection = (cls: string, sec: string) => allStudents.filter(s => s.classGrade === cls && s.section === sec);
+  // 🔗 SMART INTERLINKING FUNCTIONS
+  const getSectionsForClass = (cls: string) => {
+    // 1. Get Admin created sections
+    const formalSections = sections.filter(s => norm(s.classGrade) === norm(cls));
+    
+    // 2. Extract sections directly from students (In case admin missed creating it)
+    const studentSections = Array.from(new Set(
+      allStudents.filter(s => norm(s.classGrade) === norm(cls)).map(s => s.section || "Unassigned")
+    ));
+
+    // 3. Merge both so NO student is left behind
+    const merged = [...formalSections];
+    studentSections.forEach(secName => {
+      if (!secName || norm(secName) === "unassigned") return;
+      const exists = merged.find(m => norm(m.sectionName) === norm(secName));
+      if (!exists) {
+         merged.push({ 
+           id: `auto-${secName}`, 
+           classGrade: cls, 
+           sectionName: secName, 
+           incharge: "Auto-Synced (Set in Admin)" // Warns admin that they need to formalize this
+         });
+      }
+    });
+    return merged;
+  };
+
+  const getStudentsForClass = (cls: string) => 
+    allStudents.filter(s => norm(s.classGrade) === norm(cls));
+
+  const getStudentsForSection = (cls: string, sec: string) => 
+    allStudents.filter(s => norm(s.classGrade) === norm(cls) && norm(s.section) === norm(sec));
 
   // Search Logic
   const filteredStudents = allStudents.filter(s => {
     if (!searchQuery) return true;
-    const queryLower = searchQuery.toLowerCase();
+    const queryLower = norm(searchQuery);
     return (
-      s.name?.toLowerCase().includes(queryLower) ||
-      s.rollNumber?.toString().includes(queryLower) ||
-      s.section?.toLowerCase().includes(queryLower) ||
-      s.classGrade?.toLowerCase().includes(queryLower) ||
-      s.fatherName?.toLowerCase().includes(queryLower)
+      norm(s.name).includes(queryLower) ||
+      norm(s.rollNumber?.toString()).includes(queryLower) ||
+      norm(s.section).includes(queryLower) ||
+      norm(s.classGrade).includes(queryLower) ||
+      norm(s.fatherName).includes(queryLower)
     );
   });
 
-  // Only show classes that have either a section created by admin OR a student admitted
+  // Only show classes that have data
   const activeClasses = PREDEFINED_CLASSES.filter(cls => 
     getSectionsForClass(cls).length > 0 || getStudentsForClass(cls).length > 0
   );
@@ -66,14 +97,13 @@ export default function ClassesDirectoryPage() {
   return (
     <div className="animate-fade-in space-y-6 pb-20">
       
-      {/* --- HEADER & BREADCRUMBS --- */}
+      {/* HEADER & BREADCRUMBS */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div className="flex flex-col gap-2">
           <h1 className="text-2xl font-extrabold text-[#0F172A] tracking-tight flex items-center gap-3">
             <Layers className="text-[#3ac47d]"/> Academic Directory
           </h1>
           
-          {/* Breadcrumbs Navigation */}
           <div className="flex items-center gap-2 text-sm font-bold text-slate-500 bg-white px-4 py-2 rounded-xl border border-slate-100 shadow-sm w-fit">
             <button onClick={() => { setActiveView("classes"); setSelectedClass(null); setSelectedSection(null); setSearchQuery(""); }} className={`hover:text-[#3ac47d] transition-colors ${activeView === "classes" && !searchQuery ? "text-[#0F172A]" : ""}`}>
               All Classes
@@ -95,7 +125,7 @@ export default function ClassesDirectoryPage() {
           </div>
         </div>
 
-        {/* --- GLOBAL SEARCH BAR --- */}
+        {/* GLOBAL SEARCH */}
         <div className="relative w-full md:w-80">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
           <input 
@@ -108,7 +138,7 @@ export default function ClassesDirectoryPage() {
         </div>
       </div>
 
-      {/* --- MAIN DISPLAY AREA (FULL WIDTH) --- */}
+      {/* MAIN DISPLAY AREA */}
       <div className="animate-fade-in">
         
         {/* SEARCH OVERRIDE VIEW */}
@@ -155,9 +185,8 @@ export default function ClassesDirectoryPage() {
             </div>
           </div>
         ) : (
-          /* --- NORMAL DRILL-DOWN VIEWS --- */
           <>
-            {/* LEVEL 1: ALL CLASSES GRID */}
+            {/* LEVEL 1: ALL CLASSES */}
             {activeView === "classes" && (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                 {activeClasses.length === 0 ? (
@@ -173,18 +202,10 @@ export default function ClassesDirectoryPage() {
                     const colorClass = bgColors[idx % bgColors.length];
 
                     return (
-                      <div 
-                        key={cls} 
-                        onClick={() => { setSelectedClass(cls); setActiveView("sections"); }}
-                        className={`bg-white border border-slate-100 rounded-3xl p-6 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all cursor-pointer group`}
-                      >
+                      <div key={cls} onClick={() => { setSelectedClass(cls); setActiveView("sections"); }} className={`bg-white border border-slate-100 rounded-3xl p-6 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all cursor-pointer group`}>
                         <div className="flex justify-between items-start mb-4">
-                          <div className={`w-12 h-12 ${colorClass} rounded-2xl flex items-center justify-center text-white shadow-md`}>
-                            <BookOpen size={24} />
-                          </div>
-                          <div className="bg-slate-50 text-slate-500 text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-widest group-hover:bg-[#0F172A] group-hover:text-white transition-colors">
-                            Open
-                          </div>
+                          <div className={`w-12 h-12 ${colorClass} rounded-2xl flex items-center justify-center text-white shadow-md`}><BookOpen size={24} /></div>
+                          <div className="bg-slate-50 text-slate-500 text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-widest group-hover:bg-[#0F172A] group-hover:text-white transition-colors">Open</div>
                         </div>
                         <h3 className="text-2xl font-black text-[#0F172A] mb-1">{cls}</h3>
                         <div className="flex flex-col gap-2 mt-4 pt-4 border-t border-slate-100">
@@ -204,7 +225,7 @@ export default function ClassesDirectoryPage() {
               </div>
             )}
 
-            {/* LEVEL 2: SECTIONS INSIDE A CLASS */}
+            {/* LEVEL 2: SECTIONS */}
             {activeView === "sections" && selectedClass && (
               <div className="animate-fade-in-up">
                 <div className="flex items-center gap-3 mb-6">
@@ -220,8 +241,7 @@ export default function ClassesDirectoryPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                   {getSectionsForClass(selectedClass).length === 0 ? (
                     <div className="col-span-full py-10 text-center text-slate-400">
-                       <p className="font-bold">No formal sections defined for {selectedClass} in Admin Panel.</p>
-                       <p className="text-xs">Students admitted without a section will not appear here.</p>
+                       <p className="font-bold">No students or sections found for {selectedClass}.</p>
                     </div>
                   ) : (
                     getSectionsForClass(selectedClass).map((section, idx) => {
@@ -229,16 +249,11 @@ export default function ClassesDirectoryPage() {
                       const colorClass = bgColors[idx % bgColors.length];
 
                       return (
-                        <div 
-                          key={section.id} 
-                          onClick={() => { setSelectedSection(section); setActiveView("students"); }}
-                          className={`${colorClass} rounded-3xl p-6 shadow-lg relative hover:-translate-y-1 transition-transform cursor-pointer group overflow-hidden`}
-                        >
+                        <div key={section.id} onClick={() => { setSelectedSection(section); setActiveView("students"); }} className={`${colorClass} rounded-3xl p-6 shadow-lg relative hover:-translate-y-1 transition-transform cursor-pointer group overflow-hidden`}>
                           <div className="absolute top-6 right-6 opacity-20 group-hover:scale-110 transition-transform"><Layers size={60} /></div>
                           <div className="relative z-10 text-white">
                             <p className="text-xs font-bold text-white/70 uppercase tracking-widest">Section</p>
-                            <h3 className="text-3xl font-black mt-1">{section.sectionName}</h3>
-                            
+                            <h3 className="text-3xl font-black mt-1 uppercase">{section.sectionName}</h3>
                             <div className="mt-8 flex justify-between items-end">
                               <div>
                                 <p className="text-[10px] text-white/70 uppercase font-bold tracking-wider mb-1">Total Students</p>
@@ -246,7 +261,7 @@ export default function ClassesDirectoryPage() {
                               </div>
                               <div className="text-right">
                                 <p className="text-[10px] text-white/70 uppercase font-bold tracking-wider mb-1">Incharge</p>
-                                <p className="text-sm font-bold bg-black/20 px-3 py-1 rounded-full">{section.incharge}</p>
+                                <p className="text-[10px] font-bold bg-black/20 px-2 py-1 rounded-full">{section.incharge}</p>
                               </div>
                             </div>
                           </div>
@@ -258,7 +273,7 @@ export default function ClassesDirectoryPage() {
               </div>
             )}
 
-            {/* LEVEL 3: STUDENTS ROSTER (Final Drill-down) */}
+            {/* LEVEL 3: ROSTER */}
             {activeView === "students" && selectedSection && (
               <div className="animate-fade-in-up bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
                 <div className="bg-[#0F172A] p-6 flex items-center gap-4 text-white">
@@ -266,7 +281,7 @@ export default function ClassesDirectoryPage() {
                     <ArrowLeft size={18} />
                   </button>
                   <div>
-                    <h2 className="text-xl font-black">{selectedClass} - Section {selectedSection.sectionName}</h2>
+                    <h2 className="text-xl font-black uppercase">{selectedClass} - Section {selectedSection.sectionName}</h2>
                     <p className="text-xs font-medium opacity-80 mt-1">Incharge: {selectedSection.incharge} • Roster View</p>
                   </div>
                 </div>
