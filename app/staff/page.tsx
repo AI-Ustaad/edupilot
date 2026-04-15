@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { collection, onSnapshot, query, setDoc, doc, serverTimestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import Link from "next/link"; // <-- LINK IMPORTED HERE
 import { 
   Users, Zap, Upload, Building2, Wallet, 
   PlusCircle, Trash2, Save, CheckCircle2, AlertCircle, 
@@ -23,7 +24,7 @@ const EDU_LEVELS = ["Matriculation", "Intermediate (FA/FSc)", "Bachelors (BA/BSc
 export default function ManageStaffPage() {
   const [isMounted, setIsMounted] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [isExtracting, setIsExtracting] = useState(false); // New state for AI Extraction
+  const [isExtracting, setIsExtracting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [staffList, setStaffList] = useState<any[]>([]);
 
@@ -92,7 +93,7 @@ export default function ManageStaffPage() {
     }
   };
 
-  // --- 🚀 REAL AI FILE UPLOAD HANDLER ---
+  // --- REAL AI FILE UPLOAD HANDLER ---
   const handleRealAIExtract = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -100,31 +101,15 @@ export default function ManageStaffPage() {
     setIsExtracting(true);
 
     try {
-      // 1. Prepare file for your AI Backend
-      const formData = new FormData();
-      formData.append("file", file);
-
-      // ==========================================
-      // استاد جی! آپ کا بنایا ہوا AI API یہاں کال ہوگا
-      // ==========================================
-      // const response = await fetch("/api/your-ai-endpoint", { method: "POST", body: formData });
-      // const extractedData = await response.json();
-      
-      // Example of how you will map your API response:
-      // setPersonal(prev => ({ ...prev, fullName: extractedData.name, cnic: extractedData.cnic, ... }));
-      // setAllowances(extractedData.allowances);
-      // setDeductions(extractedData.deductions);
-
-      // For now, simulating the network delay so UI works perfectly
+      // Simulate API call delay for now
       await new Promise(resolve => setTimeout(resolve, 2000));
-      alert(`✅ File "${file.name}" ready for extraction! Connect your API in the code.`);
+      alert(`✅ File "${file.name}" ready for extraction! Connect your API here.`);
       
     } catch (error) {
       alert("Error parsing document.");
       console.error(error);
     } finally {
       setIsExtracting(false);
-      // Reset input so same file can be uploaded again if needed
       e.target.value = "";
     }
   };
@@ -138,6 +123,7 @@ export default function ManageStaffPage() {
         personal, professional, education, financial, allowances, deductions, netPayDetails: { grossPay, totalDeductions, netPay }, createdAt: serverTimestamp()
       });
       setSuccess(true); setTimeout(() => setSuccess(false), 3000);
+      // Optional: Reset form fields here if you want to clear after save
     } catch (error) { alert("Failed to save"); } finally { setLoading(false); }
   };
 
@@ -179,16 +165,9 @@ export default function ManageStaffPage() {
                </div>
             </div>
             
-            {/* THE REAL UPLOAD BUTTON */}
             <label className={`bg-white text-[#3ac47d] px-6 py-3 rounded-xl font-bold flex items-center gap-2 hover:bg-green-50 transition-colors shadow-sm whitespace-nowrap cursor-pointer ${isExtracting ? 'opacity-70 pointer-events-none' : ''}`}>
                {isExtracting ? <><Loader2 size={18} className="animate-spin"/> Scanning Document...</> : <><Upload size={18}/> Upload & Scan</>}
-               <input 
-                 type="file" 
-                 accept=".pdf,image/png,image/jpeg,image/jpg" 
-                 className="hidden" 
-                 onChange={handleRealAIExtract} 
-                 disabled={isExtracting} 
-               />
+               <input type="file" accept=".pdf,image/png,image/jpeg,image/jpg" className="hidden" onChange={handleRealAIExtract} disabled={isExtracting} />
             </label>
           </div>
 
@@ -426,7 +405,7 @@ export default function ManageStaffPage() {
           </div>
         </div>
 
-        {/* --- RIGHT: STAFF DIRECTORY --- */}
+        {/* --- RIGHT: STAFF DIRECTORY (NOW INTERLINKED) --- */}
         <div className="xl:col-span-4">
            <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 sticky top-6">
               <h2 className="text-lg font-black text-[#0F172A] mb-6">Staff Directory</h2>
@@ -438,7 +417,8 @@ export default function ManageStaffPage() {
                     </div>
                  ) : (
                     staffList.map(staff => (
-                       <div key={staff.id} className="bg-slate-50 p-4 rounded-2xl border border-slate-100 hover:border-[#3ac47d] transition-colors cursor-pointer group flex items-start gap-3">
+                       // HERE IS THE FIX: Link wraps the card to navigate to staff-profile
+                       <Link href={`/staff-profile?id=${staff.id}`} key={staff.id} className="bg-slate-50 p-4 rounded-2xl border border-slate-100 hover:border-[#3ac47d] transition-colors cursor-pointer group flex items-start gap-3 block">
                           <div className="w-10 h-10 rounded-full bg-white border border-slate-200 overflow-hidden shrink-0 mt-1">
                             {staff.personal?.photo ? <img src={staff.personal.photo} className="w-full h-full object-cover"/> : <Users size={16} className="m-auto mt-2 text-slate-300"/>}
                           </div>
@@ -450,7 +430,7 @@ export default function ManageStaffPage() {
                                <p className="text-xs font-black text-green-600">Rs. {staff.netPayDetails?.netPay?.toLocaleString() || 0}</p>
                             </div>
                           </div>
-                       </div>
+                       </Link>
                     ))
                  )}
               </div>
