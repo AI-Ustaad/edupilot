@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useEffect } from "react";
-import { collection, onSnapshot, query, setDoc, doc, serverTimestamp, getDoc } from "firebase/firestore";
+import { collection, onSnapshot, query, setDoc, doc, serverTimestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "../context/AuthContext";
 import { 
@@ -11,8 +11,15 @@ import {
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 const norm = (str?: string) => (str || "").trim().toLowerCase();
 
+// 🚀 BUG FIX: Safe Ordinal Function to prevent Vercel Compiler Errors
+const getOrdinal = (n: number) => {
+  const s = ["th", "st", "nd", "rd"];
+  const v = n % 100;
+  return n + (s[(v - 20) % 10] || s[v] || s[0]);
+};
+
 export default function TimeTablePage() {
-  const { user } = useAuth(); // To check if admin
+  const { user } = useAuth();
   const [isMounted, setIsMounted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -24,7 +31,7 @@ export default function TimeTablePage() {
   const [staff, setStaff] = useState<any[]>([]);
   const [savedTimetables, setSavedTimetables] = useState<any[]>([]);
   
-  // 🚀 DYNAMIC TIMETABLE SETTINGS (From Admin)
+  // DYNAMIC TIMETABLE SETTINGS
   const [schoolPeriods, setSchoolPeriods] = useState<string[]>([]);
   const [setupConfig, setSetupConfig] = useState({ totalPeriods: 8, breakAfter: 4 });
 
@@ -39,14 +46,13 @@ export default function TimeTablePage() {
     const unsubStaff = onSnapshot(query(collection(db, "staff")), (snap) => setStaff(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
     const unsubTimetables = onSnapshot(query(collection(db, "timetables")), (snap) => setSavedTimetables(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
     
-    // 🔗 FETCH GLOBAL TIMETABLE SETTINGS
+    // FETCH GLOBAL TIMETABLE SETTINGS
     const unsubSettings = onSnapshot(doc(db, "settings", "timetableConfig"), (docSnap) => {
       if (docSnap.exists()) {
         const data = docSnap.data();
         setSetupConfig({ totalPeriods: data.totalPeriods, breakAfter: data.breakAfter });
         setSchoolPeriods(data.periodsArray || []);
       } else {
-        // Fallback default
         setSchoolPeriods(["1st", "2nd", "3rd", "4th", "Break", "5th", "6th", "7th", "8th"]);
       }
     });
@@ -54,7 +60,6 @@ export default function TimeTablePage() {
     return () => { unsubSections(); unsubStaff(); unsubTimetables(); unsubSettings(); };
   }, []);
 
-  // Auto-load grid data
   useEffect(() => {
     if (selectedClass && selectedSection) {
       const docId = `${norm(selectedClass)}_${norm(selectedSection)}`;
@@ -105,23 +110,34 @@ export default function TimeTablePage() {
     } catch (error) { alert("Failed to save timetable."); } finally { setLoading(false); }
   };
 
-  // 🚀 ADMIN: SAVE CONFIGURATION
+  // 🚀 CLEAN AND SAFE COMPILER-FRIENDLY SAVE CONFIG
   const handleSaveConfig = async () => {
     setLoading(true);
     try {
-      let newPeriods = [];
-      for (let i = 1; i <= setupConfig.totalPeriods; i++) {
-        newPeriods.push(`${i}${i===1?'st':i===2?'nd':i===3?'rd':'th'}`);
-        if (i === Number(setupConfig.breakAfter)) newPeriods.push("Break");
+      const newPeriods: string[] = [];
+      const totalP = Number(setupConfig.totalPeriods);
+      const breakA = Number(setupConfig.breakAfter);
+      
+      for (let i = 1; i <= totalP; i++) {
+        newPeriods.push(getOrdinal(i));
+        if (i === breakA) {
+          newPeriods.push("Break");
+        }
       }
+
       await setDoc(doc(db, "settings", "timetableConfig"), {
-        totalPeriods: Number(setupConfig.totalPeriods),
-        breakAfter: Number(setupConfig.breakAfter),
+        totalPeriods: totalP,
+        breakAfter: breakA,
         periodsArray: newPeriods,
         updatedAt: serverTimestamp()
       });
-      setSuccess(true); setTimeout(() => setSuccess(false), 3000);
-    } catch (err) { alert("Failed to save settings."); } finally { setLoading(false); }
+      setSuccess(true); 
+      setTimeout(() => setSuccess(false), 3000);
+    } catch (err) { 
+      alert("Failed to save settings."); 
+    } finally { 
+      setLoading(false); 
+    }
   };
 
   if (!isMounted) return null;
@@ -164,7 +180,7 @@ export default function TimeTablePage() {
         ))}
       </div>
 
-      {/* 🚀 TAB 4: ADMIN SETUP (Global Configuration) */}
+      {/* TAB 4: ADMIN SETUP (Global Configuration) */}
       {activeTab === "setup" && (
          <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-8 animate-fade-in-up max-w-3xl mx-auto">
             <div className="flex items-center gap-3 mb-6 border-b border-slate-100 pb-6">
@@ -185,7 +201,7 @@ export default function TimeTablePage() {
                  <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Break / Recess After Period</label>
                  <select value={setupConfig.breakAfter} onChange={e => setSetupConfig({...setupConfig, breakAfter: Number(e.target.value)})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 font-black text-xl text-orange-600 outline-none focus:border-purple-400">
                     {Array.from({length: setupConfig.totalPeriods}, (_, i) => i + 1).map(num => (
-                       <option key={num} value={num}>After {num}{num===1?'st':num===2?'nd':num===3?'rd':'th'} Period</option>
+                       <option key={num} value={num}>After {getOrdinal(num)} Period</option>
                     ))}
                  </select>
                  <p className="text-[10px] text-slate-400">When does the recess happen?</p>
@@ -199,7 +215,7 @@ export default function TimeTablePage() {
          </div>
       )}
 
-      {/* 🚀 TAB 1: CLASS-WISE TIME TABLE */}
+      {/* TAB 1: CLASS-WISE TIME TABLE */}
       {activeTab === "class" && (
          <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden animate-fade-in-up">
             
@@ -237,7 +253,7 @@ export default function TimeTablePage() {
                  <div className="py-20 flex flex-col items-center justify-center">
                     <AlertCircle size={60} className="mb-4 text-orange-400" />
                     <h3 className="text-xl font-black text-slate-600">Timetable Not Configured</h3>
-                    <p className="font-medium text-sm mt-1 text-slate-500">Please go to "Admin Setup" tab to configure school periods first.</p>
+                    <p className="font-medium text-sm mt-1 text-slate-500">Please go to Admin Setup tab to configure school periods first.</p>
                  </div>
                ) : (
                  <table className="w-full min-w-[800px] border-collapse">
@@ -299,4 +315,18 @@ export default function TimeTablePage() {
          <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-20 flex flex-col items-center justify-center animate-fade-in-up text-center">
             <UserCircle size={80} className="text-blue-500 mb-6 opacity-80" />
             <h2 className="text-3xl font-black text-[#0F172A] mb-2">Teacher-wise Schedule Engine</h2>
-            <p className="text-slate-500 font
+            <p className="text-slate-500 font-medium max-w-lg">Auto-generated routines based on class timetables will appear here.</p>
+         </div>
+      )}
+
+      {activeTab === "arrangement" && (
+         <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-20 flex flex-col items-center justify-center animate-fade-in-up text-center">
+            <Repeat size={80} className="text-orange-500 mb-6 opacity-80" />
+            <h2 className="text-3xl font-black text-[#0F172A] mb-2">Proxy & Substitution System</h2>
+            <p className="text-slate-500 font-medium max-w-lg">The clash-detection proxy engine will be integrated here.</p>
+         </div>
+      )}
+
+    </div>
+  );
+}
