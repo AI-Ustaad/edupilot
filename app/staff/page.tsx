@@ -1,11 +1,14 @@
 "use client";
 import React, { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { collection, addDoc, serverTimestamp, onSnapshot, query, orderBy, deleteDoc, doc, getDoc } from "firebase/firestore";
-import { db } from "@/lib/firebase"; 
-import { useAuth } from "../context/AuthContext";
-import { UploadCloud, CheckCircle2, AlertCircle, Image as ImageIcon, Search, User as UserIcon, Edit2, Trash2, FileText, Zap, Paperclip } from "lucide-react";
+import { collection, onSnapshot, query, setDoc, doc, serverTimestamp } from "firebase/firestore";
+import { db } from "@/lib/firebase";
+import { 
+  Users, Zap, Upload, Building2, Wallet, 
+  PlusCircle, Trash2, Save, CheckCircle2, AlertCircle, 
+  GraduationCap, Briefcase, FileText, FileCheck
+} from "lucide-react";
 
+// Helper for File Uploads
 const convertToBase64 = (file: File): Promise<string> => {
   return new Promise((resolve, reject) => {
     const fileReader = new FileReader();
@@ -15,235 +18,416 @@ const convertToBase64 = (file: File): Promise<string> => {
   });
 };
 
-const formatCNIC = (value: string) => {
-  const numericValue = value.replace(/\D/g, "");
-  if (numericValue.length <= 5) return numericValue;
-  if (numericValue.length <= 12) return `${numericValue.slice(0, 5)}-${numericValue.slice(5)}`;
-  return `${numericValue.slice(0, 5)}-${numericValue.slice(5, 12)}-${numericValue.slice(12, 13)}`;
-};
+const EDU_LEVELS = ["Matriculation", "Intermediate (FA/FSc)", "Bachelors (BA/BSc)", "Masters (MA/MSc)", "M.Phil", "Ph.D", "B.Ed", "M.Ed", "Diploma", "Other"];
 
-export default function StaffPage() {
-  const router = useRouter(); 
-  const { user } = useAuth();
-  
-  const [schoolCategory, setSchoolCategory] = useState("");
-  const [photoBase64, setPhotoBase64] = useState<string>("");
-  const [documentBase64, setDocumentBase64] = useState<string>(""); 
-  const [documentName, setDocumentName] = useState<string>("");
-
-  const [isScanning, setIsScanning] = useState(false);
+export default function ManageStaffPage() {
+  const [isMounted, setIsMounted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
-  const [errorMsg, setErrorMsg] = useState("");
-  
   const [staffList, setStaffList] = useState<any[]>([]);
-  const [searchTerm, setSearchTerm] = useState("");
 
-  const [formData, setFormData] = useState({
-    name: "", cnic: "", phone: "", email: "", dob: "", gender: "Male",
-    personnelNo: "", scale: "", employmentCategory: "", designation: "", education: "", experience: "",
-    bankAccount: "", basicPay: "", grossPay: "", netPay: "", deductionsTotal: "",
-    allowances: [] as any[], deductionsList: [] as any[] 
-  });
+  const [activeTab, setActiveTab] = useState("personal");
+
+  // --- COMPREHENSIVE STATE MANAGEMENT ---
+  const [personal, setPersonal] = useState({ fullName: "", fatherName: "", cnic: "", dob: "", gender: "Male", maritalStatus: "Single", email: "", phone: "", currentAddress: "", permanentAddress: "", emergencyContact: "", photo: "" });
+  const [professional, setProfessional] = useState({ personnelNo: "", doj: "", bps: "", empCategory: "Active Permanent", designation: "", ddoCode: "", prevExperience: "", prevInstitution: "" });
+  const [financial, setFinancial] = useState({ bankName: "", accountNo: "", accountTitle: "", ntn: "" });
+  
+  // Dynamic Arrays
+  const [education, setEducation] = useState<{level: string, institute: string, passingYear: string, subjects: string, document: string}[]>([ { level: "Matriculation", institute: "", passingYear: "", subjects: "", document: "" } ]);
+  const [allowances, setAllowances] = useState<{name: string, amount: number}[]>([ { name: "Basic Pay", amount: 0 } ]);
+  const [deductions, setDeductions] = useState<{name: string, amount: number}[]>([]);
 
   useEffect(() => {
-    const fetchInitData = async () => {
-      if (user) {
-        const userDoc = await getDoc(doc(db, "users", user.uid));
-        if (userDoc.exists()) setSchoolCategory(userDoc.data().schoolCategory);
-      }
-    };
-    fetchInitData();
-
-    const q = query(collection(db, "staff"), orderBy("createdAt", "desc"));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      setStaffList(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    setIsMounted(true);
+    const unsub = onSnapshot(query(collection(db, "staff")), (snapshot) => {
+      setStaffList(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
     });
-    return () => unsubscribe();
-  }, [user]);
+    return () => unsub();
+  }, []);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setFormData({ ...formData, [name]: name === "cnic" ? formatCNIC(value) : value });
+  // --- AUTO CALCULATIONS ---
+  const grossPay = allowances.reduce((sum, item) => sum + Number(item.amount || 0), 0);
+  const totalDeductions = deductions.reduce((sum, item) => sum + Number(item.amount || 0), 0);
+  const netPay = grossPay - totalDeductions;
+
+  // --- DYNAMIC FIELD HANDLERS ---
+  const addEducation = () => setEducation([...education, { level: "Bachelors (BA/BSc)", institute: "", passingYear: "", subjects: "", document: "" }]);
+  const removeEducation = (index: number) => setEducation(education.filter((_, i) => i !== index));
+  const updateEducation = (index: number, field: string, value: string) => {
+    const newArr = [...education];
+    newArr[index] = { ...newArr[index], [field]: value };
+    setEducation(newArr);
   };
-
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files?.[0]) setPhotoBase64(await convertToBase64(e.target.files[0]));
-  };
-
-  const handleDocumentUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleEduDocUpload = async (e: React.ChangeEvent<HTMLInputElement>, index: number) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (file.size > 2 * 1024 * 1024) return alert("File too large. Max 2MB allowed.");
-      setDocumentName(file.name);
-      setDocumentBase64(await convertToBase64(file));
+      const base64 = await convertToBase64(file);
+      updateEducation(index, 'document', base64);
     }
   };
 
-  const handleAIScan = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const addAllowance = () => setAllowances([...allowances, { name: "", amount: 0 }]);
+  const removeAllowance = (index: number) => setAllowances(allowances.filter((_, i) => i !== index));
+  const updateAllowance = (index: number, field: string, value: string | number) => {
+    const newArr = [...allowances];
+    newArr[index] = { ...newArr[index], [field]: value };
+    setAllowances(newArr);
+  };
+
+  const addDeduction = () => setDeductions([...deductions, { name: "", amount: 0 }]);
+  const removeDeduction = (index: number) => setDeductions(deductions.filter((_, i) => i !== index));
+  const updateDeduction = (index: number, field: string, value: string | number) => {
+    const newArr = [...deductions];
+    newArr[index] = { ...newArr[index], [field]: value };
+    setDeductions(newArr);
+  };
+
+  const handleProfilePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file) return;
-
-    setIsScanning(true);
-    setErrorMsg("");
-    try {
-      const base64Data = await convertToBase64(file);
-      const response = await fetch('/api/ocr', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ image: base64Data, documentType: schoolCategory === "Government" ? "salary_slip" : "cv" })
-      });
-      
-      const extractedData = await response.json();
-      
-      setFormData(prev => ({
-        ...prev,
-        name: extractedData.name || prev.name,
-        cnic: extractedData.cnic ? formatCNIC(extractedData.cnic) : prev.cnic,
-        email: extractedData.email || prev.email,
-        dob: extractedData.dob || prev.dob,
-        personnelNo: extractedData.personnelNo || prev.personnelNo,
-        scale: extractedData.scale || prev.scale,
-        employmentCategory: extractedData.employmentCategory || prev.employmentCategory,
-        designation: extractedData.designation || prev.designation,
-        bankAccount: extractedData.bankAccount || prev.bankAccount,
-        basicPay: extractedData.basicPay || prev.basicPay,
-        grossPay: extractedData.grossPay || prev.grossPay,
-        netPay: extractedData.netPay || prev.netPay,
-        deductionsTotal: extractedData.deductionsTotal || prev.deductionsTotal,
-        education: extractedData.education || prev.education,
-        experience: extractedData.experience || prev.experience,
-        allowances: extractedData.allowances || prev.allowances,
-        deductionsList: extractedData.deductionsList || prev.deductionsList,
-      }));
-      
-      alert("AI Scan Complete! All details extracted and auto-filled.");
-    } catch (error) {
-      setErrorMsg("AI Scan failed. Please enter details manually.");
-    } finally {
-      setIsScanning(false);
+    if (file) {
+      const base64 = await convertToBase64(file);
+      setPersonal({...personal, photo: base64});
     }
   };
 
-  const handleSaveStaff = async (e: React.FormEvent) => {
-    e.preventDefault();
+  // --- 🤖 AI MAGIC SIMULATOR ---
+  const simulateAIExtraction = () => {
+    setLoading(true);
+    setTimeout(() => {
+      setPersonal({ ...personal, fullName: "GHAZANFAR ALI", fatherName: "MOHAMMAD SHER", cnic: "3840289071387-7", dob: "1988-05-01", email: "ghazanfarali205@gmail.com", currentAddress: "Sargodha, Punjab", phone: "0300-0000000" });
+      setProfessional({ personnelNo: "31544960", bps: "16", empCategory: "Active Permanent", designation: "S.S.E (SCIENCE)", ddoCode: "SM6155-PRINCIPAL GOVT BOYS", doj: "2012-04-02", prevExperience: "5 Yrs 7 Months", prevInstitution: "Govt Sector" });
+      setFinancial({ bankName: "UNITED BANK LIMITED", accountNo: "10069225", accountTitle: "GHAZANFAR ALI", ntn: "Applied" });
+      setEducation([
+        { level: "Masters (MA/MSc)", institute: "University of Sargodha", passingYear: "2010", subjects: "Science", document: "" },
+        { level: "B.Ed", institute: "AIOU", passingYear: "2012", subjects: "Education", document: "" }
+      ]);
+      setAllowances([ { name: "Basic Pay", amount: 18910 }, { name: "House Rent", amount: 1818 }, { name: "Conveyance Allow", amount: 5000 }, { name: "Personal Allow", amount: 6400 }, { name: "Science Teach Allow", amount: 600 }, { name: "Ph.d/M.Phil Allow", amount: 5000 }, { name: "Medical 15%", amount: 1500 }, { name: "Adhoc 2016", amount: 1588 }, { name: "Adhoc 2017", amount: 1891 } ]);
+      setDeductions([ { name: "GPF Subscription", amount: 3340 }, { name: "Benevolent Fund", amount: 567 }, { name: "Income Tax", amount: 371 }, { name: "Recovery of Pay", amount: 4785 }, { name: "Group Insurance", amount: 161 }, { name: "Professional Tax", amount: 100 } ]);
+      setLoading(false); setSuccess(true); setTimeout(() => setSuccess(false), 3000);
+      setActiveTab("personal");
+    }, 1500);
+  };
+
+  const handleSaveProfile = async () => {
+    if(!personal.fullName || !personal.cnic) return alert("Full Name and CNIC are required.");
     setLoading(true);
     try {
-      await addDoc(collection(db, "staff"), {
-        ...formData, photoBase64, documentBase64, documentName, schoolCategory, createdAt: serverTimestamp(),
+      const docId = personal.cnic || Date.now().toString();
+      await setDoc(doc(db, "staff", docId), {
+        personal, professional, education, financial, allowances, deductions, netPayDetails: { grossPay, totalDeductions, netPay }, createdAt: serverTimestamp()
       });
-      setSuccess(true);
-      setTimeout(() => window.location.reload(), 1500); 
-    } catch (error) {
-      setErrorMsg("Failed to save.");
-    } finally {
-      setLoading(false);
-    }
+      setSuccess(true); setTimeout(() => setSuccess(false), 3000);
+    } catch (error) { alert("Failed to save"); } finally { setLoading(false); }
   };
 
-  const handleDelete = async (e: React.MouseEvent, id: string) => {
-    e.stopPropagation(); 
-    if (window.confirm("Delete this staff member?")) await deleteDoc(doc(db, "staff", id));
-  };
+  if (!isMounted) return null;
+
+  const TABS = [
+    { id: "personal", label: "Basic Info", icon: Users },
+    { id: "education", label: "Educational", icon: GraduationCap },
+    { id: "professional", label: "Professional", icon: Briefcase },
+    { id: "financial", label: "Financial", icon: Wallet },
+  ];
 
   return (
     <div className="animate-fade-in space-y-6 pb-20">
-      <div><h1 className="text-2xl font-extrabold text-slate-800 tracking-tight">Manage Staff</h1></div>
+      <div className="flex justify-between items-end">
+        <div>
+          <h1 className="text-2xl font-extrabold text-[#0F172A] tracking-tight">Staff Onboarding</h1>
+          <p className="text-sm text-slate-500 mt-1">Enterprise HR Management System</p>
+        </div>
+        <button onClick={handleSaveProfile} disabled={loading} className="bg-[#0F172A] text-white px-6 py-2.5 rounded-xl font-bold flex items-center gap-2 hover:bg-slate-800 transition-colors shadow-md disabled:opacity-50">
+           {loading ? "Saving..." : <><Save size={18}/> Complete Registration</>}
+        </button>
+      </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2 space-y-6">
+      {success && <div className="bg-green-50 text-green-700 p-4 rounded-xl flex items-center gap-3 border border-green-100 font-bold"><CheckCircle2 size={20}/> Profile Saved Successfully!</div>}
+
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-8">
+        
+        {/* --- LEFT: COMPREHENSIVE FORM --- */}
+        <div className="xl:col-span-8 space-y-6">
           
-          <div className="bg-gradient-to-r from-[#1e9a5d] to-[#3ac47d] rounded-3xl p-6 text-white flex flex-col sm:flex-row items-center justify-between gap-4">
+          {/* AI EXTRACTOR BANNER */}
+          <div className="bg-[#3ac47d] rounded-2xl p-6 shadow-md text-white flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-4">
-              <div className="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center"><Zap size={28} /></div>
-              <div><h3 className="font-bold text-lg">AI Auto-Extract</h3><p className="text-sm opacity-80">Upload Slip/CV to extract all details magically.</p></div>
+               <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center shrink-0"><Zap size={24}/></div>
+               <div>
+                 <h2 className="text-xl font-black">AI Auto-Extract</h2>
+                 <p className="text-sm opacity-90 font-medium">Upload Salary Slip or CV to auto-fill all 4 tabs magically.</p>
+               </div>
             </div>
-            <div className="relative shrink-0">
-              <button disabled={isScanning} className="bg-white text-[#1e9a5d] hover:bg-slate-50 px-6 py-3 rounded-xl font-extrabold shadow-sm flex items-center gap-2">
-                {isScanning ? "Scanning..." : <><FileText size={18} /> Upload & Scan</>}
-              </button>
-              <input type="file" accept="image/*,application/pdf" onChange={handleAIScan} disabled={isScanning} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
-            </div>
+            <button onClick={simulateAIExtraction} disabled={loading} className="bg-white text-[#3ac47d] px-6 py-3 rounded-xl font-bold flex items-center gap-2 hover:bg-green-50 transition-colors shadow-sm whitespace-nowrap">
+               {loading ? "Scanning Document..." : <><Upload size={18}/> Demo AI Extract</>}
+            </button>
           </div>
 
-          <div className="bg-white rounded-3xl p-8 shadow-sm border border-gray-100">
-            {success && <div className="mb-4 bg-green-50 text-green-700 p-4 rounded-xl flex gap-3"><CheckCircle2/> Staff saved!</div>}
-            
-            <form onSubmit={handleSaveStaff} className="space-y-8">
-              
-              <section>
-                <h3 className="text-[11px] font-bold text-[#3ac47d] uppercase tracking-widest mb-4">Personal Identity</h3>
-                <div className="flex flex-col sm:flex-row gap-6">
-                  <div className="w-28 h-28 rounded-2xl bg-slate-50 border-2 border-dashed border-slate-200 flex flex-col items-center justify-center relative hover:border-[#3ac47d] overflow-hidden">
-                    {photoBase64 ? <img src={photoBase64} className="w-full h-full object-cover" /> : <span className="text-[10px] text-slate-400">Photo</span>}
-                    <input type="file" accept="image/*" onChange={handleImageUpload} className="absolute inset-0 opacity-0 cursor-pointer" />
-                  </div>
-                  <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <input required name="name" value={formData.name} onChange={handleInputChange} placeholder="Full Name" className="w-full bg-slate-50 outline-none rounded-xl px-4 py-3 text-sm border" />
-                    <input required name="cnic" value={formData.cnic} onChange={handleInputChange} placeholder="CNIC" className="w-full bg-slate-50 outline-none rounded-xl px-4 py-3 text-sm border" />
-                    <input name="dob" type="date" value={formData.dob} onChange={handleInputChange} className="w-full bg-slate-50 outline-none rounded-xl px-4 py-3 text-sm border text-slate-500" />
-                    <input name="email" value={formData.email} onChange={handleInputChange} placeholder="Email" className="w-full bg-slate-50 outline-none rounded-xl px-4 py-3 text-sm border" />
-                  </div>
-                </div>
-              </section>
+          <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+             
+             {/* TOP TABS NAVIGATION */}
+             <div className="flex overflow-x-auto border-b border-slate-100 bg-slate-50/50">
+               {TABS.map(tab => (
+                 <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`flex-1 py-4 px-4 font-bold text-sm flex items-center justify-center gap-2 transition-colors border-b-2 whitespace-nowrap ${activeTab === tab.id ? "border-[#3ac47d] text-[#3ac47d] bg-white" : "border-transparent text-slate-500 hover:bg-slate-100 hover:text-slate-800"}`}>
+                   <tab.icon size={16}/> {tab.label}
+                 </button>
+               ))}
+             </div>
 
-              <section>
-                <h3 className="text-[11px] font-bold text-[#3ac47d] uppercase tracking-widest mb-4">Professional Details</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  <input name="personnelNo" value={formData.personnelNo} onChange={handleInputChange} placeholder="Personnel No" className="w-full bg-slate-50 outline-none rounded-xl px-4 py-3 text-sm border" />
-                  <input name="scale" value={formData.scale} onChange={handleInputChange} placeholder="BPS Scale" className="w-full bg-slate-50 outline-none rounded-xl px-4 py-3 text-sm border" />
-                  <input name="employmentCategory" value={formData.employmentCategory} onChange={handleInputChange} placeholder="Emp. Category" className="w-full bg-slate-50 outline-none rounded-xl px-4 py-3 text-sm border" />
-                  <input required name="designation" value={formData.designation} onChange={handleInputChange} placeholder="Designation" className="w-full bg-slate-50 outline-none rounded-xl px-4 py-3 text-sm border" />
-                  <input name="education" value={formData.education} onChange={handleInputChange} placeholder="Education" className="w-full bg-slate-50 outline-none rounded-xl px-4 py-3 text-sm border" />
-                  <input name="experience" value={formData.experience} onChange={handleInputChange} placeholder="Experience" className="w-full bg-slate-50 outline-none rounded-xl px-4 py-3 text-sm border" />
-                </div>
-              </section>
-
-              <section>
-                <h3 className="text-[11px] font-bold text-[#3ac47d] uppercase tracking-widest mb-4">Financials & Documents</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-                  <input name="basicPay" value={formData.basicPay} onChange={handleInputChange} placeholder="Basic Pay" className="w-full bg-[#f0fdf4] outline-none rounded-xl px-4 py-3 text-sm border border-green-100 text-green-700" />
-                  <input name="netPay" value={formData.netPay} onChange={handleInputChange} placeholder="Net Pay" className="w-full bg-blue-50 outline-none rounded-xl px-4 py-3 text-sm border border-blue-100 text-blue-700 font-bold" />
-                </div>
+             <div className="p-8 min-h-[500px]">
                 
-                <div className="relative border-2 border-dashed border-slate-200 rounded-xl p-4 hover:border-[#3ac47d] transition-colors flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="bg-slate-100 p-2 rounded-lg text-slate-500"><Paperclip size={20}/></div>
-                    <div>
-                      <p className="text-sm font-bold text-slate-700">Attach Document</p>
-                      <p className="text-xs text-slate-400">{documentName || "Upload original CV or Salary Slip (PDF/Image)"}</p>
+                {/* TAB 1: PERSONAL */}
+                {activeTab === "personal" && (
+                  <div className="space-y-6 animate-fade-in-down">
+                    <div className="flex items-center gap-6 mb-6">
+                      <div className="w-24 h-24 bg-slate-100 rounded-full border-2 border-dashed border-slate-300 flex items-center justify-center relative overflow-hidden group">
+                        {personal.photo ? <img src={personal.photo} className="w-full h-full object-cover"/> : <Users className="text-slate-400"/>}
+                        <input type="file" onChange={handleProfilePhotoUpload} className="absolute inset-0 opacity-0 cursor-pointer" />
+                        <div className="absolute bottom-0 left-0 right-0 bg-black/50 text-white text-[9px] text-center py-1 opacity-0 group-hover:opacity-100">Upload Photo</div>
+                      </div>
+                      <div>
+                        <h3 className="font-black text-[#0F172A] text-lg">Personal Identity</h3>
+                        <p className="text-xs text-slate-500">Basic demographic information.</p>
+                      </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <input placeholder="Full Name" value={personal.fullName} onChange={e => setPersonal({...personal, fullName: e.target.value})} className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-[#3ac47d]" />
+                      <input placeholder="Father/Husband Name" value={personal.fatherName} onChange={e => setPersonal({...personal, fatherName: e.target.value})} className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-[#3ac47d]" />
+                      <input placeholder="CNIC Number" value={personal.cnic} onChange={e => setPersonal({...personal, cnic: e.target.value})} className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-[#3ac47d]" />
+                      <input type="date" value={personal.dob} onChange={e => setPersonal({...personal, dob: e.target.value})} className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-[#3ac47d]" />
+                      
+                      <div className="flex gap-2">
+                        <select value={personal.gender} onChange={e => setPersonal({...personal, gender: e.target.value})} className="w-1/2 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-[#3ac47d]">
+                          <option>Male</option><option>Female</option><option>Other</option>
+                        </select>
+                        <select value={personal.maritalStatus} onChange={e => setPersonal({...personal, maritalStatus: e.target.value})} className="w-1/2 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-[#3ac47d]">
+                          <option>Single</option><option>Married</option>
+                        </select>
+                      </div>
+                      
+                      <input placeholder="Phone Number" value={personal.phone} onChange={e => setPersonal({...personal, phone: e.target.value})} className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-[#3ac47d]" />
+                      <input placeholder="Email Address" value={personal.email} onChange={e => setPersonal({...personal, email: e.target.value})} className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none sm:col-span-2" />
+                      <textarea placeholder="Current Address" value={personal.currentAddress} onChange={e => setPersonal({...personal, currentAddress: e.target.value})} className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm outline-none sm:col-span-2"></textarea>
+                      <input placeholder="Emergency Contact (Name & Number)" value={personal.emergencyContact} onChange={e => setPersonal({...personal, emergencyContact: e.target.value})} className="bg-red-50 border border-red-100 text-red-900 rounded-xl px-4 py-3 text-sm font-bold outline-none sm:col-span-2" />
                     </div>
                   </div>
-                  <input type="file" accept=".pdf,image/*" onChange={handleDocumentUpload} className="absolute inset-0 opacity-0 cursor-pointer w-full h-full" />
-                </div>
-              </section>
+                )}
 
-              <button disabled={loading} type="submit" className="w-full bg-[#0F172A] text-white py-4 rounded-xl font-bold flex items-center justify-center gap-2">
-                {loading ? "Saving..." : "Save Complete Profile"}
-              </button>
-            </form>
-          </div>
-        </div>
+                {/* TAB 2: EDUCATION (Dynamic with Documents) */}
+                {activeTab === "education" && (
+                  <div className="space-y-6 animate-fade-in-down">
+                    <div className="flex justify-between items-center mb-6">
+                      <div>
+                        <h3 className="font-black text-[#0F172A] text-lg">Academic Qualifications</h3>
+                        <p className="text-xs text-slate-500">Add degrees from Matriculation to Ph.D.</p>
+                      </div>
+                      <button onClick={addEducation} className="bg-[#3ac47d] text-white px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-2 hover:bg-[#2eaa6a] transition-colors"><PlusCircle size={16}/> Add Degree</button>
+                    </div>
 
-        <div className="lg:col-span-1">
-          <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 h-full max-h-[800px] flex flex-col">
-             <h2 className="text-lg font-bold mb-4">Staff Directory</h2>
-             <div className="flex-1 overflow-y-auto custom-scrollbar space-y-3">
-               {staffList.map((staff) => (
-                 <div key={staff.id} onClick={() => router.push(`/staff-profile?id=${staff.id}`)} className="flex items-center gap-3 p-3 bg-slate-50 hover:bg-[#f0fdf4] transition-all rounded-xl cursor-pointer">
-                   <div className="w-10 h-10 rounded-full bg-white overflow-hidden shrink-0">
-                     {staff.photoBase64 ? <img src={staff.photoBase64} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-slate-400"><UserIcon size={16} /></div>}
-                   </div>
-                   <div className="flex-1 min-w-0 pr-8">
-                     <p className="text-sm font-bold text-slate-800 truncate">{staff.name}</p>
-                     <p className="text-[11px] text-slate-500 truncate">{staff.designation}</p>
-                   </div>
-                   <button onClick={(e) => handleDelete(e, staff.id)} className="text-red-500 hover:bg-red-100 p-1 rounded-md"><Trash2 size={14} /></button>
-                 </div>
-               ))}
+                    <div className="space-y-4">
+                      {education.map((edu, idx) => (
+                        <div key={idx} className="bg-slate-50 border border-slate-200 rounded-2xl p-5 relative group">
+                          {education.length > 1 && (
+                            <button onClick={() => removeEducation(idx)} className="absolute top-4 right-4 text-slate-400 hover:text-red-500 transition-colors"><Trash2 size={16}/></button>
+                          )}
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                            
+                            <div className="space-y-1 sm:col-span-2 lg:col-span-1">
+                              <label className="text-[10px] font-bold text-slate-400 uppercase">Degree Level</label>
+                              <select value={edu.level} onChange={e => updateEducation(idx, 'level', e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-sm font-bold outline-none focus:border-[#3ac47d]">
+                                {EDU_LEVELS.map(lvl => <option key={lvl}>{lvl}</option>)}
+                              </select>
+                            </div>
+
+                            <div className="space-y-1 sm:col-span-2 lg:col-span-1">
+                              <label className="text-[10px] font-bold text-slate-400 uppercase">Board / University</label>
+                              <input placeholder="e.g. BISE Lahore" value={edu.institute} onChange={e => updateEducation(idx, 'institute', e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-sm font-medium outline-none focus:border-[#3ac47d]" />
+                            </div>
+
+                            <div className="space-y-1 sm:col-span-1 lg:col-span-1">
+                              <label className="text-[10px] font-bold text-slate-400 uppercase">Passing Year</label>
+                              <input placeholder="e.g. 2015" value={edu.passingYear} onChange={e => updateEducation(idx, 'passingYear', e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-sm font-medium outline-none focus:border-[#3ac47d]" />
+                            </div>
+
+                            <div className="space-y-1 sm:col-span-1 lg:col-span-1">
+                              <label className="text-[10px] font-bold text-slate-400 uppercase">Subjects / Major</label>
+                              <input placeholder="e.g. Science, Physics" value={edu.subjects} onChange={e => updateEducation(idx, 'subjects', e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-sm font-medium outline-none focus:border-[#3ac47d]" />
+                            </div>
+
+                            {/* Scanned Document Upload Field */}
+                            <div className="sm:col-span-2 lg:col-span-4 mt-2">
+                               <div className="relative bg-white border border-dashed border-slate-300 rounded-xl p-3 flex items-center justify-between hover:border-[#3ac47d] transition-colors cursor-pointer overflow-hidden">
+                                 <input type="file" onChange={(e) => handleEduDocUpload(e, idx)} className="absolute inset-0 opacity-0 cursor-pointer z-10" />
+                                 <div className="flex items-center gap-3">
+                                   <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${edu.document ? 'bg-green-100 text-green-600' : 'bg-slate-100 text-slate-400'}`}>
+                                     {edu.document ? <FileCheck size={16}/> : <FileText size={16}/>}
+                                   </div>
+                                   <p className={`text-xs font-bold ${edu.document ? 'text-green-600' : 'text-slate-500'}`}>
+                                     {edu.document ? "Document Uploaded Successfully" : "Upload Scanned Degree/Certificate (Image/PDF)"}
+                                   </p>
+                                 </div>
+                                 <div className="text-[10px] font-bold text-slate-400 bg-slate-100 px-2 py-1 rounded">Browse</div>
+                               </div>
+                            </div>
+
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* TAB 3: PROFESSIONAL */}
+                {activeTab === "professional" && (
+                  <div className="space-y-6 animate-fade-in-down">
+                    <div>
+                      <h3 className="font-black text-[#0F172A] text-lg">Professional Experience</h3>
+                      <p className="text-xs text-slate-500">Employment history and official designations.</p>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-slate-400 uppercase">Personnel No / Emp ID</label>
+                        <input value={professional.personnelNo} onChange={e => setProfessional({...professional, personnelNo: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none" />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-slate-400 uppercase">Date of Joining</label>
+                        <input type="date" value={professional.doj} onChange={e => setProfessional({...professional, doj: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none" />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-slate-400 uppercase">Designation / Title</label>
+                        <input placeholder="e.g. Senior Science Teacher" value={professional.designation} onChange={e => setProfessional({...professional, designation: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none" />
+                      </div>
+                      <div className="flex gap-4">
+                        <div className="space-y-1 w-1/3">
+                          <label className="text-[10px] font-bold text-slate-400 uppercase">BPS Scale</label>
+                          <input placeholder="e.g. 16" value={professional.bps} onChange={e => setProfessional({...professional, bps: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none" />
+                        </div>
+                        <div className="space-y-1 w-2/3">
+                          <label className="text-[10px] font-bold text-slate-400 uppercase">Category</label>
+                          <select value={professional.empCategory} onChange={e => setProfessional({...professional, empCategory: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none">
+                            <option>Active Permanent</option><option>Contract</option><option>Visiting</option>
+                          </select>
+                        </div>
+                      </div>
+                      <div className="space-y-1 sm:col-span-2">
+                         <label className="text-[10px] font-bold text-slate-400 uppercase">DDO Code (Govt Only)</label>
+                         <input value={professional.ddoCode} onChange={e => setProfessional({...professional, ddoCode: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none" />
+                      </div>
+                      <div className="space-y-1">
+                         <label className="text-[10px] font-bold text-slate-400 uppercase">Total Previous Experience</label>
+                         <input placeholder="e.g. 5 Years" value={professional.prevExperience} onChange={e => setProfessional({...professional, prevExperience: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium outline-none" />
+                      </div>
+                      <div className="space-y-1">
+                         <label className="text-[10px] font-bold text-slate-400 uppercase">Previous Institution</label>
+                         <input placeholder="e.g. Allied Schools" value={professional.prevInstitution} onChange={e => setProfessional({...professional, prevInstitution: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium outline-none" />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* TAB 4: FINANCIAL (Allowances & Deductions) */}
+                {activeTab === "financial" && (
+                  <div className="space-y-6 animate-fade-in-down">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                       
+                       {/* ALLOWANCES */}
+                       <div>
+                         <div className="flex justify-between items-center mb-4">
+                            <h3 className="text-xs font-bold text-blue-500 uppercase tracking-widest">Pay & Allowances</h3>
+                            <button onClick={addAllowance} className="text-blue-500 hover:bg-blue-50 p-1 rounded-md transition-colors"><PlusCircle size={18}/></button>
+                         </div>
+                         <div className="space-y-2">
+                           {allowances.map((item, idx) => (
+                             <div key={idx} className="flex gap-2 items-center">
+                               <input placeholder="Allowance Name" value={item.name} onChange={e => updateAllowance(idx, 'name', e.target.value)} className="w-2/3 bg-blue-50 border border-transparent rounded-lg px-3 py-2 text-xs font-bold outline-none focus:border-blue-300 text-blue-900" />
+                               <input type="number" placeholder="Rs" value={item.amount || ''} onChange={e => updateAllowance(idx, 'amount', e.target.value)} className="w-1/3 bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs font-black text-right outline-none focus:border-blue-500" />
+                               <button onClick={() => removeAllowance(idx)} className="text-slate-300 hover:text-red-500"><Trash2 size={14}/></button>
+                             </div>
+                           ))}
+                         </div>
+                         <div className="mt-4 bg-blue-500 text-white p-3 rounded-xl flex justify-between items-center font-black">
+                            <span>Gross Pay</span>
+                            <span>Rs. {grossPay.toLocaleString()}</span>
+                         </div>
+                       </div>
+
+                       {/* DEDUCTIONS */}
+                       <div>
+                         <div className="flex justify-between items-center mb-4">
+                            <h3 className="text-xs font-bold text-red-500 uppercase tracking-widest">Deductions</h3>
+                            <button onClick={addDeduction} className="text-red-500 hover:bg-red-50 p-1 rounded-md transition-colors"><PlusCircle size={18}/></button>
+                         </div>
+                         <div className="space-y-2">
+                           {deductions.map((item, idx) => (
+                             <div key={idx} className="flex gap-2 items-center">
+                               <input placeholder="Deduction Name" value={item.name} onChange={e => updateDeduction(idx, 'name', e.target.value)} className="w-2/3 bg-red-50 border border-transparent rounded-lg px-3 py-2 text-xs font-bold outline-none focus:border-red-300 text-red-900" />
+                               <input type="number" placeholder="Rs" value={item.amount || ''} onChange={e => updateDeduction(idx, 'amount', e.target.value)} className="w-1/3 bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs font-black text-right outline-none focus:border-red-500 text-red-600" />
+                               <button onClick={() => removeDeduction(idx)} className="text-slate-300 hover:text-red-500"><Trash2 size={14}/></button>
+                             </div>
+                           ))}
+                         </div>
+                         <div className="mt-4 bg-red-100 text-red-600 p-3 rounded-xl flex justify-between items-center font-black">
+                            <span>Total Deductions</span>
+                            <span>- Rs. {totalDeductions.toLocaleString()}</span>
+                         </div>
+                       </div>
+                    </div>
+
+                    <div className="border-t border-slate-100 pt-6">
+                      <h3 className="text-xs font-bold text-[#3ac47d] uppercase tracking-widest mb-4">Bank Details</h3>
+                      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+                         <input placeholder="Bank Name" value={financial.bankName} onChange={e => setFinancial({...financial, bankName: e.target.value})} className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-[#3ac47d]" />
+                         <input placeholder="Account Title" value={financial.accountTitle} onChange={e => setFinancial({...financial, accountTitle: e.target.value})} className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-[#3ac47d]" />
+                         <input placeholder="Account / IBAN Number" value={financial.accountNo} onChange={e => setFinancial({...financial, accountNo: e.target.value})} className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-[#3ac47d]" />
+                         <input placeholder="NTN Number" value={financial.ntn} onChange={e => setFinancial({...financial, ntn: e.target.value})} className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-[#3ac47d]" />
+                      </div>
+                      
+                      <div className="mt-6 bg-[#0F172A] text-white p-6 rounded-2xl flex justify-between items-center">
+                         <div>
+                           <p className="text-xs font-bold text-slate-400 tracking-widest uppercase">Final Net Salary</p>
+                         </div>
+                         <p className="text-3xl sm:text-4xl font-black text-[#3ac47d]">Rs. {netPay.toLocaleString()}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
              </div>
           </div>
         </div>
+
+        {/* --- RIGHT: STAFF DIRECTORY --- */}
+        <div className="xl:col-span-4">
+           <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 sticky top-6">
+              <h2 className="text-lg font-black text-[#0F172A] mb-6">Staff Directory</h2>
+              <div className="space-y-3 h-[600px] overflow-y-auto pr-2">
+                 {staffList.length === 0 ? (
+                    <div className="py-10 text-center opacity-50">
+                       <Users size={40} className="mx-auto mb-3 text-slate-300"/>
+                       <p className="font-bold text-sm">No staff added yet.</p>
+                    </div>
+                 ) : (
+                    staffList.map(staff => (
+                       <div key={staff.id} className="bg-slate-50 p-4 rounded-2xl border border-slate-100 hover:border-[#3ac47d] transition-colors cursor-pointer group flex items-start gap-3">
+                          <div className="w-10 h-10 rounded-full bg-white border border-slate-200 overflow-hidden shrink-0 mt-1">
+                            {staff.personal?.photo ? <img src={staff.personal.photo} className="w-full h-full object-cover"/> : <Users size={16} className="m-auto mt-2 text-slate-300"/>}
+                          </div>
+                          <div className="flex-1">
+                            <p className="font-black text-[#0F172A] group-hover:text-[#3ac47d] transition-colors text-sm">{staff.personal?.fullName}</p>
+                            <p className="text-[10px] font-bold text-slate-500 mt-0.5">{staff.professional?.designation} • BPS {staff.professional?.bps || "N/A"}</p>
+                            <div className="mt-2 flex justify-between items-end border-t border-slate-200 pt-2">
+                               <p className="text-[9px] text-slate-400 font-bold uppercase">{staff.professional?.personnelNo}</p>
+                               <p className="text-xs font-black text-green-600">Rs. {staff.netPayDetails?.netPay?.toLocaleString() || 0}</p>
+                            </div>
+                          </div>
+                       </div>
+                    ))
+                 )}
+              </div>
+           </div>
+        </div>
+
       </div>
     </div>
   );
