@@ -4,7 +4,7 @@ import { collection, onSnapshot, query } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { 
   Award, Search, Printer, AlertCircle, CheckCircle2, 
-  X, GraduationCap, Building2, Eye, ShieldAlert
+  X, GraduationCap, Eye, ShieldAlert, Sparkles, BookOpen
 } from "lucide-react";
 
 // Exam Categories
@@ -24,6 +24,38 @@ const calculateGrade = (obtained: number, total: number) => {
   if (percent >= 50) return "C";
   if (percent >= 40) return "D"; 
   return "U";
+};
+
+// 🤖 AI ANALYSIS ENGINE
+const generateAIGuidelines = (marks: any[]) => {
+  if (!marks || marks.length === 0) return ["No sufficient data for AI analysis."];
+  
+  let weakSubjects = marks.filter(m => (m.marksObtained / m.totalMarks) < 0.5).map(m => m.subject);
+  let strongSubjects = marks.filter(m => (m.marksObtained / m.totalMarks) >= 0.8).map(m => m.subject);
+  
+  let totalObt = marks.reduce((acc, curr) => acc + Number(curr.marksObtained), 0);
+  let totalMax = marks.reduce((acc, curr) => acc + Number(curr.totalMarks), 0);
+  let percent = totalMax > 0 ? (totalObt / totalMax) * 100 : 0;
+
+  let guidelines = [];
+  
+  // Overall Status
+  if (percent >= 80) {
+    guidelines.push("🌟 Outstanding overall performance! The student is showing excellent dedication.");
+  } else if (percent >= 60) {
+    guidelines.push("📈 Steady progress observed. Consistent revision can help achieve top grades.");
+  } else {
+    guidelines.push("⚠️ Needs focused attention. A structured daily study routine is highly recommended.");
+  }
+
+  // Subject Specifics
+  if (weakSubjects.length > 0) {
+    guidelines.push(`📚 Extra practice and tutoring required in: ${weakSubjects.join(", ")}.`);
+  } else if (strongSubjects.length > 0) {
+    guidelines.push(`🏆 Exceptional grasp and strong conceptual clarity in: ${strongSubjects.slice(0, 3).join(", ")}.`);
+  }
+
+  return guidelines;
 };
 
 export default function ResultsPage() {
@@ -65,13 +97,19 @@ export default function ResultsPage() {
   return (
     <div className="animate-fade-in space-y-6 pb-20">
       
-      {/* 🖨️ CSS TRICK FOR PERFECT PRINTING */}
+      {/* 🖨️ CSS TRICK FOR PERFECT A4 PRINTING */}
       <style>{`
         @media print {
           body * { visibility: hidden; }
           #printable-result-card, #printable-result-card * { visibility: visible; }
-          #printable-result-card { position: absolute; left: 0; top: 0; width: 100%; height: auto; }
+          #printable-result-card { 
+            position: absolute; left: 0; top: 0; 
+            width: 100%; height: auto; 
+            box-shadow: none !important; border: none !important;
+            border-radius: 0 !important; margin: 0 !important; padding: 0 !important;
+          }
           .print-hide { display: none !important; }
+          * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
         }
       `}</style>
 
@@ -139,7 +177,6 @@ export default function ResultsPage() {
           <div className="divide-y divide-slate-100">
             {filteredStudents.sort((a,b) => (a.rollNumber||0) - (b.rollNumber||0)).map((student) => {
               
-              // 🧠 CORE LOGIC FOR RESULTS
               const studentMarks = marksData.filter(m => m.studentId === student.id);
               const termMarks = studentMarks.filter(m => norm(m.term) === norm(selectedTerm));
               
@@ -150,7 +187,7 @@ export default function ResultsPage() {
               let isReady = false;
               let missingPrereqs = false;
 
-              // FINAL EXAMS PREREQUISITE CHECK
+              // FINAL EXAMS CHECK
               if (norm(selectedTerm) === norm("Final Exams")) {
                 const has1st = studentMarks.some(m => norm(m.term) === norm("1st Term"));
                 const has2nd = studentMarks.some(m => norm(m.term) === norm("2nd Term"));
@@ -161,7 +198,6 @@ export default function ResultsPage() {
                 }
               }
 
-              // CALCULATE TOTALS IF MARKS EXIST
               if (termMarks.length > 0) {
                 const totalObt = termMarks.reduce((acc, curr) => acc + Number(curr.marksObtained || 0), 0);
                 const totalMax = termMarks.reduce((acc, curr) => acc + Number(curr.totalMarks || 0), 0);
@@ -219,68 +255,72 @@ export default function ResultsPage() {
         )}
       </div>
 
-      {/* 🚀 THE ULTIMATE RESULT CARD MODAL */}
+      {/* 🚀 THE ULTIMATE RESULT CARD MODAL (A4 Size Optimized) */}
       {selectedStudentForCard && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 print:p-0 print:bg-white">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 print:p-0 print:bg-white overflow-y-auto">
            
-           <div id="printable-result-card" className="bg-white w-full max-w-3xl rounded-3xl shadow-2xl overflow-hidden print:shadow-none print:max-w-full">
+           <div id="printable-result-card" className="bg-white w-full max-w-4xl rounded-3xl shadow-2xl overflow-hidden print:shadow-none print:max-w-full my-auto relative">
               
-              {/* Modal Header (Hidden on Print) */}
-              <div className="bg-slate-100 px-6 py-4 flex justify-between items-center print-hide border-b border-slate-200">
-                 <h2 className="font-black text-slate-700 flex items-center gap-2"><Award size={18}/> Result Card Preview</h2>
-                 <div className="flex gap-2">
-                    <button onClick={() => window.print()} className="bg-[#3ac47d] hover:bg-[#2eaa6a] text-white px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-2 transition-colors">
-                      <Printer size={14}/> Print
-                    </button>
-                    <button onClick={() => setSelectedStudentForCard(null)} className="bg-white hover:bg-slate-200 text-slate-600 p-2 rounded-lg transition-colors border border-slate-300">
-                      <X size={16}/>
-                    </button>
-                 </div>
+              {/* Modal Controls (Hidden on Print) */}
+              <div className="absolute top-4 right-4 flex gap-2 print-hide z-50">
+                 <button onClick={() => window.print()} className="bg-[#3ac47d] hover:bg-[#2eaa6a] text-white px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-2 shadow-md transition-colors">
+                   <Printer size={14}/> Print Card
+                 </button>
+                 <button onClick={() => setSelectedStudentForCard(null)} className="bg-white hover:bg-red-50 hover:text-red-500 text-slate-600 p-2 rounded-lg shadow-md transition-colors">
+                   <X size={16}/>
+                 </button>
               </div>
 
-              {/* 🎓 THE ACTUAL REPORT CARD (This prints) */}
+              {/* 🎓 THE ACTUAL REPORT CARD */}
               <div className="p-8 sm:p-12 bg-white">
                  
-                 {/* School Header */}
-                 <div className="text-center mb-8 border-b-2 border-[#0F172A] pb-6">
-                    <div className="w-16 h-16 bg-[#f0fdf4] text-[#3ac47d] rounded-full flex items-center justify-center mx-auto mb-3">
-                       <Building2 size={32} />
+                 {/* BEAUTIFUL SCHOOL HEADER */}
+                 <div className="text-center mb-8 border-b-[3px] border-[#0F172A] pb-6">
+                    <div className="flex items-center justify-center gap-4 mb-4">
+                       <div className="w-16 h-16 bg-[#0F172A] text-white rounded-2xl flex items-center justify-center shadow-lg transform -rotate-3">
+                          <BookOpen size={36} />
+                       </div>
+                       <h1 className="text-4xl sm:text-5xl font-serif font-black text-[#0F172A] tracking-tighter">
+                          EduPilot <span className="text-[#3ac47d]">Academy</span>
+                       </h1>
                     </div>
-                    <h1 className="text-3xl font-black text-[#0F172A] uppercase tracking-widest">EduPilot High School</h1>
-                    <p className="text-sm font-bold text-slate-500 mt-1 uppercase tracking-widest">{selectedTerm} Result Report</p>
+                    <p className="text-sm font-bold text-slate-500 uppercase tracking-[0.3em]">{selectedTerm} Academic Report</p>
                  </div>
 
-                 {/* Student Info */}
-                 <div className="flex justify-between items-end mb-8 bg-slate-50 p-6 rounded-2xl border border-slate-100">
-                    <div className="flex items-center gap-4">
-                       <div className="w-20 h-20 bg-white border-2 border-slate-200 rounded-xl overflow-hidden p-1 shadow-sm">
+                 {/* STUDENT INFO BOX */}
+                 <div className="flex justify-between items-center mb-8 bg-[#f8fafc] p-6 rounded-2xl border border-slate-200 shadow-sm">
+                    <div className="flex items-center gap-5">
+                       <div className="w-20 h-20 bg-white border-2 border-[#3ac47d] rounded-xl overflow-hidden p-1 shadow-sm">
                          {selectedStudentForCard.photoBase64 ? <img src={selectedStudentForCard.photoBase64} className="w-full h-full object-cover rounded-lg"/> : <GraduationCap className="w-full h-full p-2 text-slate-300"/>}
                        </div>
                        <div>
-                          <h2 className="text-2xl font-black text-[#0F172A]">{selectedStudentForCard.name}</h2>
-                          <p className="text-xs font-bold text-slate-500 uppercase mt-1">S/O: {selectedStudentForCard.fatherName}</p>
+                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Student Name</p>
+                          <h2 className="text-2xl font-black text-[#0F172A] leading-none">{selectedStudentForCard.name}</h2>
+                          <p className="text-xs font-bold text-slate-500 uppercase mt-1.5">S/O: {selectedStudentForCard.fatherName}</p>
                        </div>
                     </div>
                     <div className="text-right">
                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Class & Section</p>
-                       <p className="font-black text-lg text-[#0F172A] uppercase">{selectedStudentForCard.classGrade} - {selectedStudentForCard.section}</p>
-                       <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-2">Roll Number</p>
-                       <p className="font-black text-lg text-blue-600">{selectedStudentForCard.rollNumber || "N/A"}</p>
+                       <p className="font-black text-xl text-[#0F172A] uppercase">{selectedStudentForCard.classGrade} - {selectedStudentForCard.section}</p>
+                       <div className="inline-block bg-[#0F172A] text-white px-4 py-1 rounded-lg mt-2">
+                         <p className="text-[10px] uppercase tracking-widest opacity-80">Roll Number</p>
+                         <p className="font-black text-lg">{selectedStudentForCard.rollNumber || "N/A"}</p>
+                       </div>
                     </div>
                  </div>
 
-                 {/* Marks Table */}
-                 <table className="w-full text-left border-collapse border border-slate-200">
+                 {/* MARKS TABLE */}
+                 <table className="w-full text-left border-collapse border border-slate-300 shadow-sm rounded-xl overflow-hidden">
                     <thead>
                        <tr className="bg-[#0F172A] text-white text-xs uppercase tracking-widest">
-                          <th className="p-4 font-bold border border-slate-700">Subject</th>
-                          <th className="p-4 font-bold border border-slate-700 text-center">Total Marks</th>
-                          <th className="p-4 font-bold border border-slate-700 text-center">Obtained</th>
-                          <th className="p-4 font-bold border border-slate-700 text-center">%</th>
-                          <th className="p-4 font-bold border border-slate-700 text-center">Grade</th>
+                          <th className="p-4 font-bold border-r border-slate-700">Subject</th>
+                          <th className="p-4 font-bold border-r border-slate-700 text-center">Total Marks</th>
+                          <th className="p-4 font-bold border-r border-slate-700 text-center">Obtained</th>
+                          <th className="p-4 font-bold border-r border-slate-700 text-center">%</th>
+                          <th className="p-4 font-bold text-center">Grade</th>
                        </tr>
                     </thead>
-                    <tbody>
+                    <tbody className="bg-white">
                        {(() => {
                          const studentMarks = marksData.filter(m => m.studentId === selectedStudentForCard.id);
                          const termMarks = studentMarks.filter(m => norm(m.term) === norm(selectedTerm));
@@ -297,11 +337,11 @@ export default function ResultsPage() {
                                  grandTotalMax += Number(m.totalMarks);
                                  grandTotalObt += Number(m.marksObtained);
                                  return (
-                                   <tr key={idx} className="border-b border-slate-200 hover:bg-slate-50">
-                                      <td className="p-4 font-black text-slate-700 uppercase">{m.subject}</td>
-                                      <td className="p-4 font-bold text-slate-500 text-center">{m.totalMarks}</td>
-                                      <td className="p-4 font-black text-[#0F172A] text-center">{m.marksObtained}</td>
-                                      <td className="p-4 font-bold text-slate-500 text-center">{m.percentage}%</td>
+                                   <tr key={idx} className="border-b border-slate-200">
+                                      <td className="p-4 font-black text-slate-700 uppercase border-r border-slate-200">{m.subject}</td>
+                                      <td className="p-4 font-bold text-slate-500 text-center border-r border-slate-200">{m.totalMarks}</td>
+                                      <td className="p-4 font-black text-[#0F172A] text-center border-r border-slate-200">{m.marksObtained}</td>
+                                      <td className="p-4 font-bold text-slate-500 text-center border-r border-slate-200">{m.percentage}%</td>
                                       <td className="p-4 font-black text-center">{m.grade}</td>
                                    </tr>
                                  );
@@ -310,13 +350,13 @@ export default function ResultsPage() {
                              
                              {/* Grand Total Row */}
                              {termMarks.length > 0 && (
-                               <tr className="bg-slate-100 border-t-2 border-slate-400">
-                                  <td className="p-4 font-black text-[#0F172A] uppercase text-right">Grand Total:</td>
-                                  <td className="p-4 font-black text-[#0F172A] text-center">{grandTotalMax}</td>
-                                  <td className="p-4 font-black text-[#3ac47d] text-center text-xl">{grandTotalObt}</td>
-                                  <td className="p-4 font-black text-[#0F172A] text-center">{grandTotalMax > 0 ? ((grandTotalObt/grandTotalMax)*100).toFixed(1) : 0}%</td>
-                                  <td className="p-4 font-black text-white text-center">
-                                    <span className="bg-[#0F172A] px-3 py-1 rounded-lg">{calculateGrade(grandTotalObt, grandTotalMax)}</span>
+                               <tr className="bg-[#f0fdf4] border-t-2 border-[#3ac47d]">
+                                  <td className="p-4 font-black text-[#0F172A] uppercase text-right border-r border-green-200">Grand Total:</td>
+                                  <td className="p-4 font-black text-[#0F172A] text-center border-r border-green-200">{grandTotalMax}</td>
+                                  <td className="p-4 font-black text-[#3ac47d] text-center text-xl border-r border-green-200">{grandTotalObt}</td>
+                                  <td className="p-4 font-black text-[#0F172A] text-center border-r border-green-200">{grandTotalMax > 0 ? ((grandTotalObt/grandTotalMax)*100).toFixed(1) : 0}%</td>
+                                  <td className="p-4 font-black text-white text-center bg-[#3ac47d]">
+                                    {calculateGrade(grandTotalObt, grandTotalMax)}
                                   </td>
                                </tr>
                              )}
@@ -326,15 +366,40 @@ export default function ResultsPage() {
                     </tbody>
                  </table>
 
-                 {/* Footer Signatures */}
-                 <div className="flex justify-between items-end mt-20 pt-8 border-t border-slate-200">
-                    <div className="text-center w-40">
-                       <div className="border-b border-slate-400 pb-2 mb-2"></div>
-                       <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Class Incharge</p>
+                 {/* 🤖 AI PERFORMANCE ANALYSIS SECTION */}
+                 {(() => {
+                   const studentMarks = marksData.filter(m => m.studentId === selectedStudentForCard.id);
+                   const termMarks = studentMarks.filter(m => norm(m.term) === norm(selectedTerm));
+                   if (termMarks.length > 0) {
+                     const guidelines = generateAIGuidelines(termMarks);
+                     return (
+                        <div className="mt-8 bg-blue-50/50 border border-blue-100 rounded-2xl p-6 relative overflow-hidden">
+                           <div className="absolute top-0 right-0 bg-blue-100 px-4 py-1 rounded-bl-xl text-[10px] font-black text-blue-600 uppercase tracking-widest flex items-center gap-1">
+                              <Sparkles size={12}/> AI Analysis
+                           </div>
+                           <h3 className="text-sm font-black text-[#0F172A] uppercase tracking-widest mb-3">Academic Guidelines & Progress</h3>
+                           <ul className="space-y-2">
+                             {guidelines.map((guide, i) => (
+                               <li key={i} className="text-sm font-bold text-slate-700 flex items-start gap-2">
+                                 <span className="text-blue-500 mt-0.5">•</span> {guide}
+                               </li>
+                             ))}
+                           </ul>
+                        </div>
+                     );
+                   }
+                   return null;
+                 })()}
+
+                 {/* OFFICIAL SIGNATURES (No Parents) */}
+                 <div className="flex justify-between items-end mt-20 pt-8 px-8">
+                    <div className="text-center w-48">
+                       <div className="border-b-2 border-slate-800 pb-2 mb-2"></div>
+                       <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Class Incharge</p>
                     </div>
-                    <div className="text-center w-40">
-                       <div className="border-b border-slate-400 pb-2 mb-2"></div>
-                       <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Principal</p>
+                    <div className="text-center w-48">
+                       <div className="border-b-2 border-slate-800 pb-2 mb-2"></div>
+                       <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Principal / Headmaster</p>
                     </div>
                  </div>
 
