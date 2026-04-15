@@ -7,6 +7,9 @@ import { PenTool, Search, Save, CheckCircle2, AlertCircle, Award, Users, BookOpe
 // Exam Categories based on your SBA structure
 const EXAM_TERMS = ["1st Term", "2nd Term", "Final Exams", "Monthly Test", "Mock Exams", "SBA"];
 
+// 🧠 THE MAGIC FUNCTION: It ignores capital/small letters and extra spaces
+const norm = (str?: string) => (str || "").trim().toLowerCase();
+
 export default function ExamsAndMarksPage() {
   const [isMounted, setIsMounted] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -40,17 +43,25 @@ export default function ExamsAndMarksPage() {
     return () => { unsubSections(); unsubStudents(); };
   }, []);
 
-  // Derived Data for Dropdowns
+  // Derived Data for Dropdowns (Using norm for bulletproof matching)
   const availableClasses = Array.from(new Set(sectionsData.map(s => s.classGrade)));
-  const availableSections = sectionsData.filter(s => s.classGrade === selectedClass);
-  const activeSectionData = sectionsData.find(s => s.classGrade === selectedClass && s.sectionName === selectedSection);
+  
+  const availableSections = sectionsData.filter(s => norm(s.classGrade) === norm(selectedClass));
+  
+  const activeSectionData = sectionsData.find(s => 
+    norm(s.classGrade) === norm(selectedClass) && norm(s.sectionName) === norm(selectedSection)
+  );
   
   // Combine Core and Elective subjects for the dropdown
   const availableSubjects = activeSectionData?.subjects 
     ? [...(activeSectionData.subjects.core || []), ...(activeSectionData.subjects.electives || [])] 
     : [];
 
-  const filteredStudents = studentsData.filter(s => s.classGrade === selectedClass && s.section === selectedSection);
+  // FILTER STUDENTS (The core fix is here: matching with norm function)
+  const filteredStudents = studentsData.filter(s => 
+    norm(s.classGrade) === norm(selectedClass) && 
+    norm(s.section) === norm(selectedSection)
+  );
 
   // Auto-calculate Grade based on 40% passing criteria
   const calculateGrade = (obtained: number, total: number) => {
@@ -202,8 +213,8 @@ export default function ExamsAndMarksPage() {
             {/* Table Header */}
             <div className="px-6 py-4 bg-[#0F172A] text-white flex items-center justify-between">
                <div>
-                 <h2 className="text-lg font-black">{selectedClass} - {selectedSection}</h2>
-                 <p className="text-xs text-slate-300 font-medium">Entering marks for: <span className="font-bold text-[#3ac47d]">{selectedSubject}</span> ({selectedTerm})</p>
+                 <h2 className="text-lg font-black uppercase">{selectedClass} - {selectedSection}</h2>
+                 <p className="text-xs text-slate-300 font-medium">Entering marks for: <span className="font-bold text-[#3ac47d] uppercase">{selectedSubject}</span> ({selectedTerm})</p>
                </div>
                <div className="bg-white/10 px-4 py-1.5 rounded-full text-xs font-bold">
                  {filteredStudents.length} Students
