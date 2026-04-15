@@ -35,6 +35,11 @@ export default function ExamsAndMarksPage() {
   const [marksEntry, setMarksEntry] = useState<Record<string, { obtained: string, total: string }>>({});
   const [globalTotalMarks, setGlobalTotalMarks] = useState("100");
 
+  // 🚀 FIX 1: Clear local typing state when changing subjects or filters
+  useEffect(() => {
+    setMarksEntry({});
+  }, [selectedTerm, selectedClass, selectedSection, selectedSubject]);
+
   useEffect(() => {
     setIsMounted(true);
     const unsubSections = onSnapshot(query(collection(db, "sections")), (snapshot) => {
@@ -188,7 +193,8 @@ export default function ExamsAndMarksPage() {
         </div>
         <div className="w-full lg:w-1/5 space-y-2">
           <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Default Total Marks</label>
-          <input type="number" value={globalTotalMarks} onChange={e => setGlobalTotalMarks(e.target.value)} className="w-full bg-slate-50 outline-none rounded-xl px-4 py-3 text-sm border font-bold text-[#0F172A] text-center" />
+          {/* 🚀 FIX 2 applied here to Total Marks input */}
+          <input type="number" value={globalTotalMarks} onChange={e => setGlobalTotalMarks(e.target.value)} className="w-full bg-slate-50 outline-none rounded-xl px-4 py-3 text-sm border font-bold text-[#0F172A] text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
         </div>
       </div>
 
@@ -227,7 +233,6 @@ export default function ExamsAndMarksPage() {
               const grade = calculateGrade(Number(obtainedStr), Number(totalStr));
               const isFail = grade === "U";
               
-              // Check if it's already saved in DB
               const isSavedInDB = allMarks.some(m => m.studentId === student.id && norm(m.term) === norm(selectedTerm) && norm(m.subject) === norm(selectedSubject));
 
               return (
@@ -248,18 +253,19 @@ export default function ExamsAndMarksPage() {
                   </div>
 
                   <div className="col-span-2 flex justify-center">
-                    <input type="number" value={totalStr} onChange={(e) => handleMarkChange(student.id, "total", e.target.value)} className="w-16 bg-slate-100 text-center rounded-lg py-2 text-sm font-bold border border-transparent focus:border-blue-400 outline-none" />
+                    {/* 🚀 FIX 2 applied here to Total Marks Grid input */}
+                    <input type="number" value={totalStr} onChange={(e) => handleMarkChange(student.id, "total", e.target.value)} className="w-16 bg-slate-100 text-center rounded-lg py-2 text-sm font-bold border border-transparent focus:border-blue-400 outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
                   </div>
 
                   <div className="col-span-2 flex justify-center">
-                    <input type="number" placeholder="0" value={obtainedStr} onChange={(e) => handleMarkChange(student.id, "obtained", e.target.value)} className="w-20 bg-white text-center rounded-lg py-2 text-sm font-black border-2 border-slate-200 focus:border-[#3ac47d] focus:bg-[#f0fdf4] outline-none shadow-inner transition-all" />
+                    {/* 🚀 FIX 2 applied here to Obtained Marks Grid input */}
+                    <input type="number" placeholder="0" value={obtainedStr} onChange={(e) => handleMarkChange(student.id, "obtained", e.target.value)} className="w-20 bg-white text-center rounded-lg py-2 text-sm font-black border-2 border-slate-200 focus:border-[#3ac47d] focus:bg-[#f0fdf4] outline-none shadow-inner transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
                   </div>
 
                   <div className="col-span-3 flex justify-end items-center gap-3">
                      <span className="text-xs font-bold text-slate-500">{percent}%</span>
                      <span className={`w-8 text-center py-1 rounded-md text-xs font-black ${isFail ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-700'}`}>{grade}</span>
                      
-                     {/* INDIVIDUAL ROW SAVE BUTTON */}
                      <button onClick={() => saveSingleRecord(student)} disabled={savingRow === student.id} className="bg-slate-200 hover:bg-[#3ac47d] hover:text-white text-slate-600 p-2 rounded-lg transition-colors" title="Save this record">
                         {savingRow === student.id ? <Loader2 size={16} className="animate-spin"/> : <Save size={16} />}
                      </button>
