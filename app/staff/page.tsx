@@ -5,7 +5,7 @@ import { db } from "@/lib/firebase";
 import { 
   Users, Zap, Upload, Building2, Wallet, 
   PlusCircle, Trash2, Save, CheckCircle2, AlertCircle, 
-  GraduationCap, Briefcase, FileText, FileCheck
+  GraduationCap, Briefcase, FileText, FileCheck, Loader2
 } from "lucide-react";
 
 // Helper for File Uploads
@@ -23,6 +23,7 @@ const EDU_LEVELS = ["Matriculation", "Intermediate (FA/FSc)", "Bachelors (BA/BSc
 export default function ManageStaffPage() {
   const [isMounted, setIsMounted] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [isExtracting, setIsExtracting] = useState(false); // New state for AI Extraction
   const [success, setSuccess] = useState(false);
   const [staffList, setStaffList] = useState<any[]>([]);
 
@@ -91,22 +92,41 @@ export default function ManageStaffPage() {
     }
   };
 
-  // --- 🤖 AI MAGIC SIMULATOR ---
-  const simulateAIExtraction = () => {
-    setLoading(true);
-    setTimeout(() => {
-      setPersonal({ ...personal, fullName: "GHAZANFAR ALI", fatherName: "MOHAMMAD SHER", cnic: "3840289071387-7", dob: "1988-05-01", email: "ghazanfarali205@gmail.com", currentAddress: "Sargodha, Punjab", phone: "0300-0000000" });
-      setProfessional({ personnelNo: "31544960", bps: "16", empCategory: "Active Permanent", designation: "S.S.E (SCIENCE)", ddoCode: "SM6155-PRINCIPAL GOVT BOYS", doj: "2012-04-02", prevExperience: "5 Yrs 7 Months", prevInstitution: "Govt Sector" });
-      setFinancial({ bankName: "UNITED BANK LIMITED", accountNo: "10069225", accountTitle: "GHAZANFAR ALI", ntn: "Applied" });
-      setEducation([
-        { level: "Masters (MA/MSc)", institute: "University of Sargodha", passingYear: "2010", subjects: "Science", document: "" },
-        { level: "B.Ed", institute: "AIOU", passingYear: "2012", subjects: "Education", document: "" }
-      ]);
-      setAllowances([ { name: "Basic Pay", amount: 18910 }, { name: "House Rent", amount: 1818 }, { name: "Conveyance Allow", amount: 5000 }, { name: "Personal Allow", amount: 6400 }, { name: "Science Teach Allow", amount: 600 }, { name: "Ph.d/M.Phil Allow", amount: 5000 }, { name: "Medical 15%", amount: 1500 }, { name: "Adhoc 2016", amount: 1588 }, { name: "Adhoc 2017", amount: 1891 } ]);
-      setDeductions([ { name: "GPF Subscription", amount: 3340 }, { name: "Benevolent Fund", amount: 567 }, { name: "Income Tax", amount: 371 }, { name: "Recovery of Pay", amount: 4785 }, { name: "Group Insurance", amount: 161 }, { name: "Professional Tax", amount: 100 } ]);
-      setLoading(false); setSuccess(true); setTimeout(() => setSuccess(false), 3000);
-      setActiveTab("personal");
-    }, 1500);
+  // --- 🚀 REAL AI FILE UPLOAD HANDLER ---
+  const handleRealAIExtract = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsExtracting(true);
+
+    try {
+      // 1. Prepare file for your AI Backend
+      const formData = new FormData();
+      formData.append("file", file);
+
+      // ==========================================
+      // استاد جی! آپ کا بنایا ہوا AI API یہاں کال ہوگا
+      // ==========================================
+      // const response = await fetch("/api/your-ai-endpoint", { method: "POST", body: formData });
+      // const extractedData = await response.json();
+      
+      // Example of how you will map your API response:
+      // setPersonal(prev => ({ ...prev, fullName: extractedData.name, cnic: extractedData.cnic, ... }));
+      // setAllowances(extractedData.allowances);
+      // setDeductions(extractedData.deductions);
+
+      // For now, simulating the network delay so UI works perfectly
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      alert(`✅ File "${file.name}" ready for extraction! Connect your API in the code.`);
+      
+    } catch (error) {
+      alert("Error parsing document.");
+      console.error(error);
+    } finally {
+      setIsExtracting(false);
+      // Reset input so same file can be uploaded again if needed
+      e.target.value = "";
+    }
   };
 
   const handleSaveProfile = async () => {
@@ -149,7 +169,7 @@ export default function ManageStaffPage() {
         {/* --- LEFT: COMPREHENSIVE FORM --- */}
         <div className="xl:col-span-8 space-y-6">
           
-          {/* AI EXTRACTOR BANNER */}
+          {/* REAL AI EXTRACTOR BANNER */}
           <div className="bg-[#3ac47d] rounded-2xl p-6 shadow-md text-white flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-4">
                <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center shrink-0"><Zap size={24}/></div>
@@ -158,9 +178,18 @@ export default function ManageStaffPage() {
                  <p className="text-sm opacity-90 font-medium">Upload Salary Slip or CV to auto-fill all 4 tabs magically.</p>
                </div>
             </div>
-            <button onClick={simulateAIExtraction} disabled={loading} className="bg-white text-[#3ac47d] px-6 py-3 rounded-xl font-bold flex items-center gap-2 hover:bg-green-50 transition-colors shadow-sm whitespace-nowrap">
-               {loading ? "Scanning Document..." : <><Upload size={18}/> Demo AI Extract</>}
-            </button>
+            
+            {/* THE REAL UPLOAD BUTTON */}
+            <label className={`bg-white text-[#3ac47d] px-6 py-3 rounded-xl font-bold flex items-center gap-2 hover:bg-green-50 transition-colors shadow-sm whitespace-nowrap cursor-pointer ${isExtracting ? 'opacity-70 pointer-events-none' : ''}`}>
+               {isExtracting ? <><Loader2 size={18} className="animate-spin"/> Scanning Document...</> : <><Upload size={18}/> Upload & Scan</>}
+               <input 
+                 type="file" 
+                 accept=".pdf,image/png,image/jpeg,image/jpg" 
+                 className="hidden" 
+                 onChange={handleRealAIExtract} 
+                 disabled={isExtracting} 
+               />
+            </label>
           </div>
 
           <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
