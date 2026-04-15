@@ -17,12 +17,21 @@ const getOrdinal = (n: number) => {
 };
 
 export default function SettingsPage() {
-  const [activeTab, setActiveTab] = useState("allotment"); // Default to allotment for testing
+  const [activeTab, setActiveTab] = useState("identity"); 
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [clashError, setClashError] = useState("");
 
-  // Global Data
+  // ==========================================
+  // 1. ORIGINAL SETTINGS STATES (School Identity)
+  // ==========================================
+  const [schoolCategory, setSchoolCategory] = useState("Private School");
+  const [registeredName, setRegisteredName] = useState("Govt High School Sahiwal");
+  const [tagline, setTagline] = useState("");
+
+  // ==========================================
+  // 2. TIMETABLE STATES
+  // ==========================================
   const [sections, setSections] = useState<any[]>([]);
   const [staff, setStaff] = useState<any[]>([]);
   const [savedTimetables, setSavedTimetables] = useState<any[]>([]);
@@ -32,7 +41,7 @@ export default function SettingsPage() {
   const [breakAfter, setBreakAfter] = useState(4);
   const [schoolPeriods, setSchoolPeriods] = useState<string[]>([]);
 
-  // 🚀 SMART ALLOTMENT STATES
+  // Smart Allotment States
   const [selectedClass, setSelectedClass] = useState("");
   const [selectedSection, setSelectedSection] = useState("");
   const [selectedPeriod, setSelectedPeriod] = useState("");
@@ -41,7 +50,6 @@ export default function SettingsPage() {
   const [fromDay, setFromDay] = useState("Monday");
   const [toDay, setToDay] = useState("Friday");
   
-  // Local Grid State for Preview
   const [gridData, setGridData] = useState<Record<string, { subject: string, teacherId: string, teacherName: string }>>({});
 
   useEffect(() => {
@@ -61,7 +69,6 @@ export default function SettingsPage() {
     return () => { unsubSections(); unsubStaff(); unsubTimetables(); unsubSettings(); };
   }, []);
 
-  // Auto-load timetable for preview when class/section selected
   useEffect(() => {
     if (selectedClass && selectedSection) {
       const docId = `${norm(selectedClass)}_${norm(selectedSection)}`;
@@ -82,6 +89,7 @@ export default function SettingsPage() {
     return des.includes("teacher") || des.includes("s.s.e") || des.includes("lecturer");
   });
 
+  // 🚀 SAVE FUNCTIONS
   const handleSaveTimetableConfig = async () => {
     setLoading(true);
     try {
@@ -97,7 +105,6 @@ export default function SettingsPage() {
     } catch (err) { alert("Failed to save."); } finally { setLoading(false); }
   };
 
-  // 🧠 THE MAGIC BATCH ALLOTMENT & CLASH DETECTION
   const handleBatchAllot = () => {
     setClashError("");
     if (!selectedPeriod || !selectedSubject || !selectedTeacher || !fromDay || !toDay) {
@@ -113,16 +120,11 @@ export default function SettingsPage() {
     let hasClash = false;
     let clashDetails = "";
 
-    // 🛑 1. Clash Detection Loop
     for (let i = startIndex; i <= endIndex; i++) {
       const currentDay = DAYS[i];
       const key = `${currentDay}-${selectedPeriod}`;
-
-      // Check all other saved timetables
       for (const tt of savedTimetables) {
-        // Skip checking the same class we are editing
         if (norm(tt.classGrade) === norm(selectedClass) && norm(tt.section) === norm(selectedSection)) continue;
-
         if (tt.schedule && tt.schedule[key] && tt.schedule[key].teacherId === selectedTeacher) {
            hasClash = true;
            const teacherName = displayStaff.find(s => s.id === selectedTeacher)?.personal?.fullName;
@@ -138,11 +140,9 @@ export default function SettingsPage() {
       return;
     }
 
-    // ✅ 2. Apply Allotment to Local Grid
     setGridData(prev => {
       const newGrid = { ...prev };
       const teacherObj = displayStaff.find(s => s.id === selectedTeacher);
-      
       for (let i = startIndex; i <= endIndex; i++) {
         const currentDay = DAYS[i];
         const key = `${currentDay}-${selectedPeriod}`;
@@ -156,7 +156,6 @@ export default function SettingsPage() {
     });
   };
 
-  // Remove individual cell data
   const handleClearCell = (day: string, period: string) => {
     setGridData(prev => {
       const newGrid = { ...prev };
@@ -165,7 +164,6 @@ export default function SettingsPage() {
     });
   };
 
-  // Save the entire grid to Firebase
   const handlePublishTimetable = async () => {
     if (!selectedClass || !selectedSection) return;
     setLoading(true);
@@ -180,9 +178,16 @@ export default function SettingsPage() {
 
   return (
     <div className="animate-fade-in space-y-6 pb-20">
-      <div>
-        <h1 className="text-2xl font-extrabold text-[#0F172A] tracking-tight">Admin Control Panel</h1>
-        <p className="text-sm text-slate-500 mt-1">Configure school structure and assign routines.</p>
+      
+      {/* 🚀 TOP HEADER WITH GLOBAL SAVE BUTTON */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
+        <div>
+          <h1 className="text-2xl font-extrabold text-[#0F172A] tracking-tight">Admin Control Panel</h1>
+          <p className="text-sm text-slate-500 mt-1">Configure your school's global structure and identity here.</p>
+        </div>
+        <button className="bg-[#3ac47d] text-white px-6 py-2.5 rounded-xl font-bold flex items-center gap-2 hover:bg-[#2eaa6a] transition-all shadow-md">
+           <Save size={18}/> Save All Settings
+        </button>
       </div>
 
       {success && <div className="bg-green-50 text-green-700 p-4 rounded-xl flex items-center gap-3 border border-green-100 font-bold"><CheckCircle2 size={20}/> Changes Saved Successfully!</div>}
@@ -190,21 +195,44 @@ export default function SettingsPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
         
-        {/* --- SETTINGS SIDEBAR --- */}
-        <div className="md:col-span-4 lg:col-span-3 space-y-2">
-           <button onClick={() => setActiveTab("framework")} className={`w-full flex items-center gap-3 px-4 py-4 rounded-2xl font-bold transition-all ${activeTab === "framework" ? "bg-[#0F172A] text-white shadow-md" : "bg-white text-slate-500 hover:bg-slate-50 border border-slate-100"}`}>
-             <Clock size={18} className={activeTab === "framework" ? "text-[#3ac47d]" : ""} /> <div className="text-left"><p>1. Global Framework</p><p className="text-[9px] opacity-70 uppercase tracking-widest">Periods & Break Setup</p></div>
+        {/* --- SETTINGS SIDEBAR (Restored original UI) --- */}
+        <div className="md:col-span-4 lg:col-span-3 space-y-3">
+           <button onClick={() => setActiveTab("identity")} className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl font-bold transition-all ${activeTab === "identity" ? "bg-[#0F172A] text-white shadow-md scale-[1.02]" : "bg-white text-slate-500 hover:bg-slate-50 border border-slate-100 shadow-sm"}`}>
+             <Building2 size={22} className={activeTab === "identity" ? "text-[#3ac47d]" : "text-slate-400"} /> 
+             <div className="text-left">
+                <p className="text-sm">School Identity</p>
+                <p className={`text-[9px] uppercase tracking-widest mt-0.5 ${activeTab === "identity" ? "text-slate-400" : "text-slate-400"}`}>Name, Logo & Print Info</p>
+             </div>
            </button>
-           <button onClick={() => setActiveTab("allotment")} className={`w-full flex items-center gap-3 px-4 py-4 rounded-2xl font-bold transition-all ${activeTab === "allotment" ? "bg-[#0F172A] text-white shadow-md" : "bg-white text-slate-500 hover:bg-slate-50 border border-slate-100"}`}>
-             <CalendarRange size={18} className={activeTab === "allotment" ? "text-[#3ac47d]" : ""} /> <div className="text-left"><p>2. Timetable Allotment</p><p className="text-[9px] opacity-70 uppercase tracking-widest">Smart Clash-Free Entry</p></div>
+           <button onClick={() => setActiveTab("academic")} className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl font-bold transition-all ${activeTab === "academic" ? "bg-[#0F172A] text-white shadow-md scale-[1.02]" : "bg-white text-slate-500 hover:bg-slate-50 border border-slate-100 shadow-sm"}`}>
+             <Layers size={22} className={activeTab === "academic" ? "text-[#3ac47d]" : "text-slate-400"} /> 
+             <div className="text-left">
+                <p className="text-sm">Academic Structure</p>
+                <p className="text-[9px] text-slate-400 uppercase tracking-widest mt-0.5">Level, Classes & Sections Hub</p>
+             </div>
            </button>
-           
-           <div className="pt-4 border-t border-slate-200 mt-4 space-y-2">
-              <button onClick={() => setActiveTab("identity")} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${activeTab === "identity" ? "bg-slate-200 text-[#0F172A]" : "text-slate-400 hover:bg-slate-50"}`}>
-                <Building2 size={16}/> <span className="text-sm">School Identity</span>
+           <button onClick={() => setActiveTab("financial")} className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl font-bold transition-all ${activeTab === "financial" ? "bg-[#0F172A] text-white shadow-md scale-[1.02]" : "bg-white text-slate-500 hover:bg-slate-50 border border-slate-100 shadow-sm"}`}>
+             <Wallet size={22} className={activeTab === "financial" ? "text-[#3ac47d]" : "text-slate-400"} /> 
+             <div className="text-left">
+                <p className="text-sm">Financial Setup</p>
+                <p className="text-[9px] text-slate-400 uppercase tracking-widest mt-0.5">Currency & Fee Rules</p>
+             </div>
+           </button>
+           <button onClick={() => setActiveTab("security")} className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl font-bold transition-all ${activeTab === "security" ? "bg-[#0F172A] text-white shadow-md scale-[1.02]" : "bg-white text-slate-500 hover:bg-slate-50 border border-slate-100 shadow-sm"}`}>
+             <ShieldCheck size={22} className={activeTab === "security" ? "text-[#3ac47d]" : "text-slate-400"} /> 
+             <div className="text-left">
+                <p className="text-sm">System Security</p>
+                <p className="text-[9px] text-slate-400 uppercase tracking-widest mt-0.5">Admin Profile & Danger Zone</p>
+             </div>
+           </button>
+
+           <div className="pt-4 border-t border-slate-200 mt-6 space-y-3">
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-2 mb-2">Timetable Settings</p>
+              <button onClick={() => setActiveTab("framework")} className={`w-full flex items-center gap-4 px-5 py-3 rounded-2xl font-bold transition-all ${activeTab === "framework" ? "bg-blue-50 text-blue-700 border border-blue-200" : "bg-white text-slate-500 hover:bg-slate-50 border border-slate-100 shadow-sm"}`}>
+                <Clock size={18} /> <div className="text-left"><p className="text-sm">Global Framework</p></div>
               </button>
-              <button onClick={() => setActiveTab("academic")} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${activeTab === "academic" ? "bg-slate-200 text-[#0F172A]" : "text-slate-400 hover:bg-slate-50"}`}>
-                <Layers size={16}/> <span className="text-sm">Academic Setup</span>
+              <button onClick={() => setActiveTab("allotment")} className={`w-full flex items-center gap-4 px-5 py-3 rounded-2xl font-bold transition-all ${activeTab === "allotment" ? "bg-[#3ac47d] text-white shadow-md" : "bg-white text-slate-500 hover:bg-slate-50 border border-slate-100 shadow-sm"}`}>
+                <CalendarRange size={18} /> <div className="text-left"><p className="text-sm">Timetable Allotment</p></div>
               </button>
            </div>
         </div>
@@ -212,7 +240,37 @@ export default function SettingsPage() {
         {/* --- SETTINGS CONTENT --- */}
         <div className="md:col-span-8 lg:col-span-9">
            
-           {/* 1. FRAMEWORK SETUP */}
+           {/* 🚀 ORIGINAL: SCHOOL IDENTITY TAB (Reconstructed from Image 2) */}
+           {activeTab === "identity" && (
+             <div className="bg-white rounded-3xl p-8 shadow-sm border border-slate-100 animate-fade-in-up">
+                <h2 className="text-lg font-black text-[#0F172A] flex items-center gap-2 mb-8">
+                  <Building2 className="text-[#3ac47d]" size={20}/> School Identity
+                </h2>
+                
+                <div className="space-y-6">
+                   <div className="space-y-2">
+                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">School Category</label>
+                     <select value={schoolCategory} onChange={e => setSchoolCategory(e.target.value)} className="w-full bg-white outline-none rounded-xl px-4 py-3 text-sm border border-slate-200 font-bold text-[#0F172A] focus:border-[#3ac47d]">
+                        <option>Private School</option>
+                        <option>Government School</option>
+                        <option>Semi-Government / Trust</option>
+                     </select>
+                   </div>
+                   
+                   <div className="space-y-2">
+                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Registered Name</label>
+                     <input type="text" value={registeredName} onChange={e => setRegisteredName(e.target.value)} className="w-full bg-white outline-none rounded-xl px-4 py-3 text-sm border border-slate-200 font-bold text-[#0F172A] focus:border-[#3ac47d]" />
+                   </div>
+
+                   <div className="space-y-2">
+                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Tagline (Auto-Filled for Punjab Govt)</label>
+                     <input type="text" value={tagline} onChange={e => setTagline(e.target.value)} className="w-full bg-slate-50 outline-none rounded-xl px-4 py-3 text-sm border border-slate-100 font-medium text-slate-600 focus:border-[#3ac47d]" />
+                   </div>
+                </div>
+             </div>
+           )}
+
+           {/* TIMETABLE: FRAMEWORK SETUP */}
            {activeTab === "framework" && (
              <div className="bg-white rounded-3xl p-8 shadow-sm border border-slate-100 animate-fade-in-up">
                 <h2 className="text-xl font-black text-[#0F172A] flex items-center gap-2 mb-6"><Clock className="text-[#3ac47d]"/> Timetable Framework</h2>
@@ -236,7 +294,7 @@ export default function SettingsPage() {
              </div>
            )}
 
-           {/* 2. THE SMART ALLOTMENT ENGINE */}
+           {/* TIMETABLE: SMART ALLOTMENT ENGINE */}
            {activeTab === "allotment" && (
              <div className="space-y-6 animate-fade-in-up">
                 
@@ -309,7 +367,6 @@ export default function SettingsPage() {
                       <div className="px-6 py-4 bg-[#0F172A] text-white flex justify-between items-center">
                          <div>
                             <h3 className="font-black text-sm uppercase">{selectedClass} - {selectedSection} Preview</h3>
-                            <p className="text-[10px] text-slate-400">Review changes below before publishing to the live server.</p>
                          </div>
                          <button onClick={handlePublishTimetable} disabled={loading} className="bg-white text-[#0F172A] px-4 py-1.5 rounded-lg text-xs font-black flex items-center gap-2 hover:bg-slate-200 transition-colors">
                            {loading ? <Loader2 size={14} className="animate-spin"/> : <Save size={14}/>} Publish Routine
@@ -360,10 +417,11 @@ export default function SettingsPage() {
              </div>
            )}
 
-           {activeTab !== "timetable" && activeTab !== "framework" && activeTab !== "allotment" && (
-             <div className="bg-white rounded-3xl p-20 shadow-sm border border-slate-100 text-center text-slate-400 font-bold flex flex-col items-center">
+           {/* UNDER CONSTRUCTION PLACEHOLDERS */}
+           {(activeTab === "academic" || activeTab === "financial" || activeTab === "security") && (
+             <div className="bg-white rounded-3xl p-20 shadow-sm border border-slate-100 text-center text-slate-400 font-bold flex flex-col items-center animate-fade-in-up">
                 <ShieldCheck size={48} className="mb-4 opacity-50"/>
-                This module is under construction. Select "Timetable Allotment" to proceed.
+                This module is under construction. Please use other available settings.
              </div>
            )}
         </div>
