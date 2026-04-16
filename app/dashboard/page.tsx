@@ -1,286 +1,272 @@
 "use client";
 import React, { useState, useEffect } from "react";
-import { collection, onSnapshot, query, doc } from "firebase/firestore";
+import { collection, onSnapshot, query } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { useAuth } from "../context/AuthContext";
-import Link from "next/link";
-import { 
-  Users, BookOpen, Award, Wallet, Calendar as CalendarIcon, 
-  TrendingUp, Activity, CheckSquare, ArrowRight, PieChart
-} from "lucide-react";
+import { Award, Bell, ChevronDown, User, Loader2, Info } from "lucide-react";
 
-// Helper function for flawless matching
+// 🧠 THE MAGIC FUNCTION: Ignores capital/small letters
 const norm = (str?: string) => (str || "").trim().toLowerCase();
 
-export default function DashboardPage() {
-  const { user } = useAuth();
+export default function AnalyticsDashboard() {
   const [isMounted, setIsMounted] = useState(false);
+  const [loading, setLoading] = useState(true);
   
-  // LIVE DATA STATES
+  // Real Database States
   const [students, setStudents] = useState<any[]>([]);
-  const [sections, setSections] = useState<any[]>([]);
   const [marks, setMarks] = useState<any[]>([]);
-  const [fees, setFees] = useState<any[]>([]);
-  const [academicYear, setAcademicYear] = useState("2026-2027");
+  const [classes, setClasses] = useState<string[]>([]);
+  
+  // UI States
+  const [selectedClass, setSelectedClass] = useState<string>("All Classes");
 
   useEffect(() => {
     setIsMounted(true);
-    const unsubStudents = onSnapshot(query(collection(db, "students")), (snap) => setStudents(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
-    const unsubSections = onSnapshot(query(collection(db, "sections")), (snap) => setSections(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
-    const unsubMarks = onSnapshot(query(collection(db, "marks")), (snap) => setMarks(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
-    const unsubFees = onSnapshot(query(collection(db, "fees")), (snap) => setFees(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
+    
+    // Fetch Real Students
+    const unsubStudents = onSnapshot(query(collection(db, "students")), (snap) => {
+      const studs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      setStudents(studs);
+      
+      // Extract unique classes for the dropdown
+      const uniqueClasses = Array.from(new Set(studs.map(s => s.classGrade).filter(Boolean)));
+      setClasses(uniqueClasses as string[]);
+    });
 
-    if (user) {
-      const unsubSettings = onSnapshot(doc(db, "users", user.uid), (docSnap) => {
-        if (docSnap.exists() && docSnap.data().activeAcademicYear) {
-          setAcademicYear(docSnap.data().activeAcademicYear);
-        }
-      });
-      return () => { unsubStudents(); unsubSections(); unsubMarks(); unsubFees(); unsubSettings(); };
-    }
-    return () => { unsubStudents(); unsubSections(); unsubMarks(); unsubFees(); };
-  }, [user]);
+    // Fetch Real Marks
+    const unsubMarks = onSnapshot(query(collection(db, "marks")), (snap) => {
+      setMarks(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+      setLoading(false);
+    });
+
+    return () => { unsubStudents(); unsubMarks(); };
+  }, []);
 
   if (!isMounted) return null;
 
   // ==========================================
-  // 🧠 LIVE CALCULATIONS & METRICS ENGINE
+  // 🧠 THE ANALYTICS ENGINE (Real-time Calculations)
   // ==========================================
-
-  const activeStudentsCount = students.length;
-  const activeClassesCount = Array.from(new Set(sections.map(s => s.classGrade))).length;
   
-  // 🚀 BULLETPROOF BUG FIX: Ensure exact match for student + term
-  const uniqueResultCards = Array.from(new Set(
-    marks.map(m => `${norm(m.studentId)}_${norm(m.term)}`)
-  ));
-  const totalExamsConducted = uniqueResultCards.length;
+  // 1. Filter students based on selected class
+  const filteredStudents = selectedClass === "All Classes" 
+    ? students 
+    : students.filter(s => norm(s.classGrade) === norm(selectedClass));
 
-  const topPerformersCount = Array.from(new Set(
-    marks.filter(m => ["A", "A+", "A++"].includes(m.grade)).map(m => m.studentId)
-  )).length;
+  // 2. Calculate Average Performance for each student
+  const studentPerformances = filteredStudents.map(student => {
+    // Get all marks for this specific student
+    const studentMarks = marks.filter(m => m.studentId === student.id);
+    
+    let totalObtained = 0;
+    let totalMax = 0;
+    
+    studentMarks.forEach(m => {
+      totalObtained += Number(m.marksObtained || 0);
+      totalMax += Number(m.totalMarks || 0);
+    });
 
-  const totalFeeCollected = fees.reduce((sum, f) => sum + (Number(f.amountPaid) || 0), 0);
-  const formattedFee = totalFeeCollected >= 1000 
-    ? `${(totalFeeCollected / 1000).toFixed(1)}k` 
-    : totalFeeCollected.toString();
+    const averagePercentage = totalMax > 0 ? Math.round((totalObtained / totalMax) * 100) : 0;
+    
+    // Categorize based on percentage
+    let status = "attention"; // Red (< 50%)
+    if (averagePercentage >= 75) status = "mastered"; // Green (>= 75%)
+    else if (averagePercentage >= 50) status = "working"; // Yellow (50% - 74%)
 
-  const termsToTrack = ["1st Term", "2nd Term", "Final Exams", "SBA"];
-  const performanceData = termsToTrack.map(term => {
-    const termMarks = marks.filter(m => norm(m.term) === norm(term));
-    if (termMarks.length === 0) return { term, avg: 0 };
-    const avg = termMarks.reduce((sum, m) => sum + Number(m.percentage || 0), 0) / termMarks.length;
-    return { term, avg: Math.round(avg) };
-  });
-
-  const classDemographics: Record<string, number> = {};
-  students.forEach(s => {
-    const cls = s.classGrade || "Unassigned";
-    classDemographics[cls] = (classDemographics[cls] || 0) + 1;
-  });
-  
-  const demoColors = ["#3ac47d", "#3b82f6", "#8b5cf6", "#f43f5e", "#f59e0b"];
-  let cumulativePercent = 0;
-  const donutSlices = Object.entries(classDemographics).map(([cls, count], idx) => {
-    const percent = activeStudentsCount > 0 ? (count / activeStudentsCount) * 100 : 0;
-    const slice = {
-      cls, count, percent,
-      strokeDasharray: `${percent} ${100 - percent}`,
-      strokeDashoffset: 100 - cumulativePercent,
-      color: demoColors[idx % demoColors.length]
+    return {
+      ...student,
+      averagePercentage,
+      totalExams: studentMarks.length,
+      status
     };
-    cumulativePercent += percent;
-    return slice;
   });
+
+  // 3. Calculate Class-Wide Metrics
+  const totalStudents = studentPerformances.length;
+  const overallClassAvg = totalStudents > 0 
+    ? Math.round(studentPerformances.reduce((acc, curr) => acc + curr.averagePercentage, 0) / totalStudents) 
+    : 0;
+
+  const masteredCount = studentPerformances.filter(s => s.status === "mastered").length;
+  const workingCount = studentPerformances.filter(s => s.status === "working").length;
+  const attentionCount = studentPerformances.filter(s => s.status === "attention").length;
+
+  const masteredPct = totalStudents > 0 ? Math.round((masteredCount / totalStudents) * 100) : 0;
+  const workingPct = totalStudents > 0 ? Math.round((workingCount / totalStudents) * 100) : 0;
+  const attentionPct = totalStudents > 0 ? Math.round((attentionCount / totalStudents) * 100) : 0;
+
+  // Design Colors
+  const COLORS = {
+    mastered: { bg: "bg-[#78d13b]", text: "text-[#78d13b]", tint: "bg-[#78d13b]/15" },
+    working: { bg: "bg-[#ffc122]", text: "text-[#ffc122]", tint: "bg-[#ffc122]/15" },
+    attention: { bg: "bg-[#ff7b60]", text: "text-[#ff7b60]", tint: "bg-[#ff7b60]/15" },
+  };
 
   return (
-    <div className="animate-fade-in space-y-8 pb-20">
+    <div className="min-h-screen bg-slate-50 md:p-6 font-sans w-full">
       
-      {/* --- HEADER --- */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
-        <div>
-          <h1 className="text-3xl font-extrabold text-[#0F172A] tracking-tight">
-            Dashboard Overview <span className="text-[#3ac47d] text-xl">(v3.0)</span>
-          </h1>
-          <p className="text-sm text-slate-500 mt-1 font-medium">Interactive, real-time analytics for your institution.</p>
-        </div>
-        <div className="bg-white border border-green-100 text-green-700 px-4 py-2.5 rounded-xl font-bold text-sm shadow-sm flex items-center gap-2">
-          <CalendarIcon size={16}/> Session {academicYear}
-        </div>
-      </div>
-
-      {/* --- MULTI-FUNCTIONAL, CLICKABLE KPI CARDS --- */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      {loading ? (
+        <div className="flex h-[50vh] items-center justify-center"><Loader2 className="animate-spin text-[#78d13b]" size={40}/></div>
+      ) : (
         
-        {/* Card 1: Students */}
-        <Link href="/students" className="block relative overflow-hidden rounded-3xl p-6 shadow-lg bg-gradient-to-br from-blue-500 to-indigo-600 text-white hover:scale-[1.03] hover:shadow-xl transition-all group">
-           <div className="absolute -right-4 -top-4 w-24 h-24 bg-white/10 rounded-full opacity-50 group-hover:scale-125 transition-transform duration-500"></div>
-           <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center text-white mb-4 border border-white/20">
-             <Users size={24} />
-           </div>
-           <p className="text-[10px] font-black text-blue-100 uppercase tracking-widest">Active Students</p>
-           <h3 className="text-4xl font-black mt-1">{activeStudentsCount}</h3>
-           <div className="mt-4 pt-4 border-t border-white/20 flex justify-between items-center">
-             <p className="text-[10px] font-bold flex items-center gap-1"><TrendingUp size={12}/> Live Roster</p>
-             <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
-           </div>
-        </Link>
-
-        {/* Card 2: Classes */}
-        <Link href="/classes" className="block relative overflow-hidden rounded-3xl p-6 shadow-lg bg-gradient-to-br from-purple-500 to-fuchsia-600 text-white hover:scale-[1.03] hover:shadow-xl transition-all group">
-           <div className="absolute -right-4 -top-4 w-24 h-24 bg-white/10 rounded-full opacity-50 group-hover:scale-125 transition-transform duration-500"></div>
-           <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center text-white mb-4 border border-white/20">
-             <BookOpen size={24} />
-           </div>
-           <p className="text-[10px] font-black text-purple-100 uppercase tracking-widest">Active Classes</p>
-           <h3 className="text-4xl font-black mt-1">{activeClassesCount}</h3>
-           <div className="mt-4 pt-4 border-t border-white/20 flex justify-between items-center">
-             <p className="text-[10px] font-bold flex items-center gap-1"><Activity size={12}/> Sections Linked</p>
-             <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
-           </div>
-        </Link>
-
-        {/* Card 3: Top Performers */}
-        <Link href="/result" className="block relative overflow-hidden rounded-3xl p-6 shadow-lg bg-gradient-to-br from-emerald-400 to-teal-600 text-white hover:scale-[1.03] hover:shadow-xl transition-all group">
-           <div className="absolute -right-4 -top-4 w-24 h-24 bg-white/10 rounded-full opacity-50 group-hover:scale-125 transition-transform duration-500"></div>
-           <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center text-white mb-4 border border-white/20">
-             <Award size={24} />
-           </div>
-           <p className="text-[10px] font-black text-emerald-100 uppercase tracking-widest">Top Performers</p>
-           <h3 className="text-4xl font-black mt-1">{topPerformersCount}</h3>
-           <div className="mt-4 pt-4 border-t border-white/20 flex justify-between items-center">
-             <p className="text-[10px] font-bold flex items-center gap-1"><Award size={12}/> Grade A & Above</p>
-             <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
-           </div>
-        </Link>
-
-        {/* Card 4: Fee Collection */}
-        <Link href="/fees" className="block relative overflow-hidden rounded-3xl p-6 shadow-lg bg-gradient-to-br from-orange-400 to-rose-500 text-white hover:scale-[1.03] hover:shadow-xl transition-all group">
-           <div className="absolute -right-4 -top-4 w-24 h-24 bg-white/10 rounded-full opacity-50 group-hover:scale-125 transition-transform duration-500"></div>
-           <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center text-white mb-4 border border-white/20">
-             <Wallet size={24} />
-           </div>
-           <p className="text-[10px] font-black text-orange-100 uppercase tracking-widest">Fee Collection</p>
-           <h3 className="text-4xl font-black mt-1">Rs {formattedFee}</h3>
-           <div className="mt-4 pt-4 border-t border-white/20 flex justify-between items-center">
-             <p className="text-[10px] font-bold flex items-center gap-1"><CheckSquare size={12}/> Live Ledger</p>
-             <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
-           </div>
-        </Link>
-
-      </div>
-
-      {/* --- BOTTOM CHARTS SECTION --- */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
-        {/* 1. School Performance Avg */}
-        <Link href="/marks" className="block bg-[#0F172A] hover:bg-slate-800 transition-colors rounded-3xl p-8 shadow-lg text-white relative overflow-hidden group cursor-pointer">
-           <div className="absolute top-0 right-0 bg-blue-500 text-white px-4 py-2 rounded-bl-2xl flex items-center gap-2">
-             <Activity size={14}/>
-             <p className="text-[10px] font-black uppercase tracking-widest">Performance Avg</p>
-           </div>
-           
-           <div className="mt-10 h-40 w-full relative">
-              <svg viewBox="0 0 400 150" className="w-full h-full overflow-visible">
-                 <line x1="0" y1="0" x2="400" y2="0" stroke="rgba(255,255,255,0.1)" strokeWidth="1"/>
-                 <line x1="0" y1="75" x2="400" y2="75" stroke="rgba(255,255,255,0.1)" strokeWidth="1" strokeDasharray="4"/>
-                 <line x1="0" y1="150" x2="400" y2="150" stroke="rgba(255,255,255,0.1)" strokeWidth="1"/>
-                 
-                 <text x="-20" y="5" fill="rgba(255,255,255,0.4)" fontSize="10" fontWeight="bold">100</text>
-                 <text x="-15" y="80" fill="rgba(255,255,255,0.4)" fontSize="10" fontWeight="bold">50</text>
-                 <text x="-10" y="155" fill="rgba(255,255,255,0.4)" fontSize="10" fontWeight="bold">0</text>
-
-                 <polyline 
-                   fill="none" 
-                   stroke="#3b82f6" 
-                   strokeWidth="4" 
-                   strokeLinecap="round" 
-                   strokeLinejoin="round"
-                   className="drop-shadow-[0_0_8px_rgba(59,130,246,0.8)]"
-                   points={performanceData.map((d, i) => `${(i / 3) * 400},${150 - (d.avg / 100) * 150}`).join(" ")} 
-                 />
-                 
-                 {performanceData.map((d, i) => (
-                   <g key={i} className="group-hover:scale-110 origin-center transition-transform cursor-crosshair">
-                     <circle cx={(i / 3) * 400} cy={150 - (d.avg / 100) * 150} r="6" fill="#3b82f6" stroke="#0F172A" strokeWidth="3"/>
-                     <text x={(i / 3) * 400} y={(150 - (d.avg / 100) * 150) - 15} fill="#ffffff" fontSize="12" fontWeight="black" textAnchor="middle">{d.avg}%</text>
-                   </g>
-                 ))}
-              </svg>
-           </div>
-           
-           <div className="flex justify-between items-center mt-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-             {termsToTrack.map(term => <span key={term}>{term}</span>)}
-           </div>
-           <div className="mt-6 flex items-center justify-between border-t border-slate-700 pt-4">
-             <p className="text-xs font-medium text-slate-400">Click to enter new marks.</p>
-             <ArrowRight size={14} className="text-blue-500 group-hover:translate-x-1 transition-transform"/>
-           </div>
-        </Link>
-
-        {/* 2. Student Demographics */}
-        <Link href="/classes" className="block bg-white border border-slate-100 rounded-3xl p-8 shadow-lg relative flex flex-col items-center justify-center hover:shadow-xl transition-all group cursor-pointer">
-           <div className="absolute top-0 inset-x-0 bg-slate-50 border-b border-slate-100 px-4 py-2 mx-auto w-fit rounded-b-2xl flex items-center gap-2">
-             <PieChart size={14} className="text-slate-600"/>
-             <p className="text-[10px] font-black uppercase tracking-widest text-slate-600">Demographics</p>
-           </div>
-
-           <div className="relative w-48 h-48 mt-8">
-              <svg viewBox="0 0 36 36" className="w-full h-full transform -rotate-90">
-                 <circle cx="18" cy="18" r="15.915" fill="transparent" stroke="#f1f5f9" strokeWidth="4"/>
-                 {activeStudentsCount === 0 ? (
-                   <circle cx="18" cy="18" r="15.915" fill="transparent" stroke="#3ac47d" strokeWidth="4" strokeDasharray="0 100"/>
-                 ) : (
-                   donutSlices.map((slice, i) => (
-                     <circle 
-                       key={i} cx="18" cy="18" r="15.915" fill="transparent" 
-                       stroke={slice.color} strokeWidth="4" 
-                       strokeDasharray={slice.strokeDasharray} 
-                       strokeDashoffset={slice.strokeDashoffset}
-                       className="transition-all duration-1000 ease-out group-hover:stroke-[5px]"
-                     />
-                   ))
-                 )}
-              </svg>
-              <div className="absolute inset-0 flex flex-col items-center justify-center">
-                 <span className="text-3xl font-black text-[#0F172A]">{activeStudentsCount}</span>
-                 <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Total</span>
+        // 🚀 MAIN WHITE BOARD (Extreme Rounded Corners like the image)
+        <div className="bg-white rounded-[2.5rem] shadow-sm border border-slate-100 p-6 md:p-10 w-full animate-fade-in-up">
+          
+          {/* HEADER SECTION */}
+          <div className="flex flex-col md:flex-row justify-between items-center gap-6 mb-10">
+            <div className="flex items-center gap-6">
+              <h1 className="text-3xl font-black text-[#1f2937] tracking-tight">Dashboard</h1>
+              <div className="relative">
+                <select 
+                  value={selectedClass} 
+                  onChange={e => setSelectedClass(e.target.value)}
+                  className="appearance-none bg-slate-50 border border-slate-200 text-slate-600 font-bold py-2 pl-4 pr-10 rounded-full outline-none focus:border-[#78d13b] cursor-pointer text-sm"
+                >
+                  <option value="All Classes">All Classes</option>
+                  {classes.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+                <ChevronDown size={14} className="absolute right-4 top-3 text-slate-400 pointer-events-none"/>
               </div>
-           </div>
-
-           <div className="flex flex-wrap justify-center gap-3 mt-6">
-             {donutSlices.slice(0, 4).map((slice, i) => (
-               <div key={i} className="flex items-center gap-1.5">
-                 <div className="w-2 h-2 rounded-full" style={{ backgroundColor: slice.color }}></div>
-                 <span className="text-[9px] font-bold text-slate-600">{slice.cls}</span>
+            </div>
+            <div className="flex items-center gap-4">
+               <div className="relative cursor-pointer bg-slate-50 p-3 rounded-full hover:bg-slate-100 transition-colors">
+                  <Bell size={20} className="text-slate-600"/>
+                  <span className="absolute top-2 right-2.5 w-2.5 h-2.5 bg-[#ff7b60] rounded-full border-2 border-white"></span>
                </div>
-             ))}
-           </div>
-           
-           <div className="w-full mt-4 flex items-center justify-between border-t border-slate-100 pt-4">
-             <p className="text-xs font-medium text-slate-400">Click to view class directory.</p>
-             <ArrowRight size={14} className="text-slate-400 group-hover:translate-x-1 group-hover:text-blue-500 transition-all"/>
-           </div>
-        </Link>
+            </div>
+          </div>
 
-        {/* 3. Total Exams Conducted */}
-        <Link href="/result" className="block bg-gradient-to-br from-slate-800 to-black rounded-3xl p-8 shadow-lg text-white relative flex flex-col items-center justify-center text-center hover:scale-[1.02] transition-transform group cursor-pointer">
-           <div className="absolute top-0 inset-x-0 bg-white/10 px-4 py-2 mx-auto w-fit rounded-b-2xl">
-             <p className="text-[10px] font-black uppercase tracking-widest text-emerald-400">Result Cards Generated</p>
-           </div>
-           
-           <div className="w-24 h-24 bg-white/5 rounded-full flex items-center justify-center mt-4 border border-white/10 group-hover:bg-emerald-500/20 transition-colors">
-             <BookOpen size={40} className="text-emerald-400" />
-           </div>
-           
-           <h2 className="text-7xl font-black mt-6 tracking-tighter text-white">{totalExamsConducted}</h2>
-           
-           <div className="mt-8 bg-white/10 px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 group-hover:bg-emerald-500/30 transition-colors">
-             <Award size={14} className="text-emerald-400"/> View Result Board <ArrowRight size={14} className="ml-2 group-hover:translate-x-1 transition-transform"/>
-           </div>
-        </Link>
+          {/* 🚀 TOP CARDS GRID */}
+          <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 mb-12">
+            
+            {/* OVERALL SCORE CARD (White) */}
+            <div className="lg:col-span-2 bg-white border-2 border-slate-100 rounded-[2rem] p-6 flex items-center justify-between shadow-sm">
+               <div>
+                  <h3 className="text-sm font-bold text-slate-500 mb-1">Overall Class Score</h3>
+                  <div className="flex items-end gap-2">
+                     <p className="text-5xl font-black text-[#1f2937]">{overallClassAvg}%</p>
+                  </div>
+                  <p className="text-xs font-bold text-slate-400 mt-4">Based on live marks data</p>
+               </div>
+               <div className="text-center">
+                  <h3 className="text-sm font-bold text-slate-500 mb-1">Total Students</h3>
+                  <p className="text-4xl font-black text-[#1f2937] mt-2">{totalStudents}</p>
+                  <div className="w-16 h-16 bg-green-50 rounded-full flex items-center justify-center mx-auto mt-2">
+                     <Award className="text-[#78d13b]" size={30}/>
+                  </div>
+               </div>
+            </div>
 
-      </div>
+            {/* GREEN CARD (Mastered) */}
+            <div className={`${COLORS.mastered.bg} rounded-[2rem] p-6 text-[#1f2937] flex flex-col justify-between shadow-sm relative overflow-hidden group`}>
+               <h3 className="text-5xl font-black mb-2 relative z-10">{masteredCount}</h3>
+               <div className="relative z-10">
+                  <p className="text-sm font-black opacity-80 uppercase tracking-widest">Mastered</p>
+                  <p className="text-xs font-bold mt-1 opacity-75">{masteredPct}% of class</p>
+               </div>
+               <div className="absolute -right-4 -bottom-4 w-32 h-32 bg-white/20 rounded-full blur-2xl group-hover:scale-150 transition-transform duration-500"></div>
+            </div>
+
+            {/* YELLOW CARD (Working Towards) */}
+            <div className={`${COLORS.working.bg} rounded-[2rem] p-6 text-[#1f2937] flex flex-col justify-between shadow-sm relative overflow-hidden group`}>
+               <h3 className="text-5xl font-black mb-2 relative z-10">{workingCount}</h3>
+               <div className="relative z-10">
+                  <p className="text-sm font-black opacity-80 uppercase tracking-widest">Average</p>
+                  <p className="text-xs font-bold mt-1 opacity-75">{workingPct}% of class</p>
+               </div>
+               <div className="absolute -right-4 -bottom-4 w-32 h-32 bg-white/20 rounded-full blur-2xl group-hover:scale-150 transition-transform duration-500"></div>
+            </div>
+
+            {/* RED CARD (Needing Attention) */}
+            <div className={`${COLORS.attention.bg} rounded-[2rem] p-6 text-[#1f2937] flex flex-col justify-between shadow-sm relative overflow-hidden group`}>
+               <h3 className="text-5xl font-black mb-2 relative z-10 text-white">{attentionCount}</h3>
+               <div className="relative z-10">
+                  <p className="text-sm font-black text-white/90 uppercase tracking-widest">Alerts</p>
+                  <p className="text-xs font-bold text-white/70 mt-1">{attentionPct}% of class</p>
+               </div>
+               <div className="absolute -right-4 -bottom-4 w-32 h-32 bg-black/10 rounded-full blur-2xl group-hover:scale-150 transition-transform duration-500"></div>
+            </div>
+
+          </div>
+
+          {/* 🚀 STUDENTS PROFICIENCY LIST (The Pill-shaped Rows) */}
+          <div>
+            <div className="flex justify-between items-center mb-6 px-2">
+               <h2 className="text-xl font-black text-[#1f2937]">Students Proficiency</h2>
+               <p className="text-xs font-bold text-slate-400 flex items-center gap-1"><Info size={14}/> Live Results Engine</p>
+            </div>
+
+            {/* Table Header */}
+            <div className="grid grid-cols-12 gap-4 px-6 pb-2 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+               <div className="col-span-4 lg:col-span-3">Full Name</div>
+               <div className="col-span-3 lg:col-span-2 text-center">Exams Given</div>
+               <div className="col-span-5 lg:col-span-4">Average Score</div>
+               <div className="hidden lg:flex col-span-3 justify-end gap-6 text-center">
+                  <span className="w-16">Alert</span>
+                  <span className="w-16">Average</span>
+                  <span className="w-16">Mastered</span>
+               </div>
+            </div>
+
+            {/* Table Rows */}
+            <div className="space-y-3">
+              {studentPerformances.length === 0 ? (
+                 <div className="py-10 text-center text-slate-400 font-bold bg-slate-50 rounded-3xl">No student data found for this selection.</div>
+              ) : (
+                studentPerformances.sort((a, b) => b.averagePercentage - a.averagePercentage).map((student) => {
+                  
+                  // @ts-ignore (status is injected above)
+                  const tintClass = COLORS[student.status].tint;
+                  // @ts-ignore
+                  const bgClass = COLORS[student.status].bg;
+
+                  return (
+                    <div key={student.id} className={`grid grid-cols-12 gap-4 items-center px-6 py-4 rounded-full ${tintClass} transition-all hover:scale-[1.01]`}>
+                      
+                      {/* Name & Avatar */}
+                      <div className="col-span-4 lg:col-span-3 flex items-center gap-3">
+                         <div className="w-10 h-10 rounded-full bg-white shadow-sm border border-slate-100 flex items-center justify-center overflow-hidden shrink-0">
+                           {student.photoBase64 ? <img src={student.photoBase64} className="w-full h-full object-cover"/> : <User size={18} className="text-slate-400"/>}
+                         </div>
+                         <p className="font-bold text-[#1f2937] text-sm truncate">{student.name}</p>
+                      </div>
+
+                      {/* Exams Count */}
+                      <div className="col-span-3 lg:col-span-2 text-center font-black text-slate-600 text-sm">
+                         {student.totalExams > 0 ? `${student.totalExams} Exams` : '-'}
+                      </div>
+
+                      {/* Progress Bar & Percentage */}
+                      <div className="col-span-5 lg:col-span-4 flex items-center gap-3">
+                         <div className={`px-4 py-1.5 rounded-full text-xs font-black w-16 text-center ${student.status === 'attention' ? 'text-white' : 'text-[#1f2937]'} ${bgClass}`}>
+                           {student.averagePercentage}%
+                         </div>
+                         <div className="flex-1 h-3 bg-white rounded-full overflow-hidden shadow-inner hidden sm:block">
+                            <div className={`h-full rounded-full ${bgClass}`} style={{ width: `${student.averagePercentage}%` }}></div>
+                         </div>
+                      </div>
+
+                      {/* The 3 Dots (Right Aligned) */}
+                      <div className="hidden lg:flex col-span-3 justify-end gap-6 items-center pr-2">
+                         <div className={`w-10 h-10 rounded-full flex items-center justify-center font-black text-sm text-white ${student.status === 'attention' ? COLORS.attention.bg : 'bg-transparent text-transparent'}`}>
+                           {student.status === 'attention' ? '!' : ''}
+                         </div>
+                         <div className={`w-10 h-10 rounded-full flex items-center justify-center font-black text-sm text-[#1f2937] ${student.status === 'working' ? COLORS.working.bg : 'bg-transparent text-transparent'}`}>
+                           {student.status === 'working' ? '✓' : ''}
+                         </div>
+                         <div className={`w-10 h-10 rounded-full flex items-center justify-center font-black text-sm text-[#1f2937] ${student.status === 'mastered' ? COLORS.mastered.bg : 'bg-transparent text-transparent'}`}>
+                           {student.status === 'mastered' ? '★' : ''}
+                         </div>
+                      </div>
+
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+          </div>
+        </div>
+      )}
     </div>
   );
 }
