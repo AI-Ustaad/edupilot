@@ -28,11 +28,9 @@ export default function ManageStaffPage() {
   const [staffList, setStaffList] = useState<any[]>([]);
 
   const [activeTab, setActiveTab] = useState("personal");
-  
-  // 🚀 NEW STATE: To track if we are editing an existing staff member
   const [editingId, setEditingId] = useState<string | null>(null);
 
-  // --- COMPREHENSIVE STATE MANAGEMENT ---
+  // --- STATE MANAGEMENT ---
   const [personal, setPersonal] = useState({ fullName: "", fatherName: "", cnic: "", dob: "", gender: "Male", maritalStatus: "Single", email: "", phone: "", currentAddress: "", permanentAddress: "", emergencyContact: "", photo: "" });
   const [professional, setProfessional] = useState({ personnelNo: "", doj: "", bps: "", empCategory: "Active Permanent", designation: "", ddoCode: "", prevExperience: "", prevInstitution: "" });
   const [financial, setFinancial] = useState({ bankName: "", accountNo: "", accountTitle: "", ntn: "" });
@@ -93,22 +91,6 @@ export default function ManageStaffPage() {
     }
   };
 
-  const handleRealAIExtract = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setIsExtracting(true);
-    try {
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      alert(`✅ File "${file.name}" ready for extraction! Connect your API here.`);
-    } catch (error) {
-      alert("Error parsing document.");
-    } finally {
-      setIsExtracting(false);
-      e.target.value = "";
-    }
-  };
-
-  // 🚀 FORM RESET HANDLER
   const resetForm = () => {
     setEditingId(null);
     setPersonal({ fullName: "", fatherName: "", cnic: "", dob: "", gender: "Male", maritalStatus: "Single", email: "", phone: "", currentAddress: "", permanentAddress: "", emergencyContact: "", photo: "" });
@@ -120,23 +102,67 @@ export default function ManageStaffPage() {
     setActiveTab("personal");
   };
 
-  // 🚀 SAVE / UPDATE LOGIC
+  // 🚀 THE NEW AUTO-PROVISIONING SAVE LOGIC
   const handleSaveProfile = async () => {
     if(!personal.fullName || !personal.cnic) return alert("Full Name and CNIC are required.");
+    if(!professional.personnelNo) return alert("Emp ID (Personnel No) is required to generate a login account.");
+
     setLoading(true);
     try {
-      const docId = editingId || personal.cnic || Date.now().toString();
+      const docId = editingId || personal.cnic.replace(/[^0-9]/g, '') || Date.now().toString();
+
+      // 1. 🪄 Auto-Generate Credentials
+      // Email: emp[ID]@edupilot.com, Password: CNIC numbers only
+      const generatedEmail = personal.email || `emp${professional.personnelNo}@edupilot.com`;
+      const generatedPassword = personal.cnic.replace(/[^0-9]/g, ''); 
+
+      // 2. Create Auth Account in Background (Only if it's a NEW staff member)
+      if (!editingId) {
+         const response = await fetch('/api/create-user', {
+           method: 'POST',
+           headers: { 'Content-Type': 'application/json' },
+           body: JSON.stringify({
+              uid: docId,
+              email: generatedEmail,
+              password: generatedPassword,
+              role: 'teacher',
+              displayName: personal.fullName
+           })
+         });
+
+         const result = await response.json();
+         if (!result.success && !result.error.includes("already exists")) {
+            throw new Error(`Failed to create login: ${result.error}`);
+         }
+      }
+
+      // 3. Save Data to Firestore
       await setDoc(doc(db, "staff", docId), {
-        personal, professional, education, financial, allowances, deductions, netPayDetails: { grossPay, totalDeductions, netPay }, updatedAt: serverTimestamp()
+        personal, 
+        professional, 
+        education, 
+        financial, 
+        allowances, 
+        deductions, 
+        netPayDetails: { grossPay, totalDeductions, netPay }, 
+        loginDetails: { 
+           email: generatedEmail, 
+           isFirstLogin: true, 
+           role: 'teacher'
+        },
+        updatedAt: serverTimestamp()
       }, { merge: true });
       
       setSuccess(true); 
       resetForm();
       setTimeout(() => setSuccess(false), 3000);
-    } catch (error) { alert("Failed to save"); } finally { setLoading(false); }
+    } catch (error: any) { 
+       alert("Action Failed: " + error.message); 
+    } finally { 
+       setLoading(false); 
+    }
   };
 
-  // 🚀 EDIT HANDLER (Loads data back into form)
   const handleEditStaff = (staff: any) => {
     setEditingId(staff.id);
     setPersonal(staff.personal || {});
@@ -149,7 +175,6 @@ export default function ManageStaffPage() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // 🚀 DELETE HANDLER
   const handleDeleteStaff = async (id: string) => {
     if(confirm("Are you sure you want to permanently delete this staff member's record?")) {
       try { await deleteDoc(doc(db, "staff", id)); if(editingId === id) resetForm(); } 
@@ -167,53 +192,36 @@ export default function ManageStaffPage() {
   ];
 
   return (
-    <div className="animate-fade-in space-y-6 pb-20">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
+    <div className="animate-fade-in space-y-6 pb-20 w-full">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 w-full">
         <div>
           <h1 className="text-2xl font-extrabold text-[#0F172A] tracking-tight">
             {editingId ? "Update Staff Profile" : "Staff Onboarding"}
           </h1>
           <p className="text-sm text-slate-500 mt-1">Enterprise HR Management System</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
           {editingId && (
-            <button onClick={resetForm} className="bg-slate-200 text-slate-600 px-6 py-2.5 rounded-xl font-bold hover:bg-slate-300 transition-colors shadow-sm">
+            <button onClick={resetForm} className="bg-slate-200 text-slate-600 px-6 py-2.5 rounded-xl font-bold hover:bg-slate-300 transition-colors shadow-sm w-full sm:w-auto">
               Cancel Edit
             </button>
           )}
-          <button onClick={handleSaveProfile} disabled={loading} className="bg-[#0F172A] text-white px-6 py-2.5 rounded-xl font-bold flex items-center gap-2 hover:bg-slate-800 transition-colors shadow-md disabled:opacity-50">
+          <button onClick={handleSaveProfile} disabled={loading} className="bg-[#0F172A] text-white px-6 py-2.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-slate-800 transition-colors shadow-md disabled:opacity-50 w-full sm:w-auto">
             {loading ? "Saving..." : <><Save size={18}/> {editingId ? "Update Record" : "Complete Registration"}</>}
           </button>
         </div>
       </div>
 
-      {success && <div className="bg-green-50 text-green-700 p-4 rounded-xl flex items-center gap-3 border border-green-100 font-bold"><CheckCircle2 size={20}/> Profile Saved Successfully!</div>}
+      {success && <div className="bg-green-50 text-green-700 p-4 rounded-xl flex items-center gap-3 border border-green-100 font-bold"><CheckCircle2 size={20}/> Profile Saved Successfully! Account Created.</div>}
 
-      <div className="grid grid-cols-1 xl:grid-cols-12 gap-8">
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 w-full">
         
         {/* --- LEFT: COMPREHENSIVE FORM --- */}
-        <div className="xl:col-span-8 space-y-6">
-          
-          {!editingId && (
-            <div className="bg-[#3ac47d] rounded-2xl p-6 shadow-md text-white flex flex-col sm:flex-row items-center justify-between gap-4">
-              <div className="flex items-center gap-4">
-                 <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center shrink-0"><Zap size={24}/></div>
-                 <div>
-                   <h2 className="text-xl font-black">AI Auto-Extract</h2>
-                   <p className="text-sm opacity-90 font-medium">Upload Salary Slip or CV to auto-fill all 4 tabs magically.</p>
-                 </div>
-              </div>
-              <label className={`bg-white text-[#3ac47d] px-6 py-3 rounded-xl font-bold flex items-center gap-2 hover:bg-green-50 transition-colors shadow-sm whitespace-nowrap cursor-pointer ${isExtracting ? 'opacity-70 pointer-events-none' : ''}`}>
-                 {isExtracting ? <><Loader2 size={18} className="animate-spin"/> Scanning...</> : <><Upload size={18}/> Upload & Scan</>}
-                 <input type="file" accept=".pdf,image/png,image/jpeg,image/jpg" className="hidden" onChange={handleRealAIExtract} disabled={isExtracting} />
-              </label>
-            </div>
-          )}
-
-          <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="xl:col-span-8 space-y-6 w-full">
+          <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden w-full">
              
              {/* TOP TABS NAVIGATION */}
-             <div className="flex overflow-x-auto border-b border-slate-100 bg-slate-50/50">
+             <div className="flex overflow-x-auto border-b border-slate-100 bg-slate-50/50 w-full">
                {TABS.map(tab => (
                  <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`flex-1 py-4 px-4 font-bold text-sm flex items-center justify-center gap-2 transition-colors border-b-2 whitespace-nowrap ${activeTab === tab.id ? "border-[#3ac47d] text-[#3ac47d] bg-white" : "border-transparent text-slate-500 hover:bg-slate-100 hover:text-slate-800"}`}>
                    <tab.icon size={16}/> {tab.label}
@@ -221,27 +229,27 @@ export default function ManageStaffPage() {
                ))}
              </div>
 
-             <div className="p-8 min-h-[500px]">
+             <div className="p-4 md:p-8 min-h-[500px] w-full">
                 {/* TAB 1: PERSONAL */}
                 {activeTab === "personal" && (
-                  <div className="space-y-6 animate-fade-in-down">
-                    <div className="flex items-center gap-6 mb-6">
-                      <div className="w-24 h-24 bg-slate-100 rounded-full border-2 border-dashed border-slate-300 flex items-center justify-center relative overflow-hidden group">
+                  <div className="space-y-6 animate-fade-in-down w-full">
+                    <div className="flex flex-col sm:flex-row items-center gap-6 mb-6">
+                      <div className="w-24 h-24 bg-slate-100 rounded-full border-2 border-dashed border-slate-300 flex items-center justify-center relative overflow-hidden group shrink-0">
                         {personal.photo ? <img src={personal.photo} className="w-full h-full object-cover"/> : <Users className="text-slate-400"/>}
                         <input type="file" onChange={handleProfilePhotoUpload} className="absolute inset-0 opacity-0 cursor-pointer" />
                         <div className="absolute bottom-0 left-0 right-0 bg-black/50 text-white text-[9px] text-center py-1 opacity-0 group-hover:opacity-100">Upload Photo</div>
                       </div>
-                      <div>
+                      <div className="text-center sm:text-left">
                         <h3 className="font-black text-[#0F172A] text-lg">Personal Identity</h3>
                         <p className="text-xs text-slate-500">Basic demographic information.</p>
                       </div>
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <input placeholder="Full Name" value={personal.fullName} onChange={e => setPersonal({...personal, fullName: e.target.value})} className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-[#3ac47d]" />
-                      <input placeholder="Father/Husband Name" value={personal.fatherName} onChange={e => setPersonal({...personal, fatherName: e.target.value})} className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-[#3ac47d]" />
-                      <input placeholder="CNIC Number" value={personal.cnic} onChange={e => setPersonal({...personal, cnic: e.target.value})} className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-[#3ac47d]" />
-                      <input type="date" value={personal.dob} onChange={e => setPersonal({...personal, dob: e.target.value})} className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-[#3ac47d]" />
-                      <div className="flex gap-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full">
+                      <input placeholder="Full Name" value={personal.fullName} onChange={e => setPersonal({...personal, fullName: e.target.value})} className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-[#3ac47d] w-full" />
+                      <input placeholder="Father/Husband Name" value={personal.fatherName} onChange={e => setPersonal({...personal, fatherName: e.target.value})} className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-[#3ac47d] w-full" />
+                      <input placeholder="CNIC Number (Without Dashes)" value={personal.cnic} onChange={e => setPersonal({...personal, cnic: e.target.value})} className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-[#3ac47d] w-full" />
+                      <input type="date" value={personal.dob} onChange={e => setPersonal({...personal, dob: e.target.value})} className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-[#3ac47d] w-full" />
+                      <div className="flex gap-2 w-full">
                         <select value={personal.gender} onChange={e => setPersonal({...personal, gender: e.target.value})} className="w-1/2 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-[#3ac47d]">
                           <option>Male</option><option>Female</option><option>Other</option>
                         </select>
@@ -249,56 +257,42 @@ export default function ManageStaffPage() {
                           <option>Single</option><option>Married</option>
                         </select>
                       </div>
-                      <input placeholder="Phone Number" value={personal.phone} onChange={e => setPersonal({...personal, phone: e.target.value})} className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-[#3ac47d]" />
-                      <input placeholder="Email Address" value={personal.email} onChange={e => setPersonal({...personal, email: e.target.value})} className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none sm:col-span-2" />
-                      <textarea placeholder="Current Address" value={personal.currentAddress} onChange={e => setPersonal({...personal, currentAddress: e.target.value})} className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm outline-none sm:col-span-2"></textarea>
-                      <input placeholder="Emergency Contact (Name & Number)" value={personal.emergencyContact} onChange={e => setPersonal({...personal, emergencyContact: e.target.value})} className="bg-red-50 border border-red-100 text-red-900 rounded-xl px-4 py-3 text-sm font-bold outline-none sm:col-span-2" />
+                      <input placeholder="Phone Number" value={personal.phone} onChange={e => setPersonal({...personal, phone: e.target.value})} className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-[#3ac47d] w-full" />
+                      <input placeholder="Email Address (Optional)" value={personal.email} onChange={e => setPersonal({...personal, email: e.target.value})} className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none sm:col-span-2 w-full" />
+                      <textarea placeholder="Current Address" value={personal.currentAddress} onChange={e => setPersonal({...personal, currentAddress: e.target.value})} className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm outline-none sm:col-span-2 w-full"></textarea>
                     </div>
                   </div>
                 )}
 
                 {/* TAB 2: EDUCATION */}
                 {activeTab === "education" && (
-                  <div className="space-y-6 animate-fade-in-down">
+                  <div className="space-y-6 animate-fade-in-down w-full">
                     <div className="flex justify-between items-center mb-6">
-                      <div>
-                        <h3 className="font-black text-[#0F172A] text-lg">Academic Qualifications</h3>
-                      </div>
-                      <button onClick={addEducation} className="bg-[#3ac47d] text-white px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-2 hover:bg-[#2eaa6a] transition-colors"><PlusCircle size={16}/> Add Degree</button>
+                      <h3 className="font-black text-[#0F172A] text-lg">Academic Qualifications</h3>
+                      <button onClick={addEducation} className="bg-[#3ac47d] text-white px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-2 hover:bg-[#2eaa6a]"><PlusCircle size={16}/> Add</button>
                     </div>
-                    <div className="space-y-4">
+                    <div className="space-y-4 w-full">
                       {education.map((edu, idx) => (
-                        <div key={idx} className="bg-slate-50 border border-slate-200 rounded-2xl p-5 relative group">
-                          {education.length > 1 && <button onClick={() => removeEducation(idx)} className="absolute top-4 right-4 text-slate-400 hover:text-red-500 transition-colors"><Trash2 size={16}/></button>}
-                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                            <div className="space-y-1 sm:col-span-2 lg:col-span-1">
+                        <div key={idx} className="bg-slate-50 border border-slate-200 rounded-2xl p-5 relative group w-full">
+                          {education.length > 1 && <button onClick={() => removeEducation(idx)} className="absolute top-4 right-4 text-slate-400 hover:text-red-500"><Trash2 size={16}/></button>}
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div className="space-y-1">
                               <label className="text-[10px] font-bold text-slate-400 uppercase">Degree Level</label>
                               <select value={edu.level} onChange={e => updateEducation(idx, 'level', e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-sm font-bold outline-none focus:border-[#3ac47d]">
                                 {EDU_LEVELS.map(lvl => <option key={lvl}>{lvl}</option>)}
                               </select>
                             </div>
-                            <div className="space-y-1 sm:col-span-2 lg:col-span-1">
+                            <div className="space-y-1">
                               <label className="text-[10px] font-bold text-slate-400 uppercase">Board / University</label>
                               <input value={edu.institute} onChange={e => updateEducation(idx, 'institute', e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-sm font-medium outline-none focus:border-[#3ac47d]" />
                             </div>
-                            <div className="space-y-1 sm:col-span-1 lg:col-span-1">
+                            <div className="space-y-1">
                               <label className="text-[10px] font-bold text-slate-400 uppercase">Passing Year</label>
                               <input value={edu.passingYear} onChange={e => updateEducation(idx, 'passingYear', e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-sm font-medium outline-none focus:border-[#3ac47d]" />
                             </div>
-                            <div className="space-y-1 sm:col-span-1 lg:col-span-1">
+                            <div className="space-y-1">
                               <label className="text-[10px] font-bold text-slate-400 uppercase">Subjects</label>
                               <input value={edu.subjects} onChange={e => updateEducation(idx, 'subjects', e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-sm font-medium outline-none focus:border-[#3ac47d]" />
-                            </div>
-                            <div className="sm:col-span-2 lg:col-span-4 mt-2">
-                               <div className="relative bg-white border border-dashed border-slate-300 rounded-xl p-3 flex items-center justify-between hover:border-[#3ac47d] transition-colors cursor-pointer overflow-hidden">
-                                 <input type="file" onChange={(e) => handleEduDocUpload(e, idx)} className="absolute inset-0 opacity-0 cursor-pointer z-10" />
-                                 <div className="flex items-center gap-3">
-                                   <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${edu.document ? 'bg-green-100 text-green-600' : 'bg-slate-100 text-slate-400'}`}>
-                                     {edu.document ? <FileCheck size={16}/> : <FileText size={16}/>}
-                                   </div>
-                                   <p className={`text-xs font-bold ${edu.document ? 'text-green-600' : 'text-slate-500'}`}>{edu.document ? "Document Uploaded Successfully" : "Upload Scanned Degree (Image/PDF)"}</p>
-                                 </div>
-                               </div>
                             </div>
                           </div>
                         </div>
@@ -309,131 +303,21 @@ export default function ManageStaffPage() {
 
                 {/* TAB 3: PROFESSIONAL */}
                 {activeTab === "professional" && (
-                  <div className="space-y-6 animate-fade-in-down">
-                    <div>
-                      <h3 className="font-black text-[#0F172A] text-lg">Professional Experience</h3>
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div className="space-y-1"><label className="text-[10px] font-bold text-slate-400 uppercase">Emp ID</label><input value={professional.personnelNo} onChange={e => setProfessional({...professional, personnelNo: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none" /></div>
+                  <div className="space-y-6 animate-fade-in-down w-full">
+                    <h3 className="font-black text-[#0F172A] text-lg">Professional Experience</h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full">
+                      <div className="space-y-1"><label className="text-[10px] font-bold text-slate-400 uppercase">Emp ID (Required for Login)</label><input value={professional.personnelNo} onChange={e => setProfessional({...professional, personnelNo: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none" /></div>
                       <div className="space-y-1"><label className="text-[10px] font-bold text-slate-400 uppercase">Date of Joining</label><input type="date" value={professional.doj} onChange={e => setProfessional({...professional, doj: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none" /></div>
                       <div className="space-y-1"><label className="text-[10px] font-bold text-slate-400 uppercase">Designation</label><input value={professional.designation} onChange={e => setProfessional({...professional, designation: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none" /></div>
-                      <div className="flex gap-4">
-                        <div className="space-y-1 w-1/3"><label className="text-[10px] font-bold text-slate-400 uppercase">BPS Scale</label><input value={professional.bps} onChange={e => setProfessional({...professional, bps: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none" /></div>
-                        <div className="space-y-1 w-2/3"><label className="text-[10px] font-bold text-slate-400 uppercase">Category</label><select value={professional.empCategory} onChange={e => setProfessional({...professional, empCategory: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none"><option>Active Permanent</option><option>Contract</option><option>Visiting</option></select></div>
-                      </div>
-                      <div className="space-y-1 sm:col-span-2"><label className="text-[10px] font-bold text-slate-400 uppercase">DDO Code</label><input value={professional.ddoCode} onChange={e => setProfessional({...professional, ddoCode: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none" /></div>
-                      <div className="space-y-1"><label className="text-[10px] font-bold text-slate-400 uppercase">Previous Experience</label><input value={professional.prevExperience} onChange={e => setProfessional({...professional, prevExperience: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none" /></div>
-                      <div className="space-y-1"><label className="text-[10px] font-bold text-slate-400 uppercase">Previous Institution</label><input value={professional.prevInstitution} onChange={e => setProfessional({...professional, prevInstitution: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none" /></div>
+                      <div className="space-y-1"><label className="text-[10px] font-bold text-slate-400 uppercase">BPS / Scale</label><input value={professional.bps} onChange={e => setProfessional({...professional, bps: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none" /></div>
+                      <div className="space-y-1 sm:col-span-2"><label className="text-[10px] font-bold text-slate-400 uppercase">Previous Experience</label><input value={professional.prevExperience} onChange={e => setProfessional({...professional, prevExperience: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none" /></div>
                     </div>
                   </div>
                 )}
 
                 {/* TAB 4: FINANCIAL */}
                 {activeTab === "financial" && (
-                  <div className="space-y-6 animate-fade-in-down">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                       <div>
-                         <div className="flex justify-between items-center mb-4">
-                            <h3 className="text-xs font-bold text-blue-500 uppercase tracking-widest">Pay & Allowances</h3>
-                            <button onClick={addAllowance} className="text-blue-500 hover:bg-blue-50 p-1 rounded-md transition-colors"><PlusCircle size={18}/></button>
-                         </div>
-                         <div className="space-y-2">
-                           {allowances.map((item, idx) => (
-                             <div key={idx} className="flex gap-2 items-center">
-                               <input value={item.name} onChange={e => updateAllowance(idx, 'name', e.target.value)} className="w-2/3 bg-blue-50 rounded-lg px-3 py-2 text-xs font-bold outline-none" />
-                               <input type="number" value={item.amount || ''} onChange={e => updateAllowance(idx, 'amount', e.target.value)} className="w-1/3 border border-slate-200 rounded-lg px-3 py-2 text-xs font-black text-right outline-none" />
-                               <button onClick={() => removeAllowance(idx)} className="text-slate-300 hover:text-red-500"><Trash2 size={14}/></button>
-                             </div>
-                           ))}
-                         </div>
-                         <div className="mt-4 bg-blue-500 text-white p-3 rounded-xl flex justify-between items-center font-black"><span>Gross Pay</span><span>Rs. {grossPay.toLocaleString()}</span></div>
-                       </div>
-
-                       <div>
-                         <div className="flex justify-between items-center mb-4">
-                            <h3 className="text-xs font-bold text-red-500 uppercase tracking-widest">Deductions</h3>
-                            <button onClick={addDeduction} className="text-red-500 hover:bg-red-50 p-1 rounded-md transition-colors"><PlusCircle size={18}/></button>
-                         </div>
-                         <div className="space-y-2">
-                           {deductions.map((item, idx) => (
-                             <div key={idx} className="flex gap-2 items-center">
-                               <input value={item.name} onChange={e => updateDeduction(idx, 'name', e.target.value)} className="w-2/3 bg-red-50 rounded-lg px-3 py-2 text-xs font-bold outline-none" />
-                               <input type="number" value={item.amount || ''} onChange={e => updateDeduction(idx, 'amount', e.target.value)} className="w-1/3 border border-slate-200 rounded-lg px-3 py-2 text-xs font-black text-right outline-none" />
-                               <button onClick={() => removeDeduction(idx)} className="text-slate-300 hover:text-red-500"><Trash2 size={14}/></button>
-                             </div>
-                           ))}
-                         </div>
-                         <div className="mt-4 bg-red-100 text-red-600 p-3 rounded-xl flex justify-between items-center font-black"><span>Total Deductions</span><span>- Rs. {totalDeductions.toLocaleString()}</span></div>
-                       </div>
-                    </div>
-
-                    <div className="border-t border-slate-100 pt-6">
-                      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-                         <input placeholder="Bank Name" value={financial.bankName} onChange={e => setFinancial({...financial, bankName: e.target.value})} className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-[#3ac47d]" />
-                         <input placeholder="Account Title" value={financial.accountTitle} onChange={e => setFinancial({...financial, accountTitle: e.target.value})} className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-[#3ac47d]" />
-                         <input placeholder="Account / IBAN Number" value={financial.accountNo} onChange={e => setFinancial({...financial, accountNo: e.target.value})} className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-[#3ac47d]" />
-                         <input placeholder="NTN Number" value={financial.ntn} onChange={e => setFinancial({...financial, ntn: e.target.value})} className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-[#3ac47d]" />
-                      </div>
-                      <div className="mt-6 bg-[#0F172A] text-white p-6 rounded-2xl flex justify-between items-center">
-                         <p className="text-xs font-bold text-slate-400 tracking-widest uppercase">Final Net Salary</p>
-                         <p className="text-3xl sm:text-4xl font-black text-[#3ac47d]">Rs. {netPay.toLocaleString()}</p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-             </div>
-          </div>
-        </div>
-
-        {/* --- RIGHT: STAFF DIRECTORY WITH EDIT & DELETE --- */}
-        <div className="xl:col-span-4">
-           <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 sticky top-6">
-              <h2 className="text-lg font-black text-[#0F172A] mb-6">Staff Directory</h2>
-              <div className="space-y-4 h-[600px] overflow-y-auto pr-2">
-                 {staffList.length === 0 ? (
-                    <div className="py-10 text-center opacity-50">
-                       <Users size={40} className="mx-auto mb-3 text-slate-300"/>
-                       <p className="font-bold text-sm">No staff added yet.</p>
-                    </div>
-                 ) : (
-                    staffList.map(staff => (
-                       <div key={staff.id} className={`bg-white p-4 rounded-2xl border-2 transition-all ${editingId === staff.id ? 'border-[#3ac47d] shadow-md' : 'border-slate-100 shadow-sm hover:border-slate-300'}`}>
-                          
-                          {/* Info Section */}
-                          <div className="flex items-start gap-3">
-                             <div className="w-10 h-10 rounded-full bg-slate-50 border border-slate-200 overflow-hidden shrink-0 mt-1">
-                               {staff.personal?.photo ? <img src={staff.personal.photo} className="w-full h-full object-cover"/> : <Users size={16} className="m-auto mt-2 text-slate-300"/>}
-                             </div>
-                             <div className="flex-1">
-                               <p className="font-black text-[#0F172A] text-sm">{staff.personal?.fullName || "Unnamed Staff"}</p>
-                               <p className="text-[10px] font-bold text-slate-500 mt-0.5">{staff.professional?.designation || "N/A"} • BPS {staff.professional?.bps || "-"}</p>
-                               <div className="mt-2 flex justify-between items-end border-t border-slate-100 pt-2">
-                                  <p className="text-[9px] text-slate-400 font-bold uppercase">{staff.professional?.personnelNo}</p>
-                                  <p className="text-xs font-black text-green-600">Rs. {staff.netPayDetails?.netPay?.toLocaleString() || 0}</p>
-                               </div>
-                             </div>
-                          </div>
-
-                          {/* 🚀 ACTION BUTTONS (View, Edit, Delete) */}
-                          <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
-                             <Link href={`/staff-profile?id=${staff.id}`} className="flex-1 bg-blue-50 text-blue-600 flex items-center justify-center gap-1 py-2 rounded-lg text-[10px] font-black hover:bg-blue-100 transition-colors uppercase tracking-widest">
-                               <Eye size={12}/> View
-                             </Link>
-                             <button onClick={() => handleEditStaff(staff)} className="flex-1 bg-orange-50 text-orange-600 flex items-center justify-center gap-1 py-2 rounded-lg text-[10px] font-black hover:bg-orange-100 transition-colors uppercase tracking-widest">
-                               <Edit3 size={12}/> Edit
-                             </button>
-                             <button onClick={() => handleDeleteStaff(staff.id)} className="w-10 flex items-center justify-center bg-red-50 text-red-600 py-2 rounded-lg text-[10px] font-black hover:bg-red-100 transition-colors" title="Delete Staff">
-                               <Trash2 size={14}/>
-                             </button>
-                          </div>
-                       </div>
-                    ))
-                 )}
-              </div>
-           </div>
-        </div>
-
-      </div>
-    </div>
-  );
-}
+                  <div className="space-y-6 animate-fade-in-down w-full">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full">
+                       <div className="w-full">
+                         <div className="flex justify-between items-center mb-4"><h3 className="text-xs font-bold text-blue-500 uppercase tracking-widest">Pay & Allowances</h3><button onClick={addAllowance} className
