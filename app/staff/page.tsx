@@ -2,12 +2,15 @@
 import React, { useState, useEffect } from "react";
 import { collection, onSnapshot, query, setDoc, doc, serverTimestamp, deleteDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import Link from "next/link";
 import { 
-  Users, Zap, Upload, Building2, Wallet, 
-  PlusCircle, Trash2, Save, CheckCircle2, AlertCircle, 
-  GraduationCap, Briefcase, FileText, FileCheck, Loader2, Edit3, Eye
+  Users, Building2, Wallet, PlusCircle, Trash2, Save, 
+  CheckCircle2, GraduationCap, Briefcase, FileText, 
+  FileCheck, Loader2, Edit3, Eye
 } from "lucide-react";
+
+// 🚀 BUG FIX: Clean Types to prevent Vercel Compiler (SWC) Error
+type EduRecord = { level: string; institute: string; passingYear: string; subjects: string; document: string; };
+type FinancialRecord = { name: string; amount: number; };
 
 const convertToBase64 = (file: File): Promise<string> => {
   return new Promise((resolve, reject) => {
@@ -23,7 +26,6 @@ const EDU_LEVELS = ["Matriculation", "Intermediate (FA/FSc)", "Bachelors (BA/BSc
 export default function ManageStaffPage() {
   const [isMounted, setIsMounted] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [isExtracting, setIsExtracting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [staffList, setStaffList] = useState<any[]>([]);
 
@@ -35,9 +37,10 @@ export default function ManageStaffPage() {
   const [professional, setProfessional] = useState({ personnelNo: "", doj: "", bps: "", empCategory: "Active Permanent", designation: "", ddoCode: "", prevExperience: "", prevInstitution: "" });
   const [financial, setFinancial] = useState({ bankName: "", accountNo: "", accountTitle: "", ntn: "" });
   
-  const [education, setEducation] = useState<{level: string, institute: string, passingYear: string, subjects: string, document: string}[]>([ { level: "Matriculation", institute: "", passingYear: "", subjects: "", document: "" } ]);
-  const [allowances, setAllowances] = useState<{name: string, amount: number}[]>([ { name: "Basic Pay", amount: 0 } ]);
-  const [deductions, setDeductions] = useState<{name: string, amount: number}[]>([]);
+  // 🚀 BUG FIX: Applied clean types here
+  const [education, setEducation] = useState<EduRecord[]>([ { level: "Matriculation", institute: "", passingYear: "", subjects: "", document: "" } ]);
+  const [allowances, setAllowances] = useState<FinancialRecord[]>([ { name: "Basic Pay", amount: 0 } ]);
+  const [deductions, setDeductions] = useState<FinancialRecord[]>([]);
 
   useEffect(() => {
     setIsMounted(true);
@@ -111,8 +114,7 @@ export default function ManageStaffPage() {
     try {
       const docId = editingId || personal.cnic.replace(/[^0-9]/g, '') || Date.now().toString();
 
-      // 1. 🪄 Auto-Generate Credentials
-      // Email: emp[ID]@edupilot.com, Password: CNIC numbers only
+      // 1. Auto-Generate Credentials
       const generatedEmail = personal.email || `emp${professional.personnelNo}@edupilot.com`;
       const generatedPassword = personal.cnic.replace(/[^0-9]/g, ''); 
 
@@ -131,7 +133,7 @@ export default function ManageStaffPage() {
          });
 
          const result = await response.json();
-         if (!result.success && !result.error.includes("already exists")) {
+         if (!result.success && !result.error?.includes("already exists")) {
             throw new Error(`Failed to create login: ${result.error}`);
          }
       }
@@ -184,11 +186,12 @@ export default function ManageStaffPage() {
 
   if (!isMounted) return null;
 
+  // 🚀 BUG FIX: Capitalized "Icon" to satisfy JSX parsers
   const TABS = [
-    { id: "personal", label: "Basic Info", icon: Users },
-    { id: "education", label: "Educational", icon: GraduationCap },
-    { id: "professional", label: "Professional", icon: Briefcase },
-    { id: "financial", label: "Financial", icon: Wallet },
+    { id: "personal", label: "Basic Info", Icon: Users },
+    { id: "education", label: "Educational", Icon: GraduationCap },
+    { id: "professional", label: "Professional", Icon: Briefcase },
+    { id: "financial", label: "Financial", Icon: Wallet },
   ];
 
   return (
@@ -207,7 +210,7 @@ export default function ManageStaffPage() {
             </button>
           )}
           <button onClick={handleSaveProfile} disabled={loading} className="bg-[#0F172A] text-white px-6 py-2.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-slate-800 transition-colors shadow-md disabled:opacity-50 w-full sm:w-auto">
-            {loading ? "Saving..." : <><Save size={18}/> {editingId ? "Update Record" : "Complete Registration"}</>}
+            {loading ? "Saving..." : <span className="flex items-center gap-2"><Save size={18}/> {editingId ? "Update Record" : "Complete Registration"}</span>}
           </button>
         </div>
       </div>
@@ -224,7 +227,7 @@ export default function ManageStaffPage() {
              <div className="flex overflow-x-auto border-b border-slate-100 bg-slate-50/50 w-full">
                {TABS.map(tab => (
                  <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`flex-1 py-4 px-4 font-bold text-sm flex items-center justify-center gap-2 transition-colors border-b-2 whitespace-nowrap ${activeTab === tab.id ? "border-[#3ac47d] text-[#3ac47d] bg-white" : "border-transparent text-slate-500 hover:bg-slate-100 hover:text-slate-800"}`}>
-                   <tab.icon size={16}/> {tab.label}
+                   <tab.Icon size={16}/> {tab.label}
                  </button>
                ))}
              </div>
@@ -320,4 +323,60 @@ export default function ManageStaffPage() {
                   <div className="space-y-6 animate-fade-in-down w-full">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full">
                        <div className="w-full">
-                         <div className="flex justify-between items-center mb-4"><h3 className="text-xs font-bold text-blue-500 uppercase tracking-widest">Pay & Allowances</h3><button onClick={addAllowance} className
+                         <div className="flex justify-between items-center mb-4"><h3 className="text-xs font-bold text-blue-500 uppercase tracking-widest">Pay & Allowances</h3><button onClick={addAllowance} className="text-blue-500"><PlusCircle size={18}/></button></div>
+                         <div className="space-y-2 w-full">
+                           {allowances.map((item, idx) => (
+                             <div key={idx} className="flex gap-2 items-center w-full">
+                               <input value={item.name} onChange={e => updateAllowance(idx, 'name', e.target.value)} className="w-2/3 bg-blue-50 rounded-lg px-3 py-2 text-xs font-bold outline-none" />
+                               <input type="number" value={item.amount || ''} onChange={e => updateAllowance(idx, 'amount', e.target.value)} className="w-1/3 border border-slate-200 rounded-lg px-3 py-2 text-xs font-black text-right outline-none" />
+                               <button onClick={() => removeAllowance(idx)} className="text-slate-300 hover:text-red-500"><Trash2 size={14}/></button>
+                             </div>
+                           ))}
+                         </div>
+                         <div className="mt-4 bg-blue-500 text-white p-3 rounded-xl flex justify-between items-center font-black"><span>Gross Pay</span><span>Rs. {grossPay.toLocaleString()}</span></div>
+                       </div>
+                    </div>
+                    <div className="mt-6 bg-[#0F172A] text-white p-6 rounded-2xl flex justify-between items-center w-full">
+                       <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Final Net Salary</p>
+                       <p className="text-2xl sm:text-4xl font-black text-[#3ac47d]">Rs. {netPay.toLocaleString()}</p>
+                    </div>
+                  </div>
+                )}
+             </div>
+          </div>
+        </div>
+
+        {/* --- RIGHT: STAFF DIRECTORY --- */}
+        <div className="xl:col-span-4 w-full">
+           <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 sticky top-6 w-full">
+              <h2 className="text-lg font-black text-[#0F172A] mb-6">Staff Directory</h2>
+              <div className="space-y-4 h-[500px] overflow-y-auto pr-2 w-full">
+                 {staffList.length === 0 ? (
+                    <div className="py-10 text-center opacity-50"><Users size={40} className="mx-auto mb-3 text-slate-300"/><p className="font-bold text-sm">No staff added yet.</p></div>
+                 ) : (
+                    staffList.map(staff => (
+                       <div key={staff.id} className={`bg-white p-4 rounded-2xl border-2 transition-all ${editingId === staff.id ? 'border-[#3ac47d] shadow-md' : 'border-slate-100 shadow-sm'} w-full`}>
+                          <div className="flex items-start gap-3 w-full">
+                             <div className="w-10 h-10 rounded-full bg-slate-50 border border-slate-200 overflow-hidden shrink-0 mt-1">
+                               {staff.personal?.photo ? <img src={staff.personal.photo} className="w-full h-full object-cover"/> : <Users size={16} className="m-auto mt-2 text-slate-300"/>}
+                             </div>
+                             <div className="flex-1 min-w-0">
+                               <p className="font-black text-[#0F172A] text-sm truncate">{staff.personal?.fullName || "Unnamed"}</p>
+                               <p className="text-[10px] font-bold text-slate-500 mt-0.5 truncate">{staff.professional?.designation} • Emp: {staff.professional?.personnelNo}</p>
+                             </div>
+                          </div>
+                          <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between gap-2 w-full">
+                             <button onClick={() => handleEditStaff(staff)} className="flex-1 bg-orange-50 text-orange-600 flex items-center justify-center gap-1 py-2 rounded-lg text-[10px] font-black uppercase"><Edit3 size={12}/> Edit</button>
+                             <button onClick={() => handleDeleteStaff(staff.id)} className="w-10 flex items-center justify-center bg-red-50 text-red-600 py-2 rounded-lg text-[10px] font-black"><Trash2 size={14}/></button>
+                          </div>
+                       </div>
+                    ))
+                 )}
+              </div>
+           </div>
+        </div>
+
+      </div>
+    </div>
+  );
+}
