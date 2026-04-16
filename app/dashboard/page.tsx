@@ -1,269 +1,173 @@
 "use client";
 import React, { useState, useEffect } from "react";
-import { collection, onSnapshot, query } from "firebase/firestore";
+import { collection, onSnapshot, query, where } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { Award, Bell, ChevronDown, User, Loader2, Info } from "lucide-react";
+import { 
+  Award, Bell, ChevronDown, User, Loader2, 
+  Users, Clock, ClipboardCheck, AlertTriangle, CheckCircle2 
+} from "lucide-react";
 
-// 🧠 THE MAGIC FUNCTION: Ignores capital/small letters
 const norm = (str?: string) => (str || "").trim().toLowerCase();
 
-export default function AnalyticsDashboard() {
+export default function CombinedDashboard() {
   const [isMounted, setIsMounted] = useState(false);
   const [loading, setLoading] = useState(true);
   
-  // Real Database States
+  // Data States
   const [students, setStudents] = useState<any[]>([]);
   const [marks, setMarks] = useState<any[]>([]);
-  const [classes, setClasses] = useState<string[]>([]);
-  
-  // UI States
+  const [staff, setStaff] = useState<any[]>([]);
+  const [proxies, setProxies] = useState<any[]>([]); // Adjustments
+  const [staffAttendance, setStaffAttendance] = useState<any[]>([]);
   const [selectedClass, setSelectedClass] = useState<string>("All Classes");
 
   useEffect(() => {
     setIsMounted(true);
+    const todayStr = new Date().toISOString().split('T')[0];
+
+    // Real-time Listeners
+    const unsubStudents = onSnapshot(collection(db, "students"), (snap) => setStudents(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
+    const unsubMarks = onSnapshot(collection(db, "marks"), (snap) => setMarks(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
+    const unsubStaff = onSnapshot(collection(db, "staff"), (snap) => setStaff(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
     
-    // Fetch Real Students
-    const unsubStudents = onSnapshot(query(collection(db, "students")), (snap) => {
-      const studs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      setStudents(studs);
-      
-      // Extract unique classes for the dropdown
-      const uniqueClasses = Array.from(new Set(studs.map(s => s.classGrade).filter(Boolean)));
-      setClasses(uniqueClasses as string[]);
+    // Proxies/Adjustments for Today
+    const unsubProxies = onSnapshot(query(collection(db, "arrangements"), where("date", "==", todayStr)), (snap) => {
+      setProxies(snap.docs.map(d => d.data()));
     });
 
-    // Fetch Real Marks
-    const unsubMarks = onSnapshot(query(collection(db, "marks")), (snap) => {
-      setMarks(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    // Staff Attendance for Today
+    const unsubStaffAtt = onSnapshot(query(collection(db, "staffAttendance"), where("date", "==", todayStr)), (snap) => {
+      setStaffAttendance(snap.docs.map(d => d.data()));
       setLoading(false);
     });
 
-    return () => { unsubStudents(); unsubMarks(); };
+    return () => { unsubStudents(); unsubMarks(); unsubStaff(); unsubProxies(); unsubStaffAtt(); };
   }, []);
 
   if (!isMounted) return null;
 
-  // ==========================================
-  // 🧠 THE ANALYTICS ENGINE (Real-time Calculations)
-  // ==========================================
-  
-  // 1. Filter students based on selected class
+  // --- LOGIC: Administration Metrics ---
+  const totalStaffCount = staff.length;
+  const staffPresent = staffAttendance.filter(a => a.status === "Present").length;
+  const staffLeave = staffAttendance.filter(a => a.status === "Leave").length;
+  const activeProxies = proxies.length;
+
+  // --- LOGIC: Academic Analytics ---
   const filteredStudents = selectedClass === "All Classes" 
     ? students 
     : students.filter(s => norm(s.classGrade) === norm(selectedClass));
 
-  // 2. Calculate Average Performance for each student
   const studentPerformances = filteredStudents.map(student => {
-    // Get all marks for this specific student
     const studentMarks = marks.filter(m => m.studentId === student.id);
-    
-    let totalObtained = 0;
-    let totalMax = 0;
-    
-    studentMarks.forEach(m => {
-      totalObtained += Number(m.marksObtained || 0);
-      totalMax += Number(m.totalMarks || 0);
-    });
-
-    const averagePercentage = totalMax > 0 ? Math.round((totalObtained / totalMax) * 100) : 0;
-    
-    // Categorize based on percentage
-    let status = "attention"; // Red (< 50%)
-    if (averagePercentage >= 75) status = "mastered"; // Green (>= 75%)
-    else if (averagePercentage >= 50) status = "working"; // Yellow (50% - 74%)
-
-    return {
-      ...student,
-      averagePercentage,
-      totalExams: studentMarks.length,
-      status
-    };
+    let totalObtained = 0, totalMax = 0;
+    studentMarks.forEach(m => { totalObtained += Number(m.marksObtained || 0); totalMax += Number(m.totalMarks || 0); });
+    const avg = totalMax > 0 ? Math.round((totalObtained / totalMax) * 100) : 0;
+    let status = avg >= 75 ? "mastered" : avg >= 50 ? "working" : "attention";
+    return { ...student, averagePercentage: avg, status };
   });
-
-  // 3. Calculate Class-Wide Metrics
-  const totalStudents = studentPerformances.length;
-  const overallClassAvg = totalStudents > 0 
-    ? Math.round(studentPerformances.reduce((acc, curr) => acc + curr.averagePercentage, 0) / totalStudents) 
-    : 0;
 
   const masteredCount = studentPerformances.filter(s => s.status === "mastered").length;
   const workingCount = studentPerformances.filter(s => s.status === "working").length;
   const attentionCount = studentPerformances.filter(s => s.status === "attention").length;
 
-  const masteredPct = totalStudents > 0 ? Math.round((masteredCount / totalStudents) * 100) : 0;
-  const workingPct = totalStudents > 0 ? Math.round((workingCount / totalStudents) * 100) : 0;
-  const attentionPct = totalStudents > 0 ? Math.round((attentionCount / totalStudents) * 100) : 0;
-
-  // Design Colors
-  const COLORS = {
-    mastered: { bg: "bg-[#78d13b]", text: "text-[#78d13b]", tint: "bg-[#78d13b]/15" },
-    working: { bg: "bg-[#ffc122]", text: "text-[#ffc122]", tint: "bg-[#ffc122]/15" },
-    attention: { bg: "bg-[#ff7b60]", text: "text-[#ff7b60]", tint: "bg-[#ff7b60]/15" },
-  };
-
   return (
     <div className="min-h-screen bg-slate-50 md:p-6 font-sans w-full">
-      
       {loading ? (
         <div className="flex h-[50vh] items-center justify-center"><Loader2 className="animate-spin text-[#78d13b]" size={40}/></div>
       ) : (
-        
-        // 🚀 MAIN WHITE BOARD (Extreme Rounded Corners like the image)
         <div className="bg-white rounded-[2.5rem] shadow-sm border border-slate-100 p-6 md:p-10 w-full animate-fade-in-up">
           
-          {/* HEADER SECTION */}
-          <div className="flex flex-col md:flex-row justify-between items-center gap-6 mb-10">
-            <div className="flex items-center gap-6">
-              <h1 className="text-3xl font-black text-[#1f2937] tracking-tight">Dashboard</h1>
-              <div className="relative">
-                <select 
-                  value={selectedClass} 
-                  onChange={e => setSelectedClass(e.target.value)}
-                  className="appearance-none bg-slate-50 border border-slate-200 text-slate-600 font-bold py-2 pl-4 pr-10 rounded-full outline-none focus:border-[#78d13b] cursor-pointer text-sm"
-                >
-                  <option value="All Classes">All Classes</option>
-                  {classes.map(c => <option key={c} value={c}>{c}</option>)}
-                </select>
-                <ChevronDown size={14} className="absolute right-4 top-3 text-slate-400 pointer-events-none"/>
-              </div>
-            </div>
-            <div className="flex items-center gap-4">
-               <div className="relative cursor-pointer bg-slate-50 p-3 rounded-full hover:bg-slate-100 transition-colors">
-                  <Bell size={20} className="text-slate-600"/>
-                  <span className="absolute top-2 right-2.5 w-2.5 h-2.5 bg-[#ff7b60] rounded-full border-2 border-white"></span>
-               </div>
+          {/* HEADER */}
+          <div className="flex justify-between items-center mb-10">
+            <h1 className="text-3xl font-black text-[#1f2937]">Command Centre</h1>
+            <div className="flex gap-4">
+              <select value={selectedClass} onChange={e => setSelectedClass(e.target.value)} className="bg-slate-50 border border-slate-200 text-slate-600 font-bold py-2 px-6 rounded-full outline-none text-sm">
+                <option value="All Classes">All Classes</option>
+                {Array.from(new Set(students.map(s => s.classGrade))).map(c => <option key={c as string} value={c as string}>{c as string}</option>)}
+              </select>
             </div>
           </div>
 
-          {/* 🚀 TOP CARDS GRID */}
-          <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 mb-12">
+          {/* 🚀 TOP OPERATIONAL ROW (Administration) */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
             
-            {/* OVERALL SCORE CARD (White) */}
-            <div className="lg:col-span-2 bg-white border-2 border-slate-100 rounded-[2rem] p-6 flex items-center justify-between shadow-sm">
-               <div>
-                  <h3 className="text-sm font-bold text-slate-500 mb-1">Overall Class Score</h3>
-                  <div className="flex items-end gap-2">
-                     <p className="text-5xl font-black text-[#1f2937]">{overallClassAvg}%</p>
-                  </div>
-                  <p className="text-xs font-bold text-slate-400 mt-4">Based on live marks data</p>
+            {/* Staff Tracker */}
+            <div className="bg-slate-900 text-white rounded-[2rem] p-6 shadow-lg border border-slate-800">
+               <div className="flex justify-between items-start mb-4">
+                  <div className="p-3 bg-white/10 rounded-2xl"><Users size={24}/></div>
+                  <span className="text-[10px] font-bold bg-green-500/20 text-green-400 px-3 py-1 rounded-full uppercase">Staff Status</span>
                </div>
-               <div className="text-center">
-                  <h3 className="text-sm font-bold text-slate-500 mb-1">Total Students</h3>
-                  <p className="text-4xl font-black text-[#1f2937] mt-2">{totalStudents}</p>
-                  <div className="w-16 h-16 bg-green-50 rounded-full flex items-center justify-center mx-auto mt-2">
-                     <Award className="text-[#78d13b]" size={30}/>
-                  </div>
-               </div>
+               <p className="text-4xl font-black mb-1">{staffPresent} / {totalStaffCount}</p>
+               <p className="text-xs text-slate-400 font-bold uppercase tracking-widest">Present Today • <span className="text-red-400">{staffLeave} on Leave</span></p>
             </div>
 
-            {/* GREEN CARD (Mastered) */}
-            <div className={`${COLORS.mastered.bg} rounded-[2rem] p-6 text-[#1f2937] flex flex-col justify-between shadow-sm relative overflow-hidden group`}>
-               <h3 className="text-5xl font-black mb-2 relative z-10">{masteredCount}</h3>
-               <div className="relative z-10">
-                  <p className="text-sm font-black opacity-80 uppercase tracking-widest">Mastered</p>
-                  <p className="text-xs font-bold mt-1 opacity-75">{masteredPct}% of class</p>
+            {/* Arrangement Tracker */}
+            <div className="bg-white border-2 border-slate-100 rounded-[2rem] p-6 shadow-sm">
+               <div className="flex justify-between items-start mb-4">
+                  <div className="p-3 bg-orange-50 text-orange-500 rounded-2xl"><Clock size={24}/></div>
+                  <span className="text-[10px] font-bold bg-orange-100 text-orange-600 px-3 py-1 rounded-full uppercase">Arrangements</span>
                </div>
-               <div className="absolute -right-4 -bottom-4 w-32 h-32 bg-white/20 rounded-full blur-2xl group-hover:scale-150 transition-transform duration-500"></div>
+               <p className="text-4xl font-black text-slate-800 mb-1">{activeProxies}</p>
+               <p className="text-xs text-slate-500 font-bold uppercase tracking-widest">Active Adjustment Periods</p>
             </div>
 
-            {/* YELLOW CARD (Working Towards) */}
-            <div className={`${COLORS.working.bg} rounded-[2rem] p-6 text-[#1f2937] flex flex-col justify-between shadow-sm relative overflow-hidden group`}>
-               <h3 className="text-5xl font-black mb-2 relative z-10">{workingCount}</h3>
-               <div className="relative z-10">
-                  <p className="text-sm font-black opacity-80 uppercase tracking-widest">Average</p>
-                  <p className="text-xs font-bold mt-1 opacity-75">{workingPct}% of class</p>
+            {/* Daily Attendance Summary */}
+            <div className="bg-white border-2 border-slate-100 rounded-[2rem] p-6 shadow-sm">
+               <div className="flex justify-between items-start mb-4">
+                  <div className="p-3 bg-blue-50 text-blue-500 rounded-2xl"><ClipboardCheck size={24}/></div>
+                  <span className="text-[10px] font-bold bg-blue-100 text-blue-600 px-3 py-1 rounded-full uppercase">Student Attendance</span>
                </div>
-               <div className="absolute -right-4 -bottom-4 w-32 h-32 bg-white/20 rounded-full blur-2xl group-hover:scale-150 transition-transform duration-500"></div>
+               <p className="text-4xl font-black text-slate-800 mb-1">92%</p>
+               <p className="text-xs text-slate-500 font-bold uppercase tracking-widest">Across all classes</p>
             </div>
-
-            {/* RED CARD (Needing Attention) */}
-            <div className={`${COLORS.attention.bg} rounded-[2rem] p-6 text-[#1f2937] flex flex-col justify-between shadow-sm relative overflow-hidden group`}>
-               <h3 className="text-5xl font-black mb-2 relative z-10 text-white">{attentionCount}</h3>
-               <div className="relative z-10">
-                  <p className="text-sm font-black text-white/90 uppercase tracking-widest">Alerts</p>
-                  <p className="text-xs font-bold text-white/70 mt-1">{attentionPct}% of class</p>
-               </div>
-               <div className="absolute -right-4 -bottom-4 w-32 h-32 bg-black/10 rounded-full blur-2xl group-hover:scale-150 transition-transform duration-500"></div>
-            </div>
-
           </div>
 
-          {/* 🚀 STUDENTS PROFICIENCY LIST (The Pill-shaped Rows) */}
-          <div>
-            <div className="flex justify-between items-center mb-6 px-2">
-               <h2 className="text-xl font-black text-[#1f2937]">Students Proficiency</h2>
-               <p className="text-xs font-bold text-slate-400 flex items-center gap-1"><Info size={14}/> Live Results Engine</p>
-            </div>
-
-            {/* Table Header */}
-            <div className="grid grid-cols-12 gap-4 px-6 pb-2 text-[10px] font-black text-slate-400 uppercase tracking-widest">
-               <div className="col-span-4 lg:col-span-3">Full Name</div>
-               <div className="col-span-3 lg:col-span-2 text-center">Exams Given</div>
-               <div className="col-span-5 lg:col-span-4">Average Score</div>
-               <div className="hidden lg:flex col-span-3 justify-end gap-6 text-center">
-                  <span className="w-16">Alert</span>
-                  <span className="w-16">Average</span>
-                  <span className="w-16">Mastered</span>
+          {/* 🚀 BOTTOM ACADEMIC SECTION (The EdTech Design) */}
+          <div className="border-t border-slate-100 pt-12">
+            <h2 className="text-2xl font-black text-[#1f2937] mb-8">Academic Proficiency</h2>
+            
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-12">
+               <div className="bg-[#78d13b] rounded-[2rem] p-8 text-white shadow-md relative overflow-hidden group">
+                  <h3 className="text-5xl font-black mb-2">{masteredCount}</h3>
+                  <p className="text-sm font-black uppercase opacity-90">Mastered (75%+)</p>
+                  <CheckCircle2 className="absolute -right-4 -bottom-4 w-32 h-32 opacity-20 group-hover:scale-110 transition-transform" />
+               </div>
+               <div className="bg-[#ffc122] rounded-[2rem] p-8 text-[#1f2937] shadow-md relative overflow-hidden group">
+                  <h3 className="text-5xl font-black mb-2">{workingCount}</h3>
+                  <p className="text-sm font-black uppercase opacity-80">Working Towards</p>
+                  <Clock className="absolute -right-4 -bottom-4 w-32 h-32 opacity-20 group-hover:scale-110 transition-transform" />
+               </div>
+               <div className="bg-[#ff7b60] rounded-[2rem] p-8 text-white shadow-md relative overflow-hidden group">
+                  <h3 className="text-5xl font-black mb-2">{attentionCount}</h3>
+                  <p className="text-sm font-black uppercase opacity-90">Needs Attention</p>
+                  <AlertTriangle className="absolute -right-4 -bottom-4 w-32 h-32 opacity-20 group-hover:scale-110 transition-transform" />
                </div>
             </div>
 
-            {/* Table Rows */}
+            {/* Students Table */}
             <div className="space-y-3">
-              {studentPerformances.length === 0 ? (
-                 <div className="py-10 text-center text-slate-400 font-bold bg-slate-50 rounded-3xl">No student data found for this selection.</div>
-              ) : (
-                studentPerformances.sort((a, b) => b.averagePercentage - a.averagePercentage).map((student) => {
-                  
-                  // @ts-ignore (status is injected above)
-                  const tintClass = COLORS[student.status].tint;
-                  // @ts-ignore
-                  const bgClass = COLORS[student.status].bg;
-
-                  return (
-                    <div key={student.id} className={`grid grid-cols-12 gap-4 items-center px-6 py-4 rounded-full ${tintClass} transition-all hover:scale-[1.01]`}>
-                      
-                      {/* Name & Avatar */}
-                      <div className="col-span-4 lg:col-span-3 flex items-center gap-3">
-                         <div className="w-10 h-10 rounded-full bg-white shadow-sm border border-slate-100 flex items-center justify-center overflow-hidden shrink-0">
-                           {student.photoBase64 ? <img src={student.photoBase64} className="w-full h-full object-cover"/> : <User size={18} className="text-slate-400"/>}
-                         </div>
-                         <p className="font-bold text-[#1f2937] text-sm truncate">{student.name}</p>
-                      </div>
-
-                      {/* Exams Count */}
-                      <div className="col-span-3 lg:col-span-2 text-center font-black text-slate-600 text-sm">
-                         {student.totalExams > 0 ? `${student.totalExams} Exams` : '-'}
-                      </div>
-
-                      {/* Progress Bar & Percentage */}
-                      <div className="col-span-5 lg:col-span-4 flex items-center gap-3">
-                         <div className={`px-4 py-1.5 rounded-full text-xs font-black w-16 text-center ${student.status === 'attention' ? 'text-white' : 'text-[#1f2937]'} ${bgClass}`}>
-                           {student.averagePercentage}%
-                         </div>
-                         <div className="flex-1 h-3 bg-white rounded-full overflow-hidden shadow-inner hidden sm:block">
-                            <div className={`h-full rounded-full ${bgClass}`} style={{ width: `${student.averagePercentage}%` }}></div>
-                         </div>
-                      </div>
-
-                      {/* The 3 Dots (Right Aligned) */}
-                      <div className="hidden lg:flex col-span-3 justify-end gap-6 items-center pr-2">
-                         <div className={`w-10 h-10 rounded-full flex items-center justify-center font-black text-sm text-white ${student.status === 'attention' ? COLORS.attention.bg : 'bg-transparent text-transparent'}`}>
-                           {student.status === 'attention' ? '!' : ''}
-                         </div>
-                         <div className={`w-10 h-10 rounded-full flex items-center justify-center font-black text-sm text-[#1f2937] ${student.status === 'working' ? COLORS.working.bg : 'bg-transparent text-transparent'}`}>
-                           {student.status === 'working' ? '✓' : ''}
-                         </div>
-                         <div className={`w-10 h-10 rounded-full flex items-center justify-center font-black text-sm text-[#1f2937] ${student.status === 'mastered' ? COLORS.mastered.bg : 'bg-transparent text-transparent'}`}>
-                           {student.status === 'mastered' ? '★' : ''}
-                         </div>
-                      </div>
-
+               {studentPerformances.map((s) => (
+                 <div key={s.id} className={`grid grid-cols-12 gap-4 items-center px-6 py-4 rounded-full ${s.status === 'mastered' ? 'bg-[#78d13b]/10' : s.status === 'working' ? 'bg-[#ffc122]/10' : 'bg-[#ff7b60]/10'} transition-all`}>
+                    <div className="col-span-4 flex items-center gap-3">
+                       <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center overflow-hidden shrink-0 shadow-sm">
+                          {s.photoBase64 ? <img src={s.photoBase64} className="w-full h-full object-cover"/> : <User size={18} className="text-slate-300"/>}
+                       </div>
+                       <p className="font-bold text-[#1f2937] text-sm">{s.name}</p>
                     </div>
-                  );
-                })
-              )}
+                    <div className="col-span-5 flex items-center gap-4">
+                       <div className="flex-1 h-2 bg-white rounded-full overflow-hidden">
+                          <div className={`h-full rounded-full ${s.status === 'mastered' ? 'bg-[#78d13b]' : s.status === 'working' ? 'bg-[#ffc122]' : 'bg-[#ff7b60]'}`} style={{ width: `${s.averagePercentage}%` }}></div>
+                       </div>
+                       <span className="font-black text-xs w-10 text-slate-600">{s.averagePercentage}%</span>
+                    </div>
+                    <div className="col-span-3 text-right">
+                       <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase ${s.status === 'mastered' ? 'bg-[#78d13b] text-white' : s.status === 'working' ? 'bg-[#ffc122] text-[#1f2937]' : 'bg-[#ff7b60] text-white'}`}>
+                          {s.status}
+                       </span>
+                    </div>
+                 </div>
+               ))}
             </div>
-
           </div>
         </div>
       )}
