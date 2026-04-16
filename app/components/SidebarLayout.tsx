@@ -12,7 +12,7 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
   const pathname = usePathname();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  // آپ کے سائیڈ بار کے تمام لنکس (تصویر کے مطابق)
+  // تمام لنکس کی لسٹ
   const MENU_ITEMS = [
     { name: "Analytics", icon: LayoutDashboard, path: "/dashboard" },
     { name: "Students", icon: Users, path: "/students" },
@@ -42,7 +42,7 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
         </button>
       </div>
 
-      {/* 🚀 THE SIDEBAR (موبائل پر چھپا ہوگا، ڈیسک ٹاپ پر پکا نظر آئے گا) */}
+      {/* 🚀 THE SIDEBAR (موبائل پر سلائیڈ ہوگا، ڈیسک ٹاپ پر فکس رہے گا) */}
       <div className={`fixed inset-y-0 left-0 z-40 w-64 bg-white border-r border-slate-200 flex flex-col transform transition-transform duration-300 ease-in-out md:relative md:translate-x-0 ${isMobileMenuOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full"}`}>
          
          {/* Desktop Logo */}
@@ -60,7 +60,7 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
                  <Link 
                    key={item.name} 
                    href={item.path}
-                   onClick={() => setIsMobileMenuOpen(false)} // موبائل پر کلک کرنے کے بعد مینیو بند کر دے گا
+                   onClick={() => setIsMobileMenuOpen(false)} // موبائل پر مینیو بند کر دے گا
                    className={`flex items-center gap-3 px-3 py-3 rounded-xl font-bold transition-all duration-200 ${isActive ? "bg-green-50 text-[#3ac47d]" : "text-slate-500 hover:bg-slate-50 hover:text-slate-700"}`}
                  >
                    <item.icon size={20} className={isActive ? "text-[#3ac47d]" : "text-slate-400"} />
@@ -70,7 +70,7 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
             })}
          </div>
 
-         {/* Settings Button at Bottom */}
+         {/* Settings Button */}
          <div className="p-4 border-t border-slate-100">
             <Link 
               href="/settings"
@@ -83,7 +83,7 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
          </div>
       </div>
 
-      {/* 🚀 OVERLAY FOR MOBILE (موبائل پر سائیڈ بار کھلنے پر پیچھے اندھیرا کرے گا) */}
+      {/* 🚀 OVERLAY FOR MOBILE */}
       {isMobileMenuOpen && (
         <div 
           onClick={() => setIsMobileMenuOpen(false)} 
@@ -92,8 +92,8 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
       )}
 
       {/* 🚀 MAIN CONTENT AREA */}
-      <div className="flex-1 overflow-y-auto pt-20 md:pt-0 bg-slate-50/50 relative">
-        <div className="p-4 md:p-8 max-w-7xl mx-auto">
+      <div className="flex-1 overflow-y-auto pt-20 md:pt-0 bg-slate-50/50 relative w-full">
+        <div className="p-4 md:p-8 max-w-7xl mx-auto w-full">
            {children}
         </div>
       </div>
