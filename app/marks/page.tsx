@@ -64,11 +64,13 @@ export default function ExamsAndMarksPage() {
   // Filter Students for the active section
   const filteredStudents = studentsData.filter(s => norm(s.classGrade) === norm(selectedClass) && norm(s.section) === norm(selectedSection));
 
-  // Filter Saved Marks History for the Ledger below
+  // 🚀 FIX: Smart UI Filter (Orphan Data Cleaner)
+  // Filter Saved Marks History for the Ledger below, and ONLY show if student exists in studentsData
   const savedMarksLedger = allMarks.filter(m => 
     norm(m.classGrade) === norm(selectedClass) && 
     norm(m.section) === norm(selectedSection) && 
-    norm(m.term) === norm(selectedTerm)
+    norm(m.term) === norm(selectedTerm) &&
+    studentsData.some(student => student.id === m.studentId) // 🪄 THE MAGIC FILTER (Checks if student is still active)
   );
 
   const calculateGrade = (obtained: number, total: number) => {
@@ -193,7 +195,6 @@ export default function ExamsAndMarksPage() {
         </div>
         <div className="w-full lg:w-1/5 space-y-2">
           <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Default Total Marks</label>
-          {/* 🚀 FIX 2 applied here to Total Marks input */}
           <input type="number" value={globalTotalMarks} onChange={e => setGlobalTotalMarks(e.target.value)} className="w-full bg-slate-50 outline-none rounded-xl px-4 py-3 text-sm border font-bold text-[#0F172A] text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
         </div>
       </div>
@@ -253,12 +254,10 @@ export default function ExamsAndMarksPage() {
                   </div>
 
                   <div className="col-span-2 flex justify-center">
-                    {/* 🚀 FIX 2 applied here to Total Marks Grid input */}
                     <input type="number" value={totalStr} onChange={(e) => handleMarkChange(student.id, "total", e.target.value)} className="w-16 bg-slate-100 text-center rounded-lg py-2 text-sm font-bold border border-transparent focus:border-blue-400 outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
                   </div>
 
                   <div className="col-span-2 flex justify-center">
-                    {/* 🚀 FIX 2 applied here to Obtained Marks Grid input */}
                     <input type="number" placeholder="0" value={obtainedStr} onChange={(e) => handleMarkChange(student.id, "obtained", e.target.value)} className="w-20 bg-white text-center rounded-lg py-2 text-sm font-black border-2 border-slate-200 focus:border-[#3ac47d] focus:bg-[#f0fdf4] outline-none shadow-inner transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
                   </div>
 
@@ -286,7 +285,7 @@ export default function ExamsAndMarksPage() {
                  <h2 className="font-black text-slate-800">Live Database Ledger</h2>
               </div>
               <p className="text-xs font-bold text-slate-500 bg-white px-3 py-1 rounded-lg shadow-sm">
-                Showing all saved marks for <span className="text-blue-600 uppercase">{selectedClass} - {selectedSection} ({selectedTerm})</span>
+                 Showing all saved marks for <span className="text-blue-600 uppercase">{selectedClass} - {selectedSection} ({selectedTerm})</span>
               </p>
            </div>
            
