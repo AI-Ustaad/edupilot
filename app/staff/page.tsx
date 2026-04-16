@@ -8,7 +8,7 @@ import {
   FileCheck, Loader2, Edit3, Eye
 } from "lucide-react";
 
-// 🚀 BUG FIX: Clean Types to prevent Vercel Compiler (SWC) Error
+// Clean Types to prevent Vercel Compiler (SWC) Error
 type EduRecord = { level: string; institute: string; passingYear: string; subjects: string; document: string; };
 type FinancialRecord = { name: string; amount: number; };
 
@@ -37,7 +37,6 @@ export default function ManageStaffPage() {
   const [professional, setProfessional] = useState({ personnelNo: "", doj: "", bps: "", empCategory: "Active Permanent", designation: "", ddoCode: "", prevExperience: "", prevInstitution: "" });
   const [financial, setFinancial] = useState({ bankName: "", accountNo: "", accountTitle: "", ntn: "" });
   
-  // 🚀 BUG FIX: Applied clean types here
   const [education, setEducation] = useState<EduRecord[]>([ { level: "Matriculation", institute: "", passingYear: "", subjects: "", document: "" } ]);
   const [allowances, setAllowances] = useState<FinancialRecord[]>([ { name: "Basic Pay", amount: 0 } ]);
   const [deductions, setDeductions] = useState<FinancialRecord[]>([]);
@@ -105,7 +104,6 @@ export default function ManageStaffPage() {
     setActiveTab("personal");
   };
 
-  // 🚀 THE NEW AUTO-PROVISIONING SAVE LOGIC
   const handleSaveProfile = async () => {
     if(!personal.fullName || !personal.cnic) return alert("Full Name and CNIC are required.");
     if(!professional.personnelNo) return alert("Emp ID (Personnel No) is required to generate a login account.");
@@ -113,12 +111,9 @@ export default function ManageStaffPage() {
     setLoading(true);
     try {
       const docId = editingId || personal.cnic.replace(/[^0-9]/g, '') || Date.now().toString();
-
-      // 1. Auto-Generate Credentials
       const generatedEmail = personal.email || `emp${professional.personnelNo}@edupilot.com`;
       const generatedPassword = personal.cnic.replace(/[^0-9]/g, ''); 
 
-      // 2. Create Auth Account in Background (Only if it's a NEW staff member)
       if (!editingId) {
          const response = await fetch('/api/create-user', {
            method: 'POST',
@@ -138,7 +133,6 @@ export default function ManageStaffPage() {
          }
       }
 
-      // 3. Save Data to Firestore
       await setDoc(doc(db, "staff", docId), {
         personal, 
         professional, 
@@ -186,14 +180,6 @@ export default function ManageStaffPage() {
 
   if (!isMounted) return null;
 
-  // 🚀 BUG FIX: Capitalized "Icon" to satisfy JSX parsers
-  const TABS = [
-    { id: "personal", label: "Basic Info", Icon: Users },
-    { id: "education", label: "Educational", Icon: GraduationCap },
-    { id: "professional", label: "Professional", Icon: Briefcase },
-    { id: "financial", label: "Financial", Icon: Wallet },
-  ];
-
   return (
     <div className="animate-fade-in space-y-6 pb-20 w-full">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 w-full">
@@ -225,11 +211,18 @@ export default function ManageStaffPage() {
              
              {/* TOP TABS NAVIGATION */}
              <div className="flex overflow-x-auto border-b border-slate-100 bg-slate-50/50 w-full">
-               {TABS.map(tab => (
-                 <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`flex-1 py-4 px-4 font-bold text-sm flex items-center justify-center gap-2 transition-colors border-b-2 whitespace-nowrap ${activeTab === tab.id ? "border-[#3ac47d] text-[#3ac47d] bg-white" : "border-transparent text-slate-500 hover:bg-slate-100 hover:text-slate-800"}`}>
-                   <tab.Icon size={16}/> {tab.label}
-                 </button>
-               ))}
+               <button onClick={() => setActiveTab("personal")} className={`flex-1 py-4 px-4 font-bold text-sm flex items-center justify-center gap-2 transition-colors border-b-2 whitespace-nowrap ${activeTab === "personal" ? "border-[#3ac47d] text-[#3ac47d] bg-white" : "border-transparent text-slate-500 hover:bg-slate-100 hover:text-slate-800"}`}>
+                 <Users size={16}/> Basic Info
+               </button>
+               <button onClick={() => setActiveTab("education")} className={`flex-1 py-4 px-4 font-bold text-sm flex items-center justify-center gap-2 transition-colors border-b-2 whitespace-nowrap ${activeTab === "education" ? "border-[#3ac47d] text-[#3ac47d] bg-white" : "border-transparent text-slate-500 hover:bg-slate-100 hover:text-slate-800"}`}>
+                 <GraduationCap size={16}/> Educational
+               </button>
+               <button onClick={() => setActiveTab("professional")} className={`flex-1 py-4 px-4 font-bold text-sm flex items-center justify-center gap-2 transition-colors border-b-2 whitespace-nowrap ${activeTab === "professional" ? "border-[#3ac47d] text-[#3ac47d] bg-white" : "border-transparent text-slate-500 hover:bg-slate-100 hover:text-slate-800"}`}>
+                 <Briefcase size={16}/> Professional
+               </button>
+               <button onClick={() => setActiveTab("financial")} className={`flex-1 py-4 px-4 font-bold text-sm flex items-center justify-center gap-2 transition-colors border-b-2 whitespace-nowrap ${activeTab === "financial" ? "border-[#3ac47d] text-[#3ac47d] bg-white" : "border-transparent text-slate-500 hover:bg-slate-100 hover:text-slate-800"}`}>
+                 <Wallet size={16}/> Financial
+               </button>
              </div>
 
              <div className="p-4 md:p-8 min-h-[500px] w-full">
