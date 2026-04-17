@@ -1,9 +1,11 @@
+import React from "react";
+import type { Metadata } from "next";
+import { AuthProvider } from "@/app/context/AuthContext"; // 🚀 Vercel Error Fixed (Absolute Path)
 import "./globals.css";
-import ClientWrapper from "./ClientWrapper";
 
-export const metadata = {
-  title: "EduPilot",
-  description: "School SaaS",
+export const metadata: Metadata = {
+  title: "EduPilot | School Management System",
+  description: "Pakistan's #1 AI Powered School Management System",
 };
 
 export default function RootLayout({
@@ -13,13 +15,12 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body>
-        <ClientWrapper>
+      <body className="bg-[#fafbfc] text-[#111] antialiased">
+        {/* AuthProvider پوری ایپ کو سیکیورٹی اور یوزر سیشن فراہم کرے گا */}
+        <AuthProvider>
           {children}
-        </ClientWrapper>
+        </AuthProvider>
       </body>
     </html>
   );
 }
-
-// new deploy trigger
