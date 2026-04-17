@@ -2,17 +2,8 @@
 
 import { createContext, useContext, useEffect, useState } from "react";
 import { auth, db } from "@/lib/firebase";
-import {
-  onAuthStateChanged,
-  User
-} from "firebase/auth";
-
-import {
-  doc,
-  getDoc,
-  setDoc,
-  serverTimestamp
-} from "firebase/firestore";
+import { onAuthStateChanged, User } from "firebase/auth";
+import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
 
 const AuthContext = createContext<any>(null);
 
@@ -39,7 +30,6 @@ export const AuthProvider = ({ children }: any) => {
       const userRef = doc(db, "users", firebaseUser.uid);
       const userSnap = await getDoc(userRef);
 
-      // ✅ اگر user موجود نہیں
       if (!userSnap.exists()) {
         const newUser = {
           name: firebaseUser.displayName || "No Name",
@@ -52,7 +42,6 @@ export const AuthProvider = ({ children }: any) => {
         await setDoc(userRef, newUser);
         setUserData(newUser);
       } else {
-        // ✅ اگر موجود ہے
         setUserData(userSnap.data());
       }
 
