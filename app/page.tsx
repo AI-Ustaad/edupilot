@@ -3,6 +3,9 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { Search, Menu, X, Globe, BarChart3, Users, FileText } from "lucide-react";
 
+// ==========================================
+// 🌐 EDU-PILOT ORIGINAL CONTENT (RESTORED)
+// ==========================================
 const translations = {
   en: {
     navHome: "Home",
@@ -12,7 +15,7 @@ const translations = {
     navPricing: "Pricing",
     navLogin: "Login",
     btnNavAction: "Get started",
-    heroTitle1: "Gain insights",
+    heroTitle1: "Digitalize your school",
     heroTitle2: "with EduPilot",
     heroSub: "From live attendance to automated result cards and fee tracking, everything is just a click away. Built for modern principals.",
     btnHeroPrimary: "Get started",
@@ -20,13 +23,13 @@ const translations = {
     featBadge: "FEATURES",
     featTitle: "A robust set of features",
     featSub: "EduPilot provides enterprise-grade tools to manage every aspect of your educational institute.",
-    feat1Title: "Realtime attendance",
+    feat1Title: "Smart Attendance",
     feat1Desc: "Mark staff and student attendance directly from your mobile phone with real-time updates.",
-    feat2Title: "Fast analytics",
+    feat2Title: "Fast Analytics",
     feat2Desc: "Enter marks and let the system instantly generate result cards and performance analytics.",
-    feat3Title: "Automated reports",
+    feat3Title: "Timetable Management",
     feat3Desc: "Easily manage teacher leaves and assign adjustment (proxy) periods to keep classes running.",
-    storyTitle: "A great story always starts with a great team",
+    storyTitle: "Complete control, all in one place",
     storySub: "Empowering educators with modern technology to streamline administration and focus on what truly matters: student success.",
     stat1: "15K+",
     stat1Sub: "Students managed",
@@ -41,7 +44,7 @@ const translations = {
     navPricing: "قیمتیں",
     navLogin: "لاگ ان",
     btnNavAction: "شروع کریں",
-    heroTitle1: "اسکول کو ڈیجیٹل بنائیں",
+    heroTitle1: "اپنے اسکول کو ڈیجیٹل بنائیں",
     heroTitle2: "EduPilot کے ساتھ",
     heroSub: "لائیو حاضری سے لے کر آٹو رزلٹ کارڈز اور فیس ٹریکنگ تک، تمام انتظامی امور اب ایک کلک کی دوری پر۔",
     btnHeroPrimary: "ابھی شروع کریں",
@@ -49,13 +52,13 @@ const translations = {
     featBadge: "خصوصیات",
     featTitle: "شاندار خصوصیات کا مجموعہ",
     featSub: "EduPilot آپ کے تعلیمی ادارے کے ہر پہلو کو بہترین انداز میں چلانے کے لیے جدید ترین ٹولز فراہم کرتا ہے۔",
-    feat1Title: "لائیو حاضری",
+    feat1Title: "اسمارٹ حاضری",
     feat1Desc: "طلباء اور عملے کی حاضری براہ راست اپنے موبائل فون سے لگائیں اور لائیو اپڈیٹس حاصل کریں۔",
-    feat2Title: "تیز ترین تجزیات",
+    feat2Title: "تیز ترین نتائج",
     feat2Desc: "صرف نمبر درج کریں اور سسٹم خود بخود رزلٹ کارڈز اور تفصیلی تجزیاتی رپورٹ تیار کر دے گا۔",
-    feat3Title: "خودکار رپورٹس",
+    feat3Title: "ٹائم ٹیبل مینجمنٹ",
     feat3Desc: "اساتذہ کی چھٹیاں اور ان کی جگہ متبادل (پراکسی) پیریڈز کو انتہائی آسانی سے منظم کریں۔",
-    storyTitle: "ایک عظیم کہانی ہمیشہ بہترین ٹیم سے شروع ہوتی ہے",
+    storyTitle: "مکمل کنٹرول، ایک ہی جگہ پر",
     storySub: "اساتذہ کو جدید ٹیکنالوجی سے بااختیار بنانا تاکہ انتظامی امور آسان ہوں اور اصل توجہ طلباء کی کامیابی پر رہے۔",
     stat1: "15K+",
     stat1Sub: "طلباء کا ریکارڈ",
@@ -66,7 +69,7 @@ const translations = {
 
 export default function LandingPage() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [lang, setLang] = useState<"en" | "ur">("en");
+  const [lang, setLang] = useState<"en" | "ur">("ur");
 
   const t = translations[lang];
   const isUrdu = lang === "ur";
@@ -118,7 +121,7 @@ export default function LandingPage() {
               <Link href="#" className="text-[14px] font-semibold text-[#555] hover:text-[#000]">{t.navAbout}</Link>
               <Link href="#" className="text-[14px] font-semibold text-[#555] hover:text-[#000]">{t.navBlog}</Link>
               <Link href="#" className="text-[14px] font-semibold text-[#555] hover:text-[#000]">{t.navPricing}</Link>
-              <button onClick={() => setLang(lang === "en" ? "ur" : "en")} className="text-[14px] font-semibold text-[#555] hover:text-[#000] flex items-center gap-1.5 ml-4">
+              <button onClick={() => setLang(lang === "en" ? "ur" : "en")} className="text-[14px] font-semibold text-[#555] hover:text-[#000] flex items-center gap-1.5 ml-4 border-l border-gray-300 pl-4">
                 <Globe size={15}/> {lang === "en" ? "اردو" : "EN"}
               </button>
             </div>
@@ -137,7 +140,7 @@ export default function LandingPage() {
           </div>
         </nav>
 
-        {/* 🚀 HERO SECTION (Text + School Image) */}
+        {/* 🚀 HERO SECTION (EduPilot Text + School Image) */}
         <section className="pt-16 md:pt-24 pb-20 px-6 lg:px-10 max-w-[1300px] mx-auto flex flex-col md:flex-row items-center gap-10">
           
           {/* Left Text */}
@@ -159,7 +162,7 @@ export default function LandingPage() {
             </div>
           </div>
 
-          {/* Right Floating School Image (Exactly like Techflow UI block) */}
+          {/* Right Floating School Image */}
           <div className="w-full md:w-[55%] relative flex justify-center md:justify-end z-10 mt-10 md:mt-0">
              <div className="techflow-shadow rounded-2xl border-[6px] border-white overflow-hidden w-full max-w-[650px] aspect-[4/3] bg-gray-100">
                 <img 
@@ -182,7 +185,7 @@ export default function LandingPage() {
           </div>
         </section>
 
-        {/* 🚀 FEATURES GRID */}
+        {/* 🚀 FEATURES GRID (EduPilot Original Features) */}
         <section id="features" className="py-20 px-6 lg:px-10 max-w-[1000px] mx-auto relative z-10">
           <div className="flex flex-col items-center text-center mb-16">
             <span className="text-[11px] font-bold tracking-[0.2em] text-gray-400 uppercase mb-4">{t.featBadge}</span>
@@ -192,12 +195,12 @@ export default function LandingPage() {
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-10 md:gap-8">
             <div className={`flex flex-col ${isUrdu ? 'text-right' : 'text-left'}`}>
-              <BarChart3 className="text-gray-400 mb-4" size={24} strokeWidth={1.5} />
+              <Users className="text-gray-400 mb-4" size={24} strokeWidth={1.5} />
               <h3 className="text-[17px] font-bold text-[#111] mb-2">{t.feat1Title}</h3>
               <p className="text-[14px] text-[#555] leading-relaxed">{t.feat1Desc}</p>
             </div>
             <div className={`flex flex-col ${isUrdu ? 'text-right' : 'text-left'}`}>
-              <Users className="text-gray-400 mb-4" size={24} strokeWidth={1.5} />
+              <BarChart3 className="text-gray-400 mb-4" size={24} strokeWidth={1.5} />
               <h3 className="text-[17px] font-bold text-[#111] mb-2">{t.feat2Title}</h3>
               <p className="text-[14px] text-[#555] leading-relaxed">{t.feat2Desc}</p>
             </div>
@@ -209,7 +212,7 @@ export default function LandingPage() {
           </div>
         </section>
 
-        {/* 🚀 SPLIT LAYOUT (Techflow bottom half replica) */}
+        {/* 🚀 SPLIT LAYOUT */}
         <section className="py-24 px-6 lg:px-10 max-w-[1300px] mx-auto relative z-10 border-t border-gray-100">
           <div className="flex flex-col md:flex-row items-center gap-12 lg:gap-20">
              
