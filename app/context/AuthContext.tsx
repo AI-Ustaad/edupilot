@@ -1,74 +1,69 @@
 "use client";
-import React, { createContext, useContext, useEffect, useState } from "react";
-import { auth, db } from "@/lib/firebase"; // <-- Corrected Path
-import { onIdTokenChanged, User, signOut } from "firebase/auth";
-import { doc, getDoc } from "firebase/firestore";
 
-interface AuthContextType {
-  user: User | null;
-  role: string | null;
-  schoolId: string | null;
-  loading: boolean;
-  logout: () => Promise<void>;
-}
+import { createContext, useContext, useEffect, useState } from "react";
+import { auth, db } from "@/lib/firebase";
+import {
+  onAuthStateChanged,
+  User
+} from "firebase/auth";
 
-const AuthContext = createContext<AuthContextType>({} as AuthContextType);
+import {
+  doc,
+  getDoc,
+  setDoc,
+  serverTimestamp
+} from "firebase/firestore";
 
-export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
+const AuthContext = createContext<any>(null);
+
+export const AuthProvider = ({ children }: any) => {
   const [user, setUser] = useState<User | null>(null);
-  const [role, setRole] = useState<string | null>(null);
-  const [schoolId, setSchoolId] = useState<string | null>(null);
+  const [userData, setUserData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
+  const generateSchoolId = () => {
+    return "school_" + Math.random().toString(36).substring(2, 8);
+  };
+
   useEffect(() => {
-    const unsubscribe = onIdTokenChanged(auth, async (firebaseUser) => {
-      try {
-        if (firebaseUser) {
-          const userDocRef = doc(db, "users", firebaseUser.uid);
-          const userDoc = await getDoc(userDocRef);
-
-          if (userDoc.exists() && userDoc.data().role) {
-            setRole(userDoc.data().role);
-            setSchoolId(userDoc.data().schoolId || null);
-          } else {
-            setRole("unregistered");
-            setSchoolId(null);
-          }
-
-          const idToken = await firebaseUser.getIdToken();
-          await fetch('/api/auth/login', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ idToken }),
-          });
-
-          setUser(firebaseUser);
-        } else {
-          await fetch('/api/auth/logout', { method: 'POST' });
-          setUser(null);
-          setRole(null);
-          setSchoolId(null);
-        }
-      } catch (error) {
-        console.error("Auth Sync Error:", error);
-      } finally {
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (!firebaseUser) {
+        setUser(null);
+        setUserData(null);
         setLoading(false);
+        return;
       }
+
+      setUser(firebaseUser);
+
+      const userRef = doc(db, "users", firebaseUser.uid);
+      const userSnap = await getDoc(userRef);
+
+      // ✅ اگر user موجود نہیں
+      if (!userSnap.exists()) {
+        const newUser = {
+          name: firebaseUser.displayName || "No Name",
+          email: firebaseUser.email,
+          role: "admin",
+          schoolId: generateSchoolId(),
+          createdAt: serverTimestamp(),
+        };
+
+        await setDoc(userRef, newUser);
+        setUserData(newUser);
+      } else {
+        // ✅ اگر موجود ہے
+        setUserData(userSnap.data());
+      }
+
+      setLoading(false);
     });
 
     return () => unsubscribe();
   }, []);
 
-  const logout = async () => {
-    try {
-      await signOut(auth);
-    } catch (error) {
-      console.error("Logout failed", error);
-    }
-  };
-
   return (
-    <AuthContext.Provider value={{ user, role, schoolId, loading, logout }}>
+    <AuthContext.Provider value={{ user, userData, loading }}>
       {children}
     </AuthContext.Provider>
   );
