@@ -1,11 +1,9 @@
-// /app/layout.tsx
-
 import "./globals.css";
-import { AuthProvider } from "../../context/AuthContext";
+import { AuthProvider } from "@/context/AuthContext";
 
 export const metadata = {
   title: "EduPilot",
-  description: "School Management SaaS",
+  description: "School SaaS",
 };
 
 export default function RootLayout({
@@ -16,9 +14,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        <AuthProvider>
-          {children}
-        </AuthProvider>
+        <AuthProvider>{children}</AuthProvider>
       </body>
     </html>
   );
