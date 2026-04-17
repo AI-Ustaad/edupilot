@@ -1,5 +1,5 @@
 import "./globals.css";
-import { AuthProvider } from "@/context/AuthContext";
+import ClientWrapper from "./ClientWrapper";
 
 export const metadata = {
   title: "EduPilot",
@@ -14,9 +14,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        <AuthProvider>
+        <ClientWrapper>
           {children}
-        </AuthProvider>
+        </ClientWrapper>
       </body>
     </html>
   );
