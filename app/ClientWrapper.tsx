@@ -1,11 +1,11 @@
 "use client";
 
-import { useAuth } from "@/context/AuthContext";
+import { AuthProvider } from "@/context/AuthContext";
 
-export default function ClientWrapper({ children }: any) {
-  const { user, loading } = useAuth();
-
-  if (loading) return <p>Loading...</p>;
-
-  return <>{children}</>;
+export default function ClientWrapper({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return <AuthProvider>{children}</AuthProvider>;
 }
