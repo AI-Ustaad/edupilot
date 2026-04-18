@@ -8,7 +8,7 @@ export async function POST(req: Request) {
     const decoded = await adminAuth.verifyIdToken(token);
 
     const sessionCookie = await adminAuth.createSessionCookie(token, {
-      expiresIn: 60 * 60 * 24 * 5 * 1000, // 5 days
+      expiresIn: 60 * 60 * 24 * 5 * 1000,
     });
 
     const res = NextResponse.json({ success: true });
@@ -20,7 +20,7 @@ export async function POST(req: Request) {
     });
 
     return res;
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 }
