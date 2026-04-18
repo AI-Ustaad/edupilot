@@ -3,9 +3,7 @@
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Mail, Lock, Loader2, ArrowRight } from "lucide-react";
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from "firebase/auth";
-
-// 🚀 FIXED: Using standard Absolute Path
+import { signInWithEmailAndPassword } from "firebase/auth";
 import { auth } from "@/lib/firebase"; 
 
 export default function LoginForm() {
@@ -21,28 +19,37 @@ export default function LoginForm() {
     setError("");
 
     try {
+      // 1. فائر بیس کلائنٹ کے ذریعے لاگ ان کریں
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      document.cookie = `session=${userCredential.user.uid}; path=/; max-age=86400; secure`;
-      router.push("/dashboard");
+      
+      // 2. یوزر سے ID Token حاصل کریں
+      const idToken = await userCredential.user.getIdToken();
+
+      // 3. اس ٹوکن کو اپنی نئی Session API پر بھیجیں تاکہ محفوظ کُکی بن سکے
+      const response = await fetch("/api/auth/session", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ idToken }),
+      });
+
+      if (response.ok) {
+        // 4. اگر سیشن بن گیا تو ڈیش بورڈ پر بھیج دیں
+        router.push("/dashboard");
+        router.refresh(); // مڈل ویئر کو کُکی اپڈیٹ دکھانے کے لیے ریفریش ضروری ہے
+      } else {
+        const data = await response.json();
+        setError(data.error || "Failed to create secure session.");
+      }
       
     } catch (err: any) {
+      console.error("Login error:", err);
       if (err.code === 'auth/invalid-credential' || err.code === 'auth/user-not-found') {
-        try {
-          const newUser = await createUserWithEmailAndPassword(auth, email, password);
-          document.cookie = `session=${newUser.user.uid}; path=/; max-age=86400; secure`;
-          router.push("/dashboard");
-        } catch (signUpErr: any) {
-          if (signUpErr.code === 'auth/weak-password') {
-            setError("Password should be at least 6 characters.");
-          } else {
-            setError("Failed to create account. Please try again.");
-          }
-        }
-      } 
-      else if (err.code === 'auth/wrong-password') {
-        setError("Incorrect password. Please try again.");
-      } 
-      else {
+        setError("Invalid email or password.");
+      } else if (err.code === 'auth/wrong-password') {
+        setError("Incorrect password.");
+      } else {
         setError("Connection error. Please check your internet.");
       }
     } finally {
@@ -53,7 +60,7 @@ export default function LoginForm() {
   return (
     <form className="space-y-5" onSubmit={handleLogin}>
       {error && (
-        <div className="bg-red-50 text-red-600 text-[13px] font-bold p-3 rounded-lg border border-red-100 flex items-center justify-center text-center">
+        <div className="bg-red-50 text-red-600 text-[13px] font-bold p-3 rounded-lg border border-red-100 flex items-center justify-center text-center text-pretty">
           {error}
         </div>
       )}
@@ -117,7 +124,7 @@ export default function LoginForm() {
         disabled={loading}
         className="w-full flex justify-center items-center gap-2 py-3.5 px-4 border border-transparent rounded-[10px] shadow-lg text-[15px] font-bold text-white bg-[#0b0b0b] hover:bg-black focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900 transition-all disabled:opacity-70 mt-2"
       >
-        {loading ? <Loader2 className="animate-spin" size={18} /> : "Sign in / Register"}
+        {loading ? <Loader2 className="animate-spin" size={18} /> : "Sign in to Dashboard"}
         {!loading && <ArrowRight size={16} />}
       </button>
     </form>
