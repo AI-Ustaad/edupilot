@@ -1,6 +1,7 @@
 import React from "react";
 import type { Metadata } from "next";
-import { AuthProvider } from "./context/AuthContext"; // 🚀 Fixed Path: Using ./ since they are in the same 'app' folder
+// 🚀 FIXED PATH: Going exactly 1 folder back (out of app) to reach 'context'
+import { AuthProvider } from "../context/AuthContext"; 
 import "./globals.css";
 
 export const metadata: Metadata = {
