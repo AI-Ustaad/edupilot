@@ -1,11 +1,12 @@
 "use client";
 
-import { AuthProvider } from "@/context/AuthContext";
+import React from "react";
+import { AuthProvider } from "../context/AuthContext";
 
-export default function ClientWrapper({
-  children,
-}: {
+type Props = {
   children: React.ReactNode;
-}) {
+};
+
+export default function ClientWrapper({ children }: Props) {
   return <AuthProvider>{children}</AuthProvider>;
 }
