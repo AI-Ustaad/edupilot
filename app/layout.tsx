@@ -1,6 +1,6 @@
 import React from "react";
 import type { Metadata } from "next";
-import { AuthProvider } from "@/app/context/AuthContext"; // 🚀 Vercel Error Fixed (Absolute Path)
+import { AuthProvider } from "./context/AuthContext"; // 🚀 Fixed Path: Using ./ since they are in the same 'app' folder
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -16,7 +16,6 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="bg-[#fafbfc] text-[#111] antialiased">
-        {/* AuthProvider پوری ایپ کو سیکیورٹی اور یوزر سیشن فراہم کرے گا */}
         <AuthProvider>
           {children}
         </AuthProvider>
