@@ -1,12 +1,9 @@
-import React from "react";
-import type { Metadata } from "next";
-// 🚀 FIXED: Using standard Absolute Path to reach context at root
-import { AuthProvider } from "@/context/AuthContext"; 
 import "./globals.css";
+import ClientWrapper from "./ClientWrapper";
 
-export const metadata: Metadata = {
-  title: "EduPilot | School Management System",
-  description: "Pakistan's #1 AI Powered School Management System",
+export const metadata = {
+  title: "EduPilot",
+  description: "School SaaS",
 };
 
 export default function RootLayout({
@@ -16,10 +13,8 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className="bg-[#fafbfc] text-[#111] antialiased">
-        <AuthProvider>
-          {children}
-        </AuthProvider>
+      <body>
+        <ClientWrapper>{children}</ClientWrapper>
       </body>
     </html>
   );
