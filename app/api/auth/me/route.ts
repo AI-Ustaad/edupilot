@@ -1,22 +1,22 @@
-import { cookies } from "next/headers";
-import { adminAuth } from "@/lib/firebase-admin";
 import { NextResponse } from "next/server";
+import { adminAuth } from "@/lib/firebaseAdmin";
+import { cookies } from "next/headers";
 
 export async function GET() {
-  const session = cookies().get("session")?.value;
-
-  if (!session) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
   try {
-    const decoded = await adminAuth.verifySessionCookie(session, true);
+    const session = cookies().get("session")?.value;
+
+    if (!session) {
+      return NextResponse.json({ user: null });
+    }
+
+    const decoded = await adminAuth.verifySessionCookie(session);
 
     return NextResponse.json({
       uid: decoded.uid,
       email: decoded.email,
     });
   } catch {
-    return NextResponse.json({ error: "Invalid session" }, { status: 401 });
+    return NextResponse.json({ user: null });
   }
 }
