@@ -6,8 +6,8 @@ import { useRouter } from "next/navigation";
 import { Mail, Lock, Loader2, ArrowRight, ShieldCheck, User } from "lucide-react";
 import { createUserWithEmailAndPassword } from "firebase/auth";
 
-// 🚀 FIXED PATH: Going 2 folders back (out of signup, out of app) to reach 'lib'
-import { auth } from "../../lib/firebase"; 
+// 🚀 THE ULTIMATE FIX: Using absolute path for lib
+import { auth } from "@/lib/firebase"; 
 
 export default function SignupPage() {
   const router = useRouter();
