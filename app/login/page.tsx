@@ -46,6 +46,15 @@ export default function LoginPage() {
 
         <div className="bg-white/90 backdrop-blur-2xl py-10 px-6 sm:px-10 border border-white/60 rounded-[20px] techflow-shadow">
           <LoginForm />
+          
+          {/* 🚀 FIXED: Added Signup Link */}
+          <div className="mt-6 text-center">
+            <span className="text-[13.5px] text-[#555] font-medium">Don't have an account? </span>
+            <Link href="/signup" className="font-bold text-[#111] hover:text-black text-[13.5px] hover:underline">
+              Register your school
+            </Link>
+          </div>
+
           <div className="mt-8 pt-6 border-t border-gray-100/80">
             <div className="flex justify-center">
                <div className="flex items-center gap-2 text-[#0b0b0b] bg-gray-50/80 px-4 py-2.5 rounded-lg border border-gray-100">
