@@ -13,6 +13,7 @@ export default function LoginForm() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  // 🚀 Updated Google Login Logic with detailed Error Handling
   const handleGoogleLogin = async () => {
     setLoading(true);
     setError("");
@@ -20,11 +21,10 @@ export default function LoginForm() {
     provider.setCustomParameters({ prompt: 'select_account' });
 
     try {
-      // 🚀 گوگل لاگ ان پاپ اپ
+      // Trying Popup first
       const result = await signInWithPopup(auth, provider);
       const idToken = await result.user.getIdToken();
       
-      // سرور کو ٹوکن بھیجیں
       const response = await fetch("/api/auth/session", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -35,17 +35,13 @@ export default function LoginForm() {
         router.push("/dashboard");
         router.refresh();
       } else {
-        setError("Firebase Admin verification failed. Check Vercel Logs.");
+        const data = await response.json();
+        setError(`Server Session Error: ${data.error || "Unknown"}`);
       }
     } catch (err: any) {
-      console.error("Google Error Details:", err);
-      if (err.code === 'auth/popup-blocked') {
-        setError("Browser blocked the popup. Please allow popups for this site.");
-      } else if (err.code === 'auth/unauthorized-domain') {
-        setError("This domain is not authorized in Firebase Console > Settings.");
-      } else {
-        setError("Google Sign-In failed. Please check your internet.");
-      }
+      console.error("Full Google Error:", err);
+      // استاد جی، یہ میسج اب آپ کو بتائے گا کہ اصل مسئلہ کیا ہے
+      setError(`Login Error: ${err.code || "Check Firebase Console"}`);
     } finally {
       setLoading(false);
     }
@@ -70,7 +66,7 @@ export default function LoginForm() {
         router.push("/dashboard");
         router.refresh();
       } else {
-        setError("Secure session establishment failed.");
+        setError("Secure session failed on server.");
       }
     } catch (err: any) {
       setError("Invalid email or password.");
