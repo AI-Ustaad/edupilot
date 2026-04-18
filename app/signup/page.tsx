@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { Mail, Lock, Loader2, ArrowRight, ShieldCheck, User } from "lucide-react";
 import { createUserWithEmailAndPassword } from "firebase/auth";
 
-// 🚀 THE ULTIMATE FIX: Using absolute path for lib
+// 🚀 FIXED: Using standard Absolute Path
 import { auth } from "@/lib/firebase"; 
 
 export default function SignupPage() {
