@@ -1,12 +1,9 @@
 "use client";
 
 import React from "react";
-import { AuthProvider } from "../context/AuthContext";
+// 🚀 FIXED: Using standard Absolute Path
+import { AuthProvider } from "@/context/AuthContext";
 
-type Props = {
-  children: React.ReactNode;
-};
-
-export default function ClientWrapper({ children }: Props) {
+export default function ClientWrapper({ children }: { children: React.ReactNode }) {
   return <AuthProvider>{children}</AuthProvider>;
 }
