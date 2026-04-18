@@ -5,8 +5,8 @@ import { useRouter } from "next/navigation";
 import { Mail, Lock, Loader2, ArrowRight } from "lucide-react";
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from "firebase/auth";
 
-// 🚀 FIXED PATH: Going 2 folders back (out of login, out of app) to reach 'lib'
-import { auth } from "../../lib/firebase"; 
+// 🚀 THE ULTIMATE FIX: Using absolute path for lib
+import { auth } from "@/lib/firebase"; 
 
 export default function LoginForm() {
   const router = useRouter();
@@ -21,13 +21,11 @@ export default function LoginForm() {
     setError("");
 
     try {
-      // 1. Try to Log In an existing user
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       document.cookie = `session=${userCredential.user.uid}; path=/; max-age=86400; secure`;
       router.push("/dashboard");
       
     } catch (err: any) {
-      // 2. Fallback to Signup if user does not exist
       if (err.code === 'auth/invalid-credential' || err.code === 'auth/user-not-found') {
         try {
           const newUser = await createUserWithEmailAndPassword(auth, email, password);
