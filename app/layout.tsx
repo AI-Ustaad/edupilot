@@ -1,6 +1,6 @@
 import React from "react";
 import type { Metadata } from "next";
-// 🚀 THE ULTIMATE FIX: Using absolute path
+// 🚀 FIXED: Using standard Absolute Path to reach context at root
 import { AuthProvider } from "@/context/AuthContext"; 
 import "./globals.css";
 
