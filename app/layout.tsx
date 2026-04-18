@@ -1,9 +1,12 @@
+import React from "react";
+import type { Metadata } from "next";
+// 🚀 THE ULTIMATE FIX: Using absolute path
+import { AuthProvider } from "@/context/AuthContext"; 
 import "./globals.css";
-import ClientWrapper from "./ClientWrapper";
 
-export const metadata = {
-  title: "EduPilot",
-  description: "School SaaS",
+export const metadata: Metadata = {
+  title: "EduPilot | School Management System",
+  description: "Pakistan's #1 AI Powered School Management System",
 };
 
 export default function RootLayout({
@@ -13,10 +16,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body>
-        <ClientWrapper>
+      <body className="bg-[#fafbfc] text-[#111] antialiased">
+        <AuthProvider>
           {children}
-        </ClientWrapper>
+        </AuthProvider>
       </body>
     </html>
   );
