@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { adminAuth, adminDb } from "../../../../lib/firebase-admin";
+import { adminDb, adminAuth } from "../../../../lib/firebase-admin";
 import { cookies } from "next/headers";
 
 export async function GET() {
@@ -15,11 +15,15 @@ export async function GET() {
     const doc = await adminDb.collection("users").doc(decoded.uid).get();
 
     if (!doc.exists) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
+      await adminDb.collection("users").doc(decoded.uid).set({
+        uid: decoded.uid,
+        email: decoded.email,
+        createdAt: new Date(),
+      });
     }
 
-    return NextResponse.json(doc.data());
-  } catch (error) {
+    return NextResponse.json({ success: true });
+  } catch {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 }
