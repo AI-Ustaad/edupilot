@@ -1,33 +1,31 @@
-import { adminAuth } from "@/lib/firebase-admin";
-import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+import { adminAuth } from "../../../../lib/firebaseAdmin";
 
-export async function POST(request: Request) {
+export async function POST(req: Request) {
   try {
-    const { idToken } = await request.json();
+    const { idToken } = await req.json();
 
-    // ٹوکن کو ویریفائی کریں
-    const decodedToken = await adminAuth.verifyIdToken(idToken);
-    
-    if (decodedToken) {
-      // سیشن کُکی بنائیں (5 دن کے لیے)
-      const expiresIn = 60 * 60 * 24 * 5 * 1000;
-      const sessionCookie = await adminAuth.createSessionCookie(idToken, { expiresIn });
-      
-      // محفوظ کُکی سیٹ کریں
-      cookies().set("session", sessionCookie, {
-        maxAge: expiresIn,
-        httpOnly: true, // یہ سیکیورٹی کے لیے بہت ضروری ہے
-        secure: process.env.NODE_ENV === "production",
-        path: "/",
-      });
-
-      return NextResponse.json({ status: "success" }, { status: 200 });
+    if (!idToken) {
+      return NextResponse.json({ error: "No token" }, { status: 400 });
     }
-    
-    return NextResponse.json({ error: "Invalid token" }, { status: 401 });
+
+    const expiresIn = 60 * 60 * 24 * 5 * 1000; // 5 days
+
+    const sessionCookie = await adminAuth.createSessionCookie(idToken, {
+      expiresIn,
+    });
+
+    const res = NextResponse.json({ success: true });
+
+    res.cookies.set("session", sessionCookie, {
+      httpOnly: true,
+      secure: true,
+      maxAge: expiresIn,
+      path: "/",
+    });
+
+    return res;
   } catch (error) {
-    console.error("Session Error:", error);
-    return NextResponse.json({ error: "Internal Error" }, { status: 500 });
+    return NextResponse.json({ error: "Session error" }, { status: 401 });
   }
 }
