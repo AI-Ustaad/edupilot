@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { adminDb, adminAuth } from "../../../../lib/firebaseAdmin";
+import { adminDb, adminAuth } from "@/lib/firebaseAdmin";
 import { cookies } from "next/headers";
 
 export async function GET() {
@@ -19,7 +19,7 @@ export async function GET() {
     }
 
     return NextResponse.json(doc.data());
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 }
