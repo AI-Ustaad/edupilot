@@ -3,12 +3,12 @@ import { adminAuth } from "@/lib/firebaseAdmin";
 
 export async function POST(req: Request) {
   try {
-    const { token } = await req.json();
+    const { idToken } = await req.json();
 
-    const decoded = await adminAuth.verifyIdToken(token);
+    const expiresIn = 60 * 60 * 24 * 5 * 1000;
 
-    const sessionCookie = await adminAuth.createSessionCookie(token, {
-      expiresIn: 60 * 60 * 24 * 5 * 1000,
+    const sessionCookie = await adminAuth.createSessionCookie(idToken, {
+      expiresIn,
     });
 
     const res = NextResponse.json({ success: true });
@@ -16,11 +16,12 @@ export async function POST(req: Request) {
     res.cookies.set("session", sessionCookie, {
       httpOnly: true,
       secure: true,
+      maxAge: expiresIn,
       path: "/",
     });
 
     return res;
-  } catch {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  } catch (error) {
+    return NextResponse.json({ error: "Login failed" }, { status: 401 });
   }
 }
