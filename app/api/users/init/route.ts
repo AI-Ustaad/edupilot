@@ -1,35 +1,25 @@
 import { NextResponse } from "next/server";
-import { adminAuth } from "@/lib/firebase-admin";
-import admin from "firebase-admin";
+import { adminAuth, adminDb } from "@/lib/firebase-admin";
+import { cookies } from "next/headers";
 
-const db = admin.firestore();
-
-export async function POST(req: Request) {
+export async function GET() {
   try {
-    const { idToken } = await req.json();
+    const session = cookies().get("session")?.value;
 
-    const decoded = await adminAuth.verifyIdToken(idToken);
-    const uid = decoded.uid;
+    if (!session) {
+      return NextResponse.json({ error: "No session" }, { status: 401 });
+    }
 
-    const userRef = db.collection("users").doc(uid);
-    const doc = await userRef.get();
+    const decoded = await adminAuth.verifySessionCookie(session);
+
+    const doc = await adminDb.collection("users").doc(decoded.uid).get();
 
     if (!doc.exists) {
-      const schoolId = "school_" + Math.random().toString(36).slice(2, 8);
-
-      await userRef.set({
-        uid,
-        email: decoded.email || "",
-        role: "admin",
-        schoolId,
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      });
-
-      return NextResponse.json({ schoolId });
-    } else {
-      return NextResponse.json(doc.data());
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
+
+    return NextResponse.json(doc.data());
   } catch (error) {
-    return NextResponse.json({ error: "init failed" }, { status: 500 });
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 }
