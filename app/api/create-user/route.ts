@@ -1,42 +1,29 @@
-// app/api/create-user/route.ts
-import { NextResponse } from 'next/server';
-import * as admin from 'firebase-admin';
-
-// Initialize Firebase Admin (تاکہ بار بار انیشلائز نہ ہو)
-if (!admin.apps.length) {
-  try {
-    admin.initializeApp({
-      credential: admin.credential.cert({
-        projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-        // Replace \n string with actual newline character for private key
-        privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-      }),
-    });
-  } catch (error) {
-    console.log('Firebase admin initialization error', error);
-  }
-}
+import { NextResponse } from "next/server";
+import { adminDb, adminAuth } from "../../../lib/firebaseAdmin";
+import { cookies } from "next/headers";
 
 export async function POST(req: Request) {
   try {
-    const body = await req.json();
-    const { email, password, role, displayName, uid } = body;
+    const session = cookies().get("session")?.value;
 
-    // 1. Firebase Auth میں اکاؤنٹ بنانا
-    const userRecord = await admin.auth().createUser({
-      uid: uid, // ہم وہی ID استعمال کریں گے جو Firestore میں سیو ہوگی
-      email: email,
-      password: password,
-      displayName: displayName,
+    if (!session) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const decoded = await adminAuth.verifySessionCookie(session);
+
+    const { name, schoolId, role } = await req.json();
+
+    await adminDb.collection("users").doc(decoded.uid).set({
+      name,
+      email: decoded.email,
+      schoolId,
+      role: role || "admin",
+      createdAt: new Date(),
     });
 
-    // 2. Role (عہدہ) تفویض کرنا (Custom Claims)
-    await admin.auth().setCustomUserClaims(userRecord.uid, { role: role });
-
-    return NextResponse.json({ success: true, uid: userRecord.uid });
-  } catch (error: any) {
-    console.error("Auth Error:", error);
-    return NextResponse.json({ success: false, error: error.message }, { status: 400 });
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    return NextResponse.json({ error: "Create user failed" }, { status: 500 });
   }
 }
