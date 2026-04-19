@@ -1,18 +1,16 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  typescript: { ignoreBuildErrors: true },
-  eslint: { ignoreDuringBuilds: true },
-  // This tells Next.js NOT to try and process Firebase during the build
-  webpack: (config, { isServer }) => {
-    if (!isServer) {
-      config.resolve.fallback = {
-        ...config.resolve.fallback,
-        fs: false,
-        net: false,
-        tls: false,
-      };
-    }
-    return config;
+  reactStrictMode: true,
+
+  experimental: {
+    // future features ke liye safe rakh rahe hain
+  },
+
+  // Optional: API size limit (future SaaS use)
+  api: {
+    bodyParser: {
+      sizeLimit: "2mb",
+    },
   },
 };
 
