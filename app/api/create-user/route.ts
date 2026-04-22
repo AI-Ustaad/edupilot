@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { adminDb, adminAuth } from "../../../lib/firebaseAdmin";
+import { adminDb, adminAuth } from "../../../lib/firebase-admin";
 import { cookies } from "next/headers";
 
 export async function POST(req: Request) {
