@@ -5,9 +5,13 @@ import { cookies } from "next/headers";
 export async function GET() {
   try {
     const session = cookies().get("session")?.value;
-    if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    if (!session) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
     const decoded = await adminAuth.verifySessionCookie(session);
+
     const userRef = adminDb.collection("users").doc(decoded.uid);
     const doc = await userRef.get();
 
@@ -18,8 +22,9 @@ export async function GET() {
         createdAt: new Date(),
       });
     }
+
     return NextResponse.json({ success: true });
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: "Initialization failed" }, { status: 401 });
   }
 }
