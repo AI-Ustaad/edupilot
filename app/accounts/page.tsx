@@ -1,18 +1,22 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import { db } from "@/lib/firebase";
-import { collection, onSnapshot, query, orderBy, addDoc } from "firebase/firestore";
-import { TrendingUp, TrendingDown, Landmark, PlusCircle, Loader2 } from "lucide-react";
+import { collection, onSnapshot, query, orderBy, addDoc, serverTimestamp } from "firebase/firestore";
+import { TrendingUp, TrendingDown, Landmark, PlusCircle, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 
 export default function FinancialLedger() {
-  const [isGovtMode, setIsGovtMode] = useState(false);
   const [activeTab, setActiveTab] = useState("Private");
   const [transactions, setTransactions] = useState<any[]>([]);
   const [summary, setSummary] = useState({ income: 0, expense: 0 });
+  
+  // UX States
   const [isSaving, setIsSaving] = useState(false);
+  const [successMsg, setSuccessMsg] = useState("");
+  const [errorMsg, setErrorMsg] = useState("");
 
   useEffect(() => {
-    const q = query(collection(db, "ledger"), orderBy("date", "desc"));
+    // 👉 Fix 2: Changed ordering to server timestamp for reliability
+    const q = query(collection(db, "ledger"), orderBy("createdAt", "desc"));
     return onSnapshot(q, (snap) => {
       let inc = 0, exp = 0;
       const list = snap.docs.map(doc => {
@@ -26,23 +30,36 @@ export default function FinancialLedger() {
     });
   }, []);
 
-  // 👉 Fix: Submit Handler Added
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsSaving(true);
+    setErrorMsg("");
+    setSuccessMsg("");
+    
     try {
       const formData = new FormData(e.currentTarget);
+      
+      // 👉 Fix 1 & 2: Safe Data Types & Server Timestamp
       await addDoc(collection(db, "ledger"), {
-        type: formData.get("type"),
-        description: formData.get("description"),
-        amount: Number(formData.get("amount")),
-        date: formData.get("date"),
-        category: formData.get("category"),
+        type: String(formData.get("type")),
+        description: String(formData.get("description")),
+        amount: Number(formData.get("amount") || 0),
+        date: String(formData.get("date")),
+        category: String(formData.get("category")),
+        createdAt: serverTimestamp(), 
       });
+      
+      // 👉 Fix 3: Form Reset & Inline Success UX
+      setSuccessMsg("Entry saved successfully!");
       e.currentTarget.reset();
+      
+      // Auto-hide success message after 3 seconds
+      setTimeout(() => setSuccessMsg(""), 3000);
+      
     } catch (error) {
       console.error(error);
-      alert("Failed to save entry");
+      // 👉 Fix 4: Inline Error UX
+      setErrorMsg("Failed to save entry. Please try again.");
     } finally {
       setIsSaving(false);
     }
@@ -79,29 +96,35 @@ export default function FinancialLedger() {
       <div className="grid grid-cols-1 xl:grid-cols-5 gap-12">
         {/* ADD ENTRY FORM */}
         <div className="xl:col-span-2 bg-white/90 backdrop-blur-xl p-10 rounded-[50px] shadow-2xl border border-white h-fit">
-          <h3 className="text-xl font-black text-[#302B52] mb-8 flex items-center gap-3">
+          <h3 className="text-xl font-black text-[#302B52] mb-6 flex items-center gap-3">
             <PlusCircle className="text-[#7166F9]" /> New Entry
           </h3>
           
-          {/* 👉 Fix: onSubmit added to form */}
+          {/* Inline Feedback Messages */}
+          {successMsg && (
+            <div className="mb-6 bg-green-50 text-green-700 p-4 rounded-2xl flex items-center gap-3 border border-green-100 font-bold">
+              <CheckCircle2 size={20} /> {successMsg}
+            </div>
+          )}
+          {errorMsg && (
+            <div className="mb-6 bg-red-50 text-red-600 p-4 rounded-2xl flex items-center gap-3 border border-red-100 font-bold">
+              <AlertCircle size={20} /> {errorMsg}
+            </div>
+          )}
+
           <form className="space-y-6" onSubmit={handleSubmit}>
-            {/* 👉 Fix: name="type" added */}
             <select name="type" required className="w-full p-5 bg-[#F8F9FE] rounded-2xl font-bold text-sm outline-none border-2 border-transparent focus:border-purple-100">
               <option value="Income">Income (Cash In)</option>
               <option value="Expense">Expense (Cash Out)</option>
             </select>
             
-            {/* 👉 Fix: name="description" added */}
             <input type="text" name="description" required placeholder="Description (e.g. Electricity Bill)" className="w-full p-5 bg-[#F8F9FE] rounded-2xl font-bold text-sm outline-none" />
             
             <div className="grid grid-cols-2 gap-4">
-              {/* 👉 Fix: name="amount" added */}
               <input type="number" name="amount" required placeholder="Amount (Rs.)" className="p-5 bg-[#302B52] text-white rounded-2xl font-bold text-sm outline-none shadow-lg" />
-              {/* 👉 Fix: name="date" added */}
               <input type="date" name="date" required className="p-5 bg-[#F8F9FE] rounded-2xl font-bold text-sm outline-none" />
             </div>
 
-            {/* 👉 Fix: name="category" added */}
             <select name="category" required className="w-full p-5 bg-[#F8F9FE] rounded-2xl font-bold text-sm outline-none">
               <option value="Staff Salaries">Staff Salaries</option>
               <option value="Utility Bills">Utility Bills</option>
