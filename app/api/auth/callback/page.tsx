@@ -16,9 +16,10 @@ export default function CallbackPage() {
       if (result?.user) {
         const token = await result.user.getIdToken();
 
+        // 👉 Fix Applied Here: idToken: token
         await fetch("/api/auth/login", {
           method: "POST",
-          body: JSON.stringify({ token }),
+          body: JSON.stringify({ idToken: token }),
         });
 
         router.push("/dashboard");
@@ -30,5 +31,5 @@ export default function CallbackPage() {
     handleAuth();
   }, []);
 
-  return <p>Signing you in...</p>;
+  return <div className="flex h-screen items-center justify-center font-bold text-slate-500">Signing you in...</div>;
 }
