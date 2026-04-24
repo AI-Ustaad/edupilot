@@ -13,12 +13,13 @@ export default function CombinedDashboard() {
   const [isMounted, setIsMounted] = useState(false);
   const [loading, setLoading] = useState(true);
   
-  // Data States
   const [students, setStudents] = useState<any[]>([]);
   const [marks, setMarks] = useState<any[]>([]);
   const [staff, setStaff] = useState<any[]>([]);
   const [proxies, setProxies] = useState<any[]>([]); 
   const [staffAttendance, setStaffAttendance] = useState<any[]>([]);
+  // 👉 نئی اسٹیٹ: طلباء کی آج کی حاضری کے لیے
+  const [todayStudentAttendance, setTodayStudentAttendance] = useState<any[]>([]);
   const [selectedClass, setSelectedClass] = useState<string>("All Classes");
 
   useEffect(() => {
@@ -38,18 +39,26 @@ export default function CombinedDashboard() {
       setLoading(false);
     });
 
-    return () => { unsubStudents(); unsubMarks(); unsubStaff(); unsubProxies(); unsubStaffAtt(); };
+    // 👉 طلباء کی حاضری کی لائیو فیچنگ (Fetch)
+    const unsubStudentAtt = onSnapshot(query(collection(db, "attendance"), where("date", "==", todayStr)), (snap) => {
+      setTodayStudentAttendance(snap.docs.map(d => d.data()));
+    });
+
+    return () => { unsubStudents(); unsubMarks(); unsubStaff(); unsubProxies(); unsubStaffAtt(); unsubStudentAtt(); };
   }, []);
 
   if (!isMounted) return null;
 
-  // --- LOGIC: Administration Metrics ---
   const totalStaffCount = staff.length;
   const staffPresent = staffAttendance.filter(a => a.status === "Present").length;
   const staffLeave = staffAttendance.filter(a => a.status === "Leave").length;
   const activeProxies = proxies.length;
 
-  // --- LOGIC: Academic Analytics ---
+  // 👉 اصلی حاضری کی کیلکولیشن (Fake 92% کی جگہ)
+  const totalMarked = todayStudentAttendance.length;
+  const presentCount = todayStudentAttendance.filter(a => a.status === "Present").length;
+  const attendancePercentage = totalMarked === 0 ? 0 : Math.round((presentCount / totalMarked) * 100);
+
   const filteredStudents = selectedClass === "All Classes" 
     ? students 
     : students.filter(s => norm(s.classGrade) === norm(selectedClass));
@@ -68,20 +77,16 @@ export default function CombinedDashboard() {
   const attentionCount = studentPerformances.filter(s => s.status === "attention").length;
 
   return (
-    // 🚀 Mobile Fix: Removed strict min-h-screen that caused overflow, added w-full and overflow-x-hidden
     <div className="bg-transparent md:bg-slate-50 md:p-6 font-sans w-full overflow-x-hidden pb-20">
       {loading ? (
         <div className="flex h-[50vh] items-center justify-center"><Loader2 className="animate-spin text-[#78d13b]" size={40}/></div>
       ) : (
-        // 🚀 Mobile Fix: Adjusted padding for small screens (p-4 instead of p-10)
         <div className="bg-white rounded-[2rem] md:rounded-[2.5rem] shadow-sm border border-slate-100 p-4 sm:p-6 md:p-10 w-full animate-fade-in-up">
           
-          {/* 🚀 HEADER & LOGIN CAPSULE (Mobile Responsive) */}
+          {/* HEADER */}
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
             <div className="w-full flex justify-between items-center md:block">
                <h1 className="text-2xl sm:text-3xl font-black text-[#1f2937]">Command Centre</h1>
-               
-               {/* 🚀 LOGIN/PROFILE INFO (Visible on Mobile too) */}
                <div className="flex md:hidden items-center gap-2 bg-slate-50 p-1.5 pr-3 rounded-full border border-slate-200">
                  <div className="w-8 h-8 bg-[#3ac47d] rounded-full flex items-center justify-center text-white"><User size={14}/></div>
                  <span className="text-[10px] font-black text-slate-700">ADMIN</span>
@@ -94,7 +99,6 @@ export default function CombinedDashboard() {
                 {Array.from(new Set(students.map(s => s.classGrade))).map(c => <option key={c as string} value={c as string}>{c as string}</option>)}
               </select>
               
-              {/* Desktop Profile Capsule */}
               <div className="hidden md:flex items-center gap-3 bg-slate-50 p-1.5 pr-4 rounded-full border border-slate-200 cursor-pointer hover:bg-slate-100 transition-colors">
                  <div className="w-8 h-8 bg-[#3ac47d] rounded-full flex items-center justify-center text-white"><User size={16}/></div>
                  <div className="flex flex-col">
@@ -105,10 +109,8 @@ export default function CombinedDashboard() {
             </div>
           </div>
 
-          {/* 🚀 TOP OPERATIONAL ROW (Administration) */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 mb-12">
             
-            {/* Staff Tracker */}
             <div className="bg-slate-900 text-white rounded-3xl md:rounded-[2rem] p-6 shadow-lg border border-slate-800 relative overflow-hidden">
                <div className="flex justify-between items-start mb-4">
                   <div className="p-3 bg-white/10 rounded-2xl"><Users size={24}/></div>
@@ -118,7 +120,6 @@ export default function CombinedDashboard() {
                <p className="text-[10px] sm:text-xs text-slate-400 font-bold uppercase tracking-widest">Present Today • <span className="text-red-400">{staffLeave} on Leave</span></p>
             </div>
 
-            {/* Arrangement Tracker */}
             <div className="bg-white border-2 border-slate-100 rounded-3xl md:rounded-[2rem] p-6 shadow-sm">
                <div className="flex justify-between items-start mb-4">
                   <div className="p-3 bg-orange-50 text-orange-500 rounded-2xl"><Clock size={24}/></div>
@@ -128,18 +129,21 @@ export default function CombinedDashboard() {
                <p className="text-[10px] sm:text-xs text-slate-500 font-bold uppercase tracking-widest">Active Adjustment Periods</p>
             </div>
 
-            {/* Daily Attendance Summary */}
+            {/* 👉 لائیو طلباء کی حاضری کا سیکشن */}
             <div className="bg-white border-2 border-slate-100 rounded-3xl md:rounded-[2rem] p-6 shadow-sm sm:col-span-2 lg:col-span-1">
                <div className="flex justify-between items-start mb-4">
                   <div className="p-3 bg-blue-50 text-blue-500 rounded-2xl"><ClipboardCheck size={24}/></div>
                   <span className="text-[9px] sm:text-[10px] font-bold bg-blue-100 text-blue-600 px-3 py-1 rounded-full uppercase">Student Attendance</span>
                </div>
-               <p className="text-3xl sm:text-4xl font-black text-slate-800 mb-1">92%</p>
-               <p className="text-[10px] sm:text-xs text-slate-500 font-bold uppercase tracking-widest">Across all classes</p>
+               <p className="text-3xl sm:text-4xl font-black text-slate-800 mb-1">
+                 {totalMarked > 0 ? `${attendancePercentage}%` : "N/A"}
+               </p>
+               <p className="text-[10px] sm:text-xs text-slate-500 font-bold uppercase tracking-widest">
+                 {totalMarked > 0 ? "Across all classes" : "Not marked yet"}
+               </p>
             </div>
           </div>
 
-          {/* 🚀 BOTTOM ACADEMIC SECTION */}
           <div className="border-t border-slate-100 pt-8 md:pt-12">
             <h2 className="text-xl md:text-2xl font-black text-[#1f2937] mb-6 md:mb-8">Academic Proficiency</h2>
             
@@ -161,7 +165,6 @@ export default function CombinedDashboard() {
                </div>
             </div>
 
-            {/* 🚀 Mobile-Responsive Students List (Flexbox instead of Grid) */}
             <div className="space-y-3">
                {studentPerformances.length === 0 ? (
                   <div className="py-10 text-center text-slate-400 font-bold bg-slate-50 rounded-3xl text-sm">No student data found.</div>
@@ -169,7 +172,6 @@ export default function CombinedDashboard() {
                  studentPerformances.map((s) => (
                    <div key={s.id} className={`flex flex-col sm:flex-row justify-between items-start sm:items-center p-4 md:px-6 md:py-4 rounded-2xl md:rounded-full gap-4 ${s.status === 'mastered' ? 'bg-[#78d13b]/10' : s.status === 'working' ? 'bg-[#ffc122]/10' : 'bg-[#ff7b60]/10'} transition-all`}>
                       
-                      {/* Name Section */}
                       <div className="flex items-center gap-3 w-full sm:w-auto">
                          <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center overflow-hidden shrink-0 shadow-sm">
                             {s.photoBase64 ? <img src={s.photoBase64} className="w-full h-full object-cover"/> : <User size={18} className="text-slate-300"/>}
@@ -177,7 +179,6 @@ export default function CombinedDashboard() {
                          <p className="font-bold text-[#1f2937] text-sm truncate">{s.name}</p>
                       </div>
 
-                      {/* Progress Bar & Status (Stacks on Mobile) */}
                       <div className="flex flex-row items-center justify-between w-full sm:w-1/2 md:w-1/3 gap-4">
                          <div className="flex items-center gap-4 flex-1">
                             <span className="font-black text-xs w-8 text-slate-600">{s.averagePercentage}%</span>
