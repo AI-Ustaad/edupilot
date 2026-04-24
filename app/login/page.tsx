@@ -1,22 +1,37 @@
 "use client";
 
-import { getAuth, GoogleAuthProvider, signInWithRedirect } from "firebase/auth";
-import { app } from "@/lib/firebase";
+import { signInWithPopup } from "firebase/auth";
+import { auth, provider } from "@/lib/firebase";
 
 export default function LoginPage() {
   const handleLogin = async () => {
-    const auth = getAuth(app);
-    const provider = new GoogleAuthProvider();
+    try {
+      console.log("LOGIN CLICKED");
 
-    await signInWithRedirect(auth, provider);
+      const result = await signInWithPopup(auth, provider);
+
+      console.log("USER:", result.user);
+
+      const idToken = await result.user.getIdToken();
+
+      console.log("TOKEN:", idToken);
+
+      await fetch("/api/auth/login", {
+        method: "POST",
+        body: JSON.stringify({ idToken }),
+      });
+
+      console.log("SESSION CREATED");
+
+      window.location.href = "/dashboard";
+    } catch (error) {
+      console.error("LOGIN ERROR:", error);
+    }
   };
 
   return (
-    <div className="flex items-center justify-center h-screen">
-      <button
-        onClick={handleLogin}
-        className="bg-blue-600 text-white px-6 py-3 rounded-lg"
-      >
+    <div style={{ textAlign: "center", marginTop: "200px" }}>
+      <button onClick={handleLogin}>
         Login with Google
       </button>
     </div>
