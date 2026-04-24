@@ -24,12 +24,18 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
     { name: "Fees", icon: Wallet, path: "/fees" },
   ];
 
-  // 👉 نیا لاگ آؤٹ فنکشن (سیکیورٹی کے ساتھ)
+  // 👉 100% Secure Logout Function
   const handleLogout = async () => {
     try {
-      await signOut(auth); // Firebase سے آؤٹ
-      await fetch("/api/auth/logout", { method: "POST" }); // سرور کوکی (Cookie) صاف کریں
-      router.push("/login"); // لاگ ان پیج پر بھیج دیں
+      await signOut(auth); // Firebase (Client-side) logout
+      
+      // Clear Server-side Session Cookie safely
+      await fetch("/api/auth/logout", { 
+        method: "POST",
+        credentials: "include" 
+      }); 
+      
+      router.push("/login"); // Redirect to login page
     } catch (error) {
       console.error("Logout failed", error);
     }
@@ -38,14 +44,16 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
   return (
     <div className="flex h-screen bg-slate-50 overflow-hidden font-sans">
       
-      {/* Sidebar for Desktop */}
+      {/* Sidebar for Desktop (Always Visible on Large Screens) */}
       <div className={`fixed inset-y-0 left-0 z-40 w-64 bg-white border-r border-slate-200 flex flex-col transform transition-transform duration-300 ease-in-out md:relative md:translate-x-0 ${isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"}`}>
          
+         {/* App Logo / Brand */}
          <div className="flex items-center gap-2 h-20 px-6 border-b border-slate-100">
             <ShieldCheck className="text-[#3ac47d]" size={28} />
             <span className="font-black text-2xl text-[#0F172A]">EduPilot</span>
          </div>
 
+         {/* Navigation Links */}
          <div className="flex-1 overflow-y-auto py-6 px-4 space-y-1">
             {MENU_ITEMS.map((item) => {
                const isActive = pathname === item.path;
@@ -62,12 +70,13 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
             })}
          </div>
 
+         {/* Bottom Settings & Logout */}
          <div className="p-4 border-t border-slate-100">
             <Link href="/settings" className="flex items-center gap-3 px-3 py-3 rounded-xl font-bold text-slate-500 hover:bg-slate-50">
               <Settings size={20} />
               <span className="text-sm">Admin Settings</span>
             </Link>
-            {/* 👉 نیا لاگ آؤٹ کا بٹن */}
+            
             <button onClick={handleLogout} className="w-full flex items-center gap-3 px-3 py-3 rounded-xl font-bold text-red-500 hover:bg-red-50 transition-colors mt-2">
               <LogOut size={20} />
               <span className="text-sm">Secure Logout</span>
@@ -77,16 +86,28 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
 
       {/* Main Content Area */}
       <div className="flex-1 overflow-y-auto bg-white relative">
+        
+        {/* Mobile Menu Toggle Button */}
         <button 
-          className="md:hidden fixed top-4 right-4 z-50 p-2 bg-white border rounded-md"
+          className="md:hidden fixed top-4 right-4 z-50 p-2 bg-white border rounded-md shadow-sm"
           onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
         >
           {isMobileMenuOpen ? <X /> : <Menu />}
         </button>
+        
+        {/* Page Content */}
         <div className="p-4 md:p-8">
            {children}
         </div>
       </div>
+
+      {/* Overlay for mobile when sidebar is open */}
+      {isMobileMenuOpen && (
+        <div 
+          className="fixed inset-0 bg-black/20 z-30 md:hidden"
+          onClick={() => setIsMobileMenuOpen(false)}
+        />
+      )}
     </div>
   );
 }
