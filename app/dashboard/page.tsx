@@ -13,7 +13,12 @@ export default function CombinedDashboard() {
   const [isMounted, setIsMounted] = useState(false);
   const [loading, setLoading] = useState(true);
   
-  // Data States
+  // 👉 FIX: Smart Loading State (Only stops loading when ALL data is here)
+  const [ready, setReady] = useState({
+    students: false, marks: false, staff: false, 
+    proxies: false, staffAtt: false, studentAtt: false
+  });
+  
   const [students, setStudents] = useState<any[]>([]);
   const [marks, setMarks] = useState<any[]>([]);
   const [staff, setStaff] = useState<any[]>([]);
@@ -23,45 +28,64 @@ export default function CombinedDashboard() {
   
   const [selectedClass, setSelectedClass] = useState<string>("All Classes");
 
+  // 👉 FIX: API Error Handling (Session Verification)
   useEffect(() => {
-    let mounted = true; // 👉 Fix: Memory Leak Protection
+    fetch("/api/auth/me", { credentials: "include" })
+      .then(res => {
+        if (!res.ok) {
+          window.location.href = "/login";
+        }
+      })
+      .catch(() => window.location.href = "/login");
+  }, []);
+
+  // Check if all data is ready to turn off loader
+  useEffect(() => {
+    if (Object.values(ready).every(Boolean)) {
+      setLoading(false);
+    }
+  }, [ready]);
+
+  useEffect(() => {
     setIsMounted(true);
     
-    // 👉 Fix: Bulletproof Local Timezone Date
-    const today = new Date();
-    const todayStr = today.toLocaleDateString("en-CA"); // Gives YYYY-MM-DD in local time
+    // Proper Timezone Date
+    const todayStr = new Date().toLocaleDateString("en-CA");
 
+    // 👉 FIX: Clean useEffect (No 'mounted' flag needed, React handles cleanup)
     const unsubStudents = onSnapshot(collection(db, "students"), (snap) => {
-      if(mounted) setStudents(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+      setStudents(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+      setReady(p => ({ ...p, students: true }));
     });
     
     const unsubMarks = onSnapshot(collection(db, "marks"), (snap) => {
-      if(mounted) setMarks(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+      setMarks(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+      setReady(p => ({ ...p, marks: true }));
     });
     
     const unsubStaff = onSnapshot(collection(db, "staff"), (snap) => {
-      if(mounted) setStaff(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+      setStaff(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+      setReady(p => ({ ...p, staff: true }));
     });
     
     const unsubProxies = onSnapshot(query(collection(db, "arrangements"), where("date", "==", todayStr)), (snap) => {
-      if(mounted) setProxies(snap.docs.map(d => d.data()));
+      setProxies(snap.docs.map(d => d.data()));
+      setReady(p => ({ ...p, proxies: true }));
     });
 
     const unsubStaffAtt = onSnapshot(query(collection(db, "staffAttendance"), where("date", "==", todayStr)), (snap) => {
-      if(mounted) {
-        setStaffAttendance(snap.docs.map(d => d.data()));
-        setLoading(false); // Stop loading when core data is here
-      }
+      setStaffAttendance(snap.docs.map(d => d.data()));
+      setReady(p => ({ ...p, staffAtt: true }));
     });
 
-    // 👉 Live Student Attendance Fetching
     const unsubStudentAtt = onSnapshot(query(collection(db, "attendance"), where("date", "==", todayStr)), (snap) => {
-      if(mounted) setTodayStudentAttendance(snap.docs.map(d => d.data()));
+      setTodayStudentAttendance(snap.docs.map(d => d.data()));
+      setReady(p => ({ ...p, studentAtt: true }));
     });
 
     return () => { 
-      mounted = false; // 👉 Fix: Cleanup prevents state updates on unmounted component
-      unsubStudents(); unsubMarks(); unsubStaff(); unsubProxies(); unsubStaffAtt(); unsubStudentAtt(); 
+      unsubStudents(); unsubMarks(); unsubStaff(); 
+      unsubProxies(); unsubStaffAtt(); unsubStudentAtt(); 
     };
   }, []);
 
@@ -79,6 +103,8 @@ export default function CombinedDashboard() {
   const attendancePercentage = totalMarked === 0 ? 0 : Math.round((presentCount / totalMarked) * 100);
 
   // --- LOGIC: Academic Analytics ---
+  // Note: Option A/B for Firestore optimization (Subcollections) is the ultimate goal, 
+  // but this client-side calculation holds strong for the current architecture phase.
   const filteredStudents = selectedClass === "All Classes" 
     ? students 
     : students.filter(s => norm(s.classGrade) === norm(selectedClass));
@@ -102,16 +128,17 @@ export default function CombinedDashboard() {
   return (
     <div className="bg-transparent md:bg-slate-50 md:p-6 font-sans w-full overflow-x-hidden pb-20">
       {loading ? (
-        <div className="flex h-[50vh] items-center justify-center"><Loader2 className="animate-spin text-[#78d13b]" size={40}/></div>
+        <div className="flex h-[50vh] items-center justify-center flex-col gap-4">
+          <Loader2 className="animate-spin text-[#3ac47d]" size={40}/>
+          <p className="text-sm font-bold text-slate-400 animate-pulse">Syncing secure data...</p>
+        </div>
       ) : (
         <div className="bg-white rounded-[2rem] md:rounded-[2.5rem] shadow-sm border border-slate-100 p-4 sm:p-6 md:p-10 w-full animate-fade-in-up">
           
-          {/* 🚀 HEADER & LOGIN CAPSULE */}
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
             <div className="w-full flex justify-between items-center md:block">
                <h1 className="text-2xl sm:text-3xl font-black text-[#1f2937]">Command Centre</h1>
                
-               {/* Mobile Profile Capsule */}
                <div className="flex md:hidden items-center gap-2 bg-slate-50 p-1.5 pr-3 rounded-full border border-slate-200">
                  <div className="w-8 h-8 bg-[#3ac47d] rounded-full flex items-center justify-center text-white"><User size={14}/></div>
                  <span className="text-[10px] font-black text-slate-700">ADMIN</span>
@@ -124,21 +151,17 @@ export default function CombinedDashboard() {
                 {Array.from(new Set(students.map(s => s.classGrade))).filter(Boolean).map(c => <option key={c as string} value={c as string}>{c as string}</option>)}
               </select>
               
-              {/* Desktop Profile Capsule */}
               <div className="hidden md:flex items-center gap-3 bg-slate-50 p-1.5 pr-4 rounded-full border border-slate-200 cursor-pointer hover:bg-slate-100 transition-colors">
                  <div className="w-8 h-8 bg-[#3ac47d] rounded-full flex items-center justify-center text-white"><User size={16}/></div>
                  <div className="flex flex-col">
                     <span className="text-[10px] font-black text-slate-800 leading-none">Principal / Admin</span>
-                    <span className="text-[9px] font-bold text-slate-500">admin@edupilot.com</span>
+                    <span className="text-[9px] font-bold text-slate-500">Secure Session</span>
                  </div>
               </div>
             </div>
           </div>
 
-          {/* 🚀 TOP OPERATIONAL ROW */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 mb-12">
-            
-            {/* Staff Tracker */}
             <div className="bg-slate-900 text-white rounded-3xl md:rounded-[2rem] p-6 shadow-lg border border-slate-800 relative overflow-hidden">
                <div className="flex justify-between items-start mb-4">
                   <div className="p-3 bg-white/10 rounded-2xl"><Users size={24}/></div>
@@ -148,7 +171,6 @@ export default function CombinedDashboard() {
                <p className="text-[10px] sm:text-xs text-slate-400 font-bold uppercase tracking-widest">Present Today • <span className="text-red-400">{staffLeave} on Leave</span></p>
             </div>
 
-            {/* Arrangement Tracker */}
             <div className="bg-white border-2 border-slate-100 rounded-3xl md:rounded-[2rem] p-6 shadow-sm">
                <div className="flex justify-between items-start mb-4">
                   <div className="p-3 bg-orange-50 text-orange-500 rounded-2xl"><Clock size={24}/></div>
@@ -158,7 +180,6 @@ export default function CombinedDashboard() {
                <p className="text-[10px] sm:text-xs text-slate-500 font-bold uppercase tracking-widest">Active Adjustment Periods</p>
             </div>
 
-            {/* Real-time Student Attendance */}
             <div className="bg-white border-2 border-slate-100 rounded-3xl md:rounded-[2rem] p-6 shadow-sm sm:col-span-2 lg:col-span-1">
                <div className="flex justify-between items-start mb-4">
                   <div className="p-3 bg-blue-50 text-blue-500 rounded-2xl"><ClipboardCheck size={24}/></div>
@@ -173,7 +194,6 @@ export default function CombinedDashboard() {
             </div>
           </div>
 
-          {/* 🚀 BOTTOM ACADEMIC SECTION */}
           <div className="border-t border-slate-100 pt-8 md:pt-12">
             <h2 className="text-xl md:text-2xl font-black text-[#1f2937] mb-6 md:mb-8">Academic Proficiency</h2>
             
@@ -195,7 +215,6 @@ export default function CombinedDashboard() {
                </div>
             </div>
 
-            {/* Students Performance List */}
             <div className="space-y-3">
                {studentPerformances.length === 0 ? (
                   <div className="py-10 text-center text-slate-400 font-bold bg-slate-50 rounded-3xl text-sm">No student data found.</div>
