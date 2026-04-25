@@ -337,4 +337,71 @@ export default function ManageStaffPage() {
                       <div className="space-y-1"><label className="text-[10px] font-bold text-slate-400 uppercase">Emp ID (Required for Login)</label><input value={professional.personnelNo} onChange={e => setProfessional({...professional, personnelNo: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none" /></div>
                       <div className="space-y-1"><label className="text-[10px] font-bold text-slate-400 uppercase">Date of Joining</label><input type="date" value={professional.doj} onChange={e => setProfessional({...professional, doj: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none" /></div>
                       <div className="space-y-1"><label className="text-[10px] font-bold text-slate-400 uppercase">Designation</label><input value={professional.designation} onChange={e => setProfessional({...professional, designation: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none" /></div>
-                      <div className="space-y-1"><label className="text-[10px] font-bold text-slate-400 uppercase">BPS / Scale</label><input value={professional.bps} onChange={e => setProfessional({...professional, bps: e.target.value})} className="w-full bg-slate-5
+                      <div className="space-y-1"><label className="text-[10px] font-bold text-slate-400 uppercase">BPS / Scale</label><input value={professional.bps} onChange={e => setProfessional({...professional, bps: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none" /></div>
+                      <div className="space-y-1 sm:col-span-2"><label className="text-[10px] font-bold text-slate-400 uppercase">Previous Experience</label><input value={professional.prevExperience} onChange={e => setProfessional({...professional, prevExperience: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none" /></div>
+                    </div>
+                  </div>
+                )}
+
+                {/* TAB 4: FINANCIAL */}
+                {activeTab === "financial" && (
+                  <div className="space-y-6 animate-fade-in-down w-full">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full">
+                       <div className="w-full">
+                         <div className="flex justify-between items-center mb-4"><h3 className="text-xs font-bold text-blue-500 uppercase tracking-widest">Pay & Allowances</h3><button onClick={addAllowance} className="text-blue-500"><PlusCircle size={18}/></button></div>
+                         <div className="space-y-2 w-full">
+                           {allowances.map((item, idx) => (
+                             <div key={idx} className="flex gap-2 items-center w-full">
+                               <input value={item.name} onChange={e => updateAllowance(idx, 'name', e.target.value)} className="w-2/3 bg-blue-50 rounded-lg px-3 py-2 text-xs font-bold outline-none" />
+                               <input type="number" value={item.amount || ''} onChange={e => updateAllowance(idx, 'amount', e.target.value)} className="w-1/3 border border-slate-200 rounded-lg px-3 py-2 text-xs font-black text-right outline-none" />
+                               <button onClick={() => removeAllowance(idx)} className="text-slate-300 hover:text-red-500"><Trash2 size={14}/></button>
+                             </div>
+                           ))}
+                         </div>
+                         <div className="mt-4 bg-blue-500 text-white p-3 rounded-xl flex justify-between items-center font-black"><span>Gross Pay</span><span>Rs. {grossPay.toLocaleString()}</span></div>
+                       </div>
+                    </div>
+                    <div className="mt-6 bg-[#0F172A] text-white p-6 rounded-2xl flex justify-between items-center w-full">
+                       <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Final Net Salary</p>
+                       <p className="text-2xl sm:text-4xl font-black text-[#3ac47d]">Rs. {netPay.toLocaleString()}</p>
+                    </div>
+                  </div>
+                )}
+             </div>
+          </div>
+        </div>
+
+        {/* --- RIGHT: STAFF DIRECTORY --- */}
+        <div className="xl:col-span-4 w-full">
+           <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 sticky top-6 w-full">
+              <h2 className="text-lg font-black text-[#0F172A] mb-6">Staff Directory</h2>
+              <div className="space-y-4 h-[500px] overflow-y-auto pr-2 w-full">
+                 {staffList.length === 0 ? (
+                    <div className="py-10 text-center opacity-50"><Users size={40} className="mx-auto mb-3 text-slate-300"/><p className="font-bold text-sm">No staff added yet.</p></div>
+                 ) : (
+                    staffList.map(staff => (
+                       <div key={staff.id} className={`bg-white p-4 rounded-2xl border-2 transition-all ${editingId === staff.id ? 'border-[#3ac47d] shadow-md' : 'border-slate-100 shadow-sm'} w-full`}>
+                          <div className="flex items-start gap-3 w-full">
+                             <div className="w-10 h-10 rounded-full bg-slate-50 border border-slate-200 overflow-hidden shrink-0 mt-1">
+                               {staff.personal?.photo ? <img src={staff.personal.photo} className="w-full h-full object-cover"/> : <Users size={16} className="m-auto mt-2 text-slate-300"/>}
+                             </div>
+                             <div className="flex-1 min-w-0">
+                               <p className="font-black text-[#0F172A] text-sm truncate">{staff.personal?.fullName || "Unnamed"}</p>
+                               <p className="text-[10px] font-bold text-slate-500 mt-0.5 truncate">{staff.professional?.designation} • Emp: {staff.professional?.personnelNo}</p>
+                             </div>
+                          </div>
+                          <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between gap-2 w-full">
+                             <button onClick={() => handleEditStaff(staff)} className="flex-1 bg-orange-50 text-orange-600 flex items-center justify-center gap-1 py-2 rounded-lg text-[10px] font-black uppercase"><Edit3 size={12}/> Edit</button>
+                             <button onClick={() => handleDeleteStaff(staff.id)} className="w-10 flex items-center justify-center bg-red-50 text-red-600 py-2 rounded-lg text-[10px] font-black"><Trash2 size={14}/></button>
+                          </div>
+                       </div>
+                    ))
+                 )}
+              </div>
+           </div>
+        </div>
+
+      </div>
+    </div>
+  );
+}
