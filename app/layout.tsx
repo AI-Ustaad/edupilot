@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 // 👉 THE FIX: اب یہ صحیح جگہ سے سائیڈ بار کو اٹھائے گا
-import SidebarLayout from "./components/SidebarLayout"; 
+import SidebarLayout from "./components/SidebarLayout";
 
 const inter = Inter({ subsets: ["latin"] });
 
