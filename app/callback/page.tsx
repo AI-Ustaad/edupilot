@@ -1,54 +1,51 @@
 "use client";
 
 import { useEffect } from "react";
-import { getAuth, getRedirectResult } from "firebase/auth";
-import { app } from "@/lib/firebase";
 import { useRouter } from "next/navigation";
+import { getAuth, getRedirectResult } from "firebase/auth";
+import app from "@/lib/firebase";
 
 export default function CallbackPage() {
   const router = useRouter();
 
   useEffect(() => {
-    const handleAuth = async () => {
+    const run = async () => {
       try {
         const auth = getAuth(app);
+
+        // 1) Get Google redirect result
         const result = await getRedirectResult(auth);
 
         if (!result?.user) {
-          router.push("/login");
+          router.replace("/login");
           return;
         }
 
-        const user = result.user;
+        // 2) 🔥 FORCE NEW TOKEN (contains role + tenantId claims)
+        const idToken = await result.user.getIdToken(true);
 
-        // ✅ Force fresh token (important for claims later)
-        const idToken = await user.getIdToken(true);
-
-        // ✅ Create session + check new user
+        // 3) Send token to server → create session cookie
         const res = await fetch("/api/auth/session", {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ idToken }),
+          credentials: "include",
         });
 
-        const data = await res.json();
-
-        if (data.isNewUser) {
-          router.push("/onboarding");
-        } else {
-          router.push("/dashboard");
+        if (!res.ok) {
+          router.replace("/login");
+          return;
         }
 
-      } catch (error) {
-        console.error("Auth error:", error);
-        router.push("/login");
+        // 4) Go to dashboard
+        router.replace("/dashboard");
+      } catch (e) {
+        router.replace("/login");
       }
     };
 
-    handleAuth();
-  }, []);
+    run();
+  }, [router]);
 
   return (
     <div className="flex h-screen items-center justify-center">
