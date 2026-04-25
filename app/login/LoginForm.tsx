@@ -1,30 +1,26 @@
 "use client";
-
 import React, { useState } from "react";
+import { signInWithPopup, GoogleAuthProvider } from "firebase/auth";
+import { auth } from "@/lib/firebase";
 import { useRouter } from "next/navigation";
-import { Mail, Lock, Loader2, ArrowRight } from "lucide-react";
-import { signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider } from "firebase/auth";
-import { auth } from "@/lib/firebase"; 
+import { Loader2 } from "lucide-react";
 
 export default function LoginForm() {
   const router = useRouter();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
 
-  // 🚀 Updated Google Login Logic with detailed Error Handling
   const handleGoogleLogin = async () => {
     setLoading(true);
-    setError("");
-    const provider = new GoogleAuthProvider();
-    provider.setCustomParameters({ prompt: 'select_account' });
-
     try {
-      // Trying Popup first
+      const provider = new GoogleAuthProvider();
+      // 1. یوزر گوگل سے لاگ ان ہوتا ہے
       const result = await signInWithPopup(auth, provider);
-      const idToken = await result.user.getIdToken();
-      
+
+      // 👉 THE MAGIC (STEP 3): فائر بیس کو مجبور کریں کہ وہ پرانا ٹوکن چھوڑ کر،
+      // نیا کلیمڈ (Claimed) ٹوکن سرور سے منگوائے جس میں 'role' موجود ہو!
+      const idToken = await result.user.getIdToken(true); 
+
+      // 2. اب اس نئے اور طاقتور ٹوکن کو اپنے بیک اینڈ پر سیشن (Cookies) بنانے کے لیے بھیجیں
       const response = await fetch("/api/auth/session", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -32,119 +28,28 @@ export default function LoginForm() {
       });
 
       if (response.ok) {
-        router.push("/dashboard");
-        router.refresh();
+         // لاگ ان کامیاب، سیدھا ڈیش بورڈ پر بھیج دیں
+         router.replace("/dashboard");
       } else {
-        const data = await response.json();
-        setError(`Server Session Error: ${data.error || "Unknown"}`);
+         throw new Error("Failed to create secure session");
       }
-    } catch (err: any) {
-      console.error("Full Google Error:", err);
-      // استاد جی، یہ میسج اب آپ کو بتائے گا کہ اصل مسئلہ کیا ہے
-      setError(`Login Error: ${err.code || "Check Firebase Console"}`);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError("");
-
-    try {
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      const idToken = await userCredential.user.getIdToken();
-
-      const response = await fetch("/api/auth/session", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ idToken }),
-      });
-
-      if (response.ok) {
-        router.push("/dashboard");
-        router.refresh();
-      } else {
-        setError("Secure session failed on server.");
-      }
-    } catch (err: any) {
-      setError("Invalid email or password.");
+    } catch (error) {
+      console.error("Login Error:", error);
+      alert("Login failed. Please try again.");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="space-y-5">
-      <form className="space-y-5" onSubmit={handleLogin}>
-        {error && (
-          <div className="bg-red-50 text-red-600 text-[13px] font-bold p-3 rounded-lg border border-red-100 text-center">
-            {error}
-          </div>
-        )}
-
-        <div>
-          <label className="block text-[14px] font-bold text-[#111] mb-1.5">Email address</label>
-          <div className="relative">
-            <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
-              <Mail className="h-4 w-4 text-gray-400" />
-            </div>
-            <input
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="block w-full pl-10 pr-4 py-3.5 border border-gray-200 rounded-[10px] focus:outline-none focus:ring-2 focus:ring-[#111] text-[15px] font-medium bg-white/50 transition-all shadow-sm"
-              placeholder="admin@school.com"
-            />
-          </div>
-        </div>
-
-        <div>
-          <label className="block text-[14px] font-bold text-[#111] mb-1.5">Password</label>
-          <div className="relative">
-            <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
-              <Lock className="h-4 w-4 text-gray-400" />
-            </div>
-            <input
-              type="password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="block w-full pl-10 pr-4 py-3.5 border border-gray-200 rounded-[10px] focus:outline-none focus:ring-2 focus:ring-[#111] text-[15px] font-medium bg-white/50 transition-all shadow-sm"
-              placeholder="••••••••"
-            />
-          </div>
-        </div>
-
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full flex justify-center items-center gap-2 py-3.5 px-4 rounded-[10px] shadow-lg text-[15px] font-bold text-white bg-[#0b0b0b] hover:bg-black transition-all disabled:opacity-70 mt-4"
-        >
-          {loading ? <Loader2 className="animate-spin" size={18} /> : "Sign in to Dashboard"}
-          {!loading && <ArrowRight size={16} />}
-        </button>
-      </form>
-
-      <div className="relative flex items-center py-2">
-        <div className="flex-grow border-t border-gray-200"></div>
-        <span className="flex-shrink mx-4 text-gray-400 text-xs font-bold uppercase tracking-widest">OR</span>
-        <div className="flex-grow border-t border-gray-200"></div>
-      </div>
-
-      <button
-        onClick={handleGoogleLogin}
+    <div className="flex justify-center mt-8">
+      <button 
+        onClick={handleGoogleLogin} 
         disabled={loading}
-        className="w-full flex justify-center items-center gap-3 py-3 px-4 border border-gray-200 rounded-[10px] bg-white hover:bg-gray-50 text-[14px] font-bold text-[#111] transition-all shadow-sm disabled:opacity-70"
+        className="bg-[#0F172A] text-white px-8 py-3 rounded-xl font-bold flex items-center gap-3 hover:bg-slate-800 transition-all shadow-md disabled:opacity-50"
       >
-        {loading ? <Loader2 className="animate-spin" size={18} /> : (
-          <>
-            <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" className="w-5 h-5" />
-            Continue with Google
-          </>
-        )}
+        {loading ? <Loader2 className="animate-spin" size={20} /> : null}
+        {loading ? "Securing connection..." : "Sign in with Google"}
       </button>
     </div>
   );
