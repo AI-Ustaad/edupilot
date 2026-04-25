@@ -3,7 +3,7 @@ import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { collection, addDoc, serverTimestamp, onSnapshot, query, orderBy, deleteDoc, doc } from "firebase/firestore";
 import { db } from "@/lib/firebase"; 
-import { UploadCloud, CheckCircle2, AlertCircle, Image as ImageIcon, Search, User as UserIcon, Edit2, Trash2 } from "lucide-react";
+import { UploadCloud, CheckCircle2, AlertCircle, Image as ImageIcon, Search, User as UserIcon, Edit2, Trash2, Loader2 } from "lucide-react";
 
 const convertToBase64 = (file: File): Promise<string> => {
   return new Promise((resolve, reject) => {
@@ -24,6 +24,8 @@ const formatCNIC = (value: string) => {
 export default function StudentsPage() {
   const router = useRouter(); 
   const [isMounted, setIsMounted] = useState(false);
+  const [role, setRole] = useState<string>("loading"); // 👉 Role State
+
   const [photoBase64, setPhotoBase64] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -38,6 +40,14 @@ export default function StudentsPage() {
     admissionDate: "", rollNumber: "", classGrade: "", section: ""
   });
 
+  // 👉 Fetch Role on Mount
+  useEffect(() => {
+    fetch("/api/users/get", { credentials: "include" })
+      .then(res => res.json())
+      .then(data => setRole(data.role || "teacher"))
+      .catch(() => setRole("teacher"));
+  }, []);
+
   useEffect(() => {
     setIsMounted(true);
     const q = query(collection(db, "students"), orderBy("createdAt", "desc"));
@@ -49,7 +59,6 @@ export default function StudentsPage() {
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    // Section کو ہمیشہ کیپیٹل (Capital) میں سیو کریں تاکہ ڈیٹا بیس میں گڑبڑ نہ ہو
     if (name === "section") {
       setFormData({ ...formData, [name]: value.toUpperCase() });
     } else if (name === "idNumber") {
@@ -93,6 +102,11 @@ export default function StudentsPage() {
 
   const handleDelete = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation(); 
+    // 👉 Security Check for Delete
+    if (role !== "admin") {
+      alert("Only Administrators can delete student records.");
+      return;
+    }
     if (window.confirm("Delete this student?")) await deleteDoc(doc(db, "students", id));
   };
 
@@ -106,7 +120,10 @@ export default function StudentsPage() {
 
   return (
     <div className="animate-fade-in space-y-6">
-      <div><h1 className="text-2xl font-extrabold text-slate-800 tracking-tight">Manage Students</h1></div>
+      <div>
+        <h1 className="text-2xl font-extrabold text-slate-800 tracking-tight">Manage Students</h1>
+        <p className="text-sm text-slate-500 mt-1">Add and manage student records.</p>
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 bg-white rounded-3xl p-8 shadow-sm border border-gray-100">
@@ -145,13 +162,11 @@ export default function StudentsPage() {
               <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
                 <input required name="admissionDate" value={formData.admissionDate} onChange={handleInputChange} type="date" className="sm:col-span-2 w-full bg-[#f0fdf4] outline-none rounded-xl px-4 py-3 text-sm border border-green-100 text-green-700" />
                 
-                {/* 11 اور 12 نکال دیے گئے */}
                 <select required name="classGrade" value={formData.classGrade} onChange={handleInputChange} className="w-full bg-slate-50 outline-none rounded-xl px-4 py-3 text-sm border text-slate-700">
                   <option value="" disabled>Select Class</option>
                   {["Playgroup", "Nursery", "Prep", "Class 1", "Class 2", "Class 3", "Class 4", "Class 5", "Class 6", "Class 7", "Class 8", "Class 9", "Class 10"].map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
 
-                {/* Section اب مینول (Manual) ہے */}
                 <input required name="section" value={formData.section} onChange={handleInputChange} type="text" placeholder="Section (e.g. A, IQBAL)" className="w-full bg-slate-50 outline-none rounded-xl px-4 py-3 text-sm border uppercase" />
                 <input required name="rollNumber" value={formData.rollNumber} onChange={handleInputChange} type="number" placeholder="Roll No" className="sm:col-span-2 w-full bg-slate-50 outline-none rounded-xl px-4 py-3 text-sm border" />
               </div>
@@ -176,9 +191,13 @@ export default function StudentsPage() {
                      <p className="text-sm font-bold truncate group-hover:text-[#3ac47d]">{student.name}</p>
                      <p className="text-[11px] text-slate-500 truncate">Roll: {student.rollNumber} • {student.classGrade} {student.section && `- ${student.section}`}</p>
                    </div>
-                   <div className="absolute right-3 opacity-0 group-hover:opacity-100 flex gap-1">
-                      <button onClick={(e) => handleDelete(e, student.id)} className="p-1.5 text-red-500 hover:bg-red-100 rounded-md"><Trash2 size={14} /></button>
-                   </div>
+                   
+                   {/* 👉 Show delete button ONLY for admins */}
+                   {role === "admin" && (
+                     <div className="absolute right-3 opacity-0 group-hover:opacity-100 flex gap-1">
+                        <button onClick={(e) => handleDelete(e, student.id)} className="p-1.5 text-red-500 hover:bg-red-100 rounded-md"><Trash2 size={14} /></button>
+                     </div>
+                   )}
                  </div>
                ))}
              </div>
