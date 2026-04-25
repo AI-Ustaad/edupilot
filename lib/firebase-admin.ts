@@ -1,11 +1,7 @@
 import * as admin from "firebase-admin";
 
-// 🔐 Fix multiline private key issue (VERY IMPORTANT for Vercel)
-const privateKey = process.env.FIREBASE_PRIVATE_KEY
-  ? process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, "\n")
-  : undefined;
+const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, "\n");
 
-// 🚀 Initialize Firebase Admin ONLY ONCE
 if (!admin.apps.length) {
   admin.initializeApp({
     credential: admin.credential.cert({
@@ -16,6 +12,8 @@ if (!admin.apps.length) {
   });
 }
 
-// 🔑 Auth + Database exports
+// 🔐 Auth
 export const adminAuth = admin.auth();
+
+// 🗄️ Firestore
 export const adminDb = admin.firestore();
