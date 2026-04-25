@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { getAuth, getRedirectResult } from "firebase/auth";
-import { app } from "@/lib/firebase";
+import { auth } from "@/lib/firebase";
 import { useRouter } from "next/navigation";
 
 export default function CallbackPage() {
