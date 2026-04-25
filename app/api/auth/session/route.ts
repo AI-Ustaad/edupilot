@@ -1,26 +1,28 @@
 import { NextResponse } from "next/server";
-import { adminAuth } from "../../../../lib/firebase-admin";
-import { cookies } from "next/headers";
+import { adminAuth } from "@/lib/firebase-admin";
 
 export async function POST(req: Request) {
   try {
     const { idToken } = await req.json();
 
-    const expiresIn = 60 * 60 * 24 * 5 * 1000;
+    const expiresIn = 60 * 60 * 24 * 5 * 1000; // 5 days
 
     const sessionCookie = await adminAuth.createSessionCookie(idToken, {
       expiresIn,
     });
 
-    cookies().set("session", sessionCookie, {
-      maxAge: expiresIn,
+    const res = NextResponse.json({ success: true });
+
+    res.cookies.set("session", sessionCookie, {
       httpOnly: true,
       secure: true,
+      maxAge: expiresIn,
       path: "/",
     });
 
-    return NextResponse.json({ success: true });
-  } catch {
-    return NextResponse.json({ error: "Session error" }, { status: 401 });
+    return res;
+
+  } catch (error) {
+    return NextResponse.json({ error: "Session failed" }, { status: 401 });
   }
 }
