@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useEffect } from "react";
-import { Users, Briefcase, GraduationCap, Loader2, AlertCircle } from "lucide-react";
+import { Users, Briefcase, GraduationCap, Loader2, AlertCircle, Settings as SettingsIcon, ArrowRight } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 export default function DashboardPage() {
@@ -8,23 +8,31 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [stats, setStats] = useState({ studentsCount: 0, staffCount: 0 });
+  const [isSetupComplete, setIsSetupComplete] = useState(true); // 👈 نیا اسٹیٹ
 
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
-        const [studentsRes, staffRes] = await Promise.all([
+        const [studentsRes, staffRes, settingsRes] = await Promise.all([
           fetch("/api/students", { credentials: "include" }),
-          fetch("/api/staff", { credentials: "include" })
+          fetch("/api/staff", { credentials: "include" }),
+          fetch("/api/settings", { credentials: "include" }) // 👈 سیٹنگز بھی منگوائیں
         ]);
 
         if (studentsRes.status === 401 || studentsRes.status === 403) {
-           window.location.href = "/login"; // Force re-auth
+           window.location.href = "/login"; 
            return;
         }
 
-        // 🛡️ CRITICAL FIX: Safe Data Parsing (اگر API سے ایرر آئے تو بھی کریش نہ ہو)
         const studentsData = studentsRes.ok ? await studentsRes.json() : [];
         const staffData = staffRes.ok ? await staffRes.json() : [];
+        const settingsData = settingsRes.ok ? await settingsRes.json() : [];
+
+        // 🛡️ CRITICAL FIX: چیک کریں کہ کیا اسکول نے کوئی کلاس بنائی ہے؟
+        // اگر سیٹنگز کا ڈاکومنٹ نہیں ہے یا اس میں کلاسز کی ایری (Array) خالی ہے
+        if (!settingsData || settingsData.length === 0 || !settingsData[0].classes || settingsData[0].classes.length === 0) {
+            setIsSetupComplete(false); // 👈 سیٹ اپ نامکمل ہے!
+        }
 
         setStats({
           studentsCount: Array.isArray(studentsData) ? studentsData.length : 0,
@@ -58,7 +66,24 @@ export default function DashboardPage() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {/* 🔥 THE MAGIC: Empty State / Setup Guide */}
+      {!isSetupComplete && (
+         <div className="bg-yellow-50 border-2 border-yellow-400 p-6 rounded-3xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 mb-8 animate-fade-in-up shadow-md">
+            <div>
+               <h3 className="font-black text-yellow-800 text-lg uppercase flex items-center gap-2"><AlertCircle size={20}/> Action Required: Workspace Not Configured</h3>
+               <p className="text-sm font-bold text-yellow-700 mt-1">To start adding students or staff, you must first define your school's classes and sections.</p>
+            </div>
+            <button 
+               onClick={() => router.push("/settings")} 
+               className="bg-yellow-500 text-yellow-950 px-6 py-3 rounded-xl font-black text-sm uppercase tracking-widest flex items-center gap-2 hover:bg-yellow-600 transition-all shrink-0 shadow-sm"
+            >
+               Go to Admin Settings <ArrowRight size={16}/>
+            </button>
+         </div>
+      )}
+
+      {/* ✅ اصل ڈیش بورڈ کے کارڈز (یہ تب بھی نظر آئیں گے، لیکن 0 کے ساتھ) */}
+      <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 ${!isSetupComplete ? "opacity-50 pointer-events-none" : ""}`}>
         <div className="bg-gradient-to-br from-blue-500 to-blue-700 rounded-3xl p-6 text-white shadow-lg relative overflow-hidden">
            <GraduationCap size={100} className="absolute -right-4 -bottom-4 opacity-20" />
            <div className="relative z-10">
