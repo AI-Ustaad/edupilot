@@ -1,261 +1,121 @@
 "use client";
 import React, { useState, useEffect } from "react";
-import { collection, onSnapshot, query, where } from "firebase/firestore";
-import { db } from "@/lib/firebase";
-import { 
-  Award, Bell, ChevronDown, User, Loader2, 
-  Users, Clock, ClipboardCheck, AlertTriangle, CheckCircle2 
-} from "lucide-react";
+import { Users, Briefcase, GraduationCap, Clock, AlertCircle, Loader2 } from "lucide-react";
+import { useRouter } from "next/navigation";
 
-const norm = (str?: string) => (str || "").trim().toLowerCase();
-
-export default function CombinedDashboard() {
-  const [isMounted, setIsMounted] = useState(false);
+export default function DashboardPage() {
+  const router = useRouter();
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   
-  // 👉 1. یوزر رول اور ای میل کی اسٹیٹ
-  const [role, setRole] = useState<string>("");
-  const [userEmail, setUserEmail] = useState<string>("");
-
-  const [ready, setReady] = useState({
-    students: false, marks: false, staff: false, 
-    proxies: false, staffAtt: false, studentAtt: false
+  const [stats, setStats] = useState({
+    studentsCount: 0,
+    staffCount: 0,
   });
-  
-  const [students, setStudents] = useState<any[]>([]);
-  const [marks, setMarks] = useState<any[]>([]);
-  const [staff, setStaff] = useState<any[]>([]);
-  const [proxies, setProxies] = useState<any[]>([]); 
-  const [staffAttendance, setStaffAttendance] = useState<any[]>([]);
-  const [todayStudentAttendance, setTodayStudentAttendance] = useState<any[]>([]);
-  
-  const [selectedClass, setSelectedClass] = useState<string>("All Classes");
 
   useEffect(() => {
-    // Session Verification & Role Fetching
-    fetch("/api/users/get", { credentials: "include" })
-      .then(res => {
-        if (!res.ok) throw new Error("Unauthorized");
-        return res.json();
-      })
-      .then(data => {
-        setRole(data.role || "teacher");
-        setUserEmail(data.email || "user@edupilot.com");
-      })
-      .catch(() => window.location.href = "/login");
-  }, []);
+    const fetchDashboardData = async () => {
+      try {
+        // 👉 API کے ذریعے صرف اپنے اسکول (Tenant) کا ڈیٹا منگوائیں
+        const [studentsRes, staffRes] = await Promise.all([
+          fetch("/api/students", { credentials: "include" }),
+          fetch("/api/staff", { credentials: "include" })
+        ]);
 
-  useEffect(() => {
-    if (Object.values(ready).every(Boolean) && role !== "") {
-      setLoading(false);
-    }
-  }, [ready, role]);
+        // اگر سیشن ایکسپائر ہو گیا ہے یا یوزر ڈیلیٹ ہو گیا ہے
+        if (studentsRes.status === 401 || studentsRes.status === 403) {
+           router.replace("/login");
+           return;
+        }
 
-  useEffect(() => {
-    setIsMounted(true);
-    const todayStr = new Date().toLocaleDateString("en-CA");
+        const studentsData = await studentsRes.json();
+        const staffData = await staffRes.json();
 
-    const unsubStudents = onSnapshot(collection(db, "students"), (snap) => {
-      setStudents(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-      setReady(p => ({ ...p, students: true }));
-    });
-    
-    const unsubMarks = onSnapshot(collection(db, "marks"), (snap) => {
-      setMarks(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-      setReady(p => ({ ...p, marks: true }));
-    });
-    
-    const unsubStaff = onSnapshot(collection(db, "staff"), (snap) => {
-      setStaff(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-      setReady(p => ({ ...p, staff: true }));
-    });
-    
-    const unsubProxies = onSnapshot(query(collection(db, "arrangements"), where("date", "==", todayStr)), (snap) => {
-      setProxies(snap.docs.map(d => d.data()));
-      setReady(p => ({ ...p, proxies: true }));
-    });
-
-    const unsubStaffAtt = onSnapshot(query(collection(db, "staffAttendance"), where("date", "==", todayStr)), (snap) => {
-      setStaffAttendance(snap.docs.map(d => d.data()));
-      setReady(p => ({ ...p, staffAtt: true }));
-    });
-
-    const unsubStudentAtt = onSnapshot(query(collection(db, "attendance"), where("date", "==", todayStr)), (snap) => {
-      setTodayStudentAttendance(snap.docs.map(d => d.data()));
-      setReady(p => ({ ...p, studentAtt: true }));
-    });
-
-    return () => { 
-      unsubStudents(); unsubMarks(); unsubStaff(); 
-      unsubProxies(); unsubStaffAtt(); unsubStudentAtt(); 
+        setStats({
+          studentsCount: studentsData.length || 0,
+          staffCount: staffData.length || 0,
+        });
+        
+        setLoading(false);
+      } catch (err: any) {
+        console.error("Dashboard Error:", err);
+        setError("Failed to load workspace data. Please check your connection.");
+        setLoading(false);
+      }
     };
-  }, []);
 
-  if (!isMounted) return null;
+    fetchDashboardData();
+  }, [router]);
 
-  const totalStaffCount = staff.length;
-  const staffPresent = staffAttendance.filter(a => a.status === "Present").length;
-  const staffLeave = staffAttendance.filter(a => a.status === "Leave").length;
-  const activeProxies = proxies.length;
+  // 🌀 محفوظ لوڈنگ سکرین
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] animate-fade-in">
+        <Loader2 className="animate-spin text-blue-500 mb-4" size={48} />
+        <h2 className="text-xl font-black text-[#0F172A] uppercase tracking-widest">Securing Workspace...</h2>
+        <p className="text-slate-400 font-bold text-sm mt-2">Loading your isolated tenant data</p>
+      </div>
+    );
+  }
 
-  const totalMarked = todayStudentAttendance.length;
-  const presentCount = todayStudentAttendance.filter(a => a.status === "Present").length;
-  const attendancePercentage = totalMarked === 0 ? 0 : Math.round((presentCount / totalMarked) * 100);
+  // ❌ ایرر سکرین (تاکہ ڈیش بورڈ اندھا دھند نہ گھومے)
+  if (error) {
+    return (
+      <div className="p-6 bg-red-50 border border-red-200 rounded-3xl flex flex-col items-center justify-center min-h-[40vh] text-center">
+        <AlertCircle size={48} className="text-red-500 mb-4" />
+        <h2 className="text-xl font-black text-red-700 uppercase">Workspace Error</h2>
+        <p className="text-red-600 font-bold mt-2">{error}</p>
+        <button onClick={() => window.location.reload()} className="mt-6 bg-red-600 text-white px-6 py-2 rounded-xl font-bold uppercase">Retry</button>
+      </div>
+    );
+  }
 
-  const filteredStudents = selectedClass === "All Classes" 
-    ? students 
-    : students.filter(s => norm(s.classGrade) === norm(selectedClass));
-
-  const studentPerformances = filteredStudents.map(student => {
-    const studentMarks = marks.filter(m => m.studentId === student.id);
-    let totalObtained = 0, totalMax = 0;
-    studentMarks.forEach(m => { 
-      totalObtained += Number(m.marksObtained || 0); 
-      totalMax += Number(m.totalMarks || 0); 
-    });
-    const avg = totalMax > 0 ? Math.round((totalObtained / totalMax) * 100) : 0;
-    let status = avg >= 75 ? "mastered" : avg >= 50 ? "working" : "attention";
-    return { ...student, averagePercentage: avg, status };
-  });
-
-  const masteredCount = studentPerformances.filter(s => s.status === "mastered").length;
-  const workingCount = studentPerformances.filter(s => s.status === "working").length;
-  const attentionCount = studentPerformances.filter(s => s.status === "attention").length;
-
+  // ✅ اصل ڈیش بورڈ
   return (
-    <div className="bg-transparent md:bg-slate-50 md:p-6 font-sans w-full overflow-x-hidden pb-20">
-      {loading ? (
-        <div className="flex h-[50vh] items-center justify-center flex-col gap-4">
-          <Loader2 className="animate-spin text-[#3ac47d]" size={40}/>
-          <p className="text-sm font-bold text-slate-400 animate-pulse">Securing workspace...</p>
-        </div>
-      ) : (
-        <div className="bg-white rounded-[2rem] md:rounded-[2.5rem] shadow-sm border border-slate-100 p-4 sm:p-6 md:p-10 w-full animate-fade-in-up">
-          
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
-            <div className="w-full flex justify-between items-center md:block">
-               {/* 👉 2. ڈائنیمک ٹائٹل (ایڈمن کے لیے الگ، ٹیچر کے لیے الگ) */}
-               <h1 className="text-2xl sm:text-3xl font-black text-[#1f2937]">
-                 {role === "admin" ? "Command Centre" : "Teacher Workspace"}
-               </h1>
-               
-               <div className="flex md:hidden items-center gap-2 bg-slate-50 p-1.5 pr-3 rounded-full border border-slate-200">
-                 <div className="w-8 h-8 bg-[#3ac47d] rounded-full flex items-center justify-center text-white"><User size={14}/></div>
-                 <span className="text-[10px] font-black text-slate-700 uppercase">{role}</span>
-               </div>
-            </div>
+    <div className="animate-fade-in space-y-6 pb-20 w-full">
+      
+      <div>
+        <h1 className="text-2xl font-extrabold text-[#0F172A] tracking-tight uppercase">Command Centre</h1>
+        <p className="text-sm text-slate-500 mt-1 font-bold">Welcome to your secure EduPilot workspace.</p>
+      </div>
 
-            <div className="flex flex-col sm:flex-row items-center gap-4 w-full md:w-auto">
-              <select value={selectedClass} onChange={e => setSelectedClass(e.target.value)} className="w-full sm:w-auto bg-slate-50 border border-slate-200 text-slate-600 font-bold py-3 md:py-2 px-6 rounded-xl md:rounded-full outline-none text-sm focus:border-[#3ac47d]">
-                <option value="All Classes">All Classes</option>
-                {Array.from(new Set(students.map(s => s.classGrade))).filter(Boolean).map(c => <option key={c as string} value={c as string}>{c as string}</option>)}
-              </select>
-              
-              <div className="hidden md:flex items-center gap-3 bg-slate-50 p-1.5 pr-4 rounded-full border border-slate-200 cursor-pointer hover:bg-slate-100 transition-colors">
-                 <div className="w-8 h-8 bg-[#3ac47d] rounded-full flex items-center justify-center text-white"><User size={16}/></div>
-                 <div className="flex flex-col">
-                    <span className="text-[10px] font-black text-slate-800 leading-none uppercase">{role}</span>
-                    <span className="text-[9px] font-bold text-slate-500">{userEmail}</span>
-                 </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        
+        {/* Students Card */}
+        <div className="bg-gradient-to-br from-blue-500 to-blue-700 rounded-3xl p-6 text-white shadow-lg relative overflow-hidden">
+           <GraduationCap size={100} className="absolute -right-4 -bottom-4 opacity-20" />
+           <div className="relative z-10">
+              <p className="text-blue-100 font-black text-xs uppercase tracking-widest mb-1">Total Enrolled</p>
+              <h2 className="text-5xl font-black">{stats.studentsCount}</h2>
+              <p className="text-sm font-bold mt-4 flex items-center gap-2"><Users size={16}/> Active Students</p>
+           </div>
+        </div>
+
+        {/* Staff Card */}
+        <div className="bg-gradient-to-br from-[#0F172A] to-slate-800 rounded-3xl p-6 text-white shadow-lg relative overflow-hidden">
+           <Briefcase size={100} className="absolute -right-4 -bottom-4 opacity-20" />
+           <div className="relative z-10">
+              <p className="text-slate-400 font-black text-xs uppercase tracking-widest mb-1">Total Employees</p>
+              <h2 className="text-5xl font-black">{stats.staffCount}</h2>
+              <p className="text-sm font-bold mt-4 flex items-center gap-2"><Users size={16}/> Active Staff</p>
+           </div>
+        </div>
+
+        {/* Quick Status Card */}
+        <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm flex flex-col justify-center">
+           <p className="text-slate-400 font-black text-xs uppercase tracking-widest mb-4">System Status</p>
+           <div className="flex items-center gap-4">
+              <div className="w-12 h-12 bg-green-100 text-green-600 rounded-full flex items-center justify-center shrink-0">
+                 <div className="w-4 h-4 bg-green-500 rounded-full animate-pulse"></div>
               </div>
-            </div>
-          </div>
-
-          {/* 👉 3. صرف ایڈمن کو عملے کا اسٹیٹس اور پراکسیز نظر آئیں گی */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 mb-12">
-            {role === "admin" && (
-              <>
-                <div className="bg-slate-900 text-white rounded-3xl md:rounded-[2rem] p-6 shadow-lg border border-slate-800 relative overflow-hidden">
-                   <div className="flex justify-between items-start mb-4">
-                      <div className="p-3 bg-white/10 rounded-2xl"><Users size={24}/></div>
-                      <span className="text-[9px] sm:text-[10px] font-bold bg-green-500/20 text-green-400 px-3 py-1 rounded-full uppercase">Staff Status</span>
-                   </div>
-                   <p className="text-3xl sm:text-4xl font-black mb-1">{staffPresent} / {totalStaffCount}</p>
-                   <p className="text-[10px] sm:text-xs text-slate-400 font-bold uppercase tracking-widest">Present Today • <span className="text-red-400">{staffLeave} on Leave</span></p>
-                </div>
-
-                <div className="bg-white border-2 border-slate-100 rounded-3xl md:rounded-[2rem] p-6 shadow-sm">
-                   <div className="flex justify-between items-start mb-4">
-                      <div className="p-3 bg-orange-50 text-orange-500 rounded-2xl"><Clock size={24}/></div>
-                      <span className="text-[9px] sm:text-[10px] font-bold bg-orange-100 text-orange-600 px-3 py-1 rounded-full uppercase">Arrangements</span>
-                   </div>
-                   <p className="text-3xl sm:text-4xl font-black text-slate-800 mb-1">{activeProxies}</p>
-                   <p className="text-[10px] sm:text-xs text-slate-500 font-bold uppercase tracking-widest">Active Adjustment Periods</p>
-                </div>
-              </>
-            )}
-
-            <div className={`bg-white border-2 border-slate-100 rounded-3xl md:rounded-[2rem] p-6 shadow-sm ${role === "teacher" ? "sm:col-span-2 lg:col-span-3" : "sm:col-span-2 lg:col-span-1"}`}>
-               <div className="flex justify-between items-start mb-4">
-                  <div className="p-3 bg-blue-50 text-blue-500 rounded-2xl"><ClipboardCheck size={24}/></div>
-                  <span className="text-[9px] sm:text-[10px] font-bold bg-blue-100 text-blue-600 px-3 py-1 rounded-full uppercase">Student Attendance</span>
-               </div>
-               <p className="text-3xl sm:text-4xl font-black text-slate-800 mb-1">
-                 {totalMarked > 0 ? `${attendancePercentage}%` : "N/A"}
-               </p>
-               <p className="text-[10px] sm:text-xs text-slate-500 font-bold uppercase tracking-widest">
-                 {totalMarked > 0 ? "Across selected classes" : "Not marked yet"}
-               </p>
-            </div>
-          </div>
-
-          <div className="border-t border-slate-100 pt-8 md:pt-12">
-            <h2 className="text-xl md:text-2xl font-black text-[#1f2937] mb-6 md:mb-8">Academic Proficiency</h2>
-            
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-6 mb-8 md:mb-12">
-               <div className="bg-[#78d13b] rounded-3xl md:rounded-[2rem] p-6 md:p-8 text-white shadow-md relative overflow-hidden group">
-                  <h3 className="text-4xl md:text-5xl font-black mb-2">{masteredCount}</h3>
-                  <p className="text-xs md:text-sm font-black uppercase opacity-90">Mastered (75%+)</p>
-                  <CheckCircle2 className="absolute -right-4 -bottom-4 w-24 h-24 md:w-32 md:h-32 opacity-20 group-hover:scale-110 transition-transform" />
-               </div>
-               <div className="bg-[#ffc122] rounded-3xl md:rounded-[2rem] p-6 md:p-8 text-[#1f2937] shadow-md relative overflow-hidden group">
-                  <h3 className="text-4xl md:text-5xl font-black mb-2">{workingCount}</h3>
-                  <p className="text-xs md:text-sm font-black uppercase opacity-80">Working Towards</p>
-                  <Clock className="absolute -right-4 -bottom-4 w-24 h-24 md:w-32 md:h-32 opacity-20 group-hover:scale-110 transition-transform" />
-               </div>
-               <div className="bg-[#ff7b60] rounded-3xl md:rounded-[2rem] p-6 md:p-8 text-white shadow-md relative overflow-hidden group">
-                  <h3 className="text-4xl md:text-5xl font-black mb-2">{attentionCount}</h3>
-                  <p className="text-xs md:text-sm font-black uppercase opacity-90">Needs Attention</p>
-                  <AlertTriangle className="absolute -right-4 -bottom-4 w-24 h-24 md:w-32 md:h-32 opacity-20 group-hover:scale-110 transition-transform" />
-               </div>
-            </div>
-
-            <div className="space-y-3">
-               {studentPerformances.length === 0 ? (
-                  <div className="py-10 text-center text-slate-400 font-bold bg-slate-50 rounded-3xl text-sm">No student data found.</div>
-               ) : (
-                 studentPerformances.sort((a, b) => b.averagePercentage - a.averagePercentage).map((s) => (
-                   <div key={s.id} className={`flex flex-col sm:flex-row justify-between items-start sm:items-center p-4 md:px-6 md:py-4 rounded-2xl md:rounded-full gap-4 ${s.status === 'mastered' ? 'bg-[#78d13b]/10' : s.status === 'working' ? 'bg-[#ffc122]/10' : 'bg-[#ff7b60]/10'} transition-all`}>
-                      
-                      <div className="flex items-center gap-3 w-full sm:w-auto">
-                         <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center overflow-hidden shrink-0 shadow-sm">
-                            {s.photoBase64 ? <img src={s.photoBase64} className="w-full h-full object-cover"/> : <User size={18} className="text-slate-300"/>}
-                         </div>
-                         <div>
-                           <p className="font-bold text-[#1f2937] text-sm truncate">{s.name}</p>
-                           <p className="text-[10px] text-slate-500 font-bold uppercase">{s.classGrade} {s.section && `- ${s.section}`}</p>
-                         </div>
-                      </div>
-
-                      <div className="flex flex-row items-center justify-between w-full sm:w-1/2 md:w-1/3 gap-4">
-                         <div className="flex items-center gap-4 flex-1">
-                            <span className="font-black text-xs w-8 text-slate-600">{s.averagePercentage}%</span>
-                            <div className="flex-1 h-2.5 bg-white rounded-full overflow-hidden shadow-inner">
-                               <div className={`h-full rounded-full ${s.status === 'mastered' ? 'bg-[#78d13b]' : s.status === 'working' ? 'bg-[#ffc122]' : 'bg-[#ff7b60]'}`} style={{ width: `${s.averagePercentage}%` }}></div>
-                            </div>
-                         </div>
-                         <span className={`px-3 py-1.5 md:px-4 md:py-1.5 rounded-full text-[9px] md:text-[10px] font-black uppercase whitespace-nowrap ${s.status === 'mastered' ? 'bg-[#78d13b] text-white' : s.status === 'working' ? 'bg-[#ffc122] text-[#1f2937]' : 'bg-[#ff7b60] text-white'}`}>
-                            {s.status}
-                         </span>
-                      </div>
-
-                   </div>
-                 ))
-               )}
-            </div>
-          </div>
+              <div>
+                 <h3 className="font-black text-[#0F172A] uppercase">Tenant Isolated</h3>
+                 <p className="text-xs font-bold text-slate-500">100% Secure & Active</p>
+              </div>
+           </div>
         </div>
-      )}
+
+      </div>
     </div>
   );
 }
