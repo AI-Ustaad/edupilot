@@ -24,18 +24,20 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
     { name: "Fees", icon: Wallet, path: "/fees" },
   ];
 
-  // 👉 100% Secure Logout Function
+  // 👉 100% Secure & Production-Ready Logout Function
   const handleLogout = async () => {
     try {
-      await signOut(auth); // Firebase (Client-side) logout
+      // 1. Firebase (Client-side) logout
+      await signOut(auth); 
       
-      // Clear Server-side Session Cookie safely
+      // 2. Clear Server-side Session Cookie safely
       await fetch("/api/auth/logout", { 
         method: "POST",
-        credentials: "include" 
+        credentials: "include" // Ensures cookies are sent and cleared in all browsers
       }); 
       
-      router.push("/login"); // Redirect to login page
+      // 3. Redirect using replace to prevent "Back Button" ghost sessions
+      router.replace("/login"); 
     } catch (error) {
       console.error("Logout failed", error);
     }
@@ -44,7 +46,7 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
   return (
     <div className="flex h-screen bg-slate-50 overflow-hidden font-sans">
       
-      {/* Sidebar for Desktop (Always Visible on Large Screens) */}
+      {/* Sidebar for Desktop & Mobile */}
       <div className={`fixed inset-y-0 left-0 z-40 w-64 bg-white border-r border-slate-200 flex flex-col transform transition-transform duration-300 ease-in-out md:relative md:translate-x-0 ${isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"}`}>
          
          {/* App Logo / Brand */}
@@ -61,6 +63,7 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
                  <Link 
                    key={item.name} 
                    href={item.path}
+                   onClick={() => setIsMobileMenuOpen(false)} // Close mobile menu on click
                    className={`flex items-center gap-3 px-3 py-3 rounded-xl font-bold transition-all ${isActive ? "bg-green-50 text-[#3ac47d]" : "text-slate-500 hover:bg-slate-50"}`}
                  >
                    <item.icon size={20} />
@@ -71,13 +74,20 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
          </div>
 
          {/* Bottom Settings & Logout */}
-         <div className="p-4 border-t border-slate-100">
-            <Link href="/settings" className="flex items-center gap-3 px-3 py-3 rounded-xl font-bold text-slate-500 hover:bg-slate-50">
+         <div className="p-4 border-t border-slate-100 space-y-2">
+            <Link 
+              href="/settings" 
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="flex items-center gap-3 px-3 py-3 rounded-xl font-bold text-slate-500 hover:bg-slate-50 transition-colors"
+            >
               <Settings size={20} />
               <span className="text-sm">Admin Settings</span>
             </Link>
             
-            <button onClick={handleLogout} className="w-full flex items-center gap-3 px-3 py-3 rounded-xl font-bold text-red-500 hover:bg-red-50 transition-colors mt-2">
+            <button 
+              onClick={handleLogout} 
+              className="w-full flex items-center gap-3 px-3 py-3 rounded-xl font-bold text-red-500 hover:bg-red-50 transition-colors"
+            >
               <LogOut size={20} />
               <span className="text-sm">Secure Logout</span>
             </button>
@@ -85,14 +95,14 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
       </div>
 
       {/* Main Content Area */}
-      <div className="flex-1 overflow-y-auto bg-white relative">
+      <div className="flex-1 overflow-y-auto bg-white relative w-full">
         
         {/* Mobile Menu Toggle Button */}
         <button 
-          className="md:hidden fixed top-4 right-4 z-50 p-2 bg-white border rounded-md shadow-sm"
+          className="md:hidden fixed top-4 right-4 z-50 p-2 bg-white border border-slate-200 text-slate-600 rounded-lg shadow-sm hover:bg-slate-50"
           onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
         >
-          {isMobileMenuOpen ? <X /> : <Menu />}
+          {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
         </button>
         
         {/* Page Content */}
@@ -101,10 +111,10 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
         </div>
       </div>
 
-      {/* Overlay for mobile when sidebar is open */}
+      {/* Mobile Overlay Background (Closes sidebar when clicked outside) */}
       {isMobileMenuOpen && (
         <div 
-          className="fixed inset-0 bg-black/20 z-30 md:hidden"
+          className="fixed inset-0 bg-black/40 backdrop-blur-sm z-30 md:hidden animate-fade-in"
           onClick={() => setIsMobileMenuOpen(false)}
         />
       )}
