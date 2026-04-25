@@ -9,21 +9,25 @@ export default function LoginPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
+  const [statusMsg, setStatusMsg] = useState("");
 
   const handleGoogleLogin = async () => {
     setLoading(true);
     setErrorMsg("");
+    setStatusMsg("Authenticating with Google...");
 
     try {
       const provider = new GoogleAuthProvider();
-      // 1. یوزر گوگل سے لاگ ان کرتا ہے
+      // 1. Google Login
       const result = await signInWithPopup(auth, provider);
 
-      // 2. فائر بیس سے یوزر کا لیٹسٹ ٹوکن اور کلیمز (Claims) منگوائیں
-      const idTokenResult = await result.user.getIdTokenResult(true);
+      setStatusMsg("Syncing workspace state...");
+      
+      // 2. 🔥 CRITICAL FIX: فائر بیس کو مجبور کریں کہ وہ سرور سے نیا اور فریش ٹوکن لائے!
+      const idTokenResult = await result.user.getIdTokenResult(true); 
       const token = idTokenResult.token;
 
-      // 3. سرور پر سیشن (Cookies) بنائیں تاکہ API کو پتہ چلے کہ یوزر لاگ ان ہے
+      // 3. سرور پر سیشن (Cookies) بنائیں
       const sessionRes = await fetch("/api/auth/session", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -34,20 +38,22 @@ export default function LoginPage() {
         throw new Error("Failed to create secure session");
       }
 
-      // 🔥 THE MAGIC ROUTING (یہاں فیصلہ ہوگا کہ یوزر کہاں جائے گا)
+      setStatusMsg("Routing to your command centre...");
+
+      // 4. 🔥 THE SMART ROUTING
       const claims = idTokenResult.claims;
       
-      if (claims.tenantId && claims.role) {
-        // 👉 پرانا یوزر: جس کا اسکول رجسٹرڈ ہے، سیدھا ڈیش بورڈ جائے گا
-        router.push("/dashboard");
+      // اگر یوزر کا tenantId موجود ہے، تو سیدھا ڈیش بورڈ جائے گا
+      if (claims.tenantId) {
+        window.location.href = "/dashboard"; // 👈 Hard redirect to ensure fresh load
       } else {
-        // 👉 نیا یوزر: جس کا کوئی اسکول نہیں، وہ رجسٹریشن (Signup) پر جائے گا
-        router.push("/signup");
+        // اگر نیا یوزر ہے تو رجسٹریشن پر جائے گا
+        window.location.href = "/signup"; // 👈 Hard redirect
       }
 
     } catch (error: any) {
       console.error("Login Error:", error);
-      setErrorMsg("Authentication failed. Please try again.");
+      setErrorMsg("Authentication failed. Please check your connection.");
       setLoading(false);
     }
   };
@@ -62,18 +68,10 @@ export default function LoginPage() {
           </div>
         </div>
 
-        <h1 className="text-3xl font-black text-[#0F172A] uppercase tracking-tight mb-2">
-          EduPilot SaaS
-        </h1>
-        <p className="text-sm text-slate-500 font-bold mb-8">
-          School Management, Simplified.
-        </p>
+        <h1 className="text-3xl font-black text-[#0F172A] uppercase tracking-tight mb-2">EduPilot SaaS</h1>
+        <p className="text-sm text-slate-500 font-bold mb-8">Secure Workspace Login</p>
 
-        {errorMsg && (
-          <div className="mb-6 p-4 bg-red-50 text-red-600 rounded-xl text-sm font-bold border border-red-100">
-            {errorMsg}
-          </div>
-        )}
+        {errorMsg && <div className="mb-6 p-4 bg-red-50 text-red-600 rounded-xl text-sm font-bold border border-red-100">{errorMsg}</div>}
 
         <button 
           onClick={handleGoogleLogin} 
@@ -81,20 +79,15 @@ export default function LoginPage() {
           className="w-full bg-white border-2 border-slate-200 text-slate-700 py-4 rounded-xl font-black text-sm uppercase tracking-widest flex items-center justify-center gap-3 hover:border-blue-500 hover:text-blue-600 transition-all shadow-sm disabled:opacity-50"
         >
           {loading ? (
-            <><Loader2 size={20} className="animate-spin text-blue-500" /> Authenticating...</>
+            <><Loader2 size={20} className="animate-spin text-blue-500" /> {statusMsg || "Authenticating..."}</>
           ) : (
-            <>
-              <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google" className="w-5 h-5" />
-              Sign in with Google
-            </>
+            <><img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google" className="w-5 h-5" /> Sign in with Google</>
           )}
         </button>
 
         <div className="mt-8 pt-6 border-t border-slate-100 flex items-center justify-center gap-2 text-xs font-bold text-slate-400 uppercase">
-          <ShieldCheck size={14} className="text-green-500" />
-          Secure Enterprise Login
+          <ShieldCheck size={14} className="text-green-500" /> Enterprise Grade Security
         </div>
-
       </div>
     </div>
   );
