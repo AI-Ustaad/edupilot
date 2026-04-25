@@ -1,9 +1,8 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { UploadCloud, CheckCircle2, AlertCircle, Image as ImageIcon, Search, User as UserIcon, Trash2 } from "lucide-react";
+import { UploadCloud, CheckCircle2, AlertCircle, Image as ImageIcon, Search, User as UserIcon, Trash2, Loader2 } from "lucide-react";
 
-// (Base64 اور CNIC فارمیٹنگ کے فنکشنز وہی پرانے رہیں گے)
 const convertToBase64 = (file: File): Promise<string> => {
   return new Promise((resolve, reject) => {
     const fileReader = new FileReader();
@@ -33,19 +32,21 @@ export default function StudentsPage() {
   const [studentsList, setStudentsList] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
 
+  // 👉 1. DYNAMIC DROPDOWNS STATE
+  const [availableClasses, setAvailableClasses] = useState<string[]>([]);
+  const [availableSections, setAvailableSections] = useState<any[]>([]);
+
   const [formData, setFormData] = useState({
     name: "", idNumber: "", dob: "", gender: "Male", religion: "Islam",
     fatherName: "", fatherProfession: "", phone: "", address: "",
     admissionDate: "", rollNumber: "", classGrade: "", section: ""
   });
 
-  // 👉 1. Fetch Students via Secure API (Read)
   const fetchStudents = async () => {
     try {
       const res = await fetch("/api/students", { credentials: "include" });
       if (res.ok) {
         const data = await res.json();
-        // Sort by newest first
         setStudentsList(data.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
       }
     } catch (error) {
@@ -55,14 +56,32 @@ export default function StudentsPage() {
 
   useEffect(() => {
     setIsMounted(true);
-    // API سے رول چیک کریں
+    
+    // رول چیک کریں
     fetch("/api/users/get", { credentials: "include" })
       .then(res => res.json())
       .then(data => setRole(data.role || "teacher"))
       .catch(() => setRole("teacher"));
       
-    // سٹوڈنٹس کا ڈیٹا API سے منگوائیں
+    // سٹوڈنٹس کا ڈیٹا منگوائیں
     fetchStudents();
+
+    // 👉 2. THE MAGIC: ایڈمن سیٹنگز سے کلاسز اور سیکشنز منگوائیں
+    const fetchConfig = async () => {
+      try {
+        const res = await fetch("/api/settings", { credentials: "include" });
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.length > 0) {
+            setAvailableClasses(data[0].classes || []);
+            setAvailableSections(data[0].sections || []);
+          }
+        }
+      } catch (error) {
+         console.error("Failed to load settings config");
+      }
+    };
+    fetchConfig();
   }, []);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -71,6 +90,9 @@ export default function StudentsPage() {
       setFormData({ ...formData, [name]: value.toUpperCase() });
     } else if (name === "idNumber") {
       setFormData({ ...formData, [name]: formatCNIC(value) });
+    } else if (name === "classGrade") {
+      // 💡 UX Improvement: جب کلاس بدلے تو پرانا سیکشن خالی کر دو
+      setFormData({ ...formData, [name]: value, section: "" });
     } else {
       setFormData({ ...formData, [name]: value });
     }
@@ -85,7 +107,6 @@ export default function StudentsPage() {
     }
   };
 
-  // 👉 2. Save Student via Secure API (Write)
   const handleSaveStudent = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -96,11 +117,8 @@ export default function StudentsPage() {
       const response = await fetch("/api/students", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...formData,
-          photoBase64,
-        }),
-        credentials: "include" // 🔑 بہت اہم: سیشن کوکی بھیجنے کے لیے
+        body: JSON.stringify({ ...formData, photoBase64 }),
+        credentials: "include"
       });
 
       if (!response.ok) {
@@ -111,9 +129,7 @@ export default function StudentsPage() {
       setPhotoBase64("");
       setFormData({ name: "", idNumber: "", dob: "", gender: "Male", religion: "Islam", fatherName: "", fatherProfession: "", phone: "", address: "", admissionDate: "", rollNumber: "", classGrade: "", section: "" });
       
-      // نیا ڈیٹا آنے کے بعد لسٹ کو ریفریش کریں
       fetchStudents();
-      
       setTimeout(() => setSuccess(false), 3000);
     } catch (error) {
       setErrorMsg("Failed to save student. Ensure you have the right permissions.");
@@ -122,7 +138,6 @@ export default function StudentsPage() {
     }
   };
 
-  // 👉 3. Delete Student via API (اس کے لیے بھی ایک DELETE API بنانی پڑے گی، فی الحال اسے کمنٹ کر دیں یا API بنا لیں)
   const handleDelete = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation(); 
     if (role !== "admin") {
@@ -156,7 +171,6 @@ export default function StudentsPage() {
           {errorMsg && <div className="mb-6 bg-red-50 text-red-600 p-4 rounded-xl flex items-center gap-3 font-bold"><AlertCircle /> {errorMsg}</div>}
 
           <form onSubmit={handleSaveStudent} className="space-y-8">
-            {/* ... (یہاں فارم کے سارے انپٹس وہی رہیں گے جو آپ کے پاس پہلے تھے) ... */}
             <section>
               <h3 className="text-[11px] font-bold text-blue-500 uppercase tracking-widest mb-4">Basic Identity</h3>
               <div className="flex flex-col sm:flex-row gap-6">
@@ -183,6 +197,7 @@ export default function StudentsPage() {
               </div>
             </section>
 
+            {/* 👉 3. SMART DYNAMIC DROPDOWNS FOR SCHOOL PLACEMENT */}
             <section>
               <h3 className="text-[11px] font-bold text-blue-500 uppercase tracking-widest mb-4">School Placement</h3>
               <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
@@ -190,10 +205,21 @@ export default function StudentsPage() {
                 
                 <select required name="classGrade" value={formData.classGrade} onChange={handleInputChange} className="w-full bg-slate-50 outline-none rounded-xl px-4 py-3 text-sm font-bold border text-slate-700 focus:border-blue-500 uppercase">
                   <option value="" disabled>Select Class</option>
-                  {["Playgroup", "Nursery", "Prep", "Class 1", "Class 2", "Class 3", "Class 4", "Class 5", "Class 6", "Class 7", "Class 8", "Class 9", "Class 10"].map(c => <option key={c} value={c}>{c}</option>)}
+                  {availableClasses.length === 0 ? (
+                     <option disabled>No classes found in settings</option>
+                  ) : (
+                     availableClasses.map(c => <option key={c} value={c}>{c}</option>)
+                  )}
                 </select>
 
-                <input required name="section" value={formData.section} onChange={handleInputChange} type="text" placeholder="Section (e.g. A)" className="w-full bg-slate-50 outline-none rounded-xl px-4 py-3 text-sm font-bold border uppercase focus:border-blue-500" />
+                <select required name="section" value={formData.section} onChange={handleInputChange} disabled={!formData.classGrade} className="w-full bg-slate-50 outline-none rounded-xl px-4 py-3 text-sm font-bold border uppercase focus:border-blue-500 disabled:opacity-50 disabled:bg-slate-100 disabled:cursor-not-allowed">
+                   <option value="" disabled>Select Section</option>
+                   {availableSections
+                      .filter(s => s.class === formData.classGrade)
+                      .map((s, idx) => <option key={idx} value={s.name}>{s.name}</option>)
+                   }
+                </select>
+                
                 <input required name="rollNumber" value={formData.rollNumber} onChange={handleInputChange} type="number" placeholder="Roll No" className="sm:col-span-2 w-full bg-slate-50 outline-none rounded-xl px-4 py-3 text-sm font-bold border focus:border-blue-500" />
               </div>
             </section>
@@ -206,7 +232,7 @@ export default function StudentsPage() {
           </form>
         </div>
 
-        {/* Directory */}
+        {/* Directory Sidebar */}
         <div className="lg:col-span-1">
           <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 h-full max-h-[800px] flex flex-col">
              <div className="flex items-center justify-between mb-4"><h2 className="text-lg font-black uppercase text-[#0F172A]">Directory</h2><span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-lg font-black text-xs">{studentsList.length}</span></div>
