@@ -14,12 +14,15 @@ export default function CallbackPage() {
       const result = await getRedirectResult(auth);
 
       if (result?.user) {
-        const token = await result.user.getIdToken();
+        const user = result.user;
 
-        // 👉 Fix Applied Here: idToken: token
-        await fetch("/api/auth/login", {
+        // 🔥 FORCE REFRESH TOKEN (IMPORTANT)
+        const idToken = await user.getIdToken(true);
+
+        await fetch("/api/auth/session", {
           method: "POST",
-          body: JSON.stringify({ idToken: token }),
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ idToken }),
         });
 
         router.push("/dashboard");
@@ -31,5 +34,9 @@ export default function CallbackPage() {
     handleAuth();
   }, []);
 
-  return <div className="flex h-screen items-center justify-center font-bold text-slate-500">Signing you in...</div>;
+  return (
+    <div className="flex h-screen items-center justify-center">
+      Signing you in...
+    </div>
+  );
 }
