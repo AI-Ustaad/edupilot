@@ -1,28 +1,43 @@
 import { NextResponse } from "next/server";
-import { adminAuth } from "@/lib/firebase-admin";
+import { cookies } from "next/headers";
+import { adminAuth, adminDb } from "@/lib/firebase-admin";
 
 export async function POST(req: Request) {
   try {
     const { idToken } = await req.json();
 
-    const expiresIn = 60 * 60 * 24 * 5 * 1000; // 5 days
+    if (!idToken) {
+      return NextResponse.json({ error: "No token" }, { status: 400 });
+    }
 
+    // ✅ Verify Firebase token
+    const decoded = await adminAuth.verifyIdToken(idToken);
+    const uid = decoded.uid;
+
+    // ✅ Check Firestore user
+    const userRef = adminDb.collection("users").doc(uid);
+    const userSnap = await userRef.get();
+
+    const isNewUser = !userSnap.exists;
+
+    // ✅ Create session cookie (7 days)
     const sessionCookie = await adminAuth.createSessionCookie(idToken, {
-      expiresIn,
+      expiresIn: 60 * 60 * 24 * 7 * 1000,
     });
 
-    const res = NextResponse.json({ success: true });
-
-    res.cookies.set("session", sessionCookie, {
+    cookies().set("session", sessionCookie, {
       httpOnly: true,
       secure: true,
-      maxAge: expiresIn,
       path: "/",
     });
 
-    return res;
+    return NextResponse.json({
+      success: true,
+      isNewUser,
+    });
 
   } catch (error) {
-    return NextResponse.json({ error: "Session failed" }, { status: 401 });
+    console.error("SESSION ERROR:", error);
+    return NextResponse.json({ error: "Session failed" }, { status: 500 });
   }
 }
