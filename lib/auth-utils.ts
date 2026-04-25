@@ -1,29 +1,21 @@
+// lib/auth-utils.ts
 import { cookies } from "next/headers";
-import { adminAuth } from "./firebase-admin";
+import { adminAuth } from "@/lib/firebase-admin";
 
-export type SessionUser = {
-  uid: string;
-  email?: string;
-  role?: string;
-  tenantId?: string;
-};
-
-// 🔐 Get user from session cookie
-export async function getUserFromSession(): Promise<SessionUser | null> {
+export async function getUserFromSession(session?: string) {
   try {
-    const session = cookies().get("session")?.value;
+    const sessionCookie = session || cookies().get("session")?.value;
+    if (!sessionCookie) return null;
 
-    if (!session) return null;
-
-    const decoded = await adminAuth.verifySessionCookie(session);
+    const decoded = await adminAuth.verifySessionCookie(sessionCookie, true);
 
     return {
       uid: decoded.uid,
       email: decoded.email,
-      role: decoded.role,        // 🔥 from custom claims
-      tenantId: decoded.tenantId // 🔥 from custom claims
+      role: decoded.role,
+      tenantId: decoded.tenantId,
     };
-  } catch (error) {
+  } catch {
     return null;
   }
 }
