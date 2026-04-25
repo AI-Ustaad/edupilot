@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { collection, onSnapshot, query, setDoc, doc, serverTimestamp, deleteDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { 
@@ -8,7 +9,6 @@ import {
   FileCheck, Loader2, Edit3, Eye
 } from "lucide-react";
 
-// Clean Types to prevent Vercel Compiler (SWC) Error
 type EduRecord = { level: string; institute: string; passingYear: string; subjects: string; document: string; };
 type FinancialRecord = { name: string; amount: number; };
 
@@ -24,6 +24,7 @@ const convertToBase64 = (file: File): Promise<string> => {
 const EDU_LEVELS = ["Matriculation", "Intermediate (FA/FSc)", "Bachelors (BA/BSc)", "Masters (MA/MSc)", "M.Phil", "Ph.D", "B.Ed", "M.Ed", "Diploma", "Other"];
 
 export default function ManageStaffPage() {
+  const router = useRouter();
   const [isMounted, setIsMounted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -32,22 +33,40 @@ export default function ManageStaffPage() {
   const [activeTab, setActiveTab] = useState("personal");
   const [editingId, setEditingId] = useState<string | null>(null);
 
+  // 👉 RBAC State
+  const [role, setRole] = useState("loading");
+
   // --- STATE MANAGEMENT ---
   const [personal, setPersonal] = useState({ fullName: "", fatherName: "", cnic: "", dob: "", gender: "Male", maritalStatus: "Single", email: "", phone: "", currentAddress: "", permanentAddress: "", emergencyContact: "", photo: "" });
   const [professional, setProfessional] = useState({ personnelNo: "", doj: "", bps: "", empCategory: "Active Permanent", designation: "", ddoCode: "", prevExperience: "", prevInstitution: "" });
   const [financial, setFinancial] = useState({ bankName: "", accountNo: "", accountTitle: "", ntn: "" });
-  
   const [education, setEducation] = useState<EduRecord[]>([ { level: "Matriculation", institute: "", passingYear: "", subjects: "", document: "" } ]);
   const [allowances, setAllowances] = useState<FinancialRecord[]>([ { name: "Basic Pay", amount: 0 } ]);
   const [deductions, setDeductions] = useState<FinancialRecord[]>([]);
 
+  // 👉 Security Guard: Check Role before rendering
+  useEffect(() => {
+    fetch("/api/users/get", { credentials: "include" })
+      .then(res => res.json())
+      .then(data => {
+        if (data.role !== "admin") {
+          router.replace("/dashboard"); // Kick out non-admins
+        } else {
+          setRole("admin");
+        }
+      })
+      .catch(() => router.replace("/dashboard"));
+  }, [router]);
+
   useEffect(() => {
     setIsMounted(true);
-    const unsub = onSnapshot(query(collection(db, "staff")), (snapshot) => {
-      setStaffList(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
-    });
-    return () => unsub();
-  }, []);
+    if (role === "admin") {
+      const unsub = onSnapshot(query(collection(db, "staff")), (snapshot) => {
+        setStaffList(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
+      });
+      return () => unsub();
+    }
+  }, [role]);
 
   const grossPay = allowances.reduce((sum, item) => sum + Number(item.amount || 0), 0);
   const totalDeductions = deductions.reduce((sum, item) => sum + Number(item.amount || 0), 0);
@@ -61,6 +80,7 @@ export default function ManageStaffPage() {
     newArr[index] = { ...newArr[index], [field]: value };
     setEducation(newArr);
   };
+  
   const handleEduDocUpload = async (e: React.ChangeEvent<HTMLInputElement>, index: number) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -112,7 +132,7 @@ export default function ManageStaffPage() {
     try {
       const docId = editingId || personal.cnic.replace(/[^0-9]/g, '') || Date.now().toString();
       const generatedEmail = personal.email || `emp${professional.personnelNo}@edupilot.com`;
-      const generatedPassword = personal.cnic.replace(/[^0-9]/g, ''); 
+      const generatedPassword = personal.cnic.replace(/[^0-9]/g, '');
 
       if (!editingId) {
          const response = await fetch('/api/create-user', {
@@ -126,7 +146,6 @@ export default function ManageStaffPage() {
               displayName: personal.fullName
            })
          });
-
          const result = await response.json();
          if (!result.success && !result.error?.includes("already exists")) {
             throw new Error(`Failed to create login: ${result.error}`);
@@ -153,7 +172,7 @@ export default function ManageStaffPage() {
       resetForm();
       setTimeout(() => setSuccess(false), 3000);
     } catch (error: any) { 
-       alert("Action Failed: " + error.message); 
+       alert("Action Failed: " + error.message);
     } finally { 
        setLoading(false); 
     }
@@ -173,12 +192,24 @@ export default function ManageStaffPage() {
 
   const handleDeleteStaff = async (id: string) => {
     if(confirm("Are you sure you want to permanently delete this staff member's record?")) {
-      try { await deleteDoc(doc(db, "staff", id)); if(editingId === id) resetForm(); } 
-      catch (error) { alert("Failed to delete record."); }
+      try { await deleteDoc(doc(db, "staff", id));
+      if(editingId === id) resetForm(); } 
+      catch (error) { alert("Failed to delete record.");
+      }
     }
   };
 
   if (!isMounted) return null;
+
+  // 👉 Loading State While Checking Role
+  if (role === "loading") {
+    return (
+      <div className="flex h-screen items-center justify-center flex-col gap-4">
+        <Loader2 className="animate-spin text-[#3ac47d]" size={40}/>
+        <p className="text-sm font-bold text-slate-400 animate-pulse">Verifying Admin Access...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="animate-fade-in space-y-6 pb-20 w-full">
@@ -189,6 +220,7 @@ export default function ManageStaffPage() {
           </h1>
           <p className="text-sm text-slate-500 mt-1">Enterprise HR Management System</p>
         </div>
+  
         <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
           {editingId && (
             <button onClick={resetForm} className="bg-slate-200 text-slate-600 px-6 py-2.5 rounded-xl font-bold hover:bg-slate-300 transition-colors shadow-sm w-full sm:w-auto">
@@ -305,71 +337,4 @@ export default function ManageStaffPage() {
                       <div className="space-y-1"><label className="text-[10px] font-bold text-slate-400 uppercase">Emp ID (Required for Login)</label><input value={professional.personnelNo} onChange={e => setProfessional({...professional, personnelNo: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none" /></div>
                       <div className="space-y-1"><label className="text-[10px] font-bold text-slate-400 uppercase">Date of Joining</label><input type="date" value={professional.doj} onChange={e => setProfessional({...professional, doj: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none" /></div>
                       <div className="space-y-1"><label className="text-[10px] font-bold text-slate-400 uppercase">Designation</label><input value={professional.designation} onChange={e => setProfessional({...professional, designation: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none" /></div>
-                      <div className="space-y-1"><label className="text-[10px] font-bold text-slate-400 uppercase">BPS / Scale</label><input value={professional.bps} onChange={e => setProfessional({...professional, bps: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none" /></div>
-                      <div className="space-y-1 sm:col-span-2"><label className="text-[10px] font-bold text-slate-400 uppercase">Previous Experience</label><input value={professional.prevExperience} onChange={e => setProfessional({...professional, prevExperience: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none" /></div>
-                    </div>
-                  </div>
-                )}
-
-                {/* TAB 4: FINANCIAL */}
-                {activeTab === "financial" && (
-                  <div className="space-y-6 animate-fade-in-down w-full">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full">
-                       <div className="w-full">
-                         <div className="flex justify-between items-center mb-4"><h3 className="text-xs font-bold text-blue-500 uppercase tracking-widest">Pay & Allowances</h3><button onClick={addAllowance} className="text-blue-500"><PlusCircle size={18}/></button></div>
-                         <div className="space-y-2 w-full">
-                           {allowances.map((item, idx) => (
-                             <div key={idx} className="flex gap-2 items-center w-full">
-                               <input value={item.name} onChange={e => updateAllowance(idx, 'name', e.target.value)} className="w-2/3 bg-blue-50 rounded-lg px-3 py-2 text-xs font-bold outline-none" />
-                               <input type="number" value={item.amount || ''} onChange={e => updateAllowance(idx, 'amount', e.target.value)} className="w-1/3 border border-slate-200 rounded-lg px-3 py-2 text-xs font-black text-right outline-none" />
-                               <button onClick={() => removeAllowance(idx)} className="text-slate-300 hover:text-red-500"><Trash2 size={14}/></button>
-                             </div>
-                           ))}
-                         </div>
-                         <div className="mt-4 bg-blue-500 text-white p-3 rounded-xl flex justify-between items-center font-black"><span>Gross Pay</span><span>Rs. {grossPay.toLocaleString()}</span></div>
-                       </div>
-                    </div>
-                    <div className="mt-6 bg-[#0F172A] text-white p-6 rounded-2xl flex justify-between items-center w-full">
-                       <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Final Net Salary</p>
-                       <p className="text-2xl sm:text-4xl font-black text-[#3ac47d]">Rs. {netPay.toLocaleString()}</p>
-                    </div>
-                  </div>
-                )}
-             </div>
-          </div>
-        </div>
-
-        {/* --- RIGHT: STAFF DIRECTORY --- */}
-        <div className="xl:col-span-4 w-full">
-           <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 sticky top-6 w-full">
-              <h2 className="text-lg font-black text-[#0F172A] mb-6">Staff Directory</h2>
-              <div className="space-y-4 h-[500px] overflow-y-auto pr-2 w-full">
-                 {staffList.length === 0 ? (
-                    <div className="py-10 text-center opacity-50"><Users size={40} className="mx-auto mb-3 text-slate-300"/><p className="font-bold text-sm">No staff added yet.</p></div>
-                 ) : (
-                    staffList.map(staff => (
-                       <div key={staff.id} className={`bg-white p-4 rounded-2xl border-2 transition-all ${editingId === staff.id ? 'border-[#3ac47d] shadow-md' : 'border-slate-100 shadow-sm'} w-full`}>
-                          <div className="flex items-start gap-3 w-full">
-                             <div className="w-10 h-10 rounded-full bg-slate-50 border border-slate-200 overflow-hidden shrink-0 mt-1">
-                               {staff.personal?.photo ? <img src={staff.personal.photo} className="w-full h-full object-cover"/> : <Users size={16} className="m-auto mt-2 text-slate-300"/>}
-                             </div>
-                             <div className="flex-1 min-w-0">
-                               <p className="font-black text-[#0F172A] text-sm truncate">{staff.personal?.fullName || "Unnamed"}</p>
-                               <p className="text-[10px] font-bold text-slate-500 mt-0.5 truncate">{staff.professional?.designation} • Emp: {staff.professional?.personnelNo}</p>
-                             </div>
-                          </div>
-                          <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between gap-2 w-full">
-                             <button onClick={() => handleEditStaff(staff)} className="flex-1 bg-orange-50 text-orange-600 flex items-center justify-center gap-1 py-2 rounded-lg text-[10px] font-black uppercase"><Edit3 size={12}/> Edit</button>
-                             <button onClick={() => handleDeleteStaff(staff.id)} className="w-10 flex items-center justify-center bg-red-50 text-red-600 py-2 rounded-lg text-[10px] font-black"><Trash2 size={14}/></button>
-                          </div>
-                       </div>
-                    ))
-                 )}
-              </div>
-           </div>
-        </div>
-
-      </div>
-    </div>
-  );
-}
+                      <div className="space-y-1"><label className="text-[10px] font-bold text-slate-400 uppercase">BPS / Scale</label><input value={professional.bps} onChange={e => setProfessional({...professional, bps: e.target.value})} className="w-full bg-slate-5
