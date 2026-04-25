@@ -1,46 +1,39 @@
+// app/api/create-user/route.ts
 import { NextResponse } from "next/server";
 import { adminAuth, adminDb } from "@/lib/firebase-admin";
+import { getUserFromSession } from "@/lib/auth-utils";
 import { cookies } from "next/headers";
-import { getUserFromSession, requireRole } from "@/lib/auth-utils";
 
 export async function POST(req: Request) {
   try {
     const session = cookies().get("session")?.value;
-    const currentUser = await getUserFromSession(session);
+    const adminUser = await getUserFromSession(session);
 
-    // 1. Check Auth & Admin Role
-    if (!currentUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    if (!requireRole(currentUser, "admin")) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    if (!adminUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (adminUser.role !== "admin") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-    const { uid, email, password, role, displayName } = await req.json();
+    const { email, password, role } = await req.json();
 
-    // 2. Create Firebase Auth User
     const userRecord = await adminAuth.createUser({
-      uid, 
-      email, 
-      password, 
-      displayName
+      email,
+      password,
     });
 
-    const assignedRole = role || "teacher";
-
-    // 👉 THE MAGIC (STEP 1): فائر بیس ٹوکن کے اندر رول (Custom Claim) انجیکٹ کریں
-    await adminAuth.setCustomUserClaims(userRecord.uid, {
-      role: assignedRole
-    });
-
-    // 3. Save to Firestore 'users' collection (Master Record)
     await adminDb.collection("users").doc(userRecord.uid).set({
       uid: userRecord.uid,
-      email: userRecord.email,
-      role: assignedRole,
-      name: displayName,
+      email,
+      role,
+      tenantId: adminUser.tenantId,
       createdAt: new Date(),
     });
 
+    await adminAuth.setCustomUserClaims(userRecord.uid, {
+      role,
+      tenantId: adminUser.tenantId,
+    });
+
     return NextResponse.json({ success: true });
-    
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch {
+    return NextResponse.json({ error: "Failed" }, { status: 500 });
   }
 }
