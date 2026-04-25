@@ -1,33 +1,29 @@
-import { adminAuth, adminDb } from "./firebase-admin";
+import { cookies } from "next/headers";
+import { adminAuth } from "./firebase-admin";
 
-export async function getUserFromSession(sessionCookie: string | undefined) {
-  if (!sessionCookie) return null;
+export type SessionUser = {
+  uid: string;
+  email?: string;
+  role?: string;
+  tenantId?: string;
+};
 
+// 🔐 Get user from session cookie
+export async function getUserFromSession(): Promise<SessionUser | null> {
   try {
-    const decodedClaims = await adminAuth.verifySessionCookie(sessionCookie, true);
-    const userDoc = await adminDb.collection("users").doc(decodedClaims.uid).get();
+    const session = cookies().get("session")?.value;
 
-    if (!userDoc.exists) return null;
+    if (!session) return null;
 
-    const userData = userDoc.data();
-    
-    // اگر رول غائب ہے تو محفوظ طریقے سے Null ریٹرن کریں
-    if (!userData?.role) return null;
-    
+    const decoded = await adminAuth.verifySessionCookie(session);
+
     return {
-      uid: decodedClaims.uid,
-      email: userData.email,
-      role: userData.role,
-      name: userData.name,
+      uid: decoded.uid,
+      email: decoded.email,
+      role: decoded.role,        // 🔥 from custom claims
+      tenantId: decoded.tenantId // 🔥 from custom claims
     };
   } catch (error) {
-    console.error("Session verification failed:", error);
     return null;
   }
-}
-
-// یہ ہیلپر (Helper) ہمیں ہر API میں رول چیک کرنے میں مدد دے گا
-export function requireRole(user: any, requiredRole: string) {
-  if (!user || !user.role) return false;
-  return user.role === requiredRole;
 }
