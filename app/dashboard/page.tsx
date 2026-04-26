@@ -1,112 +1,161 @@
-"use client";
-import React, { useState, useEffect } from "react";
-import { Users, Briefcase, GraduationCap, Loader2, AlertCircle, Settings as SettingsIcon, ArrowRight } from "lucide-react";
-import { useRouter } from "next/navigation";
+import React from "react";
+import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
+import { adminAuth, adminDb } from "@/lib/firebase-admin";
+import Link from "next/link";
+import { 
+  Users, Briefcase, ClipboardCheck, Wallet, 
+  ArrowRight, ShieldCheck, Activity, TrendingUp 
+} from "lucide-react";
 
-export default function DashboardPage() {
-  const router = useRouter();
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [stats, setStats] = useState({ studentsCount: 0, staffCount: 0 });
-  const [isSetupComplete, setIsSetupComplete] = useState(true); // 👈 نیا اسٹیٹ
+export default async function DashboardPage() {
+  // 1. 🔒 سیکیورٹی چیک: سیشن کوکی پکڑیں
+  const sessionCookie = cookies().get("session")?.value;
+  if (!sessionCookie) redirect("/login");
 
-  useEffect(() => {
-    const fetchDashboardData = async () => {
-      try {
-        const [studentsRes, staffRes, settingsRes] = await Promise.all([
-          fetch("/api/students", { credentials: "include" }),
-          fetch("/api/staff", { credentials: "include" }),
-          fetch("/api/settings", { credentials: "include" }) // 👈 سیٹنگز بھی منگوائیں
-        ]);
+  let decodedClaims;
+  let tenantData;
+  let stats = { students: 0, staff: 0, todayAttendance: 0, fees: 0 };
 
-        if (studentsRes.status === 401 || studentsRes.status === 403) {
-           window.location.href = "/login"; 
-           return;
-        }
+  try {
+    // 2. کوکی کو وویریفائی کر کے یوزر اور Tenant ID نکالیں
+    decodedClaims = await adminAuth.verifySessionCookie(sessionCookie, true);
+    const tenantId = decodedClaims.tenantId;
+    
+    // 3. فائر بیس سے Tenant (اسکول) کا ڈیٹا منگوائیں
+    const tenantDoc = await adminDb.collection("tenants").doc(tenantId).get();
+    tenantData = tenantDoc.data();
 
-        const studentsData = studentsRes.ok ? await studentsRes.json() : [];
-        const staffData = staffRes.ok ? await staffRes.json() : [];
-        const settingsData = settingsRes.ok ? await settingsRes.json() : [];
+    // 🚀 اگر سیٹ اپ مکمل نہیں ہوا، تو زبردستی Wizard پر بھیج دیں
+    if (!tenantData?.setupCompleted) {
+       redirect("/setup"); 
+    }
 
-        // 🛡️ CRITICAL FIX: چیک کریں کہ کیا اسکول نے کوئی کلاس بنائی ہے؟
-        // اگر سیٹنگز کا ڈاکومنٹ نہیں ہے یا اس میں کلاسز کی ایری (Array) خالی ہے
-        if (!settingsData || settingsData.length === 0 || !settingsData[0].classes || settingsData[0].classes.length === 0) {
-            setIsSetupComplete(false); // 👈 سیٹ اپ نامکمل ہے!
-        }
+    // 4. 📊 سمارٹ کاؤنٹس (Smart Aggregation) - یہ پورے ڈاکومنٹس ریڈ نہیں کرتا، صرف گنتی کرتا ہے (پیسے بچاتا ہے)
+    const [studentsSnap, staffSnap] = await Promise.all([
+      adminDb.collection("students").where("tenantId", "==", tenantId).count().get(),
+      adminDb.collection("staff").where("tenantId", "==", tenantId).count().get()
+    ]);
 
-        setStats({
-          studentsCount: Array.isArray(studentsData) ? studentsData.length : 0,
-          staffCount: Array.isArray(staffData) ? staffData.length : 0,
-        });
-        
-        setLoading(false);
-      } catch (err: any) {
-        console.error("Dashboard Error:", err);
-        setError("Network delay or isolated workspace not fully initialized.");
-        setLoading(false);
-      }
-    };
-    fetchDashboardData();
-  }, [router]);
+    stats.students = studentsSnap.data().count;
+    stats.staff = staffSnap.data().count;
 
-  if (loading) return (
-     <div className="flex flex-col items-center justify-center min-h-[60vh] animate-fade-in"><Loader2 className="animate-spin text-blue-500 mb-4" size={48} /><h2 className="text-xl font-black text-[#0F172A] uppercase tracking-widest">Syncing Workspace...</h2></div>
-  );
+  } catch (error) {
+    console.error("Dashboard Auth Error:", error);
+    redirect("/login");
+  }
+
+  // 🎨 ڈیش بورڈ کے کارڈز کا ڈیٹا
+  const STAT_CARDS = [
+    { title: "Total Students", value: stats.students, icon: Users, color: "bg-blue-50 text-blue-600", border: "border-blue-100" },
+    { title: "Active Staff", value: stats.staff, icon: Briefcase, color: "bg-indigo-50 text-indigo-600", border: "border-indigo-100" },
+    { title: "Today's Attendance", value: "---", icon: ClipboardCheck, color: "bg-emerald-50 text-emerald-600", border: "border-emerald-100" },
+    { title: "Revenue (This Month)", value: "Rs 0", icon: Wallet, color: "bg-amber-50 text-amber-600", border: "border-amber-100" },
+  ];
 
   return (
-    <div className="animate-fade-in space-y-6 pb-20 w-full">
-      <div>
-        <h1 className="text-2xl font-extrabold text-[#0F172A] tracking-tight uppercase">Command Centre</h1>
-        <p className="text-sm text-slate-500 mt-1 font-bold">Welcome to your secure EduPilot workspace.</p>
+    <div className="animate-fade-in space-y-8 pb-20 w-full">
+      
+      {/* 🌟 ہیڈر سیکشن */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 md:p-8 rounded-3xl border border-slate-100 shadow-sm relative overflow-hidden w-full">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-blue-50 rounded-full blur-3xl opacity-50 -translate-y-1/2 translate-x-1/3"></div>
+        <div className="relative z-10">
+          <div className="flex items-center gap-2 mb-2">
+            <ShieldCheck className="text-emerald-500" size={20} />
+            <span className="text-[10px] font-black text-emerald-600 uppercase tracking-widest bg-emerald-50 px-2 py-1 rounded-md border border-emerald-100">
+              Verified Tenant Identity
+            </span>
+          </div>
+          <h1 className="text-3xl font-black text-[#0F172A] tracking-tight uppercase">
+            {tenantData?.name || "Command Centre"}
+          </h1>
+          <p className="text-sm font-bold text-slate-500 mt-1 uppercase tracking-widest">
+            Welcome back to your secure workspace
+          </p>
+        </div>
+        <div className="relative z-10 flex items-center gap-3 bg-slate-50 p-4 rounded-2xl border border-slate-200">
+          <Activity className="text-blue-500 animate-pulse" size={24} />
+          <div>
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">System Status</p>
+            <p className="text-sm font-black text-[#0F172A] uppercase">All Systems Optimal</p>
+          </div>
+        </div>
       </div>
 
-      {error && (
-        <div className="bg-orange-50 border border-orange-200 p-4 rounded-2xl flex items-center gap-3 text-orange-700 font-bold mb-6">
-          <AlertCircle size={20} /> {error}
-        </div>
-      )}
-
-      {/* 🔥 THE MAGIC: Empty State / Setup Guide */}
-      {!isSetupComplete && (
-         <div className="bg-yellow-50 border-2 border-yellow-400 p-6 rounded-3xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 mb-8 animate-fade-in-up shadow-md">
-            <div>
-               <h3 className="font-black text-yellow-800 text-lg uppercase flex items-center gap-2"><AlertCircle size={20}/> Action Required: Workspace Not Configured</h3>
-               <p className="text-sm font-bold text-yellow-700 mt-1">To start adding students or staff, you must first define your school's classes and sections.</p>
+      {/* 📊 اسٹیٹس کارڈز (Stats Grid) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 w-full">
+        {STAT_CARDS.map((stat, idx) => (
+          <div key={idx} className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
+            <div className={`absolute top-0 right-0 p-4 ${stat.color} rounded-bl-3xl border-b border-l ${stat.border}`}>
+              <stat.icon size={24} />
             </div>
-            <button 
-               onClick={() => router.push("/settings")} 
-               className="bg-yellow-500 text-yellow-950 px-6 py-3 rounded-xl font-black text-sm uppercase tracking-widest flex items-center gap-2 hover:bg-yellow-600 transition-all shrink-0 shadow-sm"
-            >
-               Go to Admin Settings <ArrowRight size={16}/>
-            </button>
-         </div>
-      )}
+            <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest mt-2">{stat.title}</p>
+            <h2 className="text-4xl font-black text-[#0F172A] mt-2 group-hover:scale-105 transition-transform origin-left">
+              {stat.value}
+            </h2>
+          </div>
+        ))}
+      </div>
 
-      {/* ✅ اصل ڈیش بورڈ کے کارڈز (یہ تب بھی نظر آئیں گے، لیکن 0 کے ساتھ) */}
-      <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 ${!isSetupComplete ? "opacity-50 pointer-events-none" : ""}`}>
-        <div className="bg-gradient-to-br from-blue-500 to-blue-700 rounded-3xl p-6 text-white shadow-lg relative overflow-hidden">
-           <GraduationCap size={100} className="absolute -right-4 -bottom-4 opacity-20" />
-           <div className="relative z-10">
-              <p className="text-blue-100 font-black text-xs uppercase tracking-widest mb-1">Total Enrolled</p>
-              <h2 className="text-5xl font-black">{stats.studentsCount}</h2>
+      {/* ⚡ کوئیک ایکشنز (Quick Actions) */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 w-full">
+        
+        <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
+          <div className="flex items-center gap-2 mb-6">
+            <TrendingUp className="text-blue-500" size={20} />
+            <h3 className="text-sm font-black text-[#0F172A] uppercase tracking-widest">Quick Actions</h3>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Link href="/students" className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-200 hover:border-blue-300 hover:bg-blue-50 transition-colors group">
+              <div>
+                <p className="font-black text-[#0F172A] text-sm uppercase">Add Student</p>
+                <p className="text-[10px] font-bold text-slate-500 uppercase">New Admission</p>
+              </div>
+              <ArrowRight size={16} className="text-slate-400 group-hover:text-blue-600 group-hover:translate-x-1 transition-transform" />
+            </Link>
+            
+            <Link href="/attendance" className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-200 hover:border-emerald-300 hover:bg-emerald-50 transition-colors group">
+              <div>
+                <p className="font-black text-[#0F172A] text-sm uppercase">Attendance</p>
+                <p className="text-[10px] font-bold text-slate-500 uppercase">Mark Daily Register</p>
+              </div>
+              <ArrowRight size={16} className="text-slate-400 group-hover:text-emerald-600 group-hover:translate-x-1 transition-transform" />
+            </Link>
+
+            <Link href="/fees" className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-200 hover:border-amber-300 hover:bg-amber-50 transition-colors group">
+              <div>
+                <p className="font-black text-[#0F172A] text-sm uppercase">Collect Fee</p>
+                <p className="text-[10px] font-bold text-slate-500 uppercase">Issue Receipt</p>
+              </div>
+              <ArrowRight size={16} className="text-slate-400 group-hover:text-amber-600 group-hover:translate-x-1 transition-transform" />
+            </Link>
+
+            <Link href="/settings" className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-200 hover:border-indigo-300 hover:bg-indigo-50 transition-colors group">
+              <div>
+                <p className="font-black text-[#0F172A] text-sm uppercase">Settings</p>
+                <p className="text-[10px] font-bold text-slate-500 uppercase">System Config</p>
+              </div>
+              <ArrowRight size={16} className="text-slate-400 group-hover:text-indigo-600 group-hover:translate-x-1 transition-transform" />
+            </Link>
+          </div>
+        </div>
+
+        <div className="bg-slate-900 p-8 rounded-3xl border border-slate-800 shadow-lg text-white flex flex-col justify-center relative overflow-hidden">
+           <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500 rounded-full blur-[100px] opacity-20"></div>
+           <h3 className="text-xl font-black uppercase tracking-tight mb-2 relative z-10">System Ready</h3>
+           <p className="text-sm font-bold text-slate-400 mb-6 relative z-10">
+             Your workspace is fully isolated and secure. Multi-tenant architecture is actively protecting your data.
+           </p>
+           <div className="flex gap-2 relative z-10">
+              <span className="bg-slate-800 text-emerald-400 px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest border border-slate-700 flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> Protected
+              </span>
+              <span className="bg-slate-800 text-blue-400 px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest border border-slate-700">
+                v2.0 Active
+              </span>
            </div>
         </div>
 
-        <div className="bg-gradient-to-br from-[#0F172A] to-slate-800 rounded-3xl p-6 text-white shadow-lg relative overflow-hidden">
-           <Briefcase size={100} className="absolute -right-4 -bottom-4 opacity-20" />
-           <div className="relative z-10">
-              <p className="text-slate-400 font-black text-xs uppercase tracking-widest mb-1">Total Employees</p>
-              <h2 className="text-5xl font-black">{stats.staffCount}</h2>
-           </div>
-        </div>
-
-        <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm flex flex-col justify-center">
-           <p className="text-slate-400 font-black text-xs uppercase tracking-widest mb-4">System Status</p>
-           <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-green-100 text-green-600 rounded-full flex items-center justify-center"><div className="w-4 h-4 bg-green-500 rounded-full animate-pulse"></div></div>
-              <div><h3 className="font-black text-[#0F172A] uppercase">Tenant Isolated</h3><p className="text-xs font-bold text-slate-500">100% Secure</p></div>
-           </div>
-        </div>
       </div>
     </div>
   );
