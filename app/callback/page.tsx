@@ -14,7 +14,7 @@ export default function CallbackPage() {
         const result = await getRedirectResult(auth);
 
         if (!result?.user) {
-          // اگر کوئی رزلٹ نہیں ہے (مطلب یوزر نے ڈائریکٹ یہ پیج کھولا ہے)، تو لاگ ان پر واپس بھیجیں
+          // اگر کوئی رزلٹ نہیں ہے تو واپس لاگ ان پر بھیجیں
           window.location.href = "/login";
           return;
         }
@@ -38,7 +38,7 @@ export default function CallbackPage() {
 
         setStatus("Routing to Command Centre...");
 
-        // 4. 🔥 THE SMART ROUTING (یہاں فیصلہ ہوگا کہ یوزر کہاں جائے گا)
+        // 4. 🔥 THE SMART ROUTING
         const claims = idTokenResult.claims || {};
         
         setTimeout(() => {
@@ -47,7 +47,7 @@ export default function CallbackPage() {
           } else {
             window.location.href = "/signup"; // نیا یوزر (Setup Wizard)
           }
-        }, 1000);
+        }, 1500);
 
       } catch (e) {
         console.error("CALLBACK ERROR:", e);
