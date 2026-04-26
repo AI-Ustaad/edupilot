@@ -1,58 +1,38 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { getUserFromSession } from "@/lib/auth-utils";
 
-export async function middleware(req: NextRequest) {
-  const session = req.cookies.get("session")?.value;
-
+export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
-  // 🔐 Protected Routes
-  const protectedRoutes = [
-    "/dashboard",
-    "/students",
-    "/staff",
-    "/attendance",
-    "/classes",
-    "/fees",
-    "/settings",
-    "/timetable",
-    "/student-profile",
-  ];
+  // Public routes (no auth required)
+  const publicRoutes = ["/login", "/callback", "/signup"];
 
-  const isProtected = protectedRoutes.some((route) =>
-    pathname.startsWith(route)
-  );
+  if (publicRoutes.includes(pathname)) {
+    return NextResponse.next();
+  }
 
-  // ❌ Not logged in → redirect to login
-  if (isProtected && !session) {
+  // Check session cookie
+  const session = req.cookies.get("session")?.value;
+
+  // If no session → redirect to login
+  if (!session) {
     return NextResponse.redirect(new URL("/login", req.url));
   }
 
-  // 🔍 Get user from session
-  let user = null;
-  if (session) {
-    try {
-      user = await getUserFromSession(session);
-    } catch (err) {
-      console.error("Session error:", err);
-    }
-  }
-
-  // 🚧 Setup not completed → force setup page
-  if (user && !user.setupCompleted && pathname !== "/setup") {
-    return NextResponse.redirect(new URL("/setup", req.url));
-  }
-
-  // 🔁 Already logged in → prevent going back to login
-  if (pathname === "/login" && session) {
-    return NextResponse.redirect(new URL("/dashboard", req.url));
-  }
-
+  // If logged in → allow access
   return NextResponse.next();
 }
 
-// ⚙️ Where middleware runs
+// Apply middleware only on these routes
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|api).*)"],
+  matcher: [
+    "/dashboard/:path*",
+    "/students/:path*",
+    "/attendance/:path*",
+    "/staff/:path*",
+    "/fees/:path*",
+    "/classes/:path*",
+    "/timetable/:path*",
+    "/settings/:path*",
+  ],
 };
