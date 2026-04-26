@@ -6,30 +6,40 @@ export async function POST(req: Request) {
     const { idToken } = await req.json();
 
     if (!idToken) {
-      return NextResponse.json({ error: "No token" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Missing token" },
+        { status: 400 }
+      );
     }
 
-    // 5 days
+    // Verify Firebase ID Token
+    const decodedToken = await adminAuth.verifyIdToken(idToken);
+
+    // Create session cookie (valid for 5 days)
     const expiresIn = 60 * 60 * 24 * 5 * 1000;
 
-    // Create session cookie
     const sessionCookie = await adminAuth.createSessionCookie(idToken, {
       expiresIn,
     });
 
-    const res = NextResponse.json({ success: true });
+    const response = NextResponse.json({ status: "success" });
 
     // Set secure cookie
-    res.cookies.set("session", sessionCookie, {
+    response.cookies.set("session", sessionCookie, {
       httpOnly: true,
       secure: true,
-      path: "/",
-      maxAge: expiresIn,
       sameSite: "lax",
+      path: "/",
+      maxAge: expiresIn / 1000,
     });
 
-    return res;
-  } catch {
-    return NextResponse.json({ error: "Session error" }, { status: 401 });
+    return response;
+  } catch (error) {
+    console.error("SESSION ERROR:", error);
+
+    return NextResponse.json(
+      { error: "Unauthorized" },
+      { status: 401 }
+    );
   }
 }
