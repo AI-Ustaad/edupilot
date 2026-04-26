@@ -11,9 +11,9 @@ export default function LoginForm() {
     setLoading(true);
     try {
       const provider = new GoogleAuthProvider();
-      // 🔥 THE FIX: Popup کی جگہ Redirect (یہ کبھی بلاک نہیں ہوتا)
+      // 🔥 THE PRO FIX: ہم Popup کی جگہ Redirect استعمال کر رہے ہیں
       await signInWithRedirect(auth, provider);
-      // نوٹ: اس کے بعد کوئی کوڈ نہیں چلے گا کیونکہ پیج گوگل پر چلا جائے گا
+      // اس کے بعد کوئی کوڈ نہیں چلے گا کیونکہ پیج گوگل پر چلا جائے گا
     } catch (err: any) {
       console.error("Login Error:", err);
       setLoading(false);
