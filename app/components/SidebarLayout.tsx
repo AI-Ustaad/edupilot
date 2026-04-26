@@ -15,13 +15,13 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [role, setRole] = useState<string>("loading");
 
-  // 👉 1. لاگ ان اور سائن اپ پیج پر سائیڈ بار چھپانے کی لاجک
+  // 👉 1. لاگ ان، سائن اپ اور مین پیج پر سائیڈ بار چھپانے کی لاجک
   const isAuthPage = pathname === "/login" || pathname === "/signup" || pathname === "/";
 
   useEffect(() => {
     if (isAuthPage) return; // لاگ ان پیج پر API کال کرنے کی ضرورت نہیں
 
-    // 👉 2. CRITICAL FIX: credentials: "include" کا اضافہ کیا گیا ہے
+    // رول (Role) فیچ کریں
     fetch("/api/users/get", { credentials: "include" })
       .then(res => res.json())
       .then(data => setRole(data.role || "teacher"))
@@ -49,7 +49,8 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
     try {
       await signOut(auth); 
       await fetch("/api/auth/logout", { method: "POST", credentials: "include" }); 
-      window.location.href = "/login"; 
+      // 👉 2. THE FIX: اب یوزر لاگ آؤٹ ہو کر سیدھا مین لینڈنگ پیج پر جائے گا
+      window.location.href = "/"; 
     } catch (error) {
       console.error("Logout failed", error);
     }
@@ -72,7 +73,7 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
               </div>
             ) : (
               visibleMenus.map((item) => {
-                 const isActive = pathname.startsWith(item.path); // Active state logic improved
+                 const isActive = pathname.startsWith(item.path); 
                  return (
                    <Link 
                      key={item.name} 
@@ -107,7 +108,6 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
         <button className="md:hidden fixed top-4 right-4 z-50 p-2 bg-white border border-slate-200 text-slate-600 rounded-lg shadow-sm hover:bg-slate-50" onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}>
           {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
         </button>
-        {/* 👉 اصل پیج کا کنٹینٹ یہاں لوڈ ہوگا */}
         <div className="p-4 md:p-8 max-w-[1600px] mx-auto">{children}</div>
       </div>
 
