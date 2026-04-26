@@ -1,283 +1,215 @@
 "use client";
 import React, { useState, useEffect } from "react";
-import { collection, onSnapshot, query, setDoc, doc, serverTimestamp, deleteDoc } from "firebase/firestore";
-import { db } from "@/lib/firebase";
-import { 
-  Wallet, Search, Save, CheckCircle2, AlertCircle, 
-  Users, Trash2, Edit3, Loader2, Calendar, FileText
-} from "lucide-react";
+import { Wallet, CheckCircle2, AlertCircle, Search, Loader2, Receipt, CreditCard } from "lucide-react";
 
-export default function FeeCollectionPage() {
+export default function FeesPage() {
   const [isMounted, setIsMounted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
 
-  // Data States
   const [students, setStudents] = useState<any[]>([]);
-  const [feeRecords, setFeeRecords] = useState<any[]>([]);
-  
-  // Search & Select
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedStudent, setSelectedStudent] = useState<any | null>(null);
+  const [transactions, setTransactions] = useState<any[]>([]);
+  const [searchTerm, setSearchTerm] = useState("");
 
-  // Form State
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [feeMonth, setFeeMonth] = useState("");
-  const [amountPaid, setAmountPaid] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState("Cash");
-  const [status, setStatus] = useState("Paid");
-  const [remarks, setRemarks] = useState("");
+  const [formData, setFormData] = useState({
+    studentId: "",
+    studentName: "",
+    rollNumber: "",
+    classGrade: "",
+    feeMonth: new Date().toLocaleString('default', { month: 'long', year: 'numeric' }),
+    amountPaid: "",
+    paymentMethod: "Cash",
+    remarks: ""
+  });
 
   useEffect(() => {
     setIsMounted(true);
-    // Fetch Students for the Dropdown/Search
-    const unsubStudents = onSnapshot(query(collection(db, "students")), (snap) => {
-      setStudents(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-    });
-    // Fetch Live Fee Ledger
-    const unsubFees = onSnapshot(query(collection(db, "fees")), (snap) => {
-      setFeeRecords(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-    });
-    return () => { unsubStudents(); unsubFees(); };
+    fetchData();
   }, []);
 
-  const filteredStudents = students.filter(s => {
-    if (!searchQuery) return true;
-    const q = searchQuery.toLowerCase();
-    return (s.name?.toLowerCase().includes(q) || s.rollNumber?.toString().includes(q) || s.classGrade?.toLowerCase().includes(q));
-  }).slice(0, 5); // Show top 5 matches in dropdown
+  const fetchData = async () => {
+    try {
+      // 1. ڈراپ ڈاؤن کے لیے سٹوڈنٹس منگوائیں
+      const stuRes = await fetch("/api/students", { credentials: "include" });
+      if (stuRes.ok) setStudents(await stuRes.json());
 
-  const resetForm = () => {
-    setEditingId(null);
-    setSelectedStudent(null);
-    setFeeMonth("");
-    setAmountPaid("");
-    setPaymentMethod("Cash");
-    setStatus("Paid");
-    setRemarks("");
+      // 2. پچھلی فیس کی ہسٹری منگوائیں
+      const feeRes = await fetch("/api/fees", { credentials: "include" });
+      if (feeRes.ok) setTransactions(await feeRes.json());
+    } catch (error) {
+      console.error("Data Fetch Error:", error);
+    }
   };
 
-  const handleSaveFee = async () => {
-    if (!selectedStudent || !feeMonth || !amountPaid) return alert("Please select a student, month, and enter the amount.");
+  const handleStudentSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const student = students.find(s => s.id === e.target.value);
+    if (student) {
+      setFormData({
+        ...formData,
+        studentId: student.id,
+        studentName: student.name,
+        rollNumber: student.rollNumber,
+        classGrade: `${student.classGrade} ${student.section ? `- ${student.section}` : ""}`
+      });
+    } else {
+       setFormData({ ...formData, studentId: "", studentName: "", rollNumber: "", classGrade: "" });
+    }
+  };
+
+  const handleSavePayment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formData.studentId) return setErrorMsg("Please select a student first.");
     
     setLoading(true);
+    setErrorMsg("");
+    setSuccess(false);
+
     try {
-      // If creating new, generate a unique ID based on student and timestamp
-      const docId = editingId || `${selectedStudent.id}_${Date.now()}`;
-      
-      await setDoc(doc(db, "fees", docId), {
-        studentId: selectedStudent.id,
-        studentName: selectedStudent.name,
-        classGrade: selectedStudent.classGrade,
-        rollNumber: selectedStudent.rollNumber,
-        feeMonth,
-        amountPaid: Number(amountPaid),
-        paymentMethod,
-        status,
-        remarks,
-        updatedAt: serverTimestamp()
-      }, { merge: true });
+      const res = await fetch("/api/fees", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData),
+        credentials: "include"
+      });
+
+      if (!res.ok) throw new Error("Failed to save transaction.");
 
       setSuccess(true);
-      resetForm();
-      setSearchQuery("");
+      setFormData({ ...formData, amountPaid: "", remarks: "" }); // Reset amount but keep month
+      fetchData(); // Refresh history
       setTimeout(() => setSuccess(false), 3000);
-    } catch (err) {
-      alert("Failed to save fee record.");
+    } catch (error) {
+      setErrorMsg("Error processing payment. Ensure you have network connectivity.");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleEditFee = (record: any) => {
-    setEditingId(record.id);
-    setSelectedStudent({
-       id: record.studentId, name: record.studentName, classGrade: record.classGrade, rollNumber: record.rollNumber 
-    });
-    setFeeMonth(record.feeMonth || "");
-    setAmountPaid(record.amountPaid?.toString() || "");
-    setPaymentMethod(record.paymentMethod || "Cash");
-    setStatus(record.status || "Paid");
-    setRemarks(record.remarks || "");
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
-  const handleDeleteFee = async (id: string) => {
-    if(confirm("Are you sure you want to delete this fee record? It will be removed from financial analytics.")) {
-      try { 
-         await deleteDoc(doc(db, "fees", id)); 
-         if(editingId === id) resetForm(); 
-      } catch (err) { alert("Failed to delete."); }
-    }
-  };
-
   if (!isMounted) return null;
 
+  const filteredTransactions = transactions.filter(t => 
+    t.studentName?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    t.rollNumber?.toString().includes(searchTerm)
+  );
+
   return (
-    <div className="animate-fade-in space-y-6 pb-20">
+    <div className="animate-fade-in space-y-6 pb-20 w-full max-w-[1400px] mx-auto">
       
-      {/* HEADER */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-6 md:p-8 rounded-3xl border border-slate-100 shadow-sm w-full">
         <div>
-          <h1 className="text-2xl font-extrabold text-[#0F172A] tracking-tight flex items-center gap-3">
-            <Wallet className="text-[#3ac47d]"/> Fee Collection Manager
+          <h1 className="text-2xl font-extrabold text-[#0F172A] tracking-tight uppercase flex items-center gap-2">
+            <Wallet className="text-amber-500" size={28}/> Fee Management
           </h1>
-          <p className="text-sm text-slate-500 mt-1">Record, edit, and track student payments securely.</p>
+          <p className="text-sm text-slate-500 mt-1 uppercase tracking-widest font-bold">Process payments & generate receipts</p>
         </div>
-        {editingId && (
-           <button onClick={resetForm} className="bg-white border border-slate-200 text-slate-600 px-6 py-2 rounded-xl font-bold shadow-sm hover:bg-slate-50">
-             Cancel Edit
-           </button>
-        )}
+        <div className="bg-amber-50 text-amber-700 px-4 py-2 rounded-xl font-black uppercase text-sm border border-amber-100">
+           Total Collected: Rs {transactions.reduce((sum, t) => sum + Number(t.amountPaid || 0), 0).toLocaleString()}
+        </div>
       </div>
 
-      {success && <div className="bg-green-50 text-green-700 p-4 rounded-xl flex items-center gap-3 border border-green-100 font-bold"><CheckCircle2 size={20}/> Fee Record Saved Successfully!</div>}
+      {success && (
+        <div className="bg-green-50 text-green-700 p-4 rounded-xl flex items-center gap-3 border border-green-100 font-bold uppercase animate-fade-in-down w-full shadow-sm">
+          <CheckCircle2 size={20}/> Payment processed successfully!
+        </div>
+      )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-         
-         {/* --- LEFT: FEE ENTRY FORM --- */}
-         <div className="lg:col-span-4 space-y-6">
-            <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100">
-               <h2 className="font-black text-[#0F172A] text-lg mb-6 flex items-center gap-2">
-                 <FileText size={18} className="text-[#3ac47d]"/> 
-                 {editingId ? "Update Receipt" : "Generate Receipt"}
-               </h2>
+      {errorMsg && (
+        <div className="bg-red-50 text-red-600 p-4 rounded-xl flex items-center gap-3 border border-red-100 font-bold uppercase animate-fade-in-down w-full shadow-sm">
+          <AlertCircle size={20}/> {errorMsg}
+        </div>
+      )}
 
-               {/* Student Search (Disabled during edit to prevent mixing records) */}
-               <div className="space-y-2 mb-6 relative">
-                 <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Select Student</label>
-                 {selectedStudent ? (
-                    <div className="flex justify-between items-center bg-[#f0fdf4] border border-green-200 p-3 rounded-xl">
-                       <div>
-                         <p className="font-black text-green-800 text-sm">{selectedStudent.name}</p>
-                         <p className="text-[10px] font-bold text-green-600 uppercase">Roll: {selectedStudent.rollNumber} • {selectedStudent.classGrade}</p>
-                       </div>
-                       {!editingId && <button onClick={() => setSelectedStudent(null)} className="text-green-500 hover:text-green-700"><Trash2 size={16}/></button>}
-                    </div>
-                 ) : (
-                    <div>
-                      <div className="relative">
-                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                         <input type="text" placeholder="Search by name or roll no..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-4 py-3 text-sm font-bold outline-none focus:border-[#3ac47d] transition-colors" />
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        
+        {/* 👉 FORM: Collect Fee */}
+        <div className="lg:col-span-1 bg-white rounded-3xl p-6 shadow-sm border border-slate-100 h-fit">
+          <div className="flex items-center gap-2 mb-6 border-b border-slate-100 pb-4">
+             <CreditCard className="text-slate-400" size={20}/>
+             <h2 className="text-lg font-black text-[#0F172A] uppercase">New Payment</h2>
+          </div>
+          
+          <form onSubmit={handleSavePayment} className="space-y-5">
+            <div className="space-y-1">
+               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Select Student</label>
+               <select required value={formData.studentId} onChange={handleStudentSelect} className="w-full bg-slate-50 outline-none rounded-xl px-4 py-3 text-sm font-bold border border-slate-200 focus:border-amber-500 uppercase">
+                  <option value="" disabled>-- Choose Student --</option>
+                  {students.map(s => (
+                     <option key={s.id} value={s.id}>{s.name} (Roll: {s.rollNumber}) - {s.classGrade}</option>
+                  ))}
+               </select>
+            </div>
+
+            {formData.studentId && (
+              <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 text-sm font-bold uppercase text-slate-600">
+                 <p>Class: <span className="text-slate-900">{formData.classGrade}</span></p>
+                 <p>Roll No: <span className="text-slate-900">{formData.rollNumber}</span></p>
+              </div>
+            )}
+
+            <div className="space-y-1">
+               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Fee Month</label>
+               <input required type="text" value={formData.feeMonth} onChange={e => setFormData({...formData, feeMonth: e.target.value})} placeholder="e.g. April 2026" className="w-full bg-slate-50 outline-none rounded-xl px-4 py-3 text-sm font-bold border border-slate-200 focus:border-amber-500 uppercase" />
+            </div>
+
+            <div className="space-y-1">
+               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Amount Paid (Rs)</label>
+               <input required type="number" min="0" value={formData.amountPaid} onChange={e => setFormData({...formData, amountPaid: e.target.value})} placeholder="0.00" className="w-full bg-amber-50 outline-none rounded-xl px-4 py-3 text-lg font-black border border-amber-200 text-amber-900 focus:border-amber-500" />
+            </div>
+
+            <div className="space-y-1">
+               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Payment Method</label>
+               <select required value={formData.paymentMethod} onChange={e => setFormData({...formData, paymentMethod: e.target.value})} className="w-full bg-slate-50 outline-none rounded-xl px-4 py-3 text-sm font-bold border border-slate-200 focus:border-amber-500 uppercase">
+                  <option>Cash</option>
+                  <option>Bank Transfer</option>
+                  <option>Online / JazzCash</option>
+               </select>
+            </div>
+
+            <button disabled={loading} type="submit" className="w-full bg-[#0F172A] text-white py-4 rounded-xl font-black text-sm flex items-center justify-center gap-2 hover:bg-amber-500 transition-all shadow-lg disabled:opacity-50 uppercase tracking-widest mt-4">
+               {loading ? <><Loader2 size={18} className="animate-spin"/> Processing...</> : <><Receipt size={18}/> Process Payment</>}
+            </button>
+          </form>
+        </div>
+
+        {/* 👉 LEDGER: Transaction History */}
+        <div className="lg:col-span-2 bg-white rounded-3xl p-6 shadow-sm border border-slate-100 flex flex-col h-[800px]">
+           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 border-b border-slate-100 pb-4">
+              <h2 className="text-lg font-black text-[#0F172A] uppercase">Transaction Ledger</h2>
+              <div className="bg-slate-50 rounded-xl px-4 py-2 flex items-center gap-3 border border-slate-200 w-full sm:w-auto">
+                 <Search size={16} className="text-slate-400" />
+                 <input type="text" placeholder="Search roll no or name..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="bg-transparent outline-none text-sm font-bold uppercase w-full" />
+              </div>
+           </div>
+
+           <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 space-y-3">
+             {transactions.length === 0 ? (
+                <div className="h-full flex flex-col items-center justify-center text-slate-400 font-bold text-sm uppercase">
+                   <Receipt size={48} className="opacity-20 mb-4"/>
+                   No transactions recorded yet.
+                </div>
+             ) : (
+                filteredTransactions.map((t, idx) => (
+                   <div key={idx} className="flex flex-col sm:flex-row justify-between items-start sm:items-center bg-slate-50 border border-slate-100 p-4 rounded-2xl hover:border-amber-200 transition-colors gap-4">
+                      <div>
+                         <p className="font-black text-[#0F172A] uppercase text-sm">{t.studentName} <span className="text-xs text-slate-400 ml-2">Roll: {t.rollNumber}</span></p>
+                         <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">{t.classGrade} • {t.feeMonth}</p>
+                         <p className="text-[10px] font-bold text-slate-400 uppercase mt-1">{new Date(t.timestamp).toLocaleString()}</p>
                       </div>
-                      {searchQuery && (
-                         <div className="absolute z-10 w-full bg-white mt-2 border border-slate-100 shadow-xl rounded-xl overflow-hidden">
-                            {filteredStudents.length === 0 ? <p className="p-3 text-xs text-slate-400 font-bold text-center">No student found.</p> : filteredStudents.map(s => (
-                               <div key={s.id} onClick={() => { setSelectedStudent(s); setSearchQuery(""); }} className="p-3 hover:bg-slate-50 cursor-pointer border-b border-slate-50 flex justify-between items-center">
-                                  <p className="font-bold text-sm text-slate-700">{s.name}</p>
-                                  <p className="text-[10px] font-bold text-slate-400 bg-slate-100 px-2 py-1 rounded-md">{s.classGrade}</p>
-                               </div>
-                            ))}
-                         </div>
-                      )}
-                    </div>
-                 )}
-               </div>
-
-               {/* Fee Details */}
-               <div className="space-y-4">
-                  <div>
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Fee Month</label>
-                    <input type="month" value={feeMonth} onChange={(e) => setFeeMonth(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-[#3ac47d]" />
-                  </div>
-                  
-                  <div className="grid grid-cols-2 gap-4">
-                     <div>
-                       <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Amount Paid (Rs)</label>
-                       <input type="number" placeholder="e.g. 5000" value={amountPaid} onChange={(e) => setAmountPaid(e.target.value)} className="w-full bg-white border-2 border-slate-200 rounded-xl px-4 py-3 text-lg font-black outline-none focus:border-[#3ac47d] text-[#0F172A]" />
-                     </div>
-                     <div>
-                       <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Status</label>
-                       <select value={status} onChange={(e) => setStatus(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-[#3ac47d]">
-                          <option value="Paid">Paid in Full</option>
-                          <option value="Partial">Partial Payment</option>
-                       </select>
-                     </div>
-                  </div>
-
-                  <div>
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Payment Method</label>
-                    <select value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-[#3ac47d]">
-                       <option value="Cash">Cash</option><option value="Bank Transfer">Bank Transfer</option><option value="EasyPaisa/JazzCash">EasyPaisa / JazzCash</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Remarks (Optional)</label>
-                    <input type="text" placeholder="Transaction ID or notes..." value={remarks} onChange={(e) => setRemarks(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium outline-none focus:border-[#3ac47d]" />
-                  </div>
-
-                  <button onClick={handleSaveFee} disabled={loading || !selectedStudent || !amountPaid || !feeMonth} className="w-full bg-[#0F172A] text-white py-4 rounded-xl font-black text-lg hover:bg-slate-800 transition-all shadow-md flex items-center justify-center gap-3 disabled:opacity-50">
-                     {loading ? <Loader2 size={24} className="animate-spin"/> : <Save size={24}/>} 
-                     {editingId ? "Update Fee Record" : "Save Payment"}
-                  </button>
-               </div>
-            </div>
-         </div>
-
-         {/* --- RIGHT: FEE LEDGER (HISTORY) --- */}
-         <div className="lg:col-span-8">
-            <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
-               <div className="px-6 py-5 bg-[#0F172A] text-white flex justify-between items-center">
-                  <h2 className="font-black flex items-center gap-2"><Calendar size={18}/> Live Transactions Ledger</h2>
-                  <div className="bg-white/10 px-3 py-1 rounded-lg text-xs font-bold">{feeRecords.length} Entries</div>
-               </div>
-               
-               <div className="p-6">
-                 {feeRecords.length === 0 ? (
-                    <div className="text-center py-20 text-slate-400">
-                       <Wallet size={48} className="mx-auto mb-4 opacity-30"/>
-                       <h3 className="font-black text-lg">No Transactions Yet</h3>
-                       <p className="text-sm font-medium">Collect fees using the form to populate the ledger.</p>
-                    </div>
-                 ) : (
-                    <div className="overflow-x-auto">
-                       <table className="w-full text-left">
-                          <thead>
-                             <tr className="border-b-2 border-slate-200 text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                                <th className="pb-3 px-2">Student Details</th>
-                                <th className="pb-3 px-2">Fee Month</th>
-                                <th className="pb-3 px-2">Amount Paid</th>
-                                <th className="pb-3 px-2">Status & Method</th>
-                                <th className="pb-3 px-2 text-right">Actions</th>
-                             </tr>
-                          </thead>
-                          <tbody className="divide-y divide-slate-100">
-                             {feeRecords.sort((a,b) => b.updatedAt?.toMillis() - a.updatedAt?.toMillis()).map(record => (
-                                <tr key={record.id} className={`hover:bg-slate-50 transition-colors ${editingId === record.id ? 'bg-blue-50/50' : ''}`}>
-                                   <td className="py-4 px-2">
-                                      <p className="font-black text-slate-800 text-sm">{record.studentName}</p>
-                                      <p className="text-[10px] font-bold text-slate-500 uppercase">{record.classGrade} • Roll: {record.rollNumber}</p>
-                                   </td>
-                                   <td className="py-4 px-2 font-bold text-slate-600">{record.feeMonth}</td>
-                                   <td className="py-4 px-2 font-black text-[#0F172A] text-lg">Rs {record.amountPaid?.toLocaleString()}</td>
-                                   <td className="py-4 px-2">
-                                      <span className={`inline-block px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider mb-1 ${record.status === 'Paid' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}`}>
-                                         {record.status}
-                                      </span>
-                                      <p className="text-[10px] font-bold text-slate-400">{record.paymentMethod}</p>
-                                   </td>
-                                   
-                                   {/* 🚀 EDIT AND DELETE BUTTONS IN LEDGER */}
-                                   <td className="py-4 px-2 text-right">
-                                      <div className="flex justify-end gap-2">
-                                         <button onClick={() => handleEditFee(record)} className="bg-orange-50 text-orange-600 p-2 rounded-lg hover:bg-orange-100 transition-colors" title="Edit Record">
-                                            <Edit3 size={16}/>
-                                         </button>
-                                         <button onClick={() => handleDeleteFee(record.id)} className="bg-red-50 text-red-600 p-2 rounded-lg hover:bg-red-100 transition-colors" title="Delete Record">
-                                            <Trash2 size={16}/>
-                                         </button>
-                                      </div>
-                                   </td>
-                                </tr>
-                             ))}
-                          </tbody>
-                       </table>
-                    </div>
-                 )}
-               </div>
-            </div>
-         </div>
+                      <div className="flex items-center gap-4 w-full sm:w-auto justify-between sm:justify-end">
+                         <span className="bg-amber-100 text-amber-800 px-3 py-1 rounded-lg text-xs font-black uppercase border border-amber-200">
+                            {t.paymentMethod}
+                         </span>
+                         <span className="text-lg font-black text-green-600">
+                            Rs {Number(t.amountPaid).toLocaleString()}
+                         </span>
+                      </div>
+                   </div>
+                ))
+             )}
+           </div>
+        </div>
 
       </div>
     </div>
