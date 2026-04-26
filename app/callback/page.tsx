@@ -1,55 +1,79 @@
 "use client";
-
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { getAuth, getRedirectResult } from "firebase/auth";
-import app from "@/lib/firebase";
+import { useEffect, useState } from "react";
+import { getRedirectResult } from "firebase/auth";
+import { auth } from "@/lib/firebase";
+import { Loader2, ShieldCheck } from "lucide-react";
 
 export default function CallbackPage() {
-  const router = useRouter();
+  const [status, setStatus] = useState("Verifying Google Credentials...");
 
   useEffect(() => {
-    const run = async () => {
+    const processLogin = async () => {
       try {
-        const auth = getAuth(app);
-
-        // 1) Get Google redirect result
+        // 1. گوگل سے واپس آنے والا رزلٹ پکڑیں
         const result = await getRedirectResult(auth);
 
         if (!result?.user) {
-          router.replace("/login");
+          // اگر کوئی رزلٹ نہیں ہے (مطلب یوزر نے ڈائریکٹ یہ پیج کھولا ہے)، تو لاگ ان پر واپس بھیجیں
+          window.location.href = "/login";
           return;
         }
 
-        // 2) 🔥 FORCE NEW TOKEN (contains role + tenantId claims)
-        const idToken = await result.user.getIdToken(true);
+        setStatus("Securing Workspace Session...");
+        
+        // 2. ٹوکن اور کلیمز نکالیں
+        const idTokenResult = await result.user.getIdTokenResult(true);
+        const token = idTokenResult.token;
 
-        // 3) Send token to server → create session cookie
+        // 3. سرور پر کوکی (Cookie) بنائیں
         const res = await fetch("/api/auth/session", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ idToken }),
-          credentials: "include",
+          body: JSON.stringify({ idToken: token }),
         });
 
         if (!res.ok) {
-          router.replace("/login");
-          return;
+          throw new Error("Session creation failed");
         }
 
-        // 4) Go to dashboard
-        router.replace("/dashboard");
+        setStatus("Routing to Command Centre...");
+
+        // 4. 🔥 THE SMART ROUTING (یہاں فیصلہ ہوگا کہ یوزر کہاں جائے گا)
+        const claims = idTokenResult.claims || {};
+        
+        setTimeout(() => {
+          if (claims.tenantId) {
+            window.location.href = "/dashboard"; // پرانا یوزر
+          } else {
+            window.location.href = "/signup"; // نیا یوزر (Setup Wizard)
+          }
+        }, 1000);
+
       } catch (e) {
-        router.replace("/login");
+        console.error("CALLBACK ERROR:", e);
+        window.location.href = "/login";
       }
     };
 
-    run();
-  }, [router]);
+    processLogin();
+  }, []);
 
   return (
-    <div className="flex h-screen items-center justify-center">
-      Signing you in...
+    <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4">
+      <div className="bg-white p-10 rounded-3xl shadow-xl border border-slate-100 flex flex-col items-center text-center max-w-md w-full animate-fade-in-up">
+        <Loader2 size={48} className="animate-spin text-blue-600 mb-6" />
+        <h2 className="text-lg font-black text-[#0F172A] uppercase tracking-widest mb-2">
+          {status}
+        </h2>
+        <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+          Please do not close this window
+        </p>
+        
+        <div className="mt-8 flex items-center justify-center gap-2 text-emerald-600 bg-emerald-50 py-2 px-4 rounded-lg border border-emerald-100">
+          <ShieldCheck size={16} />
+          <span className="text-[10px] font-black uppercase tracking-widest">Authentication in progress</span>
+        </div>
+      </div>
     </div>
   );
 }
