@@ -6,7 +6,7 @@ export function middleware(req: NextRequest) {
   const session = req.cookies.get("session")?.value;
 
   // public routes (no auth required)
-  const publicRoutes = ["/login", "/callback"];
+  const publicRoutes = ["/login", "/callback", "/signup"]; // signup کو بھی public رکھا ہے تاکہ نیا یوزر پھنسے نہ
 
   if (!session && !publicRoutes.includes(pathname)) {
     return NextResponse.redirect(new URL("/login", req.url));
