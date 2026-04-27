@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { getRedirectResult } from "firebase/auth";
+import { getRedirectResult, onAuthStateChanged } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { Loader2 } from "lucide-react";
 
@@ -12,30 +12,41 @@ export default function CallbackPage() {
   useEffect(() => {
     const processLogin = async () => {
       try {
-        // 🔥 صرف Redirect کا رزلٹ پکڑیں
         const result = await getRedirectResult(auth);
+        let user = result?.user;
 
-        if (!result?.user) {
+        if (!user) {
+          user = await new Promise((resolve) => {
+            const unsub = onAuthStateChanged(auth, (u) => {
+              unsub();
+              resolve(u);
+            });
+          });
+        }
+
+        if (!user) {
           router.replace("/login");
           return;
         }
 
         setStatus("Securing Session...");
-        const idToken = await result.user.getIdToken(true);
+        const idToken = await user.getIdToken(true);
 
-        // سرور پر سیشن کوکی بھیجیں
         const res = await fetch("/api/auth/session", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ idToken }),
+          credentials: "include", 
         });
 
-        if (res.ok) {
-          setStatus("Redirecting to Dashboard...");
-          window.location.href = "/dashboard"; // ہارڈ ریفریش تاکہ سرور کوکی ریڈ کر لے
-        } else {
+        if (!res.ok) {
           router.replace("/login");
+          return;
         }
+
+        setStatus("Redirecting to Dashboard...");
+        window.location.href = "/dashboard"; 
+
       } catch (e) {
         console.error("Callback Error:", e);
         router.replace("/login");
