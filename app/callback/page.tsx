@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { getRedirectResult, onAuthStateChanged } from "firebase/auth";
+import { getRedirectResult, onAuthStateChanged, User } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { Loader2 } from "lucide-react";
 
@@ -13,9 +13,9 @@ export default function CallbackPage() {
   useEffect(() => {
     const processLogin = async () => {
       try {
-        let user = null;
+        let user: User | null = null;
 
-        // ✅ Step 1: Redirect result
+        // ✅ Step 1: redirect result
         const result = await getRedirectResult(auth);
         if (result?.user) {
           user = result.user;
@@ -23,7 +23,7 @@ export default function CallbackPage() {
 
         // ✅ Step 2: fallback (important)
         if (!user) {
-          user = await new Promise((resolve) => {
+          user = await new Promise<User | null>((resolve) => {
             const unsub = onAuthStateChanged(auth, (u) => {
               unsub();
               resolve(u);
@@ -31,7 +31,7 @@ export default function CallbackPage() {
           });
         }
 
-        // ❌ No user → back to login
+        // ❌ No user
         if (!user) {
           router.replace("/login");
           return;
@@ -54,8 +54,6 @@ export default function CallbackPage() {
         }
 
         setStatus("Redirecting to Dashboard...");
-
-        // ✅ IMPORTANT: hard reload
         window.location.href = "/dashboard";
 
       } catch (e) {
