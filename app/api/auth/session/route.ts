@@ -7,10 +7,11 @@ export async function POST(req: Request) {
     const { idToken } = await req.json();
 
     if (!idToken) {
-      return NextResponse.json({ error: "Missing token" }, { status: 400 });
+      return NextResponse.json({ error: "No token" }, { status: 400 });
     }
 
-    const decoded = await adminAuth.verifyIdToken(idToken);
+    await adminAuth.verifyIdToken(idToken);
+
     const expiresIn = 60 * 60 * 24 * 5 * 1000;
 
     const sessionCookie = await adminAuth.createSessionCookie(idToken, {
@@ -18,20 +19,17 @@ export async function POST(req: Request) {
     });
 
     cookies().set("session", sessionCookie, {
-      maxAge: expiresIn / 1000,
       httpOnly: true,
-      secure: true, // production only
-      sameSite: "lax",
+      secure: true,
+      maxAge: expiresIn / 1000,
       path: "/",
+      sameSite: "lax",
     });
 
-    return NextResponse.json({
-      status: "success",
-      uid: decoded.uid,
-    });
+    return NextResponse.json({ success: true });
 
-  } catch (error) {
-    console.error("Session Error:", error);
+  } catch (err) {
+    console.error(err);
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 }
