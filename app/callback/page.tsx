@@ -1,27 +1,25 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { getRedirectResult, onAuthStateChanged, User } from "firebase/auth";
 import { auth } from "@/lib/firebase";
-import { Loader2 } from "lucide-react";
 
 export default function CallbackPage() {
   const router = useRouter();
-  const [status, setStatus] = useState("Verifying Identity...");
 
   useEffect(() => {
-    const processLogin = async () => {
+    const handleAuth = async () => {
       try {
         let user: User | null = null;
 
-        // ✅ Step 1: redirect result
+        // Step 1: redirect result
         const result = await getRedirectResult(auth);
         if (result?.user) {
           user = result.user;
         }
 
-        // ✅ Step 2: fallback (important)
+        // Step 2: fallback
         if (!user) {
           user = await new Promise<User | null>((resolve) => {
             const unsub = onAuthStateChanged(auth, (u) => {
@@ -31,16 +29,15 @@ export default function CallbackPage() {
           });
         }
 
-        // ❌ No user
         if (!user) {
           router.replace("/login");
           return;
         }
 
-        setStatus("Securing Session...");
-
+        // Step 3: token
         const idToken = await user.getIdToken(true);
 
+        // Step 4: create session
         const res = await fetch("/api/auth/session", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -53,24 +50,21 @@ export default function CallbackPage() {
           return;
         }
 
-        setStatus("Redirecting to Dashboard...");
-        window.location.href = "/dashboard";
+        // Step 5: redirect
+        window.location.replace("/dashboard");
 
-      } catch (e) {
-        console.error("Callback Error:", e);
+      } catch (err) {
+        console.error("Callback Error:", err);
         router.replace("/login");
       }
     };
 
-    processLogin();
+    handleAuth();
   }, [router]);
 
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-      <div className="bg-white p-10 rounded-3xl shadow-xl text-center">
-        <Loader2 size={40} className="animate-spin text-blue-600 mb-4 mx-auto" />
-        <p className="font-bold text-sm">{status}</p>
-      </div>
+    <div className="min-h-screen flex items-center justify-center">
+      <p>Logging you in...</p>
     </div>
   );
 }
