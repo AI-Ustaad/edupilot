@@ -2,13 +2,11 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 export function middleware(req: NextRequest) {
-  const { pathname } = req.nextUrl;
   const session = req.cookies.get("session")?.value;
 
-  // public routes (no auth required)
-  const publicRoutes = ["/login", "/callback", "/signup"]; // signup کو بھی public رکھا ہے تاکہ نیا یوزر پھنسے نہ
+  const publicRoutes = ["/login", "/callback", "/api/auth/session"];
 
-  if (!session && !publicRoutes.includes(pathname)) {
+  if (!session && !publicRoutes.includes(req.nextUrl.pathname)) {
     return NextResponse.redirect(new URL("/login", req.url));
   }
 
@@ -16,15 +14,5 @@ export function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: [
-    "/dashboard/:path*",
-    "/students/:path*",
-    "/attendance/:path*",
-    "/staff/:path*",
-    "/fees/:path*",
-    "/classes/:path*",
-    "/timetable/:path*",
-    "/settings/:path*",
-    "/setup/:path*",
-  ],
+  matcher: ["/dashboard/:path*"],
 };
