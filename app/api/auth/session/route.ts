@@ -1,5 +1,3 @@
-// app/api/auth/session/route.ts
-
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { adminAuth } from "@/lib/firebase-admin";
@@ -13,7 +11,6 @@ export async function POST(req: Request) {
     }
 
     const decoded = await adminAuth.verifyIdToken(idToken);
-
     const expiresIn = 60 * 60 * 24 * 5 * 1000;
 
     const sessionCookie = await adminAuth.createSessionCookie(idToken, {
