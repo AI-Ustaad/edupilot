@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { cookies } from "next/headers"; // 👈 نیا اور پکا طریقہ
 import { adminAuth } from "@/lib/firebase-admin";
 
 export async function POST(req: Request) {
@@ -6,40 +7,28 @@ export async function POST(req: Request) {
     const { idToken } = await req.json();
 
     if (!idToken) {
-      return NextResponse.json(
-        { error: "Missing token" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Missing token" }, { status: 400 });
     }
 
-    // Verify Firebase ID Token
-    const decodedToken = await adminAuth.verifyIdToken(idToken);
+    // فائر بیس کا ٹوکن وویریفائی کریں
+    await adminAuth.verifyIdToken(idToken);
 
-    // Create session cookie (valid for 5 days)
+    // سیشن کوکی بنائیں (5 دن کے لیے)
     const expiresIn = 60 * 60 * 24 * 5 * 1000;
+    const sessionCookie = await adminAuth.createSessionCookie(idToken, { expiresIn });
 
-    const sessionCookie = await adminAuth.createSessionCookie(idToken, {
-      expiresIn,
-    });
-
-    const response = NextResponse.json({ status: "success" });
-
-    // Set secure cookie
-    response.cookies.set("session", sessionCookie, {
+    // 🔥 THE FIX: Next.js 14 کا مستند طریقہ کوکی سیو کرنے کا
+    cookies().set("session", sessionCookie, {
+      maxAge: expiresIn / 1000,
       httpOnly: true,
-      secure: true,
+      secure: process.env.NODE_ENV === "production", // Vercel پر خود ٹرو (true) ہو جائے گا
       sameSite: "lax",
       path: "/",
-      maxAge: expiresIn / 1000,
     });
 
-    return response;
+    return NextResponse.json({ status: "success" });
   } catch (error) {
     console.error("SESSION ERROR:", error);
-
-    return NextResponse.json(
-      { error: "Unauthorized" },
-      { status: 401 }
-    );
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 }
