@@ -239,13 +239,13 @@ export default function ClassesDirectoryPage() {
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {getSectionsForClass(selectedClass).length === 0 ? (
+                  {getSectionsForClass(selectedClass || "").length === 0 ? (
                     <div className="col-span-full py-10 text-center text-slate-400">
                        <p className="font-bold">No students or sections found for {selectedClass}.</p>
                     </div>
                   ) : (
-                    getSectionsForClass(selectedClass).map((section, idx) => {
-                      const sectionStudents = getStudentsForSection(selectedClass, section.sectionName);
+                    getSectionsForClass(selectedClass || "").map((section, idx) => {
+                      const sectionStudents = getStudentsForSection(selectedClass || "", section.sectionName);
                       const colorClass = bgColors[idx % bgColors.length];
 
                       return (
@@ -293,13 +293,13 @@ export default function ClassesDirectoryPage() {
                     <div className="col-span-4 text-right">Action</div>
                   </div>
 
-                  {getStudentsForSection(selectedClass, selectedSection.sectionName).length === 0 ? (
+                  {getStudentsForSection(selectedClass || "", selectedSection.sectionName).length === 0 ? (
                     <div className="py-20 text-center text-slate-400">
                       <GraduationCap size={40} className="mx-auto mb-3 opacity-30" />
                       <p className="font-bold text-sm">No students admitted in this section yet.</p>
                     </div>
                   ) : (
-                    getStudentsForSection(selectedClass, selectedSection.sectionName)
+                    getStudentsForSection(selectedClass || "", selectedSection.sectionName)
                     .sort((a, b) => (a.rollNumber || 0) - (b.rollNumber || 0))
                     .map(s => (
                       <div key={s.id} className="px-6 py-4 grid grid-cols-12 gap-4 items-center bg-white hover:bg-slate-50 transition-colors">
