@@ -5,16 +5,16 @@ export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
   const session = req.cookies.get("session")?.value;
 
-  // اگر یوزر کے پاس سیشن نہیں ہے، تو اسے لاگ ان پر بھیج دو
-  if (!session) {
+  // public routes (no auth required)
+  const publicRoutes = ["/login", "/callback"];
+
+  if (!session && !publicRoutes.includes(pathname)) {
     return NextResponse.redirect(new URL("/login", req.url));
   }
 
-  // اگر سیشن ہے تو اندر جانے دو
   return NextResponse.next();
 }
 
-// ⚠️ صرف محفوظ (Protected) راؤٹس پر مڈل ویئر چلائیں
 export const config = {
   matcher: [
     "/dashboard/:path*",
@@ -25,6 +25,6 @@ export const config = {
     "/classes/:path*",
     "/timetable/:path*",
     "/settings/:path*",
-    "/setup/:path*", // 👈 Setup کو بھی شامل کر لیں
+    "/setup/:path*",
   ],
 };
