@@ -1,85 +1,50 @@
 "use client";
-import React, { useState, useEffect } from "react";
-import { signInWithRedirect, getRedirectResult, GoogleAuthProvider, onAuthStateChanged } from "firebase/auth";
+import React, { useState } from "react";
+import { signInWithPopup, GoogleAuthProvider } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { GraduationCap, ShieldCheck, Loader2 } from "lucide-react";
 
 export default function LoginForm() {
-  const [loading, setLoading] = useState(true); 
-  const [statusMsg, setStatusMsg] = useState("Checking session...");
+  const [loading, setLoading] = useState(false); 
+  const [statusMsg, setStatusMsg] = useState("");
   const [error, setError] = useState("");
-
-  useEffect(() => {
-    // 🚀 THE FIX: یہ فنکشن یوزر کو پکڑ کر سیدھا اندر لے جائے گا
-    const handleSuccessfulLogin = async (user: any) => {
-      setStatusMsg("Securing Workspace Session...");
-      try {
-        const idTokenResult = await user.getIdTokenResult(true);
-        const token = idTokenResult.token;
-
-        // سرور پر کوکی (Cookie) بنائیں
-        const res = await fetch("/api/auth/session", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ idToken: token }),
-        });
-
-        if (!res.ok) throw new Error("Failed to secure session on server");
-
-        setStatusMsg("Routing to Command Centre...");
-
-        // 🚀 Smart Routing
-        const claims = idTokenResult.claims || {};
-        setTimeout(() => {
-          if (claims.tenantId) {
-            window.location.href = "/dashboard";
-          } else {
-            window.location.href = "/signup";
-          }
-        }, 1000);
-
-      } catch (err: any) {
-        console.error("Session Error:", err);
-        setError("Authentication failed. Please try again.");
-        setLoading(false);
-        setStatusMsg("");
-      }
-    };
-
-    // 🔥 THE RADAR: یہ فائر بیس کا ریڈار ہے جو یوزر کو فورا پکڑ لے گا
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (user) {
-        handleSuccessfulLogin(user);
-      } else {
-        getRedirectResult(auth).then((result) => {
-          if (result?.user) {
-            handleSuccessfulLogin(result.user);
-          } else {
-            setLoading(false);
-            setStatusMsg("");
-          }
-        }).catch((err) => {
-          console.error("Redirect Error:", err);
-          setError("Failed to verify Google login.");
-          setLoading(false);
-          setStatusMsg("");
-        });
-      }
-    });
-
-    return () => unsubscribe();
-  }, []);
 
   const handleGoogleLogin = async () => {
     setLoading(true);
-    setStatusMsg("Redirecting to Google...");
+    setStatusMsg("Opening Google Sign-In...");
     setError("");
+
     try {
       const provider = new GoogleAuthProvider();
-      await signInWithRedirect(auth, provider);
+      
+      // 🔥 THE FIX FOR SAFARI/IOS: ہم واپس Popup استعمال کر رہے ہیں
+      const result = await signInWithPopup(auth, provider);
+
+      setStatusMsg("Securing Workspace Session...");
+      
+      // ٹوکن نکالیں
+      const idTokenResult = await result.user.getIdTokenResult(true);
+      const token = idTokenResult.token;
+
+      // سرور پر کوکی (Cookie) بنائیں
+      const res = await fetch("/api/auth/session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ idToken: token }),
+      });
+
+      if (!res.ok) throw new Error("Failed to secure session on server");
+
+      setStatusMsg("Routing to Command Centre...");
+
+      // 🔥 سب ڈیش بورڈ پر جائیں گے، ڈیش بورڈ خود فیصلہ کرے گا کہ Setup دکھانا ہے یا نہیں
+      setTimeout(() => {
+        window.location.href = "/dashboard";
+      }, 1000);
+
     } catch (err: any) {
       console.error("Login Error:", err);
-      setError(err.message);
+      setError(err.message || "Authentication failed. Please try again.");
       setLoading(false);
       setStatusMsg("");
     }
