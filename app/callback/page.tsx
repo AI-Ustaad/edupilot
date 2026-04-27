@@ -1,4 +1,5 @@
 "use client";
+
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getRedirectResult, onAuthStateChanged } from "firebase/auth";
@@ -12,9 +13,15 @@ export default function CallbackPage() {
   useEffect(() => {
     const processLogin = async () => {
       try {
-        const result = await getRedirectResult(auth);
-        let user = result?.user;
+        let user = null;
 
+        // ✅ Step 1: Redirect result
+        const result = await getRedirectResult(auth);
+        if (result?.user) {
+          user = result.user;
+        }
+
+        // ✅ Step 2: fallback (important)
         if (!user) {
           user = await new Promise((resolve) => {
             const unsub = onAuthStateChanged(auth, (u) => {
@@ -24,19 +31,21 @@ export default function CallbackPage() {
           });
         }
 
+        // ❌ No user → back to login
         if (!user) {
           router.replace("/login");
           return;
         }
 
         setStatus("Securing Session...");
+
         const idToken = await user.getIdToken(true);
 
         const res = await fetch("/api/auth/session", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ idToken }),
-          credentials: "include", 
+          credentials: "include",
         });
 
         if (!res.ok) {
@@ -45,7 +54,9 @@ export default function CallbackPage() {
         }
 
         setStatus("Redirecting to Dashboard...");
-        window.location.href = "/dashboard"; 
+
+        // ✅ IMPORTANT: hard reload
+        window.location.href = "/dashboard";
 
       } catch (e) {
         console.error("Callback Error:", e);
@@ -57,10 +68,10 @@ export default function CallbackPage() {
   }, [router]);
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4">
-      <div className="bg-white p-10 rounded-3xl shadow-xl flex flex-col items-center text-center">
-        <Loader2 size={48} className="animate-spin text-blue-600 mb-6" />
-        <h2 className="text-lg font-black text-[#0F172A] uppercase">{status}</h2>
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+      <div className="bg-white p-10 rounded-3xl shadow-xl text-center">
+        <Loader2 size={40} className="animate-spin text-blue-600 mb-4 mx-auto" />
+        <p className="font-bold text-sm">{status}</p>
       </div>
     </div>
   );
