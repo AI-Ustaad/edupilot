@@ -7,13 +7,7 @@ export function middleware(req: NextRequest) {
 
   const publicRoutes = ["/login", "/signup", "/"];
 
-  // 1. اگر یوزر لاگ ان ہے اور لاگ ان یا ہوم پر جانے کی کوشش کر رہا ہے، تو ڈیش بورڈ پر بھیج دیں
-  if (session && publicRoutes.includes(pathname)) {
-    return NextResponse.redirect(new URL("/dashboard", req.url));
-  }
-
-  // 2. اگر یوزر لاگ ان نہیں ہے اور کسی پرائیویٹ راؤٹ پر جا رہا ہے، تو لاگ ان پر بھیج دیں
-  // (ہم /api راؤٹس کو نظر انداز کر رہے ہیں تاکہ ہماری Auth APIs بلاک نہ ہوں)
+  // ❗ صرف یہ condition رکھیں
   if (!session && !publicRoutes.includes(pathname) && !pathname.startsWith("/api")) {
     return NextResponse.redirect(new URL("/login", req.url));
   }
