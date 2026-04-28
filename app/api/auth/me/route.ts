@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { adminAuth } from "../../../../lib/firebase-admin";
 import { cookies } from "next/headers";
+import { adminAuth } from "@/lib/firebase-admin";
 
 export async function GET() {
   try {
@@ -10,13 +10,13 @@ export async function GET() {
       return NextResponse.json({ error: "No session" }, { status: 401 });
     }
 
-    const decoded = await adminAuth.verifySessionCookie(session);
+    const decoded = await adminAuth.verifySessionCookie(session, true);
 
     return NextResponse.json({
       uid: decoded.uid,
       email: decoded.email,
     });
-  } catch {
+  } catch (err) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 }
