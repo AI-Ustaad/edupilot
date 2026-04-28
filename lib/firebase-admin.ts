@@ -1,22 +1,24 @@
-import { initializeApp, cert, getApps } from "firebase-admin/app";
-import { getAuth } from "firebase-admin/auth";
-import { getFirestore } from "firebase-admin/firestore";
+import * as admin from "firebase-admin";
 
-// ✅ Service account
-const serviceAccount = {
+const firebaseAdminConfig = {
   projectId: process.env.FIREBASE_PROJECT_ID,
   clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-  privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, "\n"),
+  // 🎯 جادوئی لائن: یہ سرور پر موجود \n کو اصلی لائن بریک میں بدل دے گی
+  privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
 };
 
-// ✅ Init
-const app =
-  getApps().length === 0
-    ? initializeApp({
-        credential: cert(serviceAccount),
-      })
-    : getApps()[0];
+if (!admin.apps.length) {
+  try {
+    admin.initializeApp({
+      credential: admin.credential.cert(firebaseAdminConfig),
+    });
+    console.log("✅ Firebase Admin Initialized Successfully");
+  } catch (error) {
+    console.error("❌ Firebase Admin Initialization Error:", error);
+  }
+}
 
-// ✅ EXPORTS (THIS WAS MISSING ❗)
-export const adminAuth = getAuth(app);
-export const adminDb = getFirestore(app); // 🔥 THIS FIXES ERROR
+const adminAuth = admin.auth();
+const adminDb = admin.firestore();
+
+export { adminAuth, adminDb };
