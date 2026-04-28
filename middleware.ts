@@ -4,10 +4,8 @@ import type { NextRequest } from "next/server";
 export function middleware(req: NextRequest) {
   const session = req.cookies.get("session")?.value;
   const { pathname } = req.nextUrl;
-
   const publicRoutes = ["/login", "/signup", "/"];
 
-  // ❗ صرف یہ condition رکھیں
   if (!session && !publicRoutes.includes(pathname) && !pathname.startsWith("/api")) {
     return NextResponse.redirect(new URL("/login", req.url));
   }
