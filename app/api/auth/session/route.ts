@@ -1,18 +1,11 @@
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
 import { adminAuth } from "@/lib/firebase-admin";
+import { cookies } from "next/headers";
 
 export async function POST(req: Request) {
   try {
     const { idToken } = await req.json();
-
-    if (!idToken) {
-      return NextResponse.json({ error: "No token" }, { status: 400 });
-    }
-
-    await adminAuth.verifyIdToken(idToken);
-
-    const expiresIn = 60 * 60 * 24 * 5 * 1000;
+    const expiresIn = 60 * 60 * 24 * 5 * 1000; // 5 دن
 
     const sessionCookie = await adminAuth.createSessionCookie(idToken, {
       expiresIn,
@@ -20,16 +13,15 @@ export async function POST(req: Request) {
 
     cookies().set("session", sessionCookie, {
       httpOnly: true,
-      secure: true,
-      maxAge: expiresIn / 1000,
-      path: "/",
+      secure: true, 
       sameSite: "lax",
+      path: "/",
+      maxAge: expiresIn / 1000,
     });
 
     return NextResponse.json({ success: true });
-
   } catch (err) {
-    console.error(err);
+    console.error("Session creation failed:", err);
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 }
