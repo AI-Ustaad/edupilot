@@ -7,24 +7,33 @@ export async function POST(req: Request) {
     const { idToken } = await req.json();
 
     if (!idToken) {
-      return NextResponse.json({ error: "No token" }, { status: 400 });
+      return NextResponse.json({ error: "No token provided" }, { status: 400 });
     }
 
+    // سیشن کی مدت (5 دن)
     const expiresIn = 60 * 60 * 24 * 5 * 1000;
 
+    // فائر بیس سے سیشن کوکی بنانا
     const sessionCookie = await adminAuth.createSessionCookie(idToken, {
       expiresIn,
     });
 
+    // کوکی کو براؤزر میں سیٹ کرنا
     cookies().set("session", sessionCookie, {
+      maxAge: expiresIn / 1000,
       httpOnly: true,
-      secure: true,
+      secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
       path: "/",
-      maxAge: expiresIn / 1000,
     });
 
     return NextResponse.json({ success: true });
 
-  } catch (err) {
-    console.error("❌ SESSION API ERROR:", err
+  } catch (err: any) {
+    console.error("❌ SESSION API ERROR:", err);
+    return NextResponse.json(
+      { error: "Failed to create session", details: err.message },
+      { status: 401 }
+    );
+  }
+}
