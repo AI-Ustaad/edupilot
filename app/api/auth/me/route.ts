@@ -7,16 +7,19 @@ export async function GET() {
     const session = cookies().get("session")?.value;
 
     if (!session) {
-      return NextResponse.json({ error: "No session" }, { status: 401 });
+      return NextResponse.json({ user: null });
     }
 
     const decoded = await adminAuth.verifySessionCookie(session, true);
 
     return NextResponse.json({
-      uid: decoded.uid,
-      email: decoded.email,
+      user: {
+        uid: decoded.uid,
+        email: decoded.email,
+      },
     });
+
   } catch (err) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return NextResponse.json({ user: null });
   }
 }
