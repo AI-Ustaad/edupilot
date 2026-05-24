@@ -1,0 +1,34 @@
+import { adminDb } from "@/lib/firebase-admin";
+import { withAuth, withTenant, withErrorHandler, withRole } from "@/route-helpers";
+import { createApiResponse } from "@/lib/response/apiResponse";
+import type { TenantContext } from "@/types/api";
+
+function getId(req: Request): string {
+  return new URL(req.url).pathname.split("/").pop() || "";
+}
+
+export const DELETE = withErrorHandler(
+  withAuth(
+    withTenant(
+      withRole(["admin"])(async (req: Request, { tenantId }: TenantContext) => {
+        await adminDb.collection("syllabus").doc(getId(req)).delete();
+        return createApiResponse(200, null, "Deleted");
+      })
+    )
+  )
+);
+
+export const PUT = withErrorHandler(
+  withAuth(
+    withTenant(
+      withRole(["admin"])(async (req: Request, { tenantId }: TenantContext) => {
+        const body = await req.json();
+        await adminDb.collection("syllabus").doc(getId(req)).update({
+          ...body,
+          updatedAt: new Date(),
+        });
+        return createApiResponse(200, null, "Updated");
+      })
+    )
+  )
+);
