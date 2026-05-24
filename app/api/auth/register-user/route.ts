@@ -1,9 +1,10 @@
 import { adminDb } from "@/lib/firebase-admin";
 import { withAuth, withErrorHandler } from "@/route-helpers";
 import { createApiResponse } from "@/lib/response/apiResponse";
+import type { TenantContext } from "@/types/api";
 
 export const POST = withErrorHandler(
-  withAuth(async (req: Request, { user }) => {
+  withAuth(async (req: Request, { user }: TenantContext) => {
     const { name } = await req.json();
 
     if (!name) {
