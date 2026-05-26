@@ -1,31 +1,53 @@
-import type { Metadata } from "next";
-import { Inter } from "next/font/google";
-import "./globals.css";
-import { ThemeProvider } from "@/components/ThemeProvider";
-import { AuthProvider } from "@/context/AuthContext";
+import { redirect } from "next/navigation";
+import { getSessionUser } from "@/lib/auth/auth-server";
+import { isSubscriptionValid } from "@/lib/subscription";
+import SidebarLayout from "@/components/SidebarLayout";
+import ParticleBackground from "@/components/ParticleBackground";
 
-const inter = Inter({ subsets: ["latin"] });
+export default async function ProtectedLayout({ children }: { children: React.ReactNode }) {
+  const user = await getSessionUser();
+  if (!user) redirect("/login");
+  if (user.onboardingRequired === true || !user.tenantId) redirect("/onboarding");
 
-export const metadata: Metadata = {
-  title: "EduPilot SaaS",
-  description: "Next-Generation School Management System",
-  manifest: "/manifest.json",
-};
+  const { valid, message } = await isSubscriptionValid(user.tenantId);
+  if (!valid) {
+    const url = new URL("/settings/billing", process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000");
+    url.searchParams.set("error", message || "Subscription inactive");
+    redirect(url.toString());
+  }
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
   return (
-    <html lang="en">
-      <body className={`${inter.className} bg-slate-50 text-slate-900`}>
-        <AuthProvider>
-          <ThemeProvider>
-            {children}
-          </ThemeProvider>
-        </AuthProvider>
-      </body>
-    </html>
+    <div className="relative min-h-screen overflow-hidden bg-dark-900">
+      {/* آپ کی اپ لوڈ کردہ بیک گراؤنڈ امیج (بہت ہلکی) */}
+      <div
+        className="fixed inset-0 z-0"
+        style={{
+          backgroundImage: "url('/background.png')",
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          backgroundRepeat: "no-repeat",
+          filter: "blur(4px) brightness(0.7)",
+          opacity: 0.15,
+        }}
+      />
+
+      {/* Volumetric light rays */}
+      <div className="volumetric-rays z-0"></div>
+
+      {/* Ambient glow orbs */}
+      <div className="ambient-glow-orb orb-1 z-0"></div>
+      <div className="ambient-glow-orb orb-2 z-0"></div>
+      <div className="ambient-glow-orb orb-3 z-0"></div>
+
+      {/* Floating particles */}
+      <div className="fixed inset-0 z-[1] pointer-events-none">
+        <ParticleBackground />
+      </div>
+
+      {/* Main content */}
+      <div className="relative z-10">
+        <SidebarLayout>{children}</SidebarLayout>
+      </div>
+    </div>
   );
 }
