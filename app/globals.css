@@ -4,7 +4,6 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ========== GLOBAL DARK BASE ========== */
 body {
   font-family: 'Plus Jakarta Sans', sans-serif;
   background-color: #071B2F;
@@ -12,69 +11,79 @@ body {
 }
 
 /* ========== GLASS COMPONENTS ========== */
-@layer components {
-  .glass-card {
-    @apply bg-glass-light backdrop-blur-glass border border-glass-border rounded-3xl shadow-glass;
-    transition: all 0.3s ease;
-  }
-  .glass-card:hover {
-    @apply shadow-glass-hover;
-    transform: translateY(-2px);
-  }
+.glass-card {
+  background: rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(30px);
+  -webkit-backdrop-filter: blur(30px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 24px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255,255,255,0.1);
+  transition: all 0.3s ease;
+}
+.glass-card:hover {
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255,255,255,0.2);
+  transform: translateY(-2px);
+}
 
-  .glass-btn {
-    @apply bg-glass-medium backdrop-blur-md border border-glass-border rounded-xl px-6 py-3 font-semibold text-white/90;
-    transition: all 0.3s ease;
-  }
-  .glass-btn:hover {
-    @apply bg-glass-highlight shadow-glow;
-    transform: translateY(-2px);
-  }
+.glass-btn {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  padding: 12px 24px;
+  font-weight: 600;
+  color: rgba(255,255,255,0.9);
+  transition: all 0.3s ease;
+}
+.glass-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  box-shadow: 0 0 20px rgba(255, 125, 143, 0.4);
+  transform: translateY(-2px);
+}
 
-  .btn-primary {
-    @apply bg-gradient-to-r from-primary to-primary-light text-white font-bold py-3 px-6 rounded-xl shadow-glow;
-    transition: all 0.3s ease;
-  }
-  .btn-primary:hover {
-    @apply shadow-glass-hover;
-    transform: translateY(-2px);
-  }
+.btn-primary {
+  background: linear-gradient(135deg, #FF7D8F, #FF9A9E);
+  border: none;
+  border-radius: 12px;
+  color: white;
+  font-weight: 700;
+  padding: 12px 24px;
+  box-shadow: 0 0 20px rgba(255, 125, 143, 0.4);
+  transition: all 0.3s ease;
+}
+.btn-primary:hover {
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6);
+  transform: translateY(-2px);
+}
 
-  /* ========== ATMOSPHERIC EFFECTS ========== */
-  .volumetric-rays {
-    background: radial-gradient(circle at top right, rgba(100,216,255,0.15) 0%, transparent 60%);
-    position: fixed;
-    top: 0;
-    right: 0;
-    width: 100vw;
-    height: 100vh;
-    pointer-events: none;
-    z-index: 0;
-  }
+/* ========== ATMOSPHERIC EFFECTS ========== */
+.volumetric-rays {
+  background: radial-gradient(circle at top right, rgba(100,216,255,0.15) 0%, transparent 60%);
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  z-index: 0;
+}
 
-  .ambient-glow-orb {
-    position: fixed;
-    border-radius: 50%;
-    filter: blur(120px);
-    opacity: 0.15;
-    z-index: 0;
-    pointer-events: none;
-  }
-  .orb-1 { width: 600px; height: 600px; background: #FF7D8F; top: -200px; right: -200px; }
-  .orb-2 { width: 700px; height: 700px; background: #64D8FF; bottom: -250px; left: -250px; }
-  .orb-3 { width: 800px; height: 800px; background: #1F5E85; top: 50%; left: 50%; transform: translate(-50%, -50%); opacity: 0.1; }
+.ambient-glow-orb {
+  position: fixed;
+  border-radius: 50%;
+  filter: blur(120px);
+  opacity: 0.15;
+  z-index: 0;
+  pointer-events: none;
+}
+.orb-1 { width: 600px; height: 600px; background: #FF7D8F; top: -200px; right: -200px; }
+.orb-2 { width: 700px; height: 700px; background: #64D8FF; bottom: -250px; left: -250px; }
+.orb-3 { width: 800px; height: 800px; background: #1F5E85; top: 50%; left: 50%; transform: translate(-50%, -50%); opacity: 0.1; }
 
-  .glass-sidebar {
-    background: rgba(7, 27, 47, 0.4);
-    backdrop-filter: blur(35px);
-    -webkit-backdrop-filter: blur(35px);
-    border-right: 1px solid rgba(255,255,255,0.08);
-  }
-
-  /* ========== ANIMATIONS ========== */
-  .glass-shimmer {
-    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent);
-    background-size: 200% 100%;
-    animation: shimmer 2s linear infinite;
-  }
+.glass-sidebar {
+  background: rgba(7, 27, 47, 0.4);
+  backdrop-filter: blur(35px);
+  -webkit-backdrop-filter: blur(35px);
+  border-right: 1px solid rgba(255,255,255,0.08);
 }
