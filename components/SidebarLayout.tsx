@@ -11,6 +11,7 @@ import {
   GraduationCap, DollarSign, Calendar, FileText, Heart,
   ChevronDown, ChevronRight, CreditCard,
 } from "lucide-react";
+import MobileBottomNav from "./MobileBottomNav";
 
 export default function SidebarLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -213,6 +214,7 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
       {/* Main Content */}
       <div className="flex-1 overflow-y-auto">
         <div className="p-4 md:p-8 max-w-[1600px] mx-auto">{children}</div>
+        <MobileBottomNav />
       </div>
 
       {/* Mobile Overlay */}
