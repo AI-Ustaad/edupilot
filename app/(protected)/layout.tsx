@@ -24,31 +24,35 @@ export default async function ProtectedLayout({ children }: { children: React.Re
 
   return (
     <div className="relative min-h-screen overflow-hidden">
-      {/* Base gradient background (soft sky blue to lavender) */}
+      {/* ===== بیک گراؤنڈ وال پیپر (80% شفاف) ===== */}
       <div
         className="fixed inset-0 z-0"
         style={{
-          background: "linear-gradient(145deg, #e0f0ff 0%, #d8eaff 30%, #f0e6ff 60%, #ffe6f0 100%)",
-          backgroundAttachment: "fixed",
+          backgroundImage: "url('/background.png')",
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          backgroundRepeat: "no-repeat",
+          filter: "blur(4px) brightness(1.1)",
+          opacity: 0.2,   // 20% visible → 80% شفافیت
         }}
       />
 
-      {/* Ambient glowing orbs */}
-      <div className="orb orb-1"></div>
-      <div className="orb orb-2"></div>
-      <div className="orb orb-3"></div>
+      {/* ===== محیطی چمک (آربز) ===== */}
+      <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none">
+        <div className="absolute -top-40 -right-40 w-[500px] h-[500px] bg-primary/10 rounded-full blur-[150px]" />
+        <div className="absolute -bottom-40 -left-40 w-[500px] h-[500px] bg-accent/10 rounded-full blur-[150px]" />
+      </div>
 
-      {/* Abstract floral/coral blobs for the "dreamy" effect */}
-      <div className="flora flora-1"></div>
-      <div className="flora flora-2"></div>
-      <div className="flora flora-3"></div>
+      {/* ===== فلورا / کورل امیجز (اگر موجود ہوں) ===== */}
+      {/* اگر آپ نے یہ تصاویر اپ لوڈ کی ہیں تو راستے درست کر کے ان کو غیر مخفی کر سکتے ہیں */}
+      {/* <img src="/assets/flora-1.png" alt="" className="fixed pointer-events-none z-0 opacity-20" ... /> */}
 
-      {/* Floating particles */}
+      {/* ===== تیرتے ہوئے ذرات (پارٹیکلز) ===== */}
       <div className="fixed inset-0 z-[1] pointer-events-none">
         <ParticleBackground />
       </div>
 
-      {/* Main content */}
+      {/* ===== اصلی مواد ===== */}
       <div className="relative z-10">
         <SidebarLayout>{children}</SidebarLayout>
       </div>
