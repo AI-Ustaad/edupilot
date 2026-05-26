@@ -9,7 +9,7 @@ import {
   LayoutDashboard, Users, BookOpen, UserCircle, ClipboardCheck,
   Wallet, Clock, Settings, Menu, X, ShieldCheck, LogOut,
   GraduationCap, DollarSign, Calendar, FileText, Heart,
-  ChevronDown, ChevronRight, CreditCard,
+  ChevronDown, ChevronRight, CreditCard, Sparkles,
 } from "lucide-react";
 import MobileBottomNav from "./MobileBottomNav";
 
@@ -80,6 +80,7 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
       items: [
         { name: "Attendance", icon: ClipboardCheck, path: "/attendance", allowed: ["admin", "teacher"] },
         { name: "Time Table", icon: Clock, path: "/timetable", allowed: ["admin", "teacher"] },
+        { name: "AI Timetable", icon: Sparkles, path: "/ai-timetable", allowed: ["admin", "teacher"] }, // <-- نیا لنک
       ],
       allowed: ["admin", "teacher"],
       key: "operations",
