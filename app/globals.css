@@ -4,15 +4,17 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ========== GLOBAL GLASS & BACKGROUND ========== */
+/* ========== GLOBAL DARK BASE ========== */
 body {
   font-family: 'Plus Jakarta Sans', sans-serif;
+  background-color: #071B2F;
+  color: rgba(255,255,255,0.92);
 }
 
-/* Glass card utility */
+/* ========== GLASS COMPONENTS ========== */
 @layer components {
   .glass-card {
-    @apply bg-glass-light backdrop-blur-glass border border-glass-medium rounded-3xl shadow-glass;
+    @apply bg-glass-light backdrop-blur-glass border border-glass-border rounded-3xl shadow-glass;
     transition: all 0.3s ease;
   }
   .glass-card:hover {
@@ -20,17 +22,15 @@ body {
     transform: translateY(-2px);
   }
 
-  /* Glass button */
   .glass-btn {
-    @apply bg-glass-light backdrop-blur-md border border-glass-medium rounded-xl px-6 py-3 font-semibold text-slate-800;
+    @apply bg-glass-medium backdrop-blur-md border border-glass-border rounded-xl px-6 py-3 font-semibold text-white/90;
     transition: all 0.3s ease;
   }
   .glass-btn:hover {
-    @apply bg-glass-medium shadow-glow;
+    @apply bg-glass-highlight shadow-glow;
     transform: translateY(-2px);
   }
 
-  /* Primary button with gradient */
   .btn-primary {
     @apply bg-gradient-to-r from-primary to-primary-light text-white font-bold py-3 px-6 rounded-xl shadow-glow;
     transition: all 0.3s ease;
@@ -40,78 +40,41 @@ body {
     transform: translateY(-2px);
   }
 
-  /* Floating orbs (used in layout) */
-  .orb {
+  /* ========== ATMOSPHERIC EFFECTS ========== */
+  .volumetric-rays {
+    background: radial-gradient(circle at top right, rgba(100,216,255,0.15) 0%, transparent 60%);
+    position: fixed;
+    top: 0;
+    right: 0;
+    width: 100vw;
+    height: 100vh;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .ambient-glow-orb {
     position: fixed;
     border-radius: 50%;
-    filter: blur(100px);
-    opacity: 0.3;
+    filter: blur(120px);
+    opacity: 0.15;
     z-index: 0;
     pointer-events: none;
   }
-  .orb-1 {
-    width: 400px;
-    height: 400px;
-    background: #FFB6B8;
-    top: -100px;
-    right: -100px;
-  }
-  .orb-2 {
-    width: 500px;
-    height: 500px;
-    background: #BEC5FF;
-    bottom: -150px;
-    left: -150px;
-  }
-  .orb-3 {
-    width: 600px;
-    height: 600px;
-    background: #A0E7FF;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    opacity: 0.2;
-  }
+  .orb-1 { width: 600px; height: 600px; background: #FF7D8F; top: -200px; right: -200px; }
+  .orb-2 { width: 700px; height: 700px; background: #64D8FF; bottom: -250px; left: -250px; }
+  .orb-3 { width: 800px; height: 800px; background: #1F5E85; top: 50%; left: 50%; transform: translate(-50%, -50%); opacity: 0.1; }
 
-  /* Floating flora/coral abstract shapes */
-  .flora {
-    position: fixed;
-    border-radius: 50%;
-    filter: blur(80px);
-    opacity: 0.25;
-    z-index: 0;
-    pointer-events: none;
-  }
-  .flora-1 {
-    width: 250px;
-    height: 250px;
-    background: radial-gradient(circle at 30% 30%, #FFB6B8, #C7A8FF);
-    top: 20%;
-    right: 5%;
-    animation: float 8s ease-in-out infinite;
-  }
-  .flora-2 {
-    width: 200px;
-    height: 200px;
-    background: radial-gradient(circle at 70% 70%, #7EE6A2, #A0E7FF);
-    bottom: 20%;
-    left: 8%;
-    animation: float 10s ease-in-out infinite reverse;
-  }
-  .flora-3 {
-    width: 300px;
-    height: 300px;
-    background: radial-gradient(circle at 40% 60%, #FFC78B, #BEC5FF);
-    top: 60%;
-    right: 15%;
-    animation: float 12s ease-in-out infinite;
-  }
-
-  /* Sidebar specific override */
   .glass-sidebar {
-    background: rgba(255, 255, 255, 0.08);
+    background: rgba(7, 27, 47, 0.4);
     backdrop-filter: blur(35px);
     -webkit-backdrop-filter: blur(35px);
-    border-right: 1px solid rgba(255, 255, 255, 0.2);
+    border-right: 1px solid rgba(255,255,255,0.08);
+  }
+
+  /* ========== ANIMATIONS ========== */
+  .glass-shimmer {
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent);
+    background-size: 200% 100%;
+    animation: shimmer 2s linear infinite;
   }
 }
