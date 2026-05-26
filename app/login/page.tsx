@@ -17,18 +17,31 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-[#e0f0ff] via-[#f0e6ff] to-[#ffe6f0]">
+    <div className="min-h-screen flex items-center justify-center p-4 bg-dark-900 relative overflow-hidden">
+      {/* آپ کی اپ لوڈ کردہ بیک گراؤنڈ امیج (بہت ہلکی) */}
+      <div
+        className="absolute inset-0 z-0"
+        style={{
+          backgroundImage: "url('/background.png')",
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          opacity: 0.15,
+          filter: "blur(2px) brightness(0.8)",
+        }}
+      />
+
+      {/* Volumetric rays */}
+      <div className="absolute inset-0 volumetric-rays z-0"></div>
+
       {/* Ambient glow orbs */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-primary/20 rounded-full blur-[120px]" />
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-accent/20 rounded-full blur-[120px]" />
-      </div>
+      <div className="absolute -top-40 -right-40 w-96 h-96 bg-primary/20 rounded-full blur-[120px] z-0" />
+      <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-accent/20 rounded-full blur-[120px] z-0" />
 
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.5 }}
-        className="w-full max-w-md"
+        className="w-full max-w-md z-10"
       >
         <div className="glass-card p-10 md:p-12 text-center">
           {/* Logo */}
@@ -36,15 +49,15 @@ export default function LoginPage() {
             <div className="w-16 h-16 mx-auto bg-gradient-to-br from-primary to-accent rounded-2xl flex items-center justify-center shadow-lg mb-4">
               <Chrome size={32} className="text-white" />
             </div>
-            <h1 className="text-2xl font-black text-slate-800">Welcome Back</h1>
-            <p className="text-slate-500 mt-2">Sign in to your institution dashboard</p>
+            <h1 className="text-2xl font-black text-white">Welcome Back</h1>
+            <p className="text-white/50 mt-2">Sign in to your institution dashboard</p>
           </div>
 
           {/* Google Login Button */}
           <button
             onClick={handleGoogleLogin}
             disabled={loading}
-            className="w-full glass-btn flex items-center justify-center gap-3 py-3.5 text-slate-700 hover:bg-white/30"
+            className="w-full glass-btn flex items-center justify-center gap-3 py-3.5 text-white/90 hover:bg-white/20"
           >
             {loading ? (
               <Loader2 className="animate-spin" size={24} />
@@ -61,7 +74,7 @@ export default function LoginPage() {
             )}
           </button>
 
-          <p className="text-xs text-slate-400 mt-8">
+          <p className="text-xs text-white/30 mt-8">
             By continuing, you agree to our Terms of Service and Privacy Policy.
           </p>
         </div>
