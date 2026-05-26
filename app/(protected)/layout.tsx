@@ -6,7 +6,6 @@ import ParticleBackground from "@/components/ParticleBackground";
 
 export default async function ProtectedLayout({ children }: { children: React.ReactNode }) {
   const user = await getSessionUser();
-
   if (!user) redirect("/login");
   if (user.onboardingRequired === true || !user.tenantId) redirect("/onboarding");
 
@@ -19,20 +18,31 @@ export default async function ProtectedLayout({ children }: { children: React.Re
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-dark-900">
-      {/* Volumetric light rays */}
-      <div className="volumetric-rays"></div>
+      {/* وال پیپر (ہلکی شفافیت) */}
+      <div
+        className="fixed inset-0 z-0"
+        style={{
+          backgroundImage: "url('/background.png')",
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          backgroundRepeat: "no-repeat",
+          filter: "blur(4px) brightness(0.7)",
+          opacity: 0.15,
+        }}
+      />
 
-      {/* Ambient glow orbs */}
-      <div className="ambient-glow-orb orb-1"></div>
-      <div className="ambient-glow-orb orb-2"></div>
-      <div className="ambient-glow-orb orb-3"></div>
+      {/* والیومیٹرک ریز اور گلو آربز */}
+      <div className="volumetric-rays z-0"></div>
+      <div className="ambient-glow-orb orb-1 z-0"></div>
+      <div className="ambient-glow-orb orb-2 z-0"></div>
+      <div className="ambient-glow-orb orb-3 z-0"></div>
 
-      {/* Floating particles */}
+      {/* ذرات */}
       <div className="fixed inset-0 z-[1] pointer-events-none">
         <ParticleBackground />
       </div>
 
-      {/* Main content */}
+      {/* اصل مواد */}
       <div className="relative z-10">
         <SidebarLayout>{children}</SidebarLayout>
       </div>
