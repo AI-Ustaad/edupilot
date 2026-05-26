@@ -70,11 +70,4 @@ body {
     -webkit-backdrop-filter: blur(35px);
     border-right: 1px solid rgba(255,255,255,0.08);
   }
-
-  /* ========== ANIMATIONS ========== */
-  .glass-shimmer {
-    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent);
-    background-size: 200% 100%;
-    animation: shimmer 2s linear infinite;
-  }
 }
