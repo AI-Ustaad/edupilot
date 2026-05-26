@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell
+  PieChart, Pie, Cell, AreaChart, Area
 } from "recharts";
 
 // Animation variants
@@ -31,7 +31,7 @@ const cardHover = {
   hover: { scale: 1.02, y: -6, transition: { duration: 0.2 } }
 };
 
-const CHART_COLORS = ["#FFB6B8", "#BEC5FF", "#C7A8FF", "#7EE6A2", "#FFC78B", "#A0E7FF"];
+const CHART_COLORS = ["#FF7D8F", "#64D8FF", "#FF9A9E", "#7EE6A2", "#FFC78B", "#A0E7FF"];
 
 const toYMD = (date: Date) => date.toISOString().split("T")[0];
 const getLast7Days = () => {
@@ -194,10 +194,10 @@ export default function DashboardPage() {
     >
       {/* Header */}
       <motion.div variants={fadeInUp}>
-        <h1 className="text-3xl font-black text-slate-800">
+        <h1 className="text-3xl font-black text-white">
           Command Center
         </h1>
-        <p className="text-slate-500 mt-1">
+        <p className="text-white/50 mt-1">
           Real‑time overview of your institution
         </p>
       </motion.div>
@@ -212,7 +212,6 @@ export default function DashboardPage() {
             title="Total Students"
             value={totalStudents}
             icon={<Users size={28} />}
-            color="primary"
             bgClass="bg-primary/20"
             iconColor="text-primary"
           />
@@ -222,7 +221,6 @@ export default function DashboardPage() {
             title="Total Staff"
             value={totalStaff}
             icon={<Briefcase size={28} />}
-            color="secondary"
             bgClass="bg-secondary/20"
             iconColor="text-secondary"
           />
@@ -232,7 +230,6 @@ export default function DashboardPage() {
             title="Revenue (Rs)"
             value={revenue.toLocaleString()}
             icon={<DollarSign size={28} />}
-            color="success"
             bgClass="bg-success/20"
             iconColor="text-success"
           />
@@ -243,7 +240,6 @@ export default function DashboardPage() {
             value={`${todayAttendance.present} / ${todayAttendance.present + todayAttendance.absent}`}
             subtitle={`${attendancePercent}% present`}
             icon={<Activity size={28} />}
-            color="info"
             bgClass="bg-info/20"
             iconColor="text-info"
           />
@@ -253,65 +249,63 @@ export default function DashboardPage() {
       {/* Charts Row 1 */}
       <div className="grid lg:grid-cols-2 gap-6">
         <motion.div variants={fadeInUp} className="glass-card p-6">
-          <h3 className="text-lg font-bold flex items-center gap-2 mb-4 text-slate-800">
+          <h3 className="text-lg font-bold flex items-center gap-2 mb-4 text-white">
             <CalendarDays size={20} className="text-primary" /> Weekly Attendance
           </h3>
           <ResponsiveContainer width="100%" height={280}>
-            <LineChart data={attendanceTrend}>
+            <AreaChart data={attendanceTrend}>
+              <defs>
+                <linearGradient id="colorAttendance" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#FF7D8F" stopOpacity={0.3} />
+                  <stop offset="95%" stopColor="#FF7D8F" stopOpacity={0} />
+                </linearGradient>
+              </defs>
               <XAxis dataKey="day" stroke="#94a3b8" />
               <YAxis domain={[0, 100]} stroke="#94a3b8" />
               <Tooltip
                 contentStyle={{
-                  background: "rgba(255,255,255,0.6)",
-                  backdropFilter: "blur(12px)",
+                  background: "rgba(10,39,66,0.8)",
+                  backdropFilter: "blur(10px)",
                   borderRadius: "16px",
-                  border: "1px solid rgba(255,255,255,0.5)",
+                  border: "1px solid rgba(255,255,255,0.12)",
+                  color: "#fff",
                 }}
               />
-              <Line
+              <Area
                 type="monotone"
                 dataKey="percent"
-                stroke="#FFB6B8"
-                strokeWidth={4}
-                dot={{ r: 5, fill: "#FFB6B8", stroke: "#fff", strokeWidth: 2 }}
+                stroke="#FF7D8F"
+                strokeWidth={3}
+                fill="url(#colorAttendance)"
               />
-            </LineChart>
+            </AreaChart>
           </ResponsiveContainer>
           <div className="grid grid-cols-3 gap-4 mt-4 text-center">
-            <div>
-              <p className="text-slate-500 text-sm">Average</p>
-              <p className="text-xl font-bold text-slate-800">{attendanceStats.avg}%</p>
-            </div>
-            <div>
-              <p className="text-slate-500 text-sm">Highest</p>
-              <p className="text-xl font-bold text-success">{attendanceStats.highest}%</p>
-            </div>
-            <div>
-              <p className="text-slate-500 text-sm">Lowest</p>
-              <p className="text-xl font-bold text-primary">{attendanceStats.lowest}%</p>
-            </div>
+            <div><p className="text-white/50 text-sm">Average</p><p className="text-xl font-bold text-white">{attendanceStats.avg}%</p></div>
+            <div><p className="text-white/50 text-sm">Highest</p><p className="text-xl font-bold text-success">{attendanceStats.highest}%</p></div>
+            <div><p className="text-white/50 text-sm">Lowest</p><p className="text-xl font-bold text-primary">{attendanceStats.lowest}%</p></div>
           </div>
         </motion.div>
 
         <motion.div variants={fadeInUp} className="glass-card p-6">
-          <h3 className="text-lg font-bold mb-4 flex items-center gap-2 text-slate-800">
+          <h3 className="text-lg font-bold mb-4 flex items-center gap-2 text-white">
             <CreditCard size={20} className="text-success" /> Fee Collection (Current Month)
           </h3>
           <div className="mb-4">
             <div className="flex justify-between text-sm mb-1">
-              <span>Collected: Rs {currentMonthFee.collected.toLocaleString()}</span>
-              <span>Pending: Rs {currentMonthFee.pending.toLocaleString()}</span>
+              <span className="text-white/70">Collected: Rs {currentMonthFee.collected.toLocaleString()}</span>
+              <span className="text-white/50">Pending: Rs {currentMonthFee.pending.toLocaleString()}</span>
             </div>
-            <div className="w-full bg-white/20 rounded-full h-2.5">
+            <div className="w-full bg-white/10 rounded-full h-2.5">
               <motion.div
                 initial={{ width: 0 }}
                 animate={{ width: `${(currentMonthFee.collected / (currentMonthFee.total || 1)) * 100}%` }}
                 transition={{ duration: 0.8, ease: "easeOut" }}
-                className="bg-success h-2.5 rounded-full"
+                className="bg-success h-2.5 rounded-full shadow-glow"
               />
             </div>
           </div>
-          <h4 className="font-semibold mb-2 text-slate-800">Class‑wise collection</h4>
+          <h4 className="font-semibold mb-2 text-white">Class‑wise collection</h4>
           <div className="space-y-2">
             {classFeeSummary.map((c, idx) => (
               <motion.div
@@ -321,10 +315,10 @@ export default function DashboardPage() {
                 transition={{ delay: idx * 0.1 }}
               >
                 <div className="flex justify-between text-sm">
-                  <span>{c.class}</span>
-                  <span>Rs {c.collected.toLocaleString()} / {c.total.toLocaleString()}</span>
+                  <span className="text-white/80">{c.class}</span>
+                  <span className="text-white/60">Rs {c.collected.toLocaleString()} / {c.total.toLocaleString()}</span>
                 </div>
-                <div className="w-full bg-white/20 rounded-full h-1.5">
+                <div className="w-full bg-white/10 rounded-full h-1.5">
                   <div
                     className="bg-accent h-1.5 rounded-full"
                     style={{ width: `${(c.collected / (c.total || 1)) * 100}%` }}
@@ -339,11 +333,11 @@ export default function DashboardPage() {
       {/* Charts Row 2 */}
       <div className="grid lg:grid-cols-2 gap-6">
         <motion.div variants={fadeInUp} className="glass-card p-6">
-          <h3 className="text-lg font-bold mb-4 flex items-center gap-2 text-slate-800">
+          <h3 className="text-lg font-bold mb-4 flex items-center gap-2 text-white">
             <Users size={20} className="text-accent" /> Student Distribution by Class
           </h3>
           {classDistribution.length === 0 ? (
-            <div className="flex justify-center items-center h-64 text-slate-400">No data yet</div>
+            <div className="flex justify-center items-center h-64 text-white/40">No data yet</div>
           ) : (
             <div className="flex flex-col md:flex-row items-center justify-center gap-8">
               <ResponsiveContainer width="100%" height={250} className="md:w-1/2">
@@ -371,7 +365,7 @@ export default function DashboardPage() {
                       className="w-4 h-4 rounded-full"
                       style={{ backgroundColor: CHART_COLORS[idx % CHART_COLORS.length] }}
                     />
-                    <span className="text-sm font-medium text-slate-700">{item.name}: {item.value}</span>
+                    <span className="text-sm font-medium text-white/80">{item.name}: {item.value}</span>
                   </div>
                 ))}
               </div>
@@ -380,12 +374,12 @@ export default function DashboardPage() {
         </motion.div>
 
         <motion.div variants={fadeInUp} className="glass-card p-6">
-          <h3 className="text-lg font-bold mb-4 flex items-center gap-2 text-slate-800">
+          <h3 className="text-lg font-bold mb-4 flex items-center gap-2 text-white">
             <Clock size={20} className="text-warning" /> Recent Fee Payments
           </h3>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="text-slate-500 border-b border-white/20">
+              <thead className="text-white/50 border-b border-white/10">
                 <tr>
                   <th className="p-3 text-left">Student</th>
                   <th>Month</th>
@@ -400,17 +394,17 @@ export default function DashboardPage() {
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: idx * 0.05 }}
-                    className="border-b border-white/10"
+                    className="border-b border-white/5"
                   >
-                    <td className="p-3 text-slate-800">{p.studentName}</td>
-                    <td className="p-3">{p.date}</td>
+                    <td className="p-3 text-white/90">{p.studentName}</td>
+                    <td className="p-3 text-white/70">{p.date}</td>
                     <td className="p-3 font-bold text-success">Rs {p.amount.toLocaleString()}</td>
-                    <td className="p-3">{p.timestamp.toLocaleDateString()}</td>
+                    <td className="p-3 text-white/60">{p.timestamp.toLocaleDateString()}</td>
                   </motion.tr>
                 ))}
                 {recentPayments.length === 0 && (
                   <tr>
-                    <td colSpan={4} className="p-6 text-center text-slate-400">No payments yet</td>
+                    <td colSpan={4} className="p-6 text-center text-white/40">No payments yet</td>
                   </tr>
                 )}
               </tbody>
@@ -435,19 +429,18 @@ function KpiCard({
   value: string | number;
   icon: React.ReactNode;
   subtitle?: string;
-  color: string;
   bgClass: string;
   iconColor: string;
 }) {
   return (
-    <div className="glass-card p-6 transition-all duration-300 hover:shadow-xl">
+    <div className="glass-card p-6 transition-all duration-300 hover:shadow-glow">
       <div className="flex justify-between items-start">
         <div>
-          <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">{title}</p>
-          <p className="text-3xl font-black mt-2 text-slate-800">{value}</p>
-          {subtitle && <p className="text-sm text-slate-500 mt-1">{subtitle}</p>}
+          <p className="text-xs font-bold text-white/50 uppercase tracking-wider">{title}</p>
+          <p className="text-3xl font-black mt-2 text-white">{value}</p>
+          {subtitle && <p className="text-sm text-white/60 mt-1">{subtitle}</p>}
         </div>
-        <div className={`p-3 rounded-xl ${bgClass} ${iconColor}`}>{icon}</div>
+        <div className={`p-3 rounded-xl ${bgClass} ${iconColor} shadow-lg`}>{icon}</div>
       </div>
     </div>
   );
