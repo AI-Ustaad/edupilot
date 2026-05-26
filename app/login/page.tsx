@@ -18,24 +18,11 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-dark-900 relative overflow-hidden">
-      {/* آپ کی اپ لوڈ کردہ بیک گراؤنڈ امیج (بہت ہلکی) */}
-      <div
-        className="absolute inset-0 z-0"
-        style={{
-          backgroundImage: "url('/background.png')",
-          backgroundSize: "cover",
-          backgroundPosition: "center",
-          opacity: 0.15,
-          filter: "blur(2px) brightness(0.8)",
-        }}
-      />
-
       {/* Volumetric rays */}
-      <div className="absolute inset-0 volumetric-rays z-0"></div>
-
+      <div className="absolute inset-0 volumetric-rays"></div>
       {/* Ambient glow orbs */}
-      <div className="absolute -top-40 -right-40 w-96 h-96 bg-primary/20 rounded-full blur-[120px] z-0" />
-      <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-accent/20 rounded-full blur-[120px] z-0" />
+      <div className="absolute -top-40 -right-40 w-96 h-96 bg-primary/20 rounded-full blur-[120px]" />
+      <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-accent/20 rounded-full blur-[120px]" />
 
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
