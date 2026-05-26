@@ -80,7 +80,7 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
       items: [
         { name: "Attendance", icon: ClipboardCheck, path: "/attendance", allowed: ["admin", "teacher"] },
         { name: "Time Table", icon: Clock, path: "/timetable", allowed: ["admin", "teacher"] },
-        { name: "AI Timetable", icon: Sparkles, path: "/ai-timetable", allowed: ["admin", "teacher"] }, // <-- نیا لنک
+        { name: "AI Timetable", icon: Sparkles, path: "/ai-timetable", allowed: ["admin", "teacher"] },
       ],
       allowed: ["admin", "teacher"],
       key: "operations",
@@ -124,29 +124,23 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
         className="md:hidden fixed top-4 right-4 z-50 p-2 glass-card !rounded-xl"
         onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
       >
-        {isMobileMenuOpen ? <X size={24} className="text-slate-700" /> : <Menu size={24} className="text-slate-700" />}
+        {isMobileMenuOpen ? <X size={24} className="text-white" /> : <Menu size={24} className="text-white" />}
       </button>
 
       {/* Sidebar */}
       <div
         className={`fixed inset-y-0 left-0 z-40 w-72 flex flex-col transform transition-transform md:relative md:translate-x-0 ${
           isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"
-        }`}
-        style={{
-          background: "rgba(255, 255, 255, 0.08)",
-          backdropFilter: "blur(35px)",
-          WebkitBackdropFilter: "blur(35px)",
-          borderRight: "1px solid rgba(255, 255, 255, 0.2)",
-          borderRadius: "0 36px 36px 0",
-        }}
+        } glass-sidebar`}
+        style={{ borderRadius: '0 36px 36px 0' }}
       >
         {/* Logo */}
         <div
           className="h-20 px-6 border-b border-white/10 flex items-center gap-2 cursor-pointer mb-4"
           onClick={() => router.push("/dashboard")}
         >
-          <ShieldCheck className="text-primary w-8 h-8" />
-          <span className="text-xl font-black text-slate-800">EduPilot</span>
+          <ShieldCheck className="text-primary w-8 h-8 drop-shadow-glow" />
+          <span className="text-xl font-black text-white">EduPilot</span>
         </div>
 
         {/* Navigation */}
@@ -161,7 +155,7 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
             visibleGroups.map((group) => (
               <div key={group.title} className="mb-2">
                 <div
-                  className="flex items-center justify-between px-3 py-2 rounded-lg text-slate-600 hover:bg-white/10 cursor-pointer transition-colors"
+                  className="flex items-center justify-between px-3 py-2 rounded-lg text-white/60 hover:bg-white/5 cursor-pointer transition-colors"
                   onClick={() => group.key && toggleGroup(group.key)}
                 >
                   <div className="flex items-center gap-2">
@@ -185,7 +179,7 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
                             className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all ${
                               isActive
                                 ? "bg-gradient-to-r from-primary to-accent text-white shadow-lg"
-                                : "text-slate-600 hover:bg-white/10"
+                                : "text-white/60 hover:bg-white/5"
                             }`}
                           >
                             <item.icon size={18} />
@@ -204,7 +198,7 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
         <div className="p-4 border-t border-white/10">
           <button
             onClick={handleLogout}
-            className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-red-400 hover:bg-red-50/10 transition-colors"
+            className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-red-400 hover:bg-red-500/10 transition-colors"
           >
             <LogOut size={18} />
             <span className="text-sm font-medium">Secure Logout</span>
