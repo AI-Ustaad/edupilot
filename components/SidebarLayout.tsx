@@ -100,6 +100,7 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
         { name: "Lesson Plans", icon: Calendar, path: "/teacher/lesson-plans", allowed: ["admin", "teacher"] },
         { name: "Book Center", icon: BookOpen, path: "/teacher/book-center", allowed: ["admin", "teacher"] },
         { name: "Manage Books", icon: FileText, path: "/teacher/manage-books", allowed: ["admin", "teacher"] },
+        { name: "Exam Center", icon: FileText, path: "/teacher/exam-center", allowed: ["admin", "teacher"] },
       ],
       allowed: ["admin"],
       key: "staff",
