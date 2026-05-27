@@ -36,15 +36,15 @@ export default function LoginPage() {
             <div className="w-16 h-16 mx-auto bg-gradient-to-br from-primary to-accent rounded-2xl flex items-center justify-center shadow-lg mb-4">
               <Chrome size={32} className="text-gray-900" />
             </div>
-            <h1 className="text-2xl font-black text-white">Welcome Back</h1>
-            <p className="text-white/50 mt-2">Sign in to your institution dashboard</p>
+            <h1 className="text-2xl font-black text-gray-900">Welcome Back</h1>
+            <p className="text-gray-900/50 mt-2">Sign in to your institution dashboard</p>
           </div>
 
           {/* Google Login Button */}
           <button
             onClick={handleGoogleLogin}
             disabled={loading}
-            className="w-full glass-btn flex items-center justify-center gap-3 py-3.5 text-white/90 hover:bg-white/20"
+            className="w-full glass-btn flex items-center justify-center gap-3 py-3.5 text-gray-900/90 hover:bg-white/20"
           >
             {loading ? (
               <Loader2 className="animate-spin" size={24} />
@@ -61,7 +61,7 @@ export default function LoginPage() {
             )}
           </button>
 
-          <p className="text-xs text-white/30 mt-8">
+          <p className="text-xs text-gray-900/30 mt-8">
             By continuing, you agree to our Terms of Service and Privacy Policy.
           </p>
         </div>

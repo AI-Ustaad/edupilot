@@ -41,13 +41,13 @@ export default function StudyCenter() {
 
   return (
     <div className="p-6 max-w-6xl mx-auto">
-      <h1 className="text-2xl font-black text-white mb-6">Study Center</h1>
+      <h1 className="text-2xl font-black text-gray-900 mb-6">Study Center</h1>
       <div className="glass-card p-4 mb-6 flex flex-wrap gap-4">
-        <select value={filters.classGrade} onChange={e => setFilters({ ...filters, classGrade: e.target.value })} className="bg-white/10 border border-white/10 rounded-xl p-2 text-white">
+        <select value={filters.classGrade} onChange={e => setFilters({ ...filters, classGrade: e.target.value })} className="bg-white/10 border border-white/10 rounded-xl p-2 text-gray-900">
           <option value="">All Classes</option>
           {classes.map(c => (<option key={c}>{c}</option>))}
         </select>
-        <select value={filters.subject} onChange={e => setFilters({ ...filters, subject: e.target.value })} className="bg-white/10 border border-white/10 rounded-xl p-2 text-white">
+        <select value={filters.subject} onChange={e => setFilters({ ...filters, subject: e.target.value })} className="bg-white/10 border border-white/10 rounded-xl p-2 text-gray-900">
           <option value="">All Subjects</option>
           {subjects.map(s => (<option key={s}>{s}</option>))}
         </select>
@@ -60,9 +60,9 @@ export default function StudyCenter() {
             <div className="flex items-center gap-2 text-secondary mb-2">
               {getIcon(m.type)} <span className="text-xs uppercase font-bold">{m.type}</span>
             </div>
-            <h3 className="font-bold text-lg text-white">{m.title}</h3>
-            <p className="text-sm text-white/50 mb-2">{m.classGrade} - {m.subject}</p>
-            <p className="text-sm text-white/60 line-clamp-2">{m.description}</p>
+            <h3 className="font-bold text-lg text-gray-900">{m.title}</h3>
+            <p className="text-sm text-gray-900/50 mb-2">{m.classGrade} - {m.subject}</p>
+            <p className="text-sm text-gray-900/60 line-clamp-2">{m.description}</p>
             <a href={m.fileUrl || m.linkUrl} target="_blank" rel="noopener noreferrer" className="mt-3 inline-block text-primary text-sm font-bold">View Material →</a>
           </div>
         ))}

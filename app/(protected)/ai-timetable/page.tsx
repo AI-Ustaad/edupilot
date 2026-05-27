@@ -94,7 +94,7 @@ export default function AITimetablePage() {
                 }
                 className={`px-3 py-1 rounded-full text-sm font-bold border transition ${
                   selectedClasses.includes(c)
-                    ? "bg-primary text-white border-primary"
+                    ? "bg-primary text-gray-900 border-primary"
                     : "glass-btn"
                 }`}
               >
@@ -117,7 +117,7 @@ export default function AITimetablePage() {
                 }
                 className={`px-3 py-1 rounded-full text-sm font-bold border transition ${
                   selectedSubjects.includes(s)
-                    ? "bg-accent text-white border-accent"
+                    ? "bg-accent text-gray-900 border-accent"
                     : "glass-btn"
                 }`}
               >
