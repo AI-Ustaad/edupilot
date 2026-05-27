@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
-import { BookOpen, CalendarCheck, FileText, Upload } from "lucide-react";
+import { BookOpen, CalendarCheck, FileText, Upload, HelpCircle } from "lucide-react";
 
 interface ChildInfo {
   id: string;
@@ -18,9 +18,11 @@ export default function ParentDashboard() {
   const [data, setData] = useState<{ children: ChildInfo[]; notices: any[] } | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // اسائنمنٹ اسٹیٹ
+  // اضافی سٹیٹس – quizzes، homework، اور assignments
+  const [childQuizzes, setChildQuizzes] = useState<Record<string, any[]>>({});
+  const [childHomework, setChildHomework] = useState<Record<string, any[]>>({});
   const [childAssignments, setChildAssignments] = useState<Record<string, any[]>>({});
-  const [uploading, setUploading] = useState<string | null>(null); // childId
+  const [uploading, setUploading] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -31,17 +33,41 @@ export default function ParentDashboard() {
           const children: ChildInfo[] = json.data.children;
           setData(json.data);
 
-          // ہر بچے کے لیے اسائنمنٹس لائیں
+          // ہر بچے کے لیے الگ سے ڈیٹا لائیں
+          const quizzesMap: Record<string, any[]> = {};
+          const homeworkMap: Record<string, any[]> = {};
           const assignmentsMap: Record<string, any[]> = {};
+
           for (const child of children) {
             if (child.classGrade && child.section) {
-              const resA = await fetch(
+              // Quizzes
+              const quizRes = await fetch(
+                `/api/quizzes?classGrade=${encodeURIComponent(child.classGrade)}&section=${encodeURIComponent(child.section || "")}`
+              );
+              const quizData = await quizRes.json();
+              quizzesMap[child.id] = Array.isArray(quizData) ? quizData : [];
+
+              // Homework
+              const hwRes = await fetch(`/api/homework`);
+              const hwData = await hwRes.json();
+              // فلٹر صرف اس بچے کی کلاس/سیکشن کے لیے
+              homeworkMap[child.id] = Array.isArray(hwData)
+                ? hwData.filter(
+                    (h: any) =>
+                      h.classGrade === child.classGrade && (h.section === child.section || !h.section)
+                  )
+                : [];
+
+              // Assignments
+              const assignRes = await fetch(
                 `/api/assignments?classGrade=${encodeURIComponent(child.classGrade)}&section=${encodeURIComponent(child.section || "")}`
               );
-              const aData = await resA.json();
-              assignmentsMap[child.id] = Array.isArray(aData) ? aData : [];
+              const assignData = await assignRes.json();
+              assignmentsMap[child.id] = Array.isArray(assignData) ? assignData : [];
             }
           }
+          setChildQuizzes(quizzesMap);
+          setChildHomework(homeworkMap);
           setChildAssignments(assignmentsMap);
         }
       })
@@ -104,11 +130,13 @@ export default function ParentDashboard() {
             <h2 className="text-xl font-bold text-gray-900">
               {child.fullName || child.name || "Student"}
             </h2>
-            <span className="text-sm text-gray-500">{child.classGrade} {child.section && `- ${child.section}`}</span>
+            <span className="text-sm text-gray-500">
+              {child.classGrade} {child.section && `- ${child.section}`}
+            </span>
           </div>
 
+          {/* Attendance & Latest Marks */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Attendance */}
             <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-center gap-3">
               <CalendarCheck className="text-blue-600 w-8 h-8" />
               <div>
@@ -116,8 +144,6 @@ export default function ParentDashboard() {
                 <p className="text-xl font-bold text-gray-900">{child.todayAttendance}</p>
               </div>
             </div>
-
-            {/* Latest Marks */}
             <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex items-center gap-3">
               <BookOpen className="text-green-600 w-8 h-8" />
               <div>
@@ -127,7 +153,9 @@ export default function ParentDashboard() {
                     <p className="text-lg font-bold text-gray-900">
                       {child.latestMarks.subject}: {child.latestMarks.marksObtained}/{child.latestMarks.totalMarks}
                     </p>
-                    <p className="text-xs text-gray-500">{child.latestMarks.term} • Grade: {child.latestMarks.grade}</p>
+                    <p className="text-xs text-gray-500">
+                      {child.latestMarks.term} • Grade: {child.latestMarks.grade}
+                    </p>
                   </div>
                 ) : (
                   <p className="text-gray-500">No marks available</p>
@@ -136,19 +164,72 @@ export default function ParentDashboard() {
             </div>
           </div>
 
-          {/* Assignments for this child */}
+          {/* 🆕 Quizzes Section */}
+          {childQuizzes[child.id] && childQuizzes[child.id].length > 0 && (
+            <div>
+              <h3 className="text-lg font-bold text-gray-800 mb-3 flex items-center gap-2">
+                <HelpCircle className="text-orange-500" /> Quizzes
+              </h3>
+              <div className="space-y-3">
+                {childQuizzes[child.id].map((quiz: any) => (
+                  <div key={quiz.id} className="border border-gray-200 rounded-xl p-4">
+                    <p className="font-semibold text-gray-900">{quiz.title}</p>
+                    <p className="text-sm text-gray-600">
+                      Subject: {quiz.subject} • Questions: {quiz.questions?.length || 0}
+                    </p>
+                    {quiz.dueDate && (
+                      <p className="text-xs text-red-500">
+                        Due: {new Date(quiz.dueDate.toDate?.() || quiz.dueDate).toLocaleDateString()}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* 🆕 Homework Section */}
+          {childHomework[child.id] && childHomework[child.id].length > 0 && (
+            <div>
+              <h3 className="text-lg font-bold text-gray-800 mb-3 flex items-center gap-2">
+                <FileText className="text-purple-600" /> Homework
+              </h3>
+              <div className="space-y-3">
+                {childHomework[child.id].map((hw: any) => (
+                  <div key={hw.id} className="border border-gray-200 rounded-xl p-4">
+                    <p className="font-semibold text-gray-900">{hw.title}</p>
+                    <p className="text-sm text-gray-600">{hw.description}</p>
+                    {hw.tasks && (
+                      <ul className="mt-2 list-disc list-inside text-sm text-gray-600">
+                        {hw.tasks.map((t: string, i: number) => (
+                          <li key={i}>{t}</li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Assignments (پہلے سے موجود) */}
           {childAssignments[child.id] && childAssignments[child.id].length > 0 && (
             <div>
               <h3 className="text-lg font-bold text-gray-800 mb-3 flex items-center gap-2">
-                <FileText className="text-purple-600" /> Assignments
+                <FileText className="text-pink-600" /> Assignments
               </h3>
               <div className="space-y-3">
                 {childAssignments[child.id].map((assignment: any) => (
-                  <div key={assignment.id} className="border border-gray-200 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div
+                    key={assignment.id}
+                    className="border border-gray-200 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                  >
                     <div>
                       <p className="font-semibold text-gray-900">{assignment.title}</p>
                       <p className="text-sm text-gray-600">{assignment.description}</p>
-                      <p className="text-xs text-gray-400">Due: {new Date(assignment.dueDate).toLocaleDateString()}</p>
+                      <p className="text-xs text-gray-400">
+                        Due: {new Date(assignment.dueDate).toLocaleDateString()}
+                      </p>
                     </div>
                     <button
                       onClick={() => handleFileSubmit(child, assignment.id)}
@@ -166,10 +247,10 @@ export default function ParentDashboard() {
       ))}
 
       {/* Notices */}
-      {data.notices.length > 0 && (
+      {data.notices && data.notices.length > 0 && (
         <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
           <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2 mb-4">
-            <FileText className="text-purple-600" /> School Notices & Homework
+            <FileText className="text-purple-600" /> School Notices
           </h2>
           <div className="space-y-3">
             {data.notices.map((notice: any) => (
