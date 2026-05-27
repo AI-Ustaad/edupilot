@@ -96,6 +96,8 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
         { name: "Leave Requests", icon: CalendarDays, path: "/leave-requests", allowed: ["admin"] },
         { name: "Post Homework", icon: FileText, path: "/teacher/homework", allowed: ["admin", "teacher"] },
         { name: "Assignments", icon: FileText, path: "/teacher/assignments", allowed: ["admin", "teacher"] },
+        { name: "Quizzes", icon: FileText, path: "/teacher/quizzes", allowed: ["admin", "teacher"] },
+        { name: "Lesson Plans", icon: Calendar, path: "/teacher/lesson-plans", allowed: ["admin", "teacher"] },
       ],
       allowed: ["admin"],
       key: "staff",
@@ -135,7 +137,6 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
 
   return (
     <div className="flex h-screen bg-white">
-      {/* Mobile Menu Button */}
       <button
         className="md:hidden fixed top-4 right-4 z-50 p-2 bg-white rounded-lg shadow"
         onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
@@ -143,13 +144,11 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
         {isMobileMenuOpen ? <X size={24} className="text-gray-700" /> : <Menu size={24} className="text-gray-700" />}
       </button>
 
-      {/* Sidebar */}
       <div
         className={`fixed inset-y-0 left-0 z-40 w-72 flex flex-col transform transition-transform md:relative md:translate-x-0 ${
           isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"
         } bg-white border-r border-gray-200`}
       >
-        {/* Logo */}
         <div
           className="h-20 px-6 border-b border-gray-200 flex items-center gap-2 cursor-pointer"
           onClick={() => router.push("/dashboard")}
@@ -158,7 +157,6 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
           <span className="text-xl font-black text-gray-900">EduPilot</span>
         </div>
 
-        {/* Navigation */}
         <div className="flex-1 overflow-y-auto py-2 px-4">
           {role === "loading" ? (
             <div className="animate-pulse space-y-4">
@@ -209,7 +207,6 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
           )}
         </div>
 
-        {/* Logout */}
         <div className="p-4 border-t border-gray-200">
           <button
             onClick={handleLogout}
@@ -221,13 +218,11 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
         </div>
       </div>
 
-      {/* Main Content */}
       <div className="flex-1 overflow-y-auto">
         <div className="p-4 md:p-8 max-w-[1600px] mx-auto">{children}</div>
         <MobileBottomNav />
       </div>
 
-      {/* Mobile Overlay */}
       {isMobileMenuOpen && (
         <div className="fixed inset-0 bg-black/50 z-30 md:hidden" onClick={() => setIsMobileMenuOpen(false)} />
       )}
