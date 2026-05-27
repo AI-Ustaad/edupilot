@@ -9,7 +9,7 @@ import {
   LayoutDashboard, Users, BookOpen, UserCircle, ClipboardCheck,
   Wallet, Clock, Settings, Menu, X, ShieldCheck, LogOut,
   GraduationCap, DollarSign, Calendar, FileText, Heart,
-  ChevronDown, ChevronRight, CreditCard, Sparkles, Bus, CalendarDays,
+  ChevronDown, ChevronRight, CreditCard, Sparkles, Bus, CalendarDays, Bot,
 } from "lucide-react";
 import MobileBottomNav from "./MobileBottomNav";
 
@@ -24,6 +24,7 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
     adminTools: true,
     operations: true,
     staff: true,
+    aiTools: true,   // نیا
   });
 
   useEffect(() => {
@@ -108,6 +109,17 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
       ],
       allowed: ["admin"],
       key: "adminTools",
+    },
+    // ─── نیا گروپ: AI Tools ────────────────────────────
+    {
+      title: "AI Tools",
+      icon: Sparkles,
+      items: [
+        { name: "AI Assistant", icon: Bot, path: "/ai-chatbot", allowed: ["admin", "teacher"] },
+        // آئندہ مزید AI لنک یہاں شامل کیے جا سکتے ہیں
+      ],
+      allowed: ["admin", "teacher"],
+      key: "aiTools",
     },
   ];
 
