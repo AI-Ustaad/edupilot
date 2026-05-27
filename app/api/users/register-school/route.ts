@@ -1,4 +1,3 @@
-import { NextResponse } from "next/server";
 import { adminAuth, adminDb } from "@/lib/firebase-admin";
 import { cookies } from "next/headers";
 import { curriculumMap } from "@/lib/curriculum-data";
@@ -7,7 +6,7 @@ export async function POST(req: Request) {
   try {
     const session = cookies().get("session")?.value;
     if (!session) {
-      return NextResponse.json({ error: "No session" }, { status: 401 });
+      return new Response(JSON.stringify({ error: "No session" }), { status: 401 });
     }
 
     const decoded = await adminAuth.verifySessionCookie(session);
@@ -23,7 +22,7 @@ export async function POST(req: Request) {
     } = await req.json();
 
     if (!schoolName || !schoolName.trim()) {
-      return NextResponse.json({ error: "School name is required" }, { status: 400 });
+      return new Response(JSON.stringify({ error: "School name is required" }), { status: 400 });
     }
 
     const tenantId = `school_${Math.random().toString(36).substr(2, 9)}`;
@@ -58,7 +57,7 @@ export async function POST(req: Request) {
       schoolName: schoolName.trim(),
       logo: logoBase64 || "",
       banner: bannerBase64 || "",
-      primaryColor: "#FFB6B8", // ڈیفالٹ
+      primaryColor: "#FFB6B8",
     });
 
     // 4. اسکول کی سیٹنگز (curriculum data سے کلاسز اور مضامین)
@@ -67,7 +66,6 @@ export async function POST(req: Request) {
       const uniqueClasses = [...new Set(curriculum.classes)];
       const uniqueSubjects = [...new Set(curriculum.subjects)];
 
-      // settings
       await adminDb.collection("settings").doc(tenantId).set({
         classes: uniqueClasses,
         subjects: uniqueSubjects,
@@ -78,7 +76,6 @@ export async function POST(req: Request) {
         curriculumLoadedAt: new Date(),
       });
 
-      // سیکشنز (ہر کلاس کے لیے ڈیفالٹ "A")
       const batch = adminDb.batch();
       for (const cls of uniqueClasses) {
         const ref = adminDb.collection("sections").doc();
@@ -92,7 +89,6 @@ export async function POST(req: Request) {
       }
       await batch.commit();
     } else {
-      // کم از کم خالی سیٹنگز
       await adminDb.collection("settings").doc(tenantId).set({
         classes: [],
         subjects: [],
@@ -103,7 +99,7 @@ export async function POST(req: Request) {
       });
     }
 
-    // 5. اسٹاف کی ضروریات (staff_requirements)
+    // 5. اسٹاف کی ضروریات
     if (staffList.length > 0) {
       await adminDb.collection("staff_requirements").doc(tenantId).set({
         requirements: staffList,
@@ -111,9 +107,21 @@ export async function POST(req: Request) {
       });
     }
 
-    return NextResponse.json({ success: true, tenantId });
+    // ─── 6. مفت آزمائش (14 دن) ────────────────────────────
+    const trialDays = 14; // جتنے دن چاہیں
+    const trialEndsAt = new Date();
+    trialEndsAt.setDate(trialEndsAt.getDate() + trialDays);
+
+    await adminDb.collection("subscriptions").doc(tenantId).set({
+      planId: "free",           // آزمائش کے دوران فری پلان
+      status: "active",
+      trialEndsAt: trialEndsAt,
+      createdAt: new Date(),
+    });
+
+    return new Response(JSON.stringify({ success: true, tenantId }), { status: 200 });
   } catch (err: any) {
     console.error("Onboarding error:", err);
-    return NextResponse.json({ error: err.message || "Server error" }, { status: 500 });
+    return new Response(JSON.stringify({ error: err.message || "Server error" }), { status: 500 });
   }
 }
