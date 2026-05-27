@@ -1,66 +1,9 @@
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 body {
-  font-family: 'Plus Jakarta Sans', sans-serif;
-  background-color: #f8fafc;
-  color: #1E293B;
-}
-
-/* ========== GLASS COMPONENTS ========== */
-.glass-card {
-  background: rgba(255, 255, 255, 0.6);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(0, 0, 0, 0.05);
-  border-radius: 24px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
-  transition: all 0.3s ease;
-}
-.glass-card:hover {
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
-  transform: translateY(-2px);
-}
-
-.glass-btn {
-  background: rgba(255, 255, 255, 0.7);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  border-radius: 12px;
-  padding: 12px 24px;
-  font-weight: 600;
-  color: #1E293B;
-  transition: all 0.3s ease;
-}
-.glass-btn:hover {
-  background: rgba(255, 255, 255, 0.9);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-  transform: translateY(-1px);
-}
-
-.btn-primary {
-  background: linear-gradient(135deg, #FFB6B8, #FFC78B);
-  border: none;
-  border-radius: 12px;
-  color: white;
-  font-weight: 700;
-  padding: 12px 24px;
-  box-shadow: 0 4px 12px rgba(255, 182, 184, 0.3);
-  transition: all 0.3s ease;
-}
-.btn-primary:hover {
-  box-shadow: 0 6px 20px rgba(255, 182, 184, 0.5);
-  transform: translateY(-2px);
-}
-
-/* ========== OPTIONAL: SIDEBAR (light) ========== */
-.glass-sidebar {
-  background: rgba(255, 255, 255, 0.7);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border-right: 1px solid rgba(0, 0, 0, 0.05);
+  background-color: #ffffff;
+  color: #000000;
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
 }
