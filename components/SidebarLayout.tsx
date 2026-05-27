@@ -24,7 +24,7 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
     adminTools: true,
     operations: true,
     staff: true,
-    aiTools: true,   // نیا گروپ
+    aiTools: true,
   });
 
   useEffect(() => {
@@ -110,13 +110,14 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
       allowed: ["admin"],
       key: "adminTools",
     },
-    // ─── نیا گروپ: AI Tools ────────────────────────────
+    // ─── AI Tools گروپ ────────────────────────────
     {
       title: "AI Tools",
       icon: Sparkles,
       items: [
         { name: "AI Assistant", icon: Bot, path: "/ai-chatbot", allowed: ["admin", "teacher"] },
         { name: "AI Timetable", icon: Sparkles, path: "/ai-timetable", allowed: ["admin", "teacher"] },
+        { name: "Exam Questions", icon: FileText, path: "/ai-exam-questions", allowed: ["admin", "teacher"] },
       ],
       allowed: ["admin", "teacher"],
       key: "aiTools",
