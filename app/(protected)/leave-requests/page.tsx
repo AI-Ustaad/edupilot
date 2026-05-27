@@ -49,26 +49,28 @@ export default function LeaveRequestsPage() {
   const approveLeave = async (id: string) => {
     await updateDoc(doc(db, "leave_requests", id), { status: "approved" });
     setLeaves(leaves.filter(l => l.id !== id));
-    alert("Leave approved. You can now assign substitute from the arrange panel.");
+    alert("Leave approved.");
   };
 
-  if (loading) return <div className="p-8"><Loader2 className="animate-spin mx-auto" /></div>;
+  if (loading) return <div className="flex h-96 items-center justify-center"><Loader2 className="animate-spin text-primary" size={40}/></div>;
 
   return (
     <div className="p-6 max-w-4xl mx-auto">
-      <h1 className="text-2xl font-black mb-6">Pending Leave Requests</h1>
+      <h1 className="text-2xl font-black text-white mb-6">Pending Leave Requests</h1>
       {leaves.length === 0 ? (
-        <p className="text-slate-400">No pending leave requests.</p>
+        <div className="glass-card p-10 text-center text-white/50">No pending leave requests.</div>
       ) : (
         <div className="space-y-4">
           {leaves.map(leave => (
-            <div key={leave.id} className="bg-white dark:bg-slate-800 rounded-2xl p-5 shadow-sm border flex justify-between items-center">
+            <div key={leave.id} className="glass-card p-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
               <div>
-                <p className="font-bold">{leave.teacherName}</p>
-                <p className="text-sm text-slate-500">{leave.startDate} to {leave.endDate}</p>
-                <p className="text-sm">{leave.reason}</p>
+                <p className="font-bold text-white">{leave.teacherName}</p>
+                <p className="text-sm text-white/60">{leave.startDate} to {leave.endDate}</p>
+                <p className="text-sm text-white/70">{leave.reason}</p>
               </div>
-              <button onClick={() => approveLeave(leave.id)} className="bg-green-600 text-white px-4 py-2 rounded-xl flex items-center gap-2"><CheckCircle size={18} /> Approve</button>
+              <button onClick={() => approveLeave(leave.id)} className="btn-primary flex items-center gap-2">
+                <CheckCircle size={18} /> Approve
+              </button>
             </div>
           ))}
         </div>
