@@ -7,7 +7,6 @@ export const GET = withErrorHandler(
   withAuth(
     withTenant(async (req: Request, { tenantId }: TenantContext) => {
       try {
-        // متوازی کالز – تیز تر
         const [studentsSnap, staffSnap, feesSnap, attendanceSnap] = await Promise.all([
           adminDb.collection("students").where("tenantId", "==", tenantId).get(),
           adminDb.collection("staff").where("tenantId", "==", tenantId).get(),
@@ -18,7 +17,6 @@ export const GET = withErrorHandler(
         const totalStudents = studentsSnap.size;
         const totalStaff = staffSnap.size;
 
-        // آمدنی
         let totalRevenue = 0;
         const feesList: any[] = [];
         feesSnap.forEach(doc => {
@@ -27,9 +25,8 @@ export const GET = withErrorHandler(
           feesList.push(d);
         });
 
-        // حاضری کا رجحان (آخری 7 دن)
         const now = new Date();
-        const days: { day: string; percent: number }[] = [];
+        const days: { day: string; percent: number; date: string }[] = []; // <-- یہاں date شامل کیا
         for (let i = 6; i >= 0; i--) {
           const d = new Date(now);
           d.setDate(d.getDate() - i);
@@ -53,12 +50,10 @@ export const GET = withErrorHandler(
           return { day: d.day, percent };
         });
 
-        // آج کی حاضری
         const today = now.toISOString().slice(0, 10);
         const todayData = attendanceByDate[today] || { present: 0, total: 0 };
         const todayAttendance = { present: todayData.present, absent: todayData.total - todayData.present };
 
-        // کلاس ڈسٹریبیوشن
         const classMap: Record<string, number> = {};
         studentsSnap.forEach(doc => {
           const cls = doc.data().classGrade || "Unknown";
@@ -66,16 +61,14 @@ export const GET = withErrorHandler(
         });
         const classDistribution = Object.entries(classMap).map(([name, value]) => ({ name, value }));
 
-        // ماہانہ فیس کلکشن (موجودہ مہینہ)
         const currentMonth = now.toLocaleString("default", { month: "long", year: "numeric" });
         let collected = 0;
         feesList.forEach(f => {
           if (f.feeMonth === currentMonth) collected += Number(f.amountPaid || 0);
         });
-        const expectedTotal = totalStudents * 5000; // آپ بعد میں حسب ضرورت بنا سکتے ہیں
+        const expectedTotal = totalStudents * 5000;
         const feeMonth = { collected, pending: expectedTotal - collected, total: expectedTotal };
 
-        // کلاس وائز فیس (آخری 5)
         const classFeeMap: Record<string, number> = {};
         feesList.forEach(f => {
           if (f.feeMonth === currentMonth) {
@@ -88,7 +81,6 @@ export const GET = withErrorHandler(
           .sort((a, b) => b.collected - a.collected)
           .slice(0, 5);
 
-        // حالیہ ادائیگیاں (آخری 5)
         const recentPayments = feesList
           .slice(0, 5)
           .map(f => ({
