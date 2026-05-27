@@ -21,8 +21,7 @@ export async function getPlanLimits(tenantId: string): Promise<PlanLimits> {
 }
 
 export async function isSubscriptionValid(tenantId: string): Promise<{ valid: boolean; message?: string }> {
-  // ڈیمو اسکول کے لیے خصوصی استثنا (اختیاری)
-  // اگر tenantId کسی مخصوص لسٹ میں ہے تو ہمیشہ valid مان لیں
+  // ڈیمو اسکولز کے لیے خصوصی استثنا
   const demoTenants = (process.env.DEMO_TENANTS || "").split(",");
   if (demoTenants.includes(tenantId)) {
     return { valid: true };
@@ -31,18 +30,14 @@ export async function isSubscriptionValid(tenantId: string): Promise<{ valid: bo
   const subDoc = await adminDb.collection("subscriptions").doc(tenantId).get();
   const sub = subDoc.data();
 
-  // اگر کوئی سبسکرپشن دستاویز ہی نہیں ہے تو فری پلان تصور کریں
   if (!sub) {
-    // فری پلان ہمیشہ فعال رہے گا
-    return { valid: true };
+    return { valid: true };  // فری پلان ہمیشہ فعال
   }
 
-  // اگر status فعال نہیں ہے تو بلاک کریں
   if (sub.status !== "active") {
     return { valid: false, message: "Your subscription is inactive. Please upgrade." };
   }
 
-  // اگر آزمائشی مدت ختم ہو چکی ہو اور پلان "free" ہے تو ختم کر دیں
   if (sub.trialEndsAt) {
     const trialEnd = sub.trialEndsAt.toDate ? sub.trialEndsAt.toDate() : new Date(sub.trialEndsAt);
     if (new Date() > trialEnd) {
@@ -52,6 +47,5 @@ export async function isSubscriptionValid(tenantId: string): Promise<{ valid: bo
     }
   }
 
-  // پلان کی حدود چیک کریں (بعد میں استعمال کے لیے)
   return { valid: true };
 }
