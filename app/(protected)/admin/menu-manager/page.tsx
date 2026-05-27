@@ -11,20 +11,15 @@ interface MenuItem {
   path: string;
 }
 
-interface SortableItemProps {
-  id: string;
-  label: string;
-  onRemove: (id: string) => void;
-}
-
-function SortableItem({ id, label, onRemove }: SortableItemProps) {
+function SortableItem({ id, label, onRemove }: { id: string; label: string; onRemove: (id: string) => void }) {
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id });
   const style = { transform: CSS.Transform.toString(transform), transition };
+
   return (
-    <div ref={setNodeRef} style={style} className="flex items-center gap-2 p-2 border rounded mb-2 bg-white">
-      <button {...listeners} {...attributes}><GripVertical size={20} /></button>
-      <span className="flex-1">{label}</span>
-      <button onClick={() => onRemove(id)}><Trash2 size={16} /></button>
+    <div ref={setNodeRef} style={style} className="flex items-center gap-2 p-3 glass-card !bg-white/5 hover:bg-white/10 transition-colors">
+      <button {...listeners} {...attributes} className="cursor-grab"><GripVertical size={20} className="text-white/50" /></button>
+      <span className="flex-1 text-white font-medium">{label}</span>
+      <button onClick={() => onRemove(id)} className="text-red-400 hover:text-red-600"><Trash2 size={16} /></button>
     </div>
   );
 }
@@ -60,23 +55,21 @@ export default function MenuManager() {
 
   return (
     <div className="p-6 max-w-2xl mx-auto">
-      <h1 className="text-2xl font-black mb-4">Custom Menu Manager</h1>
+      <h1 className="text-2xl font-black text-white mb-4">Custom Menu Manager</h1>
       <div className="flex gap-2 mb-4">
         <input
           placeholder="Label"
           value={newLabel}
           onChange={e => setNewLabel(e.target.value)}
-          className="border p-2 rounded flex-1"
+          className="flex-1 bg-white/10 border border-white/10 rounded-xl p-3 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-primary/50"
         />
         <input
           placeholder="/path"
           value={newPath}
           onChange={e => setNewPath(e.target.value)}
-          className="border p-2 rounded flex-1"
+          className="flex-1 bg-white/10 border border-white/10 rounded-xl p-3 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-primary/50"
         />
-        <button onClick={addItem} className="bg-blue-600 text-white px-3 rounded">
-          <Plus size={18} />
-        </button>
+        <button onClick={addItem} className="btn-primary flex items-center gap-2"><Plus size={18}/></button>
       </div>
       <DndContext
         collisionDetection={closestCenter}
@@ -96,9 +89,7 @@ export default function MenuManager() {
           ))}
         </SortableContext>
       </DndContext>
-      <button onClick={save} className="mt-4 bg-green-600 text-white px-4 py-2 rounded">
-        Save Menu
-      </button>
+      <button onClick={save} className="btn-primary w-full mt-4">Save Menu</button>
     </div>
   );
 }
