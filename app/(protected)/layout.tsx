@@ -1,9 +1,7 @@
-// app/(protected)/layout.tsx
 import { redirect } from "next/navigation";
 import { getSessionUser } from "@/lib/auth/auth-server";
 import { isSubscriptionValid } from "@/lib/subscription";
 import SidebarLayout from "@/components/SidebarLayout";
-import ParticleBackground from "@/components/ParticleBackground";
 
 export default async function ProtectedLayout({ children }: { children: React.ReactNode }) {
   const user = await getSessionUser();
@@ -18,37 +16,8 @@ export default async function ProtectedLayout({ children }: { children: React.Re
   }
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-dark-900">
-      {/* وال پیپر */}
-      <div
-        className="fixed inset-0 z-0"
-        style={{
-          backgroundImage: "url('/background.png')",
-          backgroundSize: "cover",
-          backgroundPosition: "center",
-          backgroundRepeat: "no-repeat",
-          filter: "blur(4px) brightness(0.7)",
-          opacity: 0.15,
-        }}
-      />
-
-      {/* Volumetric rays */}
-      <div className="volumetric-rays z-0"></div>
-
-      {/* Ambient glow orbs */}
-      <div className="ambient-glow-orb orb-1 z-0"></div>
-      <div className="ambient-glow-orb orb-2 z-0"></div>
-      <div className="ambient-glow-orb orb-3 z-0"></div>
-
-      {/* Floating particles */}
-      <div className="fixed inset-0 z-[1] pointer-events-none">
-        <ParticleBackground />
-      </div>
-
-      {/* Main content */}
-      <div className="relative z-10">
-        <SidebarLayout>{children}</SidebarLayout>
-      </div>
+    <div className="min-h-screen bg-slate-50">
+      <SidebarLayout>{children}</SidebarLayout>
     </div>
   );
 }
