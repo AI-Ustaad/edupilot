@@ -95,6 +95,7 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
         { name: "Manage Parents", icon: Heart, path: "/admin/parents", allowed: ["admin"] },
         { name: "Leave Requests", icon: CalendarDays, path: "/leave-requests", allowed: ["admin"] },
         { name: "Post Homework", icon: FileText, path: "/teacher/homework", allowed: ["admin", "teacher"] },
+        { name: "Assignments", icon: FileText, path: "/teacher/assignments", allowed: ["admin", "teacher"] },
       ],
       allowed: ["admin"],
       key: "staff",
