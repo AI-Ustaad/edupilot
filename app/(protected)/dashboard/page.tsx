@@ -12,6 +12,7 @@ import {
   PieChart, Pie, Cell
 } from "recharts";
 
+// Animation variants (keep, no problem)
 const fadeInUp = {
   hidden: { opacity: 0, y: 40 },
   visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: "easeOut" } }
@@ -23,8 +24,8 @@ const staggerContainer = {
 };
 
 const cardHover = {
-  rest: { scale: 1, y: 0 },
-  hover: { scale: 1.02, y: -6 }
+  rest: { scale: 1, y: 0, transition: { duration: 0.2 } },
+  hover: { scale: 1.01, y: -2, transition: { duration: 0.2 } }
 };
 
 const CHART_COLORS = ["#FF7D8F", "#64D8FF", "#FF9A9E", "#7EE6A2", "#FFC78B", "#A0E7FF"];
@@ -69,7 +70,7 @@ export default function DashboardPage() {
   if (loading) {
     return (
       <div className="flex h-96 items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-primary" />
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-blue-600" />
       </div>
     );
   }
@@ -82,78 +83,93 @@ export default function DashboardPage() {
       : "0";
 
   return (
-    <motion.div initial="hidden" animate="visible" variants={staggerContainer} className="space-y-8">
+    <motion.div
+      initial="hidden"
+      animate="visible"
+      variants={staggerContainer}
+      className="space-y-8"
+    >
+      {/* Header */}
       <motion.div variants={fadeInUp}>
-        <h1 className="text-3xl font-black text-white">Command Center</h1>
-        <p className="text-white/50 mt-1">Real‑time overview of your institution</p>
+        <h1 className="text-2xl font-bold text-gray-900">Command Center</h1>
+        <p className="text-gray-500 mt-1">Real‑time overview of your institution</p>
       </motion.div>
 
-      <motion.div variants={staggerContainer} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        <KpiCard title="Total Students" value={data.students} icon={<Users size={28} />} bgClass="bg-primary/20" iconColor="text-primary" />
-        <KpiCard title="Total Staff" value={data.staff} icon={<Briefcase size={28} />} bgClass="bg-secondary/20" iconColor="text-secondary" />
-        <KpiCard title="Revenue (Rs)" value={data.revenue.toLocaleString()} icon={<DollarSign size={28} />} bgClass="bg-success/20" iconColor="text-success" />
+      {/* KPI Cards */}
+      <motion.div
+        variants={staggerContainer}
+        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6"
+      >
+        <KpiCard title="Total Students" value={data.students} icon={<Users size={28} className="text-blue-600" />} />
+        <KpiCard title="Total Staff" value={data.staff} icon={<Briefcase size={28} className="text-purple-600" />} />
+        <KpiCard title="Revenue (Rs)" value={data.revenue.toLocaleString()} icon={<DollarSign size={28} className="text-green-600" />} />
         <KpiCard
           title="Today's Attendance"
           value={`${data.todayAttendance.present} / ${data.todayAttendance.present + data.todayAttendance.absent}`}
           subtitle={`${attendancePercent}% present`}
-          icon={<Activity size={28} />}
-          bgClass="bg-info/20"
-          iconColor="text-info"
+          icon={<Activity size={28} className="text-cyan-600" />}
         />
       </motion.div>
 
+      {/* Charts Row 1 */}
       <div className="grid lg:grid-cols-2 gap-6">
-        <motion.div variants={fadeInUp} className="glass-card p-6">
-          <h3 className="text-lg font-bold flex items-center gap-2 mb-4 text-white">
-            <CalendarDays size={20} className="text-primary" /> Weekly Attendance
+        <motion.div variants={fadeInUp} className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
+          <h3 className="text-lg font-semibold flex items-center gap-2 mb-4 text-gray-900">
+            <CalendarDays size={20} className="text-blue-600" /> Weekly Attendance
           </h3>
           <ResponsiveContainer width="100%" height={280}>
             <LineChart data={data.attendanceTrend}>
-              <XAxis dataKey="day" stroke="#94a3b8" />
-              <YAxis domain={[0, 100]} stroke="#94a3b8" />
-              <Tooltip contentStyle={{ background: "rgba(10,39,66,0.8)", backdropFilter: "blur(10px)", borderRadius: "12px", border: "1px solid rgba(255,255,255,0.12)", color: "#fff" }} />
-              <Line type="monotone" dataKey="percent" stroke="#FF7D8F" strokeWidth={3} dot={{ r: 4, fill: "#FF7D8F" }} />
+              <XAxis dataKey="day" stroke="#9ca3af" />
+              <YAxis domain={[0, 100]} stroke="#9ca3af" />
+              <Tooltip contentStyle={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: "8px", color: "#000" }} />
+              <Line type="monotone" dataKey="percent" stroke="#3b82f6" strokeWidth={3} dot={{ r: 4, fill: "#3b82f6" }} />
             </LineChart>
           </ResponsiveContainer>
           <div className="grid grid-cols-3 gap-4 mt-4 text-center">
-            <div><p className="text-white/50 text-sm">Average</p><p className="text-xl font-bold text-white">{data.attendanceStats.avg}%</p></div>
-            <div><p className="text-white/50 text-sm">Highest</p><p className="text-xl font-bold text-success">{data.attendanceStats.highest}%</p></div>
-            <div><p className="text-white/50 text-sm">Lowest</p><p className="text-xl font-bold text-primary">{data.attendanceStats.lowest}%</p></div>
+            <div><p className="text-gray-500 text-sm">Average</p><p className="text-xl font-bold text-gray-900">{data.attendanceStats.avg}%</p></div>
+            <div><p className="text-gray-500 text-sm">Highest</p><p className="text-xl font-bold text-green-600">{data.attendanceStats.highest}%</p></div>
+            <div><p className="text-gray-500 text-sm">Lowest</p><p className="text-xl font-bold text-red-500">{data.attendanceStats.lowest}%</p></div>
           </div>
         </motion.div>
 
-        <motion.div variants={fadeInUp} className="glass-card p-6">
-          <h3 className="text-lg font-bold mb-4 flex items-center gap-2 text-white">
-            <CreditCard size={20} className="text-success" /> Fee Collection (Current Month)
+        <motion.div variants={fadeInUp} className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
+          <h3 className="text-lg font-semibold mb-4 flex items-center gap-2 text-gray-900">
+            <CreditCard size={20} className="text-green-600" /> Fee Collection (Current Month)
           </h3>
           <div className="mb-4">
             <div className="flex justify-between text-sm mb-1">
-              <span className="text-white/70">Collected: Rs {data.feeMonth.collected.toLocaleString()}</span>
-              <span className="text-white/50">Pending: Rs {data.feeMonth.pending.toLocaleString()}</span>
+              <span className="text-gray-600">Collected: Rs {data.feeMonth.collected.toLocaleString()}</span>
+              <span className="text-gray-500">Pending: Rs {data.feeMonth.pending.toLocaleString()}</span>
             </div>
-            <div className="w-full bg-white/10 rounded-full h-2.5">
-              <div className="bg-success h-2.5 rounded-full" style={{ width: `${(data.feeMonth.collected / (data.feeMonth.total || 1)) * 100}%` }} />
+            <div className="w-full bg-gray-200 rounded-full h-2.5">
+              <div className="bg-green-500 h-2.5 rounded-full" style={{ width: `${(data.feeMonth.collected / (data.feeMonth.total || 1)) * 100}%` }} />
             </div>
           </div>
-          <h4 className="font-semibold mb-2 text-white">Class‑wise collection</h4>
+          <h4 className="font-semibold mb-2 text-gray-900">Class‑wise collection</h4>
           <div className="space-y-2">
             {data.classFeeSummary.map((c, idx) => (
               <div key={c.class}>
-                <div className="flex justify-between text-sm"><span className="text-white/80">{c.class}</span><span className="text-white/60">Rs {c.collected.toLocaleString()}</span></div>
-                <div className="w-full bg-white/10 rounded-full h-1.5"><div className="bg-accent h-1.5 rounded-full" style={{ width: `${(c.collected / (c.total || 1)) * 100}%` }} /></div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-700">{c.class}</span>
+                  <span className="text-gray-500">Rs {c.collected.toLocaleString()}</span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-1.5">
+                  <div className="bg-blue-500 h-1.5 rounded-full" style={{ width: `${(c.collected / (c.total || 1)) * 100}%` }} />
+                </div>
               </div>
             ))}
           </div>
         </motion.div>
       </div>
 
+      {/* Charts Row 2 */}
       <div className="grid lg:grid-cols-2 gap-6">
-        <motion.div variants={fadeInUp} className="glass-card p-6">
-          <h3 className="text-lg font-bold mb-4 flex items-center gap-2 text-white">
-            <Users size={20} className="text-accent" /> Student Distribution
+        <motion.div variants={fadeInUp} className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
+          <h3 className="text-lg font-semibold mb-4 flex items-center gap-2 text-gray-900">
+            <Users size={20} className="text-purple-600" /> Student Distribution
           </h3>
           {data.classDistribution.length === 0 ? (
-            <div className="h-64 flex items-center justify-center text-white/40">No data</div>
+            <div className="h-64 flex items-center justify-center text-gray-400">No data</div>
           ) : (
             <div className="flex flex-col md:flex-row items-center gap-8">
               <ResponsiveContainer width="100%" height={250}>
@@ -170,7 +186,7 @@ export default function DashboardPage() {
                 {data.classDistribution.map((item, idx) => (
                   <div key={idx} className="flex items-center gap-2">
                     <div className="w-4 h-4 rounded-full" style={{ backgroundColor: CHART_COLORS[idx % CHART_COLORS.length] }} />
-                    <span className="text-sm text-white/80">{item.name}: {item.value}</span>
+                    <span className="text-sm text-gray-700">{item.name}: {item.value}</span>
                   </div>
                 ))}
               </div>
@@ -178,24 +194,34 @@ export default function DashboardPage() {
           )}
         </motion.div>
 
-        <motion.div variants={fadeInUp} className="glass-card p-6">
-          <h3 className="text-lg font-bold mb-4 flex items-center gap-2 text-white">
-            <Clock size={20} className="text-warning" /> Recent Payments
+        <motion.div variants={fadeInUp} className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
+          <h3 className="text-lg font-semibold mb-4 flex items-center gap-2 text-gray-900">
+            <Clock size={20} className="text-orange-500" /> Recent Payments
           </h3>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="text-white/50 border-b border-white/10">
-                <tr><th className="p-3 text-left">Student</th><th>Month</th><th>Amount</th><th>Date</th></tr>
+              <thead className="text-gray-500 border-b border-gray-200">
+                <tr>
+                  <th className="p-3 text-left">Student</th>
+                  <th>Month</th>
+                  <th>Amount</th>
+                  <th>Date</th>
+                </tr>
               </thead>
               <tbody>
                 {data.recentPayments.map((p) => (
-                  <tr key={p.id} className="border-b border-white/5">
-                    <td className="p-3 text-white/90">{p.studentName}</td>
-                    <td className="p-3 text-white/70">{p.date}</td>
-                    <td className="p-3 text-success font-bold">Rs {p.amount.toLocaleString()}</td>
-                    <td className="p-3 text-white/60">{new Date(p.timestamp).toLocaleDateString()}</td>
+                  <tr key={p.id} className="border-b border-gray-100">
+                    <td className="p-3 text-gray-900 font-medium">{p.studentName}</td>
+                    <td className="p-3 text-gray-600">{p.date}</td>
+                    <td className="p-3 text-green-600 font-bold">Rs {p.amount.toLocaleString()}</td>
+                    <td className="p-3 text-gray-500">{new Date(p.timestamp).toLocaleDateString()}</td>
                   </tr>
                 ))}
+                {data.recentPayments.length === 0 && (
+                  <tr>
+                    <td colSpan={4} className="p-6 text-center text-gray-400">No payments yet</td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
@@ -205,19 +231,28 @@ export default function DashboardPage() {
   );
 }
 
-function KpiCard({ title, value, icon, subtitle, bgClass, iconColor }: {
-  title: string; value: string | number; icon: React.ReactNode; subtitle?: string; bgClass: string; iconColor: string;
+// KPI Card component (simple white)
+function KpiCard({
+  title,
+  value,
+  icon,
+  subtitle,
+}: {
+  title: string;
+  value: string | number;
+  icon: React.ReactNode;
+  subtitle?: string;
 }) {
   return (
     <motion.div variants={fadeInUp} whileHover="hover" initial="rest" animate="rest" custom={cardHover}>
-      <div className="glass-card p-6 transition-all duration-300 hover:shadow-glow">
+      <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow">
         <div className="flex justify-between items-start">
           <div>
-            <p className="text-xs font-bold text-white/50 uppercase tracking-wider">{title}</p>
-            <p className="text-3xl font-black mt-2 text-white">{value}</p>
-            {subtitle && <p className="text-sm text-white/60 mt-1">{subtitle}</p>}
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{title}</p>
+            <p className="text-2xl font-bold mt-1 text-gray-900">{value}</p>
+            {subtitle && <p className="text-sm text-gray-500 mt-1">{subtitle}</p>}
           </div>
-          <div className={`p-3 rounded-xl ${bgClass} ${iconColor} shadow-lg`}>{icon}</div>
+          <div className="p-2 rounded-lg bg-gray-100">{icon}</div>
         </div>
       </div>
     </motion.div>
