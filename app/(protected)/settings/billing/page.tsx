@@ -36,7 +36,7 @@ export default function BillingPage() {
             <button
               onClick={() => subscribe(plan.id)}
               disabled={loading || subscription?.planId === plan.id}
-              className="mt-4 w-full bg-blue-600 text-white py-2 rounded-lg disabled:opacity-50"
+              className="mt-4 w-full bg-blue-600 text-gray-900 py-2 rounded-lg disabled:opacity-50"
             >
               {subscription?.planId === plan.id ? "Current Plan" : "Subscribe"}
             </button>

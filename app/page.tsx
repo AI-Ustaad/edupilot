@@ -77,7 +77,7 @@ const Navbar = () => {
         <div className="flex justify-between items-center h-16">
           <Link href="/" className="flex items-center gap-2 group">
             <div className="w-8 h-8 bg-gradient-to-br from-primary to-accent rounded-lg flex items-center justify-center shadow-lg">
-              <span className="text-white font-black text-sm">EP</span>
+              <span className="text-gray-900 font-black text-sm">EP</span>
             </div>
             <span className="text-xl font-black text-slate-800">EduPilot</span>
           </Link>
@@ -330,7 +330,7 @@ const FeaturesSection = () => {
               className="group glass-card p-8"
             >
               <div className={`w-14 h-14 bg-gradient-to-br ${feature.color} rounded-2xl flex items-center justify-center mb-6 shadow-lg group-hover:scale-110 transition-transform`}>
-                <feature.icon size={28} className="text-white" />
+                <feature.icon size={28} className="text-gray-900" />
               </div>
               <h3 className="text-xl font-bold text-slate-800 mb-2">{feature.title}</h3>
               <p className="text-slate-600">{feature.description}</p>
@@ -459,7 +459,7 @@ const PricingSection = () => {
               whileHover={{ y: -8 }}
               className={`relative glass-card p-8 ${plan.popular ? "!border-primary ring-2 ring-primary/20" : ""}`}
             >
-              {plan.popular && <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-primary to-primary-light text-white text-xs font-bold px-3 py-1 rounded-full">Most Popular</div>}
+              {plan.popular && <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-primary to-primary-light text-gray-900 text-xs font-bold px-3 py-1 rounded-full">Most Popular</div>}
               <h3 className="text-xl font-bold text-slate-800">{plan.name}</h3>
               <div className="mt-4 flex items-baseline gap-1">
                 {plan.isCustom ? (
@@ -493,7 +493,7 @@ const PricingSection = () => {
 
 const FinalCTA = () => {
   return (
-    <section className="py-24 bg-gradient-to-r from-primary via-accent to-info text-white relative overflow-hidden">
+    <section className="py-24 bg-gradient-to-r from-primary via-accent to-info text-gray-900 relative overflow-hidden">
       <div className="absolute top-0 right-0 w-64 h-64 bg-white/20 rounded-full blur-[80px]" />
       <div className="absolute bottom-0 left-0 w-64 h-64 bg-white/20 rounded-full blur-[80px]" />
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative z-10">
@@ -509,7 +509,7 @@ const FinalCTA = () => {
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.1 }}
-          className="text-xl text-white/90 mb-8 max-w-2xl mx-auto"
+          className="text-xl text-gray-900/90 mb-8 max-w-2xl mx-auto"
         >
           Join hundreds of schools already using EduPilot to streamline their operations.
         </motion.p>
@@ -535,7 +535,7 @@ const Footer = () => {
           <div>
             <div className="flex items-center gap-2 mb-4">
               <div className="w-8 h-8 bg-gradient-to-br from-primary to-accent rounded-lg flex items-center justify-center">
-                <span className="text-white font-black text-sm">EP</span>
+                <span className="text-gray-900 font-black text-sm">EP</span>
               </div>
               <span className="text-lg font-black text-slate-800">EduPilot</span>
             </div>

@@ -96,9 +96,9 @@ export default function FinancialLedger() {
           <h2 className="text-4xl font-black text-[#302B52]">Rs. {summary.expense.toLocaleString()}</h2>
           <TrendingDown className="text-red-400 mt-2" size={20} />
         </div>
-        <div className="bg-[#302B52] p-8 rounded-[40px] shadow-2xl text-white">
+        <div className="bg-[#302B52] p-8 rounded-[40px] shadow-2xl text-gray-900">
           <p className="text-[10px] font-black text-purple-300 uppercase tracking-widest mb-2">Net Balance</p>
-          <h2 className="text-4xl font-black text-white">Rs. {(summary.income - summary.expense).toLocaleString()}</h2>
+          <h2 className="text-4xl font-black text-gray-900">Rs. {(summary.income - summary.expense).toLocaleString()}</h2>
           <Landmark className="text-[#7166F9] mt-2" size={20} />
         </div>
       </div>
@@ -125,7 +125,7 @@ export default function FinancialLedger() {
             </select>
             <input type="text" name="description" required placeholder="Description (e.g. Electricity Bill)" className="w-full p-5 bg-[#F8F9FE] rounded-2xl font-bold text-sm outline-none" />
             <div className="grid grid-cols-2 gap-4">
-              <input type="number" name="amount" required placeholder="Amount (Rs.)" className="p-5 bg-[#302B52] text-white rounded-2xl font-bold text-sm outline-none shadow-lg" />
+              <input type="number" name="amount" required placeholder="Amount (Rs.)" className="p-5 bg-[#302B52] text-gray-900 rounded-2xl font-bold text-sm outline-none shadow-lg" />
               <input type="date" name="date" required className="p-5 bg-[#F8F9FE] rounded-2xl font-bold text-sm outline-none" />
             </div>
             <select name="category" required className="w-full p-5 bg-[#F8F9FE] rounded-2xl font-bold text-sm outline-none">
@@ -135,7 +135,7 @@ export default function FinancialLedger() {
               <option value="Marketing">Marketing</option>
               <option value="Contingencies">Contingencies / Others</option>
             </select>
-            <button type="submit" disabled={isSaving} className="w-full bg-[#7166F9] flex justify-center items-center gap-2 text-white py-6 rounded-[30px] font-black text-xl shadow-2xl hover:scale-[1.02] transition-all disabled:opacity-50">
+            <button type="submit" disabled={isSaving} className="w-full bg-[#7166F9] flex justify-center items-center gap-2 text-gray-900 py-6 rounded-[30px] font-black text-xl shadow-2xl hover:scale-[1.02] transition-all disabled:opacity-50">
               {isSaving ? <Loader2 className="animate-spin" size={24}/> : "Save Ledger Entry"}
             </button>
           </form>

@@ -32,7 +32,7 @@ body {
 
   /* Primary button with gradient */
   .btn-primary {
-    @apply bg-gradient-to-r from-primary to-primary-light text-white font-bold py-3 px-6 rounded-xl shadow-glow;
+    @apply bg-gradient-to-r from-primary to-primary-light text-gray-900 font-bold py-3 px-6 rounded-xl shadow-glow;
     transition: all 0.3s ease;
   }
   .btn-primary:hover {

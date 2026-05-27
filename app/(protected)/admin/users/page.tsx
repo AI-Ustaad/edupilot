@@ -73,7 +73,7 @@ export default function ManageUsersPage() {
           <AlertCircle className="inline mr-2" size={20} />
           {errorMsg}
         </div>
-        <button onClick={fetchUsers} className="mt-4 bg-blue-600 text-white px-4 py-2 rounded">
+        <button onClick={fetchUsers} className="mt-4 bg-blue-600 text-gray-900 px-4 py-2 rounded">
           Retry
         </button>
       </div>

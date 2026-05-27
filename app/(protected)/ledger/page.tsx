@@ -72,7 +72,7 @@ export default function FinancialLedger() {
   return (
     <div className="space-y-8 animate-fade-in-up">
       <div>
-        <h1 className="text-3xl font-black dark:text-white">Financial Ledger</h1>
+        <h1 className="text-3xl font-black dark:text-gray-900">Financial Ledger</h1>
         <p className="text-slate-500 dark:text-slate-400">Accounts & Audit Management</p>
       </div>
 
@@ -112,7 +112,7 @@ export default function FinancialLedger() {
               <option value="Marketing">Marketing</option>
               <option value="Contingencies">Contingencies / Others</option>
             </select>
-            <button type="submit" disabled={isSaving} className="w-full bg-primary-600 text-white py-3 rounded-xl font-bold flex items-center justify-center gap-2">
+            <button type="submit" disabled={isSaving} className="w-full bg-primary-600 text-gray-900 py-3 rounded-xl font-bold flex items-center justify-center gap-2">
               {isSaving ? <Loader2 className="animate-spin" size={18} /> : "Save Ledger Entry"}
             </button>
           </form>

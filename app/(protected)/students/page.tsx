@@ -106,20 +106,20 @@ export default function StudentsPage() {
               <button
                 onClick={handleOCRUpload}
                 disabled={ocrUploading}
-                className="bg-purple-600 text-white px-6 py-3 rounded-2xl flex items-center gap-2 hover:bg-purple-700 transition disabled:opacity-50"
+                className="bg-purple-600 text-gray-900 px-6 py-3 rounded-2xl flex items-center gap-2 hover:bg-purple-700 transition disabled:opacity-50"
               >
                 {ocrUploading ? <Loader2 size={20} className="animate-spin" /> : <FileText size={20} />}
                 {ocrUploading ? "Processing..." : "Upload Document (OCR)"}
               </button>
               <button
                 onClick={handleImportCSV}
-                className="bg-green-600 text-white px-6 py-3 rounded-2xl flex items-center gap-2"
+                className="bg-green-600 text-gray-900 px-6 py-3 rounded-2xl flex items-center gap-2"
               >
                 <Upload size={20}/> Import CSV
               </button>
               <button
                 onClick={() => router.push("/students/add")}
-                className="bg-blue-600 text-white px-6 py-3 rounded-2xl flex items-center gap-2"
+                className="bg-blue-600 text-gray-900 px-6 py-3 rounded-2xl flex items-center gap-2"
               >
                 <UserPlus size={20}/> Add New Student
               </button>

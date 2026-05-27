@@ -74,7 +74,7 @@ export default function MenuManager() {
           onChange={e => setNewPath(e.target.value)}
           className="border p-2 rounded flex-1"
         />
-        <button onClick={addItem} className="bg-blue-600 text-white px-3 rounded">
+        <button onClick={addItem} className="bg-blue-600 text-gray-900 px-3 rounded">
           <Plus size={18} />
         </button>
       </div>
@@ -96,7 +96,7 @@ export default function MenuManager() {
           ))}
         </SortableContext>
       </DndContext>
-      <button onClick={save} className="mt-4 bg-green-600 text-white px-4 py-2 rounded">
+      <button onClick={save} className="mt-4 bg-green-600 text-gray-900 px-4 py-2 rounded">
         Save Menu
       </button>
     </div>

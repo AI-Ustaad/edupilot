@@ -110,7 +110,7 @@ export default function SignupPage() {
            <button 
               type="submit"
               disabled={loading}
-              className="w-full bg-[#0F172A] text-white py-4 rounded-xl font-black text-sm uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-blue-600 transition-all shadow-lg disabled:opacity-50 mt-4"
+              className="w-full bg-[#0F172A] text-gray-900 py-4 rounded-xl font-black text-sm uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-blue-600 transition-all shadow-lg disabled:opacity-50 mt-4"
            >
               {loading ? <><Loader2 size={18} className="animate-spin" /> Provisioning...</> : <>Launch Workspace <ArrowRight size={18}/></>}
            </button>

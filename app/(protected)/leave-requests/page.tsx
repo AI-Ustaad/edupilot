@@ -68,7 +68,7 @@ export default function LeaveRequestsPage() {
                 <p className="text-sm text-slate-500">{leave.startDate} to {leave.endDate}</p>
                 <p className="text-sm">{leave.reason}</p>
               </div>
-              <button onClick={() => approveLeave(leave.id)} className="bg-green-600 text-white px-4 py-2 rounded-xl flex items-center gap-2"><CheckCircle size={18} /> Approve</button>
+              <button onClick={() => approveLeave(leave.id)} className="bg-green-600 text-gray-900 px-4 py-2 rounded-xl flex items-center gap-2"><CheckCircle size={18} /> Approve</button>
             </div>
           ))}
         </div>

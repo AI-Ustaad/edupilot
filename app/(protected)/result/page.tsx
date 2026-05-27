@@ -139,7 +139,7 @@ export default function ResultsPage() {
 
       {/* STUDENTS RESULT GRID */}
       <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden min-h-[400px] print-hide">
-        <div className="px-6 py-4 bg-[#0F172A] text-white flex items-center justify-between">
+        <div className="px-6 py-4 bg-[#0F172A] text-gray-900 flex items-center justify-between">
            <div>
              <h2 className="text-lg font-black uppercase">{selectedClass || "Select a Class"} - {selectedSection || "Section"}</h2>
              <p className="text-xs text-slate-300 font-medium">Generating results for: <span className="font-bold text-[#3ac47d] uppercase">{selectedTerm}</span></p>
@@ -249,7 +249,7 @@ export default function ResultsPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 print:p-0 print:bg-white overflow-y-auto">
            <div id="printable-result-card" className="bg-white w-full max-w-4xl rounded-3xl shadow-2xl overflow-hidden print:shadow-none print:max-w-full my-auto relative">
               <div className="absolute top-4 right-4 flex gap-2 print-hide z-50">
-                 <button onClick={() => window.print()} className="bg-[#3ac47d] hover:bg-[#2eaa6a] text-white px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-2 shadow-md transition-colors">
+                 <button onClick={() => window.print()} className="bg-[#3ac47d] hover:bg-[#2eaa6a] text-gray-900 px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-2 shadow-md transition-colors">
                    <Printer size={14}/> Print Card
                  </button>
                  <button onClick={() => setSelectedStudentForCard(null)} className="bg-white hover:bg-red-50 hover:text-red-500 text-slate-600 p-2 rounded-lg shadow-md transition-colors">
@@ -259,7 +259,7 @@ export default function ResultsPage() {
               <div className="p-8 sm:p-12 bg-white">
                  <div className="text-center mb-8 border-b-[3px] border-[#0F172A] pb-6">
                     <div className="flex items-center justify-center gap-4 mb-4">
-                       <div className="w-16 h-16 bg-[#0F172A] text-white rounded-2xl flex items-center justify-center shadow-lg transform -rotate-3">
+                       <div className="w-16 h-16 bg-[#0F172A] text-gray-900 rounded-2xl flex items-center justify-center shadow-lg transform -rotate-3">
                           <BookOpen size={36} />
                        </div>
                        <h1 className="text-4xl sm:text-5xl font-serif font-black text-[#0F172A] tracking-tighter">
@@ -282,7 +282,7 @@ export default function ResultsPage() {
                     <div className="text-right">
                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Class & Section</p>
                        <p className="font-black text-xl text-[#0F172A] uppercase">{selectedStudentForCard.classGrade} - {selectedStudentForCard.section}</p>
-                       <div className="inline-block bg-[#0F172A] text-white px-4 py-1 rounded-lg mt-2">
+                       <div className="inline-block bg-[#0F172A] text-gray-900 px-4 py-1 rounded-lg mt-2">
                          <p className="text-[10px] uppercase tracking-widest opacity-80">Roll Number</p>
                          <p className="font-black text-lg">{selectedStudentForCard.rollNumber || "N/A"}</p>
                        </div>
@@ -290,7 +290,7 @@ export default function ResultsPage() {
                  </div>
                  <table className="w-full text-left border-collapse border border-slate-300 shadow-sm rounded-xl overflow-hidden">
                     <thead>
-                       <tr className="bg-[#0F172A] text-white text-xs uppercase tracking-widest">
+                       <tr className="bg-[#0F172A] text-gray-900 text-xs uppercase tracking-widest">
                           <th className="p-4 font-bold border-r border-slate-700">Subject</th>
                           <th className="p-4 font-bold border-r border-slate-700 text-center">Total Marks</th>
                           <th className="p-4 font-bold border-r border-slate-700 text-center">Obtained</th>
@@ -329,7 +329,7 @@ export default function ResultsPage() {
                                   <td className="p-4 font-black text-[#0F172A] text-center border-r border-green-200">{grandTotalMax}</td>
                                   <td className="p-4 font-black text-[#3ac47d] text-center text-xl border-r border-green-200">{grandTotalObt}</td>
                                   <td className="p-4 font-black text-[#0F172A] text-center border-r border-green-200">{grandTotalMax > 0 ? ((grandTotalObt/grandTotalMax)*100).toFixed(1) : 0}%</td>
-                                  <td className="p-4 font-black text-white text-center bg-[#3ac47d]">
+                                  <td className="p-4 font-black text-gray-900 text-center bg-[#3ac47d]">
                                     {calculateGrade(grandTotalObt, grandTotalMax)}
                                   </td>
                                </tr>

@@ -107,14 +107,14 @@ export default function SuperAdminAnalytics() {
         </div>
         <button
           onClick={fetchAnalytics}
-          className="bg-blue-600 text-white px-4 py-2 rounded flex items-center gap-2"
+          className="bg-blue-600 text-gray-900 px-4 py-2 rounded flex items-center gap-2"
         >
           <Filter size={16} /> Apply Filters
         </button>
         <button
           onClick={exportToCSV}
           disabled={exporting}
-          className="bg-green-600 text-white px-4 py-2 rounded flex items-center gap-2"
+          className="bg-green-600 text-gray-900 px-4 py-2 rounded flex items-center gap-2"
         >
           <Download size={16} /> {exporting ? "Exporting..." : "Export CSV"}
         </button>

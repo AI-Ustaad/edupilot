@@ -156,7 +156,7 @@ export default function TimetablePage() {
           <button
             onClick={handleSaveTimetable}
             disabled={!selectedClass || !selectedSection || loading}
-            className="bg-primary-600 text-white px-8 py-3 rounded-xl font-bold flex items-center gap-2 hover:bg-primary-700 shadow-md disabled:opacity-50"
+            className="bg-primary-600 text-gray-900 px-8 py-3 rounded-xl font-bold flex items-center gap-2 hover:bg-primary-700 shadow-md disabled:opacity-50"
           >
             {loading ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />} Save Schedule
           </button>
@@ -172,9 +172,9 @@ export default function TimetablePage() {
             <table className="w-full min-w-[800px] border-collapse">
               <thead>
                 <tr>
-                  <th className="bg-slate-800 text-white font-black uppercase text-xs p-4 border border-slate-700">Period</th>
+                  <th className="bg-slate-800 text-gray-900 font-black uppercase text-xs p-4 border border-slate-700">Period</th>
                   {DAYS.map((day) => (
-                    <th key={day} className="bg-slate-800 text-white font-black uppercase text-xs p-4 border border-slate-700">{day}</th>
+                    <th key={day} className="bg-slate-800 text-gray-900 font-black uppercase text-xs p-4 border border-slate-700">{day}</th>
                   ))}
                 </tr>
               </thead>

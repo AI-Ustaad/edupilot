@@ -175,7 +175,7 @@ export default function AttendancePage() {
                </select>
             </div>
 
-            <button onClick={handleFetchStudents} disabled={loading || !selectedClass || !selectedSection} className="bg-[#0F172A] text-white w-full py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-slate-800 transition-all shadow-md disabled:opacity-50 uppercase tracking-widest">
+            <button onClick={handleFetchStudents} disabled={loading || !selectedClass || !selectedSection} className="bg-[#0F172A] text-gray-900 w-full py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-slate-800 transition-all shadow-md disabled:opacity-50 uppercase tracking-widest">
                {loading ? <Loader2 size={18} className="animate-spin"/> : <Search size={18}/>} Fetch Students
             </button>
          </div>
@@ -210,14 +210,14 @@ export default function AttendancePage() {
                        <div><p className="font-black text-[#0F172A] uppercase">{student.name}</p><p className="text-[10px] font-bold text-slate-500 uppercase">{student.fatherName}</p></div>
                     </div>
                     <div className="flex bg-white rounded-xl border border-slate-200 p-1 w-full sm:w-auto">
-                       <button onClick={() => setAttendanceData(prev => ({...prev, [student.id]: "Present"}))} className={`flex-1 sm:w-24 py-2 text-xs font-black uppercase tracking-widest rounded-lg flex items-center justify-center gap-1 transition-all ${attendanceData[student.id] === "Present" ? "bg-green-500 text-white shadow-sm" : "text-slate-400 hover:bg-slate-50"}`}>
-                         <CheckCircle2 size={14} className={attendanceData[student.id] === "Present" ? "text-white" : "hidden"}/> P
+                       <button onClick={() => setAttendanceData(prev => ({...prev, [student.id]: "Present"}))} className={`flex-1 sm:w-24 py-2 text-xs font-black uppercase tracking-widest rounded-lg flex items-center justify-center gap-1 transition-all ${attendanceData[student.id] === "Present" ? "bg-green-500 text-gray-900 shadow-sm" : "text-slate-400 hover:bg-slate-50"}`}>
+                         <CheckCircle2 size={14} className={attendanceData[student.id] === "Present" ? "text-gray-900" : "hidden"}/> P
                        </button>
-                       <button onClick={() => setAttendanceData(prev => ({...prev, [student.id]: "Absent"}))} className={`flex-1 sm:w-24 py-2 text-xs font-black uppercase tracking-widest rounded-lg flex items-center justify-center gap-1 transition-all ${attendanceData[student.id] === "Absent" ? "bg-red-500 text-white shadow-sm" : "text-slate-400 hover:bg-slate-50"}`}>
-                         <XCircle size={14} className={attendanceData[student.id] === "Absent" ? "text-white" : "hidden"}/> A
+                       <button onClick={() => setAttendanceData(prev => ({...prev, [student.id]: "Absent"}))} className={`flex-1 sm:w-24 py-2 text-xs font-black uppercase tracking-widest rounded-lg flex items-center justify-center gap-1 transition-all ${attendanceData[student.id] === "Absent" ? "bg-red-500 text-gray-900 shadow-sm" : "text-slate-400 hover:bg-slate-50"}`}>
+                         <XCircle size={14} className={attendanceData[student.id] === "Absent" ? "text-gray-900" : "hidden"}/> A
                        </button>
-                       <button onClick={() => setAttendanceData(prev => ({...prev, [student.id]: "Leave"}))} className={`flex-1 sm:w-24 py-2 text-xs font-black uppercase tracking-widest rounded-lg flex items-center justify-center gap-1 transition-all ${attendanceData[student.id] === "Leave" ? "bg-blue-500 text-white shadow-sm" : "text-slate-400 hover:bg-slate-50"}`}>
-                         <Clock size={14} className={attendanceData[student.id] === "Leave" ? "text-white" : "hidden"}/> L
+                       <button onClick={() => setAttendanceData(prev => ({...prev, [student.id]: "Leave"}))} className={`flex-1 sm:w-24 py-2 text-xs font-black uppercase tracking-widest rounded-lg flex items-center justify-center gap-1 transition-all ${attendanceData[student.id] === "Leave" ? "bg-blue-500 text-gray-900 shadow-sm" : "text-slate-400 hover:bg-slate-50"}`}>
+                         <Clock size={14} className={attendanceData[student.id] === "Leave" ? "text-gray-900" : "hidden"}/> L
                        </button>
                     </div>
                  </div>
@@ -225,7 +225,7 @@ export default function AttendancePage() {
            </div>
 
            <div className="mt-8 pt-6 border-t border-slate-100 flex justify-end w-full">
-              <button onClick={handleSaveAttendance} disabled={saving} className="bg-[#3ac47d] text-white px-8 py-4 rounded-xl font-black text-sm flex items-center justify-center gap-2 hover:bg-[#2eaa6a] transition-all shadow-lg disabled:opacity-50 w-full sm:w-auto uppercase tracking-widest">
+              <button onClick={handleSaveAttendance} disabled={saving} className="bg-[#3ac47d] text-gray-900 px-8 py-4 rounded-xl font-black text-sm flex items-center justify-center gap-2 hover:bg-[#2eaa6a] transition-all shadow-lg disabled:opacity-50 w-full sm:w-auto uppercase tracking-widest">
                  {saving ? <><Loader2 size={18} className="animate-spin"/> Saving...</> : <><Save size={18}/> Submit Attendance</>}
               </button>
            </div>

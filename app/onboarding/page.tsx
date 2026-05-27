@@ -39,7 +39,7 @@ export default function OnboardingPage() {
         />
         <button
           onClick={handleFinish}
-          className="w-full bg-blue-600 text-white p-4 rounded-2xl font-bold"
+          className="w-full bg-blue-600 text-gray-900 p-4 rounded-2xl font-bold"
           disabled={loading}
         >
           {loading ? "Initializing..." : "Create School Account"}

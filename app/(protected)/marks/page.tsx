@@ -158,7 +158,7 @@ export default function ExamsAndMarksPage() {
           </h1>
           <p className="text-sm text-slate-500 mt-1">Smart Assessment Engine linked directly to Results Module.</p>
         </div>
-        <button onClick={handleBulkSave} disabled={loading || filteredStudents.length === 0 || !selectedSubject} className="bg-[#0F172A] text-white px-6 py-2.5 rounded-xl font-bold flex items-center gap-2 shadow-md hover:bg-slate-800 transition-all disabled:opacity-50">
+        <button onClick={handleBulkSave} disabled={loading || filteredStudents.length === 0 || !selectedSubject} className="bg-[#0F172A] text-gray-900 px-6 py-2.5 rounded-xl font-bold flex items-center gap-2 shadow-md hover:bg-slate-800 transition-all disabled:opacity-50">
           {loading ? <Loader2 className="animate-spin" size={18}/> : <Save size={18}/>} 
           {loading ? "Publishing..." : "Publish All Results"}
         </button>
@@ -216,7 +216,7 @@ export default function ExamsAndMarksPage() {
           </div>
         ) : (
           <div className="divide-y divide-slate-100">
-            <div className="px-6 py-4 bg-[#0F172A] text-white flex items-center justify-between">
+            <div className="px-6 py-4 bg-[#0F172A] text-gray-900 flex items-center justify-between">
                <div>
                  <h2 className="text-lg font-black uppercase">{selectedClass} - {selectedSection}</h2>
                  <p className="text-xs text-slate-300 font-medium">Entering marks for: <span className="font-bold text-[#3ac47d] uppercase">{selectedSubject}</span></p>
@@ -268,7 +268,7 @@ export default function ExamsAndMarksPage() {
                      <span className="text-xs font-bold text-slate-500">{percent}%</span>
                      <span className={`w-8 text-center py-1 rounded-md text-xs font-black ${isFail ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-700'}`}>{grade}</span>
                      
-                     <button onClick={() => saveSingleRecord(student)} disabled={savingRow === student.id} className="bg-slate-200 hover:bg-[#3ac47d] hover:text-white text-slate-600 p-2 rounded-lg transition-colors" title="Save this record">
+                     <button onClick={() => saveSingleRecord(student)} disabled={savingRow === student.id} className="bg-slate-200 hover:bg-[#3ac47d] hover:text-gray-900 text-slate-600 p-2 rounded-lg transition-colors" title="Save this record">
                         {savingRow === student.id ? <Loader2 size={16} className="animate-spin"/> : <Save size={16} />}
                      </button>
                   </div>

@@ -48,7 +48,7 @@ function StaffProfileContent() {
       <div className="flex flex-col items-center justify-center h-[80vh] space-y-4">
         <Users size={64} className="text-slate-300" />
         <h2 className="text-2xl font-black text-slate-700">Profile Not Found</h2>
-        <button onClick={() => router.back()} className="bg-[#0F172A] text-white px-6 py-2 rounded-xl font-bold">Go Back</button>
+        <button onClick={() => router.back()} className="bg-[#0F172A] text-gray-900 px-6 py-2 rounded-xl font-bold">Go Back</button>
       </div>
     );
   }
@@ -70,7 +70,7 @@ function StaffProfileContent() {
         <button onClick={() => router.back()} className="flex items-center gap-2 text-slate-500 hover:text-[#0F172A] font-bold transition-colors bg-white px-4 py-2 rounded-xl shadow-sm border border-slate-100">
           <ArrowLeft size={18} /> Back to Directory
         </button>
-        <button onClick={() => window.print()} className="bg-[#3ac47d] text-white px-6 py-2.5 rounded-xl font-bold flex items-center gap-2 hover:bg-[#2eaa6a] transition-all shadow-md">
+        <button onClick={() => window.print()} className="bg-[#3ac47d] text-gray-900 px-6 py-2.5 rounded-xl font-bold flex items-center gap-2 hover:bg-[#2eaa6a] transition-all shadow-md">
           <Printer size={18} /> Print Dossier
         </button>
       </div>
@@ -234,7 +234,7 @@ function StaffProfileContent() {
                          </div>
                        )) : <div className="p-4 text-center text-sm text-slate-400 font-bold">No Allowances</div>}
                     </div>
-                    <div className="bg-blue-500 text-white px-4 py-3 flex justify-between items-center font-black">
+                    <div className="bg-blue-500 text-gray-900 px-4 py-3 flex justify-between items-center font-black">
                        <span>Gross Pay</span>
                        <span>Rs. {netPayDetails?.grossPay?.toLocaleString() || 0}</span>
                     </div>
@@ -261,7 +261,7 @@ function StaffProfileContent() {
                </div>
 
                {/* Net Salary & Banking */}
-               <div className="bg-[#0F172A] rounded-3xl p-8 text-white flex flex-col md:flex-row justify-between items-center gap-6">
+               <div className="bg-[#0F172A] rounded-3xl p-8 text-gray-900 flex flex-col md:flex-row justify-between items-center gap-6">
                   <div>
                      <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Disbursement Account</p>
                      <p className="font-bold text-lg">{financial?.bankName || "No Bank Added"}</p>

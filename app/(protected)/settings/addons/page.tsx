@@ -30,7 +30,7 @@ export default function AddonManager() {
             <div><span className="font-bold">{addon.name}</span> – {addon.price}</div>
             <button
               onClick={() => toggle(addon.id)}
-              className={`px-4 py-1 rounded ${enabled[addon.id] ? "bg-green-600 text-white" : "bg-slate-200"}`}
+              className={`px-4 py-1 rounded ${enabled[addon.id] ? "bg-green-600 text-gray-900" : "bg-slate-200"}`}
             >
               {enabled[addon.id] ? "Enabled" : "Enable"}
             </button>

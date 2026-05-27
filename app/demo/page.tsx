@@ -73,7 +73,7 @@ export default function DemoDashboard() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl flex items-center justify-center shadow-md">
-              <span className="text-white font-black text-sm">EP</span>
+              <span className="text-gray-900 font-black text-sm">EP</span>
             </div>
             <div>
               <h1 className="text-xl font-black bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent">
@@ -86,7 +86,7 @@ export default function DemoDashboard() {
             <div className="bg-amber-50 text-amber-700 px-3 py-1.5 rounded-full text-xs font-bold border border-amber-200">
               <Eye size={14} className="inline mr-1" /> Demo Mode
             </div>
-            <Link href="/signup" className="bg-blue-600 text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-blue-700 transition shadow-md">
+            <Link href="/signup" className="bg-blue-600 text-gray-900 px-4 py-2 rounded-xl text-sm font-bold hover:bg-blue-700 transition shadow-md">
               Start Free Trial →
             </Link>
           </div>
@@ -228,7 +228,7 @@ export default function DemoDashboard() {
         </div>
 
         {/* Call to Action */}
-        <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl p-8 text-center text-white">
+        <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl p-8 text-center text-gray-900">
           <h2 className="text-2xl font-bold mb-2">Ready to manage your own school?</h2>
           <p className="mb-4 opacity-90">Get full access to all features – start your free trial today!</p>
           <Link href="/signup" className="inline-block bg-white text-blue-600 px-6 py-3 rounded-xl font-bold hover:shadow-lg transition">

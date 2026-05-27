@@ -179,7 +179,7 @@ export default function AddStudentPage() {
           Upload admission form (Image, PDF, or Word document) – We'll auto-fill the form fields!
         </p>
         <div className="flex items-center gap-4 flex-wrap">
-          <label className="cursor-pointer bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-bold flex items-center gap-2 transition">
+          <label className="cursor-pointer bg-blue-600 hover:bg-blue-700 text-gray-900 px-6 py-3 rounded-xl font-bold flex items-center gap-2 transition">
             {ocrLoading ? <Loader2 size={20} className="animate-spin" /> : <Upload size={20} />}
             {ocrLoading ? "Processing..." : "Upload Document"}
             <input type="file" accept="image/*,application/pdf,.docx" onChange={handleOCRUpload} className="hidden" />
@@ -239,7 +239,7 @@ export default function AddStudentPage() {
 
         <div className="flex justify-end gap-3 pt-4">
           <button type="button" onClick={() => router.push("/students")} className="px-6 py-2 border rounded-xl">Cancel</button>
-          <button type="submit" disabled={loading} className="bg-blue-600 text-white px-6 py-2 rounded-xl flex items-center gap-2">
+          <button type="submit" disabled={loading} className="bg-blue-600 text-gray-900 px-6 py-2 rounded-xl flex items-center gap-2">
             {loading ? <Loader2 className="animate-spin" /> : <Save size={18} />} Save Student
           </button>
         </div>

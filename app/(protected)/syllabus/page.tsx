@@ -73,7 +73,7 @@ export default function AdminSyllabus() {
             </select>
             {form.type !== "link" && <input placeholder="File URL (e.g., https://...)" value={form.fileUrl} onChange={e => setForm({...form, fileUrl: e.target.value})} className="w-full border p-2 rounded" />}
             {form.type === "link" && <input placeholder="Link URL" value={form.linkUrl} onChange={e => setForm({...form, linkUrl: e.target.value})} className="w-full border p-2 rounded" />}
-            <button type="submit" disabled={submitting} className="bg-blue-600 text-white px-4 py-2 rounded flex items-center gap-2">
+            <button type="submit" disabled={submitting} className="bg-blue-600 text-gray-900 px-4 py-2 rounded flex items-center gap-2">
               {submitting ? <Loader2 className="animate-spin" size={18} /> : <Plus size={18} />} Add Material
             </button>
           </form>

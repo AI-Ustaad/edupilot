@@ -215,7 +215,7 @@ export default function ManageStaffPage() {
           <p className="text-sm text-slate-500 mt-1">Tenant-Isolated HR System</p>
         </div>
         <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-          <button onClick={() => setShowImportModal(true)} className="bg-green-600 text-white px-6 py-2.5 rounded-xl font-bold flex items-center gap-2">
+          <button onClick={() => setShowImportModal(true)} className="bg-green-600 text-gray-900 px-6 py-2.5 rounded-xl font-bold flex items-center gap-2">
             <Upload size={18} /> Import CSV
           </button>
           {editingId && (
@@ -223,7 +223,7 @@ export default function ManageStaffPage() {
               Cancel Edit
             </button>
           )}
-          <button onClick={handleSaveProfile} disabled={loading} className="bg-[#0F172A] text-white px-6 py-2.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-slate-800 disabled:opacity-50 uppercase tracking-widest">
+          <button onClick={handleSaveProfile} disabled={loading} className="bg-[#0F172A] text-gray-900 px-6 py-2.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-slate-800 disabled:opacity-50 uppercase tracking-widest">
             {loading ? "Saving..." : <span className="flex items-center gap-2"><Save size={18}/> {editingId ? "Update Record" : "Save Record"}</span>}
           </button>
         </div>
@@ -296,7 +296,7 @@ export default function ManageStaffPage() {
             <input type="file" accept=".csv" onChange={(e) => setImportFile(e.target.files?.[0] || null)} className="mb-4 w-full" />
             <div className="flex justify-end gap-2">
               <button onClick={() => setShowImportModal(false)} className="px-4 py-2 border rounded-xl">Cancel</button>
-              <button onClick={handleImportCSV} disabled={importing} className="bg-blue-600 text-white px-4 py-2 rounded-xl flex items-center gap-2">
+              <button onClick={handleImportCSV} disabled={importing} className="bg-blue-600 text-gray-900 px-4 py-2 rounded-xl flex items-center gap-2">
                 {importing ? <Loader2 className="animate-spin" size={18} /> : <Upload size={18} />} {importing ? "Importing..." : "Import"}
               </button>
             </div>

@@ -119,7 +119,7 @@ export default function AdminSettingsPage() {
             <ShieldCheck size={16} className="text-green-500"/> Tenant Administrator Control Panel
           </p>
         </div>
-        <button onClick={saveConfig} disabled={saving || loading} className="bg-[#0F172A] text-white px-8 py-3 rounded-xl font-black text-sm uppercase tracking-widest flex items-center gap-2 hover:bg-blue-600 transition-all shadow-lg disabled:opacity-50">
+        <button onClick={saveConfig} disabled={saving || loading} className="bg-[#0F172A] text-gray-900 px-8 py-3 rounded-xl font-black text-sm uppercase tracking-widest flex items-center gap-2 hover:bg-blue-600 transition-all shadow-lg disabled:opacity-50">
           {saving ? <><Loader2 size={18} className="animate-spin"/> Syncing...</> : <><CheckCircle2 size={18}/> Publish Changes</>}
         </button>
       </div>
@@ -158,7 +158,7 @@ export default function AdminSettingsPage() {
                   <h2 className="text-lg font-black text-[#0F172A] uppercase mb-4 border-b pb-2">Master Classes</h2>
                   <div className="flex gap-2 mb-6">
                     <input value={newClass} onChange={e => setNewClass(e.target.value)} placeholder="e.g. CLASS 10" className="flex-1 bg-slate-50 border border-slate-200 outline-none rounded-xl px-4 py-3 font-bold uppercase focus:border-blue-500"/>
-                    <button onClick={handleAddClass} className="bg-slate-800 text-white px-4 py-3 rounded-xl font-bold hover:bg-slate-700"><Plus size={20}/></button>
+                    <button onClick={handleAddClass} className="bg-slate-800 text-gray-900 px-4 py-3 rounded-xl font-bold hover:bg-slate-700"><Plus size={20}/></button>
                   </div>
                   <div className="flex flex-wrap gap-3">
                     {classes.length === 0 ? <p className="text-sm font-bold text-slate-400">No classes configured.</p> : classes.map(c => (
@@ -177,7 +177,7 @@ export default function AdminSettingsPage() {
                       <option value="">Select Class</option>{classes.map(c => <option key={c} value={c}>{c}</option>)}
                     </select>
                     <input value={newSectionName} onChange={e => setNewSectionName(e.target.value)} placeholder="Section (e.g. A)" className="sm:col-span-2 bg-slate-50 border border-slate-200 outline-none rounded-xl px-4 py-3 font-bold uppercase focus:border-blue-500"/>
-                    <button onClick={handleAddSection} disabled={!newSectionClass} className="sm:col-span-1 bg-slate-800 text-white py-3 rounded-xl font-bold flex justify-center disabled:opacity-50"><Plus size={20}/></button>
+                    <button onClick={handleAddSection} disabled={!newSectionClass} className="sm:col-span-1 bg-slate-800 text-gray-900 py-3 rounded-xl font-bold flex justify-center disabled:opacity-50"><Plus size={20}/></button>
                   </div>
                   <div className="space-y-2">
                     {sections.length === 0 ? <p className="text-sm font-bold text-slate-400">No sections allocated.</p> : sections.map((s, i) => (
@@ -197,7 +197,7 @@ export default function AdminSettingsPage() {
                 <h2 className="text-lg font-black text-[#0F172A] uppercase mb-4 border-b pb-2">Academic Subjects</h2>
                 <div className="flex gap-2 mb-6">
                   <input value={newSubject} onChange={e => setNewSubject(e.target.value)} placeholder="e.g. MATHEMATICS" className="flex-1 bg-slate-50 border border-slate-200 outline-none rounded-xl px-4 py-3 font-bold uppercase focus:border-blue-500"/>
-                  <button onClick={handleAddSubject} className="bg-slate-800 text-white px-4 py-3 rounded-xl font-bold hover:bg-slate-700"><Plus size={20}/></button>
+                  <button onClick={handleAddSubject} className="bg-slate-800 text-gray-900 px-4 py-3 rounded-xl font-bold hover:bg-slate-700"><Plus size={20}/></button>
                 </div>
                 <div className="flex flex-wrap gap-3">
                   {subjects.length === 0 ? <p className="text-sm font-bold text-slate-400">No subjects configured.</p> : subjects.map(s => (
@@ -218,7 +218,7 @@ export default function AdminSettingsPage() {
                   <div className="space-y-1"><label className="text-[10px] font-black uppercase text-slate-400 px-1">Period Name</label><input value={newPeriod.name} onChange={e => setNewPeriod({...newPeriod, name: e.target.value})} placeholder="1st Period / Break" className="w-full bg-white border border-slate-200 outline-none rounded-xl px-4 py-2.5 font-bold uppercase focus:border-blue-500"/></div>
                   <div className="space-y-1"><label className="text-[10px] font-black uppercase text-slate-400 px-1">Start Time</label><input type="time" value={newPeriod.startTime} onChange={e => setNewPeriod({...newPeriod, startTime: e.target.value})} className="w-full bg-white border border-slate-200 outline-none rounded-xl px-4 py-2.5 font-bold focus:border-blue-500"/></div>
                   <div className="space-y-1"><label className="text-[10px] font-black uppercase text-slate-400 px-1">End Time</label><input type="time" value={newPeriod.endTime} onChange={e => setNewPeriod({...newPeriod, endTime: e.target.value})} className="w-full bg-white border border-slate-200 outline-none rounded-xl px-4 py-2.5 font-bold focus:border-blue-500"/></div>
-                  <div className="flex items-end"><button onClick={handleAddPeriod} className="w-full bg-blue-600 text-white py-2.5 rounded-xl font-bold flex justify-center gap-2 uppercase tracking-widest hover:bg-blue-700 shadow-sm"><Plus size={18}/> Add</button></div>
+                  <div className="flex items-end"><button onClick={handleAddPeriod} className="w-full bg-blue-600 text-gray-900 py-2.5 rounded-xl font-bold flex justify-center gap-2 uppercase tracking-widest hover:bg-blue-700 shadow-sm"><Plus size={18}/> Add</button></div>
                 </div>
                 <div className="space-y-2">
                   {periods.length === 0 ? <p className="text-sm font-bold text-slate-400 text-center py-10">No bell schedule configured.</p> : periods.map((p, i) => (
@@ -241,7 +241,7 @@ export default function AdminSettingsPage() {
                   <Monitor size={20} /> School Branding
                 </h2>
                 <div className="bg-slate-50 dark:bg-slate-800/50 p-6 rounded-2xl">
-                  <Link href="/settings/whitelabel" className="inline-flex items-center gap-2 bg-slate-800 text-white px-6 py-3 rounded-xl text-sm font-bold hover:bg-slate-700 transition">
+                  <Link href="/settings/whitelabel" className="inline-flex items-center gap-2 bg-slate-800 text-gray-900 px-6 py-3 rounded-xl text-sm font-bold hover:bg-slate-700 transition">
                     Manage White Label Settings →
                   </Link>
                   <p className="text-sm text-slate-600 dark:text-slate-400 mt-4">

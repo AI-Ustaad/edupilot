@@ -40,7 +40,7 @@ export default function ParentLoginPage() {
           <input type="email" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} className="w-full border rounded-xl p-3" required />
           <input type="password" placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} className="w-full border rounded-xl p-3" required />
           {error && <p className="text-red-500 text-sm">{error}</p>}
-          <button type="submit" disabled={loading} className="w-full bg-blue-600 text-white p-3 rounded-xl font-bold flex justify-center items-center gap-2">
+          <button type="submit" disabled={loading} className="w-full bg-blue-600 text-gray-900 p-3 rounded-xl font-bold flex justify-center items-center gap-2">
             {loading ? <Loader2 className="animate-spin" size={18} /> : "Login"}
           </button>
         </form>

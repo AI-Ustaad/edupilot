@@ -34,7 +34,7 @@ export default function LoginPage() {
           {/* Logo */}
           <div className="mb-8">
             <div className="w-16 h-16 mx-auto bg-gradient-to-br from-primary to-accent rounded-2xl flex items-center justify-center shadow-lg mb-4">
-              <Chrome size={32} className="text-white" />
+              <Chrome size={32} className="text-gray-900" />
             </div>
             <h1 className="text-2xl font-black text-slate-800">Welcome Back</h1>
             <p className="text-slate-500 mt-2">Sign in to your institution dashboard</p>

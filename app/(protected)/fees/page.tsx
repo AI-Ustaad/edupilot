@@ -258,7 +258,7 @@ export default function FeesPage() {
                     <button
                       onClick={() => handleOnlinePayment(t)}
                       disabled={onlinePaymentLoading === t.id}
-                      className="bg-accent hover:bg-accent/80 disabled:opacity-50 text-white px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 transition-all"
+                      className="bg-accent hover:bg-accent/80 disabled:opacity-50 text-gray-900 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 transition-all"
                     >
                       {onlinePaymentLoading === t.id ? <Loader2 size={14} className="animate-spin" /> : <CreditCard size={14} />}
                       {onlinePaymentLoading === t.id ? "..." : "Pay Online"}

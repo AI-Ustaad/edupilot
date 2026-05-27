@@ -182,7 +182,7 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
                             onClick={() => setIsMobileMenuOpen(false)}
                             className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all ${
                               isActive
-                                ? "bg-gradient-to-r from-primary to-accent text-white shadow-lg"
+                                ? "bg-gradient-to-r from-primary to-accent text-gray-900 shadow-lg"
                                 : "text-slate-600 hover:bg-white/10"
                             }`}
                           >

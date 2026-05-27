@@ -93,7 +93,7 @@ export default function WhitelabelSettings() {
             className="w-16 h-10 border rounded"
           />
         </div>
-        <button onClick={save} disabled={loading} className="bg-blue-600 text-white px-4 py-2 rounded">
+        <button onClick={save} disabled={loading} className="bg-blue-600 text-gray-900 px-4 py-2 rounded">
           Save Changes
         </button>
       </div>

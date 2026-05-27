@@ -55,7 +55,7 @@ export default function ManageParents() {
             ))}
           </div>
         </div>
-        <button type="submit" disabled={loading} className="bg-blue-600 text-white px-6 py-2 rounded-xl flex items-center gap-2">
+        <button type="submit" disabled={loading} className="bg-blue-600 text-gray-900 px-6 py-2 rounded-xl flex items-center gap-2">
           {loading ? <Loader2 className="animate-spin" /> : <UserPlus size={18} />} Add Parent
         </button>
       </form>

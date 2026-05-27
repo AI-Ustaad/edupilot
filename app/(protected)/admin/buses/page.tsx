@@ -33,7 +33,7 @@ export default function ManageBuses() {
         <input placeholder="Route (e.g., Garden→Mall)" value={form.route} onChange={e => setForm({...form, route: e.target.value})} className="border rounded p-2" required />
         <input placeholder="Driver Name" value={form.driverName} onChange={e => setForm({...form, driverName: e.target.value})} className="border rounded p-2" />
         <input placeholder="Driver Phone" value={form.driverPhone} onChange={e => setForm({...form, driverPhone: e.target.value})} className="border rounded p-2" />
-        <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded-xl col-span-2">Add Bus</button>
+        <button type="submit" className="bg-blue-600 text-gray-900 px-4 py-2 rounded-xl col-span-2">Add Bus</button>
       </form>
       <div className="space-y-3">
         {buses.map(bus => (

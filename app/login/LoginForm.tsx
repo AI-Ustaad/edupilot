@@ -53,7 +53,7 @@ export default function LoginForm() {
       <button
         onClick={handleLogin}
         disabled={loading}
-        className="px-6 py-3 bg-black text-white rounded-xl"
+        className="px-6 py-3 bg-black text-gray-900 rounded-xl"
       >
         {loading ? (
           <span className="flex gap-2 items-center">

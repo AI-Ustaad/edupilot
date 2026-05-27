@@ -41,7 +41,7 @@ function ClassModal({ classGrade, sections, studentsBySection, onClose, onSectio
                   </div>
                   <button
                     onClick={() => onSectionClick(section)}
-                    className="bg-primary text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-primary/80"
+                    className="bg-primary text-gray-900 px-4 py-2 rounded-lg text-sm font-bold hover:bg-primary/80"
                   >
                     View Students
                   </button>
@@ -111,7 +111,7 @@ function StudentSummaryModal({ student, onClose }: { student: any; onClose: () =
           <p className="text-slate-600">Class: {student.classGrade} - {student.section}</p>
           <button
             onClick={() => window.location.href = `/student-profile?id=${student.id}`}
-            className="mt-4 bg-primary text-white px-6 py-2 rounded-xl font-bold hover:bg-primary/80 w-full"
+            className="mt-4 bg-primary text-gray-900 px-6 py-2 rounded-xl font-bold hover:bg-primary/80 w-full"
           >
             View Full Profile →
           </button>
@@ -253,7 +253,7 @@ export default function ClassesDirectoryPage() {
 
       {searchQuery ? (
         <div className="glass-card overflow-hidden">
-          <div className="bg-gradient-to-r from-primary to-accent p-4 text-white">
+          <div className="bg-gradient-to-r from-primary to-accent p-4 text-gray-900">
             <h2 className="font-bold">Search Results</h2>
           </div>
           <div className="divide-y divide-white/10">
@@ -290,7 +290,7 @@ export default function ClassesDirectoryPage() {
                 className="glass-card p-6 cursor-pointer group hover:shadow-glass-hover transition-all"
               >
                 <div className="flex justify-between items-start mb-4">
-                  <div className={`w-12 h-12 ${colorClass} rounded-2xl flex items-center justify-center text-white shadow-md`}>
+                  <div className={`w-12 h-12 ${colorClass} rounded-2xl flex items-center justify-center text-gray-900 shadow-md`}>
                     <BookOpen size={24} />
                   </div>
                   <div className="bg-white/10 text-slate-700 text-[10px] font-bold px-3 py-1 rounded-full">Open</div>
