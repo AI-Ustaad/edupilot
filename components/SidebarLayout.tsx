@@ -9,7 +9,7 @@ import {
   LayoutDashboard, Users, BookOpen, UserCircle, ClipboardCheck,
   Wallet, Clock, Settings, Menu, X, ShieldCheck, LogOut,
   GraduationCap, DollarSign, Calendar, FileText, Heart,
-  ChevronDown, ChevronRight, CreditCard, Sparkles,
+  ChevronDown, ChevronRight, CreditCard, Sparkles, Bus, CalendarDays,
 } from "lucide-react";
 import MobileBottomNav from "./MobileBottomNav";
 
@@ -81,6 +81,7 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
         { name: "Attendance", icon: ClipboardCheck, path: "/attendance", allowed: ["admin", "teacher"] },
         { name: "Time Table", icon: Clock, path: "/timetable", allowed: ["admin", "teacher"] },
         { name: "AI Timetable", icon: Sparkles, path: "/ai-timetable", allowed: ["admin", "teacher"] },
+        { name: "Buses", icon: Bus, path: "/admin/buses", allowed: ["admin"] },
       ],
       allowed: ["admin", "teacher"],
       key: "operations",
@@ -91,6 +92,7 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
       items: [
         { name: "Staff Management", icon: UserCircle, path: "/staff", allowed: ["admin"] },
         { name: "Manage Parents", icon: Heart, path: "/admin/parents", allowed: ["admin"] },
+        { name: "Leave Requests", icon: CalendarDays, path: "/leave-requests", allowed: ["admin"] },
       ],
       allowed: ["admin"],
       key: "staff",
