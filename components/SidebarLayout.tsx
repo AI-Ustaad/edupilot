@@ -24,7 +24,7 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
     adminTools: true,
     operations: true,
     staff: true,
-    aiTools: true,   // نیا گروپ
+    aiTools: true,
   });
 
   useEffect(() => {
@@ -94,6 +94,12 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
         { name: "Staff Management", icon: UserCircle, path: "/staff", allowed: ["admin"] },
         { name: "Manage Parents", icon: Heart, path: "/admin/parents", allowed: ["admin"] },
         { name: "Leave Requests", icon: CalendarDays, path: "/leave-requests", allowed: ["admin"] },
+        { name: "Post Homework", icon: FileText, path: "/teacher/homework", allowed: ["admin", "teacher"] },
+        { name: "Assignments", icon: FileText, path: "/teacher/assignments", allowed: ["admin", "teacher"] },
+        { name: "Quizzes", icon: FileText, path: "/teacher/quizzes", allowed: ["admin", "teacher"] },
+        { name: "Lesson Plans", icon: Calendar, path: "/teacher/lesson-plans", allowed: ["admin", "teacher"] },
+        { name: "Book Center", icon: BookOpen, path: "/teacher/book-center", allowed: ["admin", "teacher"] },
+        { name: "Manage Books", icon: FileText, path: "/teacher/manage-books", allowed: ["admin", "teacher"] },
       ],
       allowed: ["admin"],
       key: "staff",
@@ -110,13 +116,13 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
       allowed: ["admin"],
       key: "adminTools",
     },
-    // ─── نیا گروپ: AI Tools ────────────────────────────
     {
       title: "AI Tools",
       icon: Sparkles,
       items: [
         { name: "AI Assistant", icon: Bot, path: "/ai-chatbot", allowed: ["admin", "teacher"] },
         { name: "AI Timetable", icon: Sparkles, path: "/ai-timetable", allowed: ["admin", "teacher"] },
+        { name: "Exam Questions", icon: FileText, path: "/ai-exam-questions", allowed: ["admin", "teacher"] },
       ],
       allowed: ["admin", "teacher"],
       key: "aiTools",

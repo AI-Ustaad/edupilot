@@ -30,6 +30,7 @@ export const POST = withErrorHandler(
           }
         }
 
+        // والدین کو ای میل
         for (const parent of parentEmails) {
           sendEmail(
             parent.email,

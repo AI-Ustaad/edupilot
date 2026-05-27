@@ -45,15 +45,20 @@ export const POST = withErrorHandler(
         }
         await batch.commit();
 
+        // والدین کو ای میل بھیجیں
         for (const record of records) {
-          const studentDoc = await adminDb.collection("students").doc(record.studentId).get();
-          const student = studentDoc.data();
-          if (student?.parentEmail) {
-            sendEmail(
-              student.parentEmail,
-              `Attendance Update - ${record.date}`,
-              `<p>Your child <strong>${student.fullName || student.name}</strong> was marked <strong>${record.status}</strong> on ${record.date}.</p>`
-            ).catch(console.error);
+          try {
+            const studentDoc = await adminDb.collection("students").doc(record.studentId).get();
+            const student = studentDoc.data();
+            if (student?.parentEmail) {
+              await sendEmail(
+                student.parentEmail,
+                `Attendance Update - ${record.date}`,
+                `<p>Your child <strong>${student.fullName || student.name}</strong> was marked <strong>${record.status}</strong> on ${record.date}.</p>`
+              );
+            }
+          } catch (err) {
+            console.error("Failed to send attendance email:", err);
           }
         }
 
