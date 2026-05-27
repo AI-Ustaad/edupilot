@@ -6,25 +6,23 @@ export const GET = withErrorHandler(
   withAuth(
     withTenant(async (req: Request, { tenantId }: TenantContext) => {
       const snapshot = await adminDb
-        .collection("fees")
+        .collection("attendance")
         .where("tenantId", "==", tenantId)
-        .orderBy("createdAt", "desc")
+        .orderBy("date", "desc")
         .get();
 
       const rows = snapshot.docs.map(doc => doc.data());
-      
-      // CSV header
-      const headers = ["Student Name", "Roll No", "Class", "Month", "Amount Paid", "Payment Method", "Date"];
+
+      const headers = ["Student Name", "Roll No", "Class", "Section", "Date", "Status"];
       const csvContent = [
         headers.join(","),
         ...rows.map(r => [
           `"${r.studentName || ""}"`,
           `"${r.rollNumber || ""}"`,
           `"${r.classGrade || ""}"`,
-          `"${r.feeMonth || ""}"`,
-          r.amountPaid || 0,
-          `"${r.paymentMethod || ""}"`,
-          r.createdAt?.toDate ? new Date(r.createdAt.toDate()).toLocaleDateString() : "",
+          `"${r.section || ""}"`,
+          `"${r.date || ""}"`,
+          `"${r.status || ""}"`,
         ].join(","))
       ].join("\n");
 
@@ -32,7 +30,7 @@ export const GET = withErrorHandler(
         status: 200,
         headers: {
           "Content-Type": "text/csv",
-          "Content-Disposition": `attachment; filename="fees_${tenantId}.csv"`,
+          "Content-Disposition": `attachment; filename="attendance_${tenantId}.csv"`,
         },
       });
     })

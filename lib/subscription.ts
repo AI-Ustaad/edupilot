@@ -1,3 +1,4 @@
+// lib/subscription.ts
 import { adminDb } from "@/lib/firebase-admin";
 
 export interface PlanLimits {
@@ -20,22 +21,31 @@ export async function getPlanLimits(tenantId: string): Promise<PlanLimits> {
 }
 
 export async function isSubscriptionValid(tenantId: string): Promise<{ valid: boolean; message?: string }> {
-  // ✅ TEMPORARY FIX: Always return valid (bypass subscription check)
-  // TODO: Remove this after adding proper subscription documents
-  return { valid: true };
-  
-  // Original code (commented for now):
-  /*
+  // ڈیمو اسکولز کے لیے خصوصی استثنا
+  const demoTenants = (process.env.DEMO_TENANTS || "").split(",");
+  if (demoTenants.includes(tenantId)) {
+    return { valid: true };
+  }
+
   const subDoc = await adminDb.collection("subscriptions").doc(tenantId).get();
   const sub = subDoc.data();
-  if (!sub || sub.status !== "active") {
+
+  if (!sub) {
+    return { valid: true };  // فری پلان ہمیشہ فعال
+  }
+
+  if (sub.status !== "active") {
     return { valid: false, message: "Your subscription is inactive. Please upgrade." };
   }
-  if (sub.trialEndsAt && new Date() > new Date(sub.trialEndsAt)) {
-    if (sub.planId === "free") {
-      return { valid: false, message: "Your free trial has ended. Please select a plan." };
+
+  if (sub.trialEndsAt) {
+    const trialEnd = sub.trialEndsAt.toDate ? sub.trialEndsAt.toDate() : new Date(sub.trialEndsAt);
+    if (new Date() > trialEnd) {
+      if (sub.planId === "free" || !sub.planId) {
+        return { valid: false, message: "Your free trial has ended. Please select a plan." };
+      }
     }
   }
+
   return { valid: true };
-  */
 }
