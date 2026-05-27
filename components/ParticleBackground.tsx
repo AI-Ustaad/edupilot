@@ -12,53 +12,43 @@ export default function ParticleBackground() {
     if (!ctx) return;
 
     let particles: {
-      x: number;
-      y: number;
-      radius: number;
-      alpha: number;
-      vx: number;
-      vy: number;
+      x: number; y: number; radius: number; alpha: number; vx: number; vy: number;
     }[] = [];
     let animationId: number;
 
-    // Resize handler to adjust canvas size and reinitialize particles
     const resize = () => {
       canvas.width = window.innerWidth;
       canvas.height = window.innerHeight;
       initParticles();
     };
 
-    // Initialize particles based on screen size
     const initParticles = () => {
       particles = [];
-      const particleCount = Math.min(80, Math.floor(window.innerWidth / 20));
+      const particleCount = Math.min(20, Math.floor(window.innerWidth / 60)); // بہت کم ذرات
       for (let i = 0; i < particleCount; i++) {
         particles.push({
           x: Math.random() * canvas.width,
           y: Math.random() * canvas.height,
           radius: Math.random() * 2 + 1,
-          alpha: Math.random() * 0.3 + 0.1,
-          vx: (Math.random() - 0.5) * 0.3,
-          vy: (Math.random() - 0.5) * 0.2,
+          alpha: Math.random() * 0.2 + 0.05,
+          vx: (Math.random() - 0.5) * 0.2,
+          vy: (Math.random() - 0.5) * 0.15,
         });
       }
     };
 
-    // Draw and update particles
     const draw = () => {
       if (!ctx || !canvas) return;
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       for (const p of particles) {
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(59, 130, 246, ${p.alpha})`;
+        ctx.fillStyle = `rgba(255, 255, 255, ${p.alpha})`; // سفید ذرات
         ctx.fill();
 
-        // Update position
         p.x += p.vx;
         p.y += p.vy;
 
-        // Wrap around edges
         if (p.x < 0) p.x = canvas.width;
         if (p.x > canvas.width) p.x = 0;
         if (p.y < 0) p.y = canvas.height;
@@ -67,12 +57,10 @@ export default function ParticleBackground() {
       animationId = requestAnimationFrame(draw);
     };
 
-    // Add resize listener
     window.addEventListener("resize", resize);
-    resize(); // initial setup
+    resize();
     draw();
 
-    // Cleanup
     return () => {
       window.removeEventListener("resize", resize);
       cancelAnimationFrame(animationId);
