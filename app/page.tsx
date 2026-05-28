@@ -14,7 +14,7 @@ import { loginWithGoogle } from "@/lib/auth/auth-client";
 import ParticleBackground from "@/components/ParticleBackground";
 import { detectCurrency, formatPrice } from "@/lib/currency";
 
-// ========== ANIMATION VARIANTS (same as before) ==========
+// ========== ANIMATION VARIANTS ==========
 const fadeUp = {
   hidden: { opacity: 0, y: 60 },
   visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: "easeOut" } }
