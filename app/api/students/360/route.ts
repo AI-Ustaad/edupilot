@@ -12,14 +12,13 @@ export const GET = withErrorHandler(
         return createApiResponse(400, null, "Student ID is required");
       }
 
-      // طالب علم کا بنیادی ڈیٹا
       const studentDoc = await adminDb.collection("students").doc(studentId).get();
       if (!studentDoc.exists || studentDoc.data()?.tenantId !== tenantId) {
         return createApiResponse(404, null, "Student not found");
       }
       const student = { id: studentDoc.id, ...studentDoc.data() };
 
-      // حاضری: پچھلے 6 مہینے
+      // حاضری کا رجحان (پچھلے 6 ماہ)
       const sixMonthsAgo = new Date();
       sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
       const attendanceSnap = await adminDb
@@ -33,7 +32,7 @@ export const GET = withErrorHandler(
       const attendanceByMonth: Record<string, { present: number; total: number }> = {};
       attendanceSnap.forEach(doc => {
         const d = doc.data();
-        const month = d.date.substring(0, 7); // YYYY-MM
+        const month = d.date.substring(0, 7);
         if (!attendanceByMonth[month]) attendanceByMonth[month] = { present: 0, total: 0 };
         attendanceByMonth[month].total++;
         if (d.status === "Present") attendanceByMonth[month].present++;
@@ -43,16 +42,17 @@ export const GET = withErrorHandler(
         percentage: data.total > 0 ? Math.round((data.present / data.total) * 100) : 0,
       }));
 
-      // مارکس: تمام ٹرمز کے نمبر
+      // مارکس کا ڈیٹا
       const marksSnap = await adminDb
         .collection("marks")
         .where("studentId", "==", studentId)
         .where("tenantId", "==", tenantId)
         .orderBy("updatedAt", "desc")
         .get();
-      const marksList = marksSnap.docs.map(d => ({ id: d.id, ...d.data() }));
 
-      // مارکس کا رجحان (ٹرم وار اوسط)
+      // ✅ as any[] لگا کر TypeScript کی قسم کی غلطی دور کریں
+      const marksList = marksSnap.docs.map(d => ({ id: d.id, ...d.data() })) as any[];
+
       const marksByTerm: Record<string, { totalObt: number; totalMax: number; subjects: number }> = {};
       marksList.forEach(m => {
         if (!marksByTerm[m.term]) marksByTerm[m.term] = { totalObt: 0, totalMax: 0, subjects: 0 };
@@ -65,7 +65,7 @@ export const GET = withErrorHandler(
         percentage: data.totalMax > 0 ? Math.round((data.totalObt / data.totalMax) * 100) : 0,
       }));
 
-      // کوئز کی کارکردگی
+      // کوئز جمع کرانے کا ڈیٹا
       const quizSubSnap = await adminDb
         .collection("quiz_submissions")
         .where("studentId", "==", studentId)
@@ -73,9 +73,9 @@ export const GET = withErrorHandler(
         .orderBy("createdAt", "desc")
         .limit(10)
         .get();
-      const quizzes = quizSubSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+      const quizzes = quizSubSnap.docs.map(d => ({ id: d.id, ...d.data() })) as any[];
 
-      // اسائنمنٹ کی تکمیل (submissions سے)
+      // اسائنمنٹ جمع کرانے کا ڈیٹا
       const submissionsSnap = await adminDb
         .collection("submissions")
         .where("studentId", "==", studentId)
@@ -83,9 +83,9 @@ export const GET = withErrorHandler(
         .orderBy("createdAt", "desc")
         .limit(10)
         .get();
-      const assignments = submissionsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+      const assignments = submissionsSnap.docs.map(d => ({ id: d.id, ...d.data() })) as any[];
 
-      // AI سے بہتری کے مشورے (اگر ڈیٹا کافی ہو)
+      // AI مشورے
       let aiSuggestions = "";
       if (marksList.length > 0 && attendanceTrend.length > 0) {
         const latestAttendance = attendanceTrend[attendanceTrend.length - 1]?.percentage || 0;
@@ -93,7 +93,7 @@ export const GET = withErrorHandler(
         const weakSubjects = marksList.filter(m => (m.marksObtained / m.totalMarks) < 0.5).map(m => m.subject);
 
         const prompt = `Student ${student.fullName || student.name} has overall attendance ${latestAttendance}% and latest marks average ${latestMarks}%. Weak subjects: ${weakSubjects.join(", ") || "none"}. Provide 2 short, encouraging, personalized suggestions for improvement in Urdu or English. Keep it concise.`;
-        
+
         const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
         if (GEMINI_API_KEY) {
           try {
