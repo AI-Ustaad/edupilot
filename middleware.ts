@@ -5,14 +5,14 @@ import { NextRequest, NextResponse } from "next/server";
 const intlMiddleware = createMiddleware({
   locales: ["en", "ur"],
   defaultLocale: "en",
+  localePrefix: "never", // 👈 یہ وہ جادوئی لائن ہے جو سفید سکرین کا مسئلہ حل کرے گی
 });
 
 export default async function middleware(req: NextRequest) {
   // 1. پہلے زبان کا تعین کریں
-  const intlResponse = await intlMiddleware(req);
-  if (intlResponse) return intlResponse;
+  const intlResponse = intlMiddleware(req);
 
-  // 2. سیکیورٹی چیک
+  // 2. سیکیورٹی چیک (آپ کا پرانا لاجک مکمل طور پر محفوظ ہے)
   const session = req.cookies.get("session")?.value;
   const { pathname } = req.nextUrl;
 
@@ -28,13 +28,15 @@ export default async function middleware(req: NextRequest) {
   // API راستوں کو نظر انداز کریں
   const isApiRoute = pathname.startsWith("/api");
 
+  // اگر سیشن نہیں ہے تو لاگ ان پر بھیجیں
   if (!session && !isPublicPath && !isApiRoute) {
     const loginUrl = new URL("/login", req.url);
     loginUrl.searchParams.set("redirect", req.nextUrl.pathname);
     return NextResponse.redirect(loginUrl);
   }
 
-  return NextResponse.next();
+  // اگر سب ٹھیک ہے تو زبان کے ساتھ پیج دکھائیں
+  return intlResponse;
 }
 
 export const config = {
