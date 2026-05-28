@@ -1,18 +1,7 @@
-import createMiddleware from "next-intl/middleware";
 import { NextRequest, NextResponse } from "next/server";
 
-// next-intl کا مڈل ویئر
-const intlMiddleware = createMiddleware({
-  locales: ["en", "ur"],
-  defaultLocale: "en",
-  localePrefix: "never", // 👈 یہ وہ جادوئی لائن ہے جو سفید سکرین کا مسئلہ حل کرے گی
-});
-
 export default async function middleware(req: NextRequest) {
-  // 1. پہلے زبان کا تعین کریں
-  const intlResponse = intlMiddleware(req);
-
-  // 2. سیکیورٹی چیک (آپ کا پرانا لاجک مکمل طور پر محفوظ ہے)
+  // سیکیورٹی چیک (Session Check)
   const session = req.cookies.get("session")?.value;
   const { pathname } = req.nextUrl;
 
@@ -35,8 +24,8 @@ export default async function middleware(req: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  // اگر سب ٹھیک ہے تو زبان کے ساتھ پیج دکھائیں
-  return intlResponse;
+  // نارمل طریقے سے پیج کو لوڈ ہونے دیں (i18n کُکیز سے خود ہینڈل کر لے گا)
+  return NextResponse.next();
 }
 
 export const config = {
