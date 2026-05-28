@@ -24,10 +24,7 @@ const fadeUp = {
 
 const staggerContainer = {
   hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: { staggerChildren: 0.1, delayChildren: 0.2 }
-  }
+  visible: { opacity: 1, transition: { staggerChildren: 0.1, delayChildren: 0.2 } }
 };
 
 const cardHover = {
@@ -270,13 +267,14 @@ const TrustStats = () => {
 };
 
 const FeaturesSection = () => {
+  const t = useTranslations("Landing.features");
   const features = [
-    { icon: Users, title: "Student Management", description: "Centralized student records with AI-driven insights.", color: "from-primary to-primary-light" },
-    { icon: Calendar, title: "Attendance Automation", description: "Smart attendance tracking with real-time analytics.", color: "from-secondary to-info" },
-    { icon: Wallet, title: "Finance & Fees", description: "Automated billing, fee collection, expense tracking.", color: "from-success to-green-300" },
-    { icon: BarChart, title: "Exams & Results", description: "Digital assessments, auto-grading, result cards.", color: "from-accent to-accent-light" },
-    { icon: Smartphone, title: "Parent Portal", description: "Real-time parent communication and progress tracking.", color: "from-primary to-pink-300" },
-    { icon: Brain, title: "AI Analytics", description: "Predictive student insights and performance forecasting.", color: "from-secondary to-blue-300" },
+    { icon: Users, title: t("studentManagement"), description: t("studentManagementDesc"), color: "from-primary to-primary-light" },
+    { icon: Calendar, title: t("attendanceAutomation"), description: t("attendanceAutomationDesc"), color: "from-secondary to-info" },
+    { icon: Wallet, title: t("financeFees"), description: t("financeFeesDesc"), color: "from-success to-green-300" },
+    { icon: BarChart, title: t("examsResults"), description: t("examsResultsDesc"), color: "from-accent to-accent-light" },
+    { icon: Smartphone, title: t("parentPortal"), description: t("parentPortalDesc"), color: "from-primary to-pink-300" },
+    { icon: Brain, title: t("aiAnalytics"), description: t("aiAnalyticsDesc"), color: "from-secondary to-blue-300" },
   ];
 
   return (
@@ -290,10 +288,10 @@ const FeaturesSection = () => {
           className="text-center mb-16"
         >
           <motion.h2 variants={fadeUp} className="text-3xl sm:text-4xl font-black text-slate-800">
-            Everything You Need to Run Your School
+            {t("heading")}
           </motion.h2>
           <motion.p variants={fadeUp} className="mt-4 text-lg text-slate-600 max-w-3xl mx-auto">
-            Powerful features designed to streamline every aspect of educational management.
+            {t("subheading")}
           </motion.p>
         </motion.div>
 
@@ -322,6 +320,7 @@ const FeaturesSection = () => {
 };
 
 const AIIntelligence = () => {
+  const t = useTranslations("Landing.ai");
   return (
     <section className="py-24 bg-gradient-to-br from-primary/20 via-accent/20 to-info/20 relative overflow-hidden">
       <div className="absolute top-0 right-0 w-96 h-96 bg-primary/20 rounded-full blur-[120px]" />
@@ -336,22 +335,12 @@ const AIIntelligence = () => {
           >
             <div className="inline-flex items-center gap-2 glass-card !rounded-full px-4 py-1.5 mb-6">
               <Sparkles size={16} className="text-accent" />
-              <span className="text-xs font-medium text-slate-700">AI-Powered Intelligence</span>
+              <span className="text-xs font-medium text-slate-700">{t("badge")}</span>
             </div>
-            <h2 className="text-4xl font-black mb-6 text-slate-800">
-              AI-Powered Educational Intelligence
-            </h2>
-            <p className="text-slate-600 mb-8 text-lg">
-              Our advanced AI engine analyzes student data, predicts outcomes, and helps educators make data-driven decisions.
-            </p>
+            <h2 className="text-4xl font-black mb-6 text-slate-800">{t("heading")}</h2>
+            <p className="text-slate-600 mb-8 text-lg">{t("description")}</p>
             <div className="space-y-4">
-              {[
-                "Weak student prediction with early alerts",
-                "Attendance trend analysis and forecasting",
-                "Automated report generation",
-                "AI-generated timetables",
-                "Performance forecasting for exams"
-              ].map((feature, idx) => (
+              {[t("weakStudent"), t("attendanceTrend"), t("reportGeneration"), t("aiTimetable"), t("performance")].map((feature, idx) => (
                 <motion.div key={idx} initial={{ opacity: 0, x: -20 }} whileInView={{ opacity: 1, x: 0 }} transition={{ delay: idx * 0.1 }} className="flex items-center gap-3">
                   <CheckCircle size={20} className="text-success" />
                   <span className="text-slate-700">{feature}</span>
@@ -369,14 +358,14 @@ const AIIntelligence = () => {
             <div className="glass-card p-8">
               <div className="flex items-center gap-3 mb-4">
                 <Rocket size={24} className="text-primary" />
-                <h3 className="font-bold text-slate-800">AI Analytics Dashboard</h3>
+                <h3 className="font-bold text-slate-800">{t("dashboardTitle")}</h3>
               </div>
               <div className="space-y-4">
-                <div className="flex justify-between items-center"><span className="text-slate-600">Weak Student Prediction</span><span className="text-primary font-bold">85% accuracy</span></div>
+                <div className="flex justify-between items-center"><span className="text-slate-600">{t("predictionLabel")}</span><span className="text-primary font-bold">{t("predictionAccuracy")}</span></div>
                 <div className="w-full bg-slate-200 rounded-full h-2"><div className="bg-primary h-2 rounded-full w-[85%]" /></div>
-                <div className="flex justify-between items-center"><span className="text-slate-600">Attendance Forecast</span><span className="text-secondary font-bold">92% confidence</span></div>
+                <div className="flex justify-between items-center"><span className="text-slate-600">{t("forecastLabel")}</span><span className="text-secondary font-bold">{t("forecastConfidence")}</span></div>
                 <div className="w-full bg-slate-200 rounded-full h-2"><div className="bg-secondary h-2 rounded-full w-[92%]" /></div>
-                <div className="flex justify-between items-center"><span className="text-slate-600">Performance Prediction</span><span className="text-accent font-bold">78% accuracy</span></div>
+                <div className="flex justify-between items-center"><span className="text-slate-600">{t("performanceLabel")}</span><span className="text-accent font-bold">{t("performanceAccuracy")}</span></div>
                 <div className="w-full bg-slate-200 rounded-full h-2"><div className="bg-accent h-2 rounded-full w-[78%]" /></div>
               </div>
             </div>
@@ -388,6 +377,7 @@ const AIIntelligence = () => {
 };
 
 const PricingSection = () => {
+  const t = useTranslations("Landing.pricing");
   const [currency, setCurrency] = useState('USD');
   const [mounted, setMounted] = useState(false);
 
@@ -396,11 +386,10 @@ const PricingSection = () => {
     setMounted(true);
   }, []);
 
-  // ✅ usdPrice فیلڈ استعمال کر رہے ہیں، price نہیں
   const plans = [
-    { name: "Starter", usdPrice: 0, target: "Small Academies", features: ["Up to 100 students", "Basic attendance", "Student profiles", "Email support"], popular: false },
-    { name: "Professional", usdPrice: 2000, target: "Schools", features: ["Up to 500 students", "All features", "Parent portal", "Priority support", "Analytics"], popular: true },
-    { name: "Enterprise", usdPrice: 5000, target: "Colleges & Chains", features: ["Unlimited students", "White-label", "SMS notifications", "Dedicated manager", "API access"], popular: false, isCustom: false },
+    { name: t("starter"), usdPrice: 0, target: t("starterTarget"), features: ["Up to 100 students", "Basic attendance", "Student profiles", "Email support"], popular: false },
+    { name: t("professional"), usdPrice: 2000, target: t("professionalTarget"), features: ["Up to 500 students", "All features", "Parent portal", "Priority support", "Analytics"], popular: true },
+    { name: t("enterprise"), usdPrice: 5000, target: t("enterpriseTarget"), features: ["Unlimited students", "White-label", "SMS notifications", "Dedicated manager", "API access"], popular: false, isCustom: false },
   ];
 
   if (!mounted) return <section id="pricing" className="py-24"><div className="text-center text-gray-500">Loading...</div></section>;
@@ -409,20 +398,20 @@ const PricingSection = () => {
     <section id="pricing" className="py-24">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-16">
-          <h2 className="text-3xl sm:text-4xl font-black text-slate-800">Simple, Transparent Pricing</h2>
-          <p className="mt-4 text-lg text-slate-500 max-w-2xl mx-auto">Choose the perfect plan for your institution.</p>
+          <h2 className="text-3xl sm:text-4xl font-black text-slate-800">{t("heading")}</h2>
+          <p className="mt-4 text-lg text-slate-500 max-w-2xl mx-auto">{t("subheading")}</p>
         </div>
         <div className="grid md:grid-cols-3 gap-8">
           {plans.map((plan, idx) => (
             <motion.div key={idx} initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.1 }} whileHover={{ y: -8 }}
               className={`relative bg-white border rounded-2xl p-8 shadow-sm ${plan.popular ? "border-pink-400 ring-2 ring-pink-200" : "border-gray-200"}`}>
-              {plan.popular && <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-pink-400 to-orange-300 text-white text-xs font-bold px-3 py-1 rounded-full">Most Popular</div>}
+              {plan.popular && <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-pink-400 to-orange-300 text-white text-xs font-bold px-3 py-1 rounded-full">{t("mostPopular")}</div>}
               <h3 className="text-xl font-bold text-gray-800">{plan.name}</h3>
               <div className="mt-4 flex items-baseline gap-1">
                 <span className="text-4xl font-black text-gray-800">
-                  {plan.usdPrice === 0 ? "Free" : `Rs ${plan.usdPrice.toLocaleString()}`}
+                  {plan.usdPrice === 0 ? t("free") : `Rs ${plan.usdPrice.toLocaleString()}`}
                 </span>
-                {plan.usdPrice > 0 && <span className="text-gray-500">/month</span>}
+                {plan.usdPrice > 0 && <span className="text-gray-500">{t("monthly")}</span>}
               </div>
               <p className="text-sm text-gray-500 mt-2">{plan.target}</p>
               <ul className="mt-6 space-y-3">
@@ -430,7 +419,7 @@ const PricingSection = () => {
                   <li key={i} className="flex items-center gap-2 text-sm text-gray-600"><CheckCircle size={16} className="text-green-500" />{feature}</li>
                 ))}
               </ul>
-              <button onClick={loginWithGoogle} className="mt-8 block w-full text-center bg-gradient-to-r from-pink-400 to-orange-300 text-white py-3 rounded-xl font-bold hover:shadow-lg transition">Get Started</button>
+              <button onClick={loginWithGoogle} className="mt-8 block w-full text-center bg-gradient-to-r from-pink-400 to-orange-300 text-white py-3 rounded-xl font-bold hover:shadow-lg transition">{t("getStarted")}</button>
             </motion.div>
           ))}
         </div>
@@ -439,42 +428,48 @@ const PricingSection = () => {
   );
 };
 
-const FinalCTA = () => (
-  <section className="py-24 bg-gradient-to-r from-primary via-accent to-info text-white relative overflow-hidden">
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative z-10">
-      <motion.h2 initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }} className="text-4xl sm:text-5xl font-black mb-6">Transform Your Institution with AI</motion.h2>
-      <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.2 }}>
-        <button onClick={loginWithGoogle} className="inline-flex items-center gap-2 bg-white text-primary px-8 py-4 rounded-xl font-bold text-lg hover:shadow-xl transition-all group">
-          Start Free Today <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
-        </button>
-      </motion.div>
-    </div>
-  </section>
-);
+const FinalCTA = () => {
+  const t = useTranslations("Landing.cta");
+  return (
+    <section className="py-24 bg-gradient-to-r from-primary via-accent to-info text-white relative overflow-hidden">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative z-10">
+        <motion.h2 initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }} className="text-4xl sm:text-5xl font-black mb-6">{t("heading")}</motion.h2>
+        <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.2 }}>
+          <button onClick={loginWithGoogle} className="inline-flex items-center gap-2 bg-white text-primary px-8 py-4 rounded-xl font-bold text-lg hover:shadow-xl transition-all group">
+            {t("button")} <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
+          </button>
+        </motion.div>
+      </div>
+    </section>
+  );
+};
 
-const Footer = () => (
-  <footer className="glass-card !rounded-none !bg-white/5 border-t border-white/10 py-12">
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-        <div>
-          <div className="flex items-center gap-2 mb-4">
-            <div className="w-8 h-8 bg-gradient-to-br from-primary to-accent rounded-lg flex items-center justify-center">
-              <span className="text-gray-900 font-black text-sm">EP</span>
+const Footer = () => {
+  const t = useTranslations("Landing.footer");
+  return (
+    <footer className="glass-card !rounded-none !bg-white/5 border-t border-white/10 py-12">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+          <div>
+            <div className="flex items-center gap-2 mb-4">
+              <div className="w-8 h-8 bg-gradient-to-br from-primary to-accent rounded-lg flex items-center justify-center">
+                <span className="text-gray-900 font-black text-sm">EP</span>
+              </div>
+              <span className="text-lg font-black text-slate-800">EduPilot</span>
             </div>
-            <span className="text-lg font-black text-slate-800">EduPilot</span>
+            <p className="text-sm text-slate-500">{t("tagline")}</p>
           </div>
-          <p className="text-sm text-slate-500">The AI-Powered Operating System for Modern Education.</p>
+          <div><h4 className="font-bold text-slate-800 mb-4">{t("product")}</h4><ul className="space-y-2 text-sm text-slate-500"><li><a href="#features">{t("features")}</a></li><li><a href="#pricing">{t("pricing")}</a></li><li><a href="#">{t("security")}</a></li></ul></div>
+          <div><h4 className="font-bold text-slate-800 mb-4">{t("resources")}</h4><ul className="space-y-2 text-sm text-slate-500"><li><a href="#">{t("documentation")}</a></li><li><a href="#">{t("api")}</a></li><li><a href="#">{t("support")}</a></li></ul></div>
+          <div><h4 className="font-bold text-slate-800 mb-4">{t("legal")}</h4><ul className="space-y-2 text-sm text-slate-500"><li><a href="#">{t("privacy")}</a></li><li><a href="#">{t("terms")}</a></li><li><a href="#">{t("gdpr")}</a></li></ul></div>
         </div>
-        <div><h4 className="font-bold text-slate-800 mb-4">Product</h4><ul className="space-y-2 text-sm text-slate-500"><li><a href="#features">Features</a></li><li><a href="#pricing">Pricing</a></li><li><a href="#">Security</a></li></ul></div>
-        <div><h4 className="font-bold text-slate-800 mb-4">Resources</h4><ul className="space-y-2 text-sm text-slate-500"><li><a href="#">Documentation</a></li><li><a href="#">API</a></li><li><a href="#">Support</a></li></ul></div>
-        <div><h4 className="font-bold text-slate-800 mb-4">Legal</h4><ul className="space-y-2 text-sm text-slate-500"><li><a href="#">Privacy</a></li><li><a href="#">Terms</a></li><li><a href="#">GDPR</a></li></ul></div>
+        <div className="mt-12 pt-8 border-t border-slate-200 text-center text-sm text-slate-500">
+          <p>{t("copyright")}</p>
+        </div>
       </div>
-      <div className="mt-12 pt-8 border-t border-slate-200 text-center text-sm text-slate-500">
-        <p>&copy; 2025 EduPilot SaaS. All rights reserved.</p>
-      </div>
-    </div>
-  </footer>
-);
+    </footer>
+  );
+};
 
 export default function LandingPage() {
   return (
