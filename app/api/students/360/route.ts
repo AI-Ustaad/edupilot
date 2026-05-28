@@ -16,7 +16,8 @@ export const GET = withErrorHandler(
       if (!studentDoc.exists || studentDoc.data()?.tenantId !== tenantId) {
         return createApiResponse(404, null, "Student not found");
       }
-      const student = { id: studentDoc.id, ...studentDoc.data() };
+      // ✅ as any تاکہ TypeScript خاموش رہے
+      const student = { id: studentDoc.id, ...studentDoc.data() } as any;
 
       // حاضری کا رجحان (پچھلے 6 ماہ)
       const sixMonthsAgo = new Date();
@@ -50,7 +51,6 @@ export const GET = withErrorHandler(
         .orderBy("updatedAt", "desc")
         .get();
 
-      // ✅ as any[] لگا کر TypeScript کی قسم کی غلطی دور کریں
       const marksList = marksSnap.docs.map(d => ({ id: d.id, ...d.data() })) as any[];
 
       const marksByTerm: Record<string, { totalObt: number; totalMax: number; subjects: number }> = {};
