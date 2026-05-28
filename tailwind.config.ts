@@ -11,25 +11,25 @@ const config: Config = {
     extend: {
       colors: {
         primary: {
-          DEFAULT: '#FF7D8F',   // Coral Neon Pink
-          light: '#FF9A9E',     // Soft Salmon Glow
+          DEFAULT: '#FFB6B8',   // Soft Pink
+          light: '#FFC78B',     // Warm Peach
         },
         secondary: {
-          DEFAULT: '#64D8FF',   // Aqua Cyan
-          light: '#A0E7FF',     // Electric Turquoise Highlights
+          DEFAULT: '#BEC5FF',   // Soft Periwinkle
+          light: '#A0E7FF',     // Sky Blue
         },
         accent: {
-          DEFAULT: '#64D8FF',   // Cyan edge illumination
-          dark: '#0D3555',      // Dark Teal Blue
+          DEFAULT: '#C7A8FF',   // Soft Lilac
+          light: '#D7BEFF',
         },
-        success: '#7EE6A2',     // Mint Green (keep)
-        warning: '#FFC78B',     // Warm Peach
+        success: '#7EE6A2',
+        warning: '#FFC78B',
         info: '#A0E7FF',
         dark: {
-          900: '#071B2F',       // Deep Ocean Navy
-          800: '#0A2742',       // Midnight Blue
-          700: '#0D3555',       // Dark Teal Blue
-          600: '#1F5E85',       // Soft Atmospheric Cyan Haze
+          900: '#071B2F',
+          800: '#0A2742',
+          700: '#0D3555',
+          600: '#1F5E85',
         },
         glass: {
           light: 'rgba(255, 255, 255, 0.06)',
@@ -78,7 +78,9 @@ const config: Config = {
       },
     },
   },
-  plugins: [],
+  plugins: [
+    require('tailwindcss-rtl'),
+  ],
 };
 
 export default config;
