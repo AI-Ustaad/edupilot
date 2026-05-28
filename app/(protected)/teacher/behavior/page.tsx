@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { Loader2, PlusCircle, MinusCircle } from "lucide-react";
+import { Loader2, PlusCircle, MinusCircle, Save } from "lucide-react";
 
 export default function TeacherBehaviorPage() {
   const [students, setStudents] = useState<any[]>([]);
