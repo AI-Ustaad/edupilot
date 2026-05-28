@@ -13,6 +13,7 @@ import {
 import { loginWithGoogle } from "@/lib/auth/auth-client";
 import ParticleBackground from "@/components/ParticleBackground";
 import { detectCurrency, formatPrice } from "@/lib/currency";
+import LanguageSwitcher from "@/components/LanguageSwitcher"; // 👈 Language Switcher Import
 
 // ========== ANIMATION VARIANTS ==========
 const fadeUp = {
@@ -82,10 +83,14 @@ const Navbar = () => {
             <span className="text-xl font-black text-slate-800">EduPilot</span>
           </Link>
 
-          <div className="hidden md:flex items-center gap-8">
+          <div className="hidden md:flex items-center gap-6">
             {navItems.map((item) => (
               <a key={item} href={`#${item.toLowerCase()}`} className="text-sm font-medium text-slate-700 hover:text-primary transition-colors">{item}</a>
             ))}
+            
+            {/* 👈 Language Switcher Button (Desktop) */}
+            <LanguageSwitcher />
+
             <button onClick={toggleDarkMode} className="p-2 rounded-lg glass-card !rounded-xl !p-2 text-slate-600">
               {darkMode ? <Sun size={18} /> : <Moon size={18} />}
             </button>
@@ -96,6 +101,8 @@ const Navbar = () => {
           </div>
 
           <div className="flex items-center gap-2 md:hidden">
+            {/* 👈 Language Switcher Button (Mobile) */}
+            <LanguageSwitcher />
             <button onClick={toggleDarkMode} className="p-2 rounded-lg glass-card">{darkMode ? <Sun size={18} /> : <Moon size={18} />}</button>
             <button onClick={() => setIsOpen(!isOpen)} className="p-2 rounded-lg glass-card">{isOpen ? <X size={20} /> : <Menu size={20} />}</button>
           </div>
@@ -546,7 +553,7 @@ const Footer = () => {
           <div><h4 className="font-bold text-slate-800 mb-4">Legal</h4><ul className="space-y-2 text-sm text-slate-500"><li><a href="#">Privacy</a></li><li><a href="#">Terms</a></li><li><a href="#">GDPR</a></li></ul></div>
         </div>
         <div className="mt-12 pt-8 border-t border-slate-200 text-center text-sm text-slate-500">
-          <p>&copy; 2025 EduPilot SaaS. All rights reserved.</p>
+          <p>&copy; 2026 EduPilot SaaS. All rights reserved.</p>
         </div>
       </div>
     </footer>
