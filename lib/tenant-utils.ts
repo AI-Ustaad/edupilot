@@ -1,4 +1,3 @@
-// lib/tenant-utils.ts
 import { NextRequest } from 'next/server';
 import { getSessionUser } from '@/lib/auth/auth-server';
 
