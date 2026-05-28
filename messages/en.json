@@ -1,76 +1,88 @@
 {
-  "Sidebar": { ... }, // پہلے سے موجود
-  "Dashboard": { ... }, // پہلے سے موجود
+  "Sidebar": {
+    "dashboard": "Dashboard",
+    "attendance": "Attendance",
+    "classes": "Classes",
+    "marks": "Marks",
+    "results": "Results",
+    "fees": "Fees",
+    "staff": "Staff",
+    "settings": "Settings",
+    "logout": "Logout",
+    "aiChatbot": "AI Assistant",
+    "aiExam": "AI Exam Generator",
+    "aiTimetable": "AI Timetable"
+  },
   "Landing": {
     "nav": {
       "features": "Features",
       "pricing": "Pricing",
       "security": "Security",
-      "login": "Log in",
-      "startFree": "Start Free"
+      "login": "Login",
+      "startFree": "Start Free Trial"
     },
     "hero": {
-      "badge": "AI-Powered • Cloud-Based • Enterprise SaaS",
-      "titleStart": "Run Your Entire",
-      "titleEnd": "with AI",
-      "description": "Manage students, staff, attendance, finance, analytics, exams, and communication — all from one intelligent cloud platform.",
+      "badge": "AI-Powered School Management",
+      "titleStart": "The Future of",
+      "titleEnd": "Management",
+      "description": "All-in-one AI platform for modern educational institutions. Automate attendance, fees, exams, and communication.",
       "startTrial": "Start Free Trial",
       "liveDemo": "Live Demo",
-      "bookDemo": "Book Live Demo"
+      "bookDemo": "Book a Demo"
     },
     "features": {
-      "heading": "Everything You Need to Run Your School",
-      "subheading": "Powerful features designed to streamline every aspect of educational management.",
+      "heading": "Everything you need to run your school",
+      "subheading": "Powerful features to streamline operations, enhance learning, and save time.",
       "studentManagement": "Student Management",
-      "studentManagementDesc": "Centralized student records with AI-driven insights.",
+      "studentManagementDesc": "Complete student profiles, digital records, and easy search.",
       "attendanceAutomation": "Attendance Automation",
-      "attendanceAutomationDesc": "Smart attendance tracking with real-time analytics.",
+      "attendanceAutomationDesc": "Mark attendance in seconds, track reports automatically.",
       "financeFees": "Finance & Fees",
-      "financeFeesDesc": "Automated billing, fee collection, expense tracking.",
+      "financeFeesDesc": "Collect fees online, generate receipts, track expenses.",
       "examsResults": "Exams & Results",
-      "examsResultsDesc": "Digital assessments, auto-grading, result cards.",
+      "examsResultsDesc": "Create exams, enter marks, generate report cards instantly.",
       "parentPortal": "Parent Portal",
-      "parentPortalDesc": "Real-time parent communication and progress tracking.",
+      "parentPortalDesc": "Keep parents informed about attendance, fees, and progress.",
       "aiAnalytics": "AI Analytics",
-      "aiAnalyticsDesc": "Predictive student insights and performance forecasting."
+      "aiAnalyticsDesc": "Predict student performance and get actionable insights."
     },
     "ai": {
-      "badge": "AI-Powered Intelligence",
-      "heading": "AI-Powered Educational Intelligence",
-      "description": "Our advanced AI engine analyzes student data, predicts outcomes, and helps educators make data-driven decisions.",
-      "weakStudent": "Weak student prediction with early alerts",
-      "attendanceTrend": "Attendance trend analysis and forecasting",
-      "reportGeneration": "Automated report generation",
-      "aiTimetable": "AI-generated timetables",
-      "performance": "Performance forecasting for exams",
+      "badge": "AI Intelligence",
+      "heading": "AI-Powered Insights",
+      "description": "Our AI engine analyzes data to predict at-risk students, suggest interventions, and automate report comments.",
+      "weakStudent": "Identify weak students early",
+      "attendanceTrend": "Attendance trend forecasting",
+      "reportGeneration": "Auto-generate report comments",
+      "aiTimetable": "Optimize timetable automatically",
+      "performance": "Performance prediction models",
       "dashboardTitle": "AI Analytics Dashboard",
-      "predictionLabel": "Weak Student Prediction",
-      "predictionAccuracy": "85% accuracy",
-      "forecastLabel": "Attendance Forecast",
-      "forecastConfidence": "92% confidence",
-      "performanceLabel": "Performance Prediction",
-      "performanceAccuracy": "78% accuracy"
+      "predictionLabel": "Risk Prediction Accuracy",
+      "predictionAccuracy": "94%",
+      "forecastLabel": "Forecast Confidence",
+      "forecastConfidence": "92%",
+      "performanceLabel": "Performance Accuracy",
+      "performanceAccuracy": "87%"
     },
     "pricing": {
       "heading": "Simple, Transparent Pricing",
-      "subheading": "Choose the perfect plan for your institution.",
+      "subheading": "Choose the plan that fits your institution size.",
       "starter": "Starter",
-      "starterTarget": "Small Academies",
       "professional": "Professional",
-      "professionalTarget": "Schools",
       "enterprise": "Enterprise",
-      "enterpriseTarget": "Colleges & Chains",
+      "starterTarget": "For small schools",
+      "professionalTarget": "For growing schools",
+      "enterpriseTarget": "For large institutions",
       "free": "Free",
       "monthly": "/month",
-      "getStarted": "Get Started",
-      "mostPopular": "Most Popular"
+      "mostPopular": "Most Popular",
+      "getStarted": "Get Started"
     },
     "cta": {
-      "heading": "Transform Your Institution with AI",
-      "button": "Start Free Today"
+      "heading": "Ready to transform your school?",
+      "button": "Start Free Trial"
     },
     "footer": {
-      "tagline": "The AI-Powered Operating System for Modern Education.",
+      "tagline": "AI-Powered School Management",
       "product": "Product",
       "features": "Features",
       "pricing": "Pricing",
@@ -83,7 +95,21 @@
       "privacy": "Privacy",
       "terms": "Terms",
       "gdpr": "GDPR",
-      "copyright": "© 2025 EduPilot SaaS. All rights reserved."
+      "copyright": "© 2025 EduPilot. All rights reserved."
     }
+  },
+  "Dashboard": {
+    "title": "Dashboard",
+    "subtitle": "Welcome back! Here's your school at a glance.",
+    "totalStudents": "Total Students",
+    "totalStaff": "Total Staff",
+    "revenue": "Revenue",
+    "todayAttendance": "Today's Attendance",
+    "weeklyAttendance": "Weekly Attendance Trend",
+    "feeCollection": "Fee Collection",
+    "studentDistribution": "Student Distribution by Class",
+    "recentPayments": "Recent Payments",
+    "atRisk": "At-Risk Students",
+    "noData": "No data available"
   }
 }
