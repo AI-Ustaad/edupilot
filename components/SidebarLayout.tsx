@@ -13,8 +13,10 @@ import {
   TrendingUp, Film, Send, Star, PlusCircle,
 } from "lucide-react";
 import MobileBottomNav from "./MobileBottomNav";
+import { useTranslations } from "next-intl";
 
 export default function SidebarLayout({ children }: { children: React.ReactNode }) {
+  const t = useTranslations("Sidebar");
   const pathname = usePathname();
   const router = useRouter();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -41,11 +43,11 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
 
   const menuGroups = [
     {
-      title: "Dashboard",
+      title: t("commandCenter"),
       icon: LayoutDashboard,
       items: [
         {
-          name: "Command Center",
+          name: t("commandCenter"),
           icon: LayoutDashboard,
           path: "/dashboard",
           allowed: ["admin", "teacher", "accountant"],
@@ -55,82 +57,82 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
       key: null,
     },
     {
-      title: "Academic",
+      title: t("academic"),
       icon: BookOpen,
       items: [
-        { name: "Students", icon: Users, path: "/students", allowed: ["admin", "teacher"] },
-        { name: "Classes", icon: GraduationCap, path: "/classes", allowed: ["admin"] },
-        { name: "Manage Syllabus", icon: FileText, path: "/admin/syllabus", allowed: ["admin"] },
-        { name: "Academic Year", icon: Calendar, path: "/admin/academic-year", allowed: ["admin"] },
-        { name: "Video Library", icon: Film, path: "/video-lectures", allowed: ["admin", "teacher", "parent"] },
+        { name: t("students"), icon: Users, path: "/students", allowed: ["admin", "teacher"] },
+        { name: t("classes"), icon: GraduationCap, path: "/classes", allowed: ["admin"] },
+        { name: t("syllabus"), icon: FileText, path: "/admin/syllabus", allowed: ["admin"] },
+        { name: t("academicYear"), icon: Calendar, path: "/admin/academic-year", allowed: ["admin"] },
+        { name: t("videoLibrary"), icon: Film, path: "/video-lectures", allowed: ["admin", "teacher", "parent"] },
       ],
       allowed: ["admin", "teacher", "parent"],
       key: "academic",
     },
     {
-      title: "Finance",
+      title: t("finance"),
       icon: DollarSign,
       items: [
-        { name: "Fees Collection", icon: Wallet, path: "/fees", allowed: ["admin", "accountant"] },
-        { name: "Ledger", icon: ClipboardCheck, path: "/ledger", allowed: ["admin", "accountant"] },
+        { name: t("fees"), icon: Wallet, path: "/fees", allowed: ["admin", "accountant"] },
+        { name: t("ledger"), icon: ClipboardCheck, path: "/ledger", allowed: ["admin", "accountant"] },
       ],
       allowed: ["admin", "accountant"],
       key: "finance",
     },
     {
-      title: "Operations",
+      title: t("operations"),
       icon: Clock,
       items: [
-        { name: "Attendance", icon: ClipboardCheck, path: "/attendance", allowed: ["admin", "teacher"] },
-        { name: "Time Table", icon: Clock, path: "/timetable", allowed: ["admin", "teacher"] },
-        { name: "AI Timetable", icon: Sparkles, path: "/ai-timetable", allowed: ["admin", "teacher"] },
-        { name: "Buses", icon: Bus, path: "/admin/buses", allowed: ["admin"] },
+        { name: t("attendance"), icon: ClipboardCheck, path: "/attendance", allowed: ["admin", "teacher"] },
+        { name: t("timetable"), icon: Clock, path: "/timetable", allowed: ["admin", "teacher"] },
+        { name: t("aiTimetable"), icon: Sparkles, path: "/ai-timetable", allowed: ["admin", "teacher"] },
+        { name: t("buses"), icon: Bus, path: "/admin/buses", allowed: ["admin"] },
       ],
       allowed: ["admin", "teacher"],
       key: "operations",
     },
     {
-      title: "Staff",
+      title: t("staff"),
       icon: UserCircle,
       items: [
-        { name: "Staff Management", icon: UserCircle, path: "/staff", allowed: ["admin"] },
-        { name: "Manage Parents", icon: Heart, path: "/admin/parents", allowed: ["admin"] },
-        { name: "Leave Requests", icon: CalendarDays, path: "/leave-requests", allowed: ["admin"] },
-        { name: "Post Homework", icon: FileText, path: "/teacher/homework", allowed: ["admin", "teacher"] },
-        { name: "Assignments", icon: FileText, path: "/teacher/assignments", allowed: ["admin", "teacher"] },
-        { name: "Quizzes", icon: FileText, path: "/teacher/quizzes", allowed: ["admin", "teacher"] },
-        { name: "Lesson Plans", icon: Calendar, path: "/teacher/lesson-plans", allowed: ["admin", "teacher"] },
-        { name: "Book Center", icon: BookOpen, path: "/teacher/book-center", allowed: ["admin", "teacher"] },
-        { name: "Manage Books", icon: FileText, path: "/teacher/manage-books", allowed: ["admin", "teacher"] },
-        { name: "Exam Center", icon: FileText, path: "/teacher/exam-center", allowed: ["admin", "teacher"] },
-        { name: "Video Lectures", icon: Film, path: "/teacher/video-lectures", allowed: ["admin", "teacher"] },
-        { name: "Chat with Parents", icon: Send, path: "/teacher/chat", allowed: ["admin", "teacher"] },
-        { name: "Admissions", icon: FileText, path: "/admin/admissions", allowed: ["admin"] },
-        { name: "Add Skills", icon: Star, path: "/teacher/skills", allowed: ["admin", "teacher"] },
-        { name: "Behavior Points", icon: PlusCircle, path: "/teacher/behavior", allowed: ["admin", "teacher"] },
+        { name: t("staffManagement"), icon: UserCircle, path: "/staff", allowed: ["admin"] },
+        { name: t("parents"), icon: Heart, path: "/admin/parents", allowed: ["admin"] },
+        { name: t("leaveRequests"), icon: CalendarDays, path: "/leave-requests", allowed: ["admin"] },
+        { name: t("postHomework"), icon: FileText, path: "/teacher/homework", allowed: ["admin", "teacher"] },
+        { name: t("assignments"), icon: FileText, path: "/teacher/assignments", allowed: ["admin", "teacher"] },
+        { name: t("quizzes"), icon: FileText, path: "/teacher/quizzes", allowed: ["admin", "teacher"] },
+        { name: t("lessonPlans"), icon: Calendar, path: "/teacher/lesson-plans", allowed: ["admin", "teacher"] },
+        { name: t("bookCenter"), icon: BookOpen, path: "/teacher/book-center", allowed: ["admin", "teacher"] },
+        { name: t("manageBooks"), icon: FileText, path: "/teacher/manage-books", allowed: ["admin", "teacher"] },
+        { name: t("examCenter"), icon: FileText, path: "/teacher/exam-center", allowed: ["admin", "teacher"] },
+        { name: t("videoLectures"), icon: Film, path: "/teacher/video-lectures", allowed: ["admin", "teacher"] },
+        { name: t("chat"), icon: Send, path: "/teacher/chat", allowed: ["admin", "teacher"] },
+        { name: t("admissions"), icon: FileText, path: "/admin/admissions", allowed: ["admin"] },
+        { name: t("addSkills"), icon: Star, path: "/teacher/skills", allowed: ["admin", "teacher"] },
+        { name: t("behaviorPoints"), icon: PlusCircle, path: "/teacher/behavior", allowed: ["admin", "teacher"] },
       ],
       allowed: ["admin"],
       key: "staff",
     },
     {
-      title: "Admin Tools",
+      title: t("adminTools"),
       icon: Settings,
       items: [
-        { name: "Admin Settings", icon: Settings, path: "/settings", allowed: ["admin"] },
-        { name: "Manage Users", icon: ShieldCheck, path: "/admin/users", allowed: ["admin"] },
-        { name: "Audit Logs", icon: FileText, path: "/admin/audit", allowed: ["admin"] },
-        { name: "Billing", icon: CreditCard, path: "/settings/billing", allowed: ["admin"] },
+        { name: t("settings"), icon: Settings, path: "/settings", allowed: ["admin"] },
+        { name: t("users"), icon: ShieldCheck, path: "/admin/users", allowed: ["admin"] },
+        { name: t("auditLogs"), icon: FileText, path: "/admin/audit", allowed: ["admin"] },
+        { name: t("billing"), icon: CreditCard, path: "/settings/billing", allowed: ["admin"] },
       ],
       allowed: ["admin"],
       key: "adminTools",
     },
     {
-      title: "AI Tools",
+      title: t("aiTools"),
       icon: Sparkles,
       items: [
-        { name: "AI Assistant", icon: Bot, path: "/ai-chatbot", allowed: ["admin", "teacher"] },
-        { name: "AI Timetable", icon: Sparkles, path: "/ai-timetable", allowed: ["admin", "teacher"] },
-        { name: "Exam Questions", icon: FileText, path: "/ai-exam-questions", allowed: ["admin", "teacher"] },
+        { name: t("aiAssistant"), icon: Bot, path: "/ai-chatbot", allowed: ["admin", "teacher"] },
+        { name: t("aiTimetable"), icon: Sparkles, path: "/ai-timetable", allowed: ["admin", "teacher"] },
+        { name: t("examQuestions"), icon: FileText, path: "/ai-exam-questions", allowed: ["admin", "teacher"] },
       ],
       allowed: ["admin", "teacher"],
       key: "aiTools",
