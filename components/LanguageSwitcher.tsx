@@ -11,9 +11,9 @@ export default function LanguageSwitcher() {
   const [isOpen, setIsOpen] = useState(false);
 
   const switchLanguage = (lang: string) => {
-    // موجودہ پاتھ میں لوکل تبدیل کریں (اگلے-انٹیل خودکار طریقے سے یو آر ایل میں /en یا /ur ڈالے گا)
-    const newPath = pathname.replace(`/${locale}`, `/${lang}`);
-    router.push(newPath);
+    // 👈 URL میں /en ڈالنے کے بجائے کُکی (Cookie) استعمال کریں
+    document.cookie = `NEXT_LOCALE=${lang}; path=/; max-age=31536000`;
+    router.refresh();
     setIsOpen(false);
   };
 
@@ -23,7 +23,7 @@ export default function LanguageSwitcher() {
   };
 
   return (
-    <div className="relative">
+    <div className="relative z-50">
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 transition"
