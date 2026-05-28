@@ -1,14 +1,16 @@
 import { getApps, initializeApp, cert, App } from 'firebase-admin/app';
-import { getFirestore, Firestore } from 'firebase-admin/firestore';
+import { getFirestore, Firestore, FieldValue } from 'firebase-admin/firestore';
 import { getAuth, Auth } from 'firebase-admin/auth';
+import { getStorage, Storage } from 'firebase-admin/storage';
 
 let app: App | undefined;
 let db: Firestore | undefined;
 let auth: Auth | undefined;
+let storage: Storage | undefined;
 
+// Initialize admin SDK
 export function initAdmin() {
   if (getApps().length === 0) {
-    // Check if running in production (Vercel) or development
     if (process.env.FIREBASE_PRIVATE_KEY) {
       app = initializeApp({
         credential: cert({
@@ -16,9 +18,10 @@ export function initAdmin() {
           clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
           privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
         }),
+        storageBucket: process.env.FIREBASE_STORAGE_BUCKET,
       });
     } else {
-      // For development without service account (uses default credentials)
+      // For development with default credentials (e.g., local emulator)
       app = initializeApp();
     }
   } else {
@@ -26,15 +29,43 @@ export function initAdmin() {
   }
   db = getFirestore(app);
   auth = getAuth(app);
-  return { db, auth };
+  storage = getStorage(app);
+  return { db, auth, storage };
 }
 
-export function getFirestoreAdmin(): Firestore {
+// Named exports for direct usage in API routes
+export const adminDb = (() => {
+  if (!db) initAdmin();
+  return db!;
+})();
+
+export const adminAuth = (() => {
+  if (!auth) initAdmin();
+  return auth!;
+})();
+
+export const adminStorage = (() => {
+  if (!storage) initAdmin();
+  return storage!;
+})();
+
+export const dbTimestamp = FieldValue.serverTimestamp();
+
+// Also export initAdmin if needed
+export { initAdmin as default };
+
+// Optional: export a function to get fresh instances
+export function getAdminDb() {
   if (!db) initAdmin();
   return db!;
 }
 
-export function getAuthAdmin(): Auth {
+export function getAdminAuth() {
   if (!auth) initAdmin();
   return auth!;
+}
+
+export function getAdminStorage() {
+  if (!storage) initAdmin();
+  return storage!;
 }
