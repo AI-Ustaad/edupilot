@@ -10,6 +10,7 @@ import {
   Wallet, Clock, Settings, Menu, X, ShieldCheck, LogOut,
   GraduationCap, DollarSign, Calendar, FileText, Heart,
   ChevronDown, ChevronRight, CreditCard, Sparkles, Bus, CalendarDays, Bot,
+  TrendingUp,
 } from "lucide-react";
 import MobileBottomNav from "./MobileBottomNav";
 
@@ -101,6 +102,7 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
         { name: "Book Center", icon: BookOpen, path: "/teacher/book-center", allowed: ["admin", "teacher"] },
         { name: "Manage Books", icon: FileText, path: "/teacher/manage-books", allowed: ["admin", "teacher"] },
         { name: "Exam Center", icon: FileText, path: "/teacher/exam-center", allowed: ["admin", "teacher"] },
+        { name: "Student 360", icon: TrendingUp, path: "/student/360", allowed: ["admin", "teacher"] },
       ],
       allowed: ["admin"],
       key: "staff",
