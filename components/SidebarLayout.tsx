@@ -10,7 +10,7 @@ import {
   Wallet, Clock, Settings, Menu, X, ShieldCheck, LogOut,
   GraduationCap, DollarSign, Calendar, FileText, Heart,
   ChevronDown, ChevronRight, CreditCard, Sparkles, Bus, CalendarDays, Bot,
-  TrendingUp,
+  TrendingUp, Film,
 } from "lucide-react";
 import MobileBottomNav from "./MobileBottomNav";
 
@@ -62,8 +62,9 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
         { name: "Classes", icon: GraduationCap, path: "/classes", allowed: ["admin"] },
         { name: "Manage Syllabus", icon: FileText, path: "/admin/syllabus", allowed: ["admin"] },
         { name: "Academic Year", icon: Calendar, path: "/admin/academic-year", allowed: ["admin"] },
+        { name: "Video Library", icon: Film, path: "/video-lectures", allowed: ["admin", "teacher", "parent"] },
       ],
-      allowed: ["admin", "teacher"],
+      allowed: ["admin", "teacher", "parent"],
       key: "academic",
     },
     {
@@ -102,7 +103,7 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
         { name: "Book Center", icon: BookOpen, path: "/teacher/book-center", allowed: ["admin", "teacher"] },
         { name: "Manage Books", icon: FileText, path: "/teacher/manage-books", allowed: ["admin", "teacher"] },
         { name: "Exam Center", icon: FileText, path: "/teacher/exam-center", allowed: ["admin", "teacher"] },
-        { name: "Student 360", icon: TrendingUp, path: "/student/360", allowed: ["admin", "teacher"] },
+        { name: "Video Lectures", icon: Film, path: "/teacher/video-lectures", allowed: ["admin", "teacher"] },
       ],
       allowed: ["admin"],
       key: "staff",
