@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import MobileBottomNav from "./MobileBottomNav";
 import { useTranslations } from "next-intl";
+import LanguageSwitcher from "@/components/LanguageSwitcher"; // 👈 Language Switcher Import
 
 export default function SidebarLayout({ children }: { children: React.ReactNode }) {
   const t = useTranslations("Sidebar");
@@ -165,15 +166,20 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
       >
         {/* Logo */}
         <div
-          className="h-20 px-6 border-b border-gray-200 flex items-center gap-2 cursor-pointer"
+          className="h-20 px-6 border-b border-gray-200 flex items-center gap-2 cursor-pointer shrink-0"
           onClick={() => router.push("/dashboard")}
         >
           <ShieldCheck className="text-blue-600 w-8 h-8" />
           <span className="text-xl font-black text-gray-900">EduPilot</span>
         </div>
 
+        {/* 👈 Language Switcher in Sidebar Top */}
+        <div className="px-4 py-3 border-b border-gray-100 shrink-0">
+          <LanguageSwitcher />
+        </div>
+
         {/* Navigation */}
-        <div className="flex-1 overflow-y-auto py-2 px-4">
+        <div className="flex-1 overflow-y-auto py-2 px-4 custom-scrollbar">
           {role === "loading" ? (
             <div className="animate-pulse space-y-4">
               <div className="h-8 bg-gray-100 rounded w-full"></div>
@@ -224,7 +230,7 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
         </div>
 
         {/* Logout */}
-        <div className="p-4 border-t border-gray-200">
+        <div className="p-4 border-t border-gray-200 shrink-0">
           <button
             onClick={handleLogout}
             className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-red-600 hover:bg-red-50 transition-colors"
@@ -236,7 +242,7 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto bg-slate-50">
         <div className="p-4 md:p-8 max-w-[1600px] mx-auto">{children}</div>
         <MobileBottomNav />
       </div>
