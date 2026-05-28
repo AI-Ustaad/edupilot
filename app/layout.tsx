@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
-import { getLocale } from "next-intl/server";
+import { getLocale, getMessages } from "next-intl/server"; // 👈 getMessages بھی امپورٹ کریں
+import { NextIntlClientProvider } from "next-intl"; // 👈 یہ Provider ضروری ہے
 
 const font = Plus_Jakarta_Sans({ subsets: ["latin"] });
 
@@ -15,14 +16,17 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  // سرور سے موجودہ زبان حاصل کریں
+  // سرور سے زبان اور میسجز حاصل کریں
   const locale = await getLocale();
+  const messages = await getMessages(); // 👈 یہ فائلز کا ڈیٹا اٹھائے گا
 
   return (
-    // 👈 یہاں ہم نے RTL اور LTR کا خودکار فیصلہ کیا ہے
     <html lang={locale} dir={["ur", "ar"].includes(locale) ? "rtl" : "ltr"}>
       <body className={font.className}>
-        {children}
+        {/* 👈 پوری ایپ کو اس کے اندر ریپ کریں تاکہ translation کام کرے */}
+        <NextIntlClientProvider messages={messages}>
+          {children}
+        </NextIntlClientProvider>
       </body>
     </html>
   );
