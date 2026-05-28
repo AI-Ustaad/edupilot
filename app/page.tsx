@@ -396,6 +396,7 @@ const PricingSection = () => {
     setMounted(true);
   }, []);
 
+  // ✅ usdPrice فیلڈ استعمال کر رہے ہیں، price نہیں
   const plans = [
     { name: "Starter", usdPrice: 0, target: "Small Academies", features: ["Up to 100 students", "Basic attendance", "Student profiles", "Email support"], popular: false },
     { name: "Professional", usdPrice: 2000, target: "Schools", features: ["Up to 500 students", "All features", "Parent portal", "Priority support", "Analytics"], popular: true },
@@ -419,9 +420,9 @@ const PricingSection = () => {
               <h3 className="text-xl font-bold text-gray-800">{plan.name}</h3>
               <div className="mt-4 flex items-baseline gap-1">
                 <span className="text-4xl font-black text-gray-800">
-                  {plan.price === 0 ? "Free" : `Rs ${plan.price.toLocaleString()}`}
+                  {plan.usdPrice === 0 ? "Free" : `Rs ${plan.usdPrice.toLocaleString()}`}
                 </span>
-                {plan.price > 0 && <span className="text-gray-500">/month</span>}
+                {plan.usdPrice > 0 && <span className="text-gray-500">/month</span>}
               </div>
               <p className="text-sm text-gray-500 mt-2">{plan.target}</p>
               <ul className="mt-6 space-y-3">
