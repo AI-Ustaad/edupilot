@@ -11,6 +11,7 @@ import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell,
 } from "recharts";
+import { useTranslations } from "next-intl";
 
 const fadeInUp = {
   hidden: { opacity: 0, y: 40 },
@@ -43,6 +44,7 @@ interface DashboardData {
 }
 
 export default function DashboardPage() {
+  const t = useTranslations("Dashboard");
   const { user } = useAuth();
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -66,7 +68,6 @@ export default function DashboardPage() {
       }
     })();
 
-    // Risk Students fetch
     fetch("/api/students/risk")
       .then(res => res.json())
       .then(json => {
@@ -77,7 +78,7 @@ export default function DashboardPage() {
   if (loading) {
     return (
       <div className="flex h-96 items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-primary" />
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-blue-600" />
       </div>
     );
   }
@@ -98,8 +99,8 @@ export default function DashboardPage() {
     >
       {/* Header */}
       <motion.div variants={fadeInUp}>
-        <h1 className="text-3xl font-black text-gray-900">Command Center</h1>
-        <p className="text-gray-500 mt-1">Real‑time overview of your institution</p>
+        <h1 className="text-3xl font-black text-gray-900">{t("title")}</h1>
+        <p className="text-gray-500 mt-1">{t("subtitle")}</p>
       </motion.div>
 
       {/* KPI Cards */}
@@ -107,11 +108,11 @@ export default function DashboardPage() {
         variants={staggerContainer}
         className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6"
       >
-        <KpiCard title="Total Students" value={data.students} icon={<Users size={28} className="text-blue-600" />} />
-        <KpiCard title="Total Staff" value={data.staff} icon={<Briefcase size={28} className="text-purple-600" />} />
-        <KpiCard title="Revenue (Rs)" value={data.revenue.toLocaleString()} icon={<DollarSign size={28} className="text-green-600" />} />
+        <KpiCard title={t("totalStudents")} value={data.students} icon={<Users size={28} className="text-blue-600" />} />
+        <KpiCard title={t("totalStaff")} value={data.staff} icon={<Briefcase size={28} className="text-purple-600" />} />
+        <KpiCard title={t("revenue")} value={data.revenue.toLocaleString()} icon={<DollarSign size={28} className="text-green-600" />} />
         <KpiCard
-          title="Today's Attendance"
+          title={t("todayAttendance")}
           value={`${data.todayAttendance.present} / ${data.todayAttendance.present + data.todayAttendance.absent}`}
           subtitle={`${attendancePercent}% present`}
           icon={<Activity size={28} className="text-cyan-600" />}
@@ -125,7 +126,7 @@ export default function DashboardPage() {
           className="bg-red-50 border border-red-200 rounded-2xl p-6"
         >
           <h2 className="text-lg font-bold text-red-800 mb-4 flex items-center gap-2">
-            <AlertTriangle className="text-red-600" /> At Risk Students ({riskStudents.length})
+            <AlertTriangle className="text-red-600" /> {t("atRisk")} ({riskStudents.length})
           </h2>
           <div className="space-y-3">
             {riskStudents.map((student: any) => (
@@ -156,7 +157,7 @@ export default function DashboardPage() {
       <div className="grid lg:grid-cols-2 gap-6">
         <motion.div variants={fadeInUp} className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
           <h3 className="text-lg font-semibold flex items-center gap-2 mb-4 text-gray-900">
-            <CalendarDays size={20} className="text-blue-600" /> Weekly Attendance
+            <CalendarDays size={20} className="text-blue-600" /> {t("weeklyAttendance")}
           </h3>
           <ResponsiveContainer width="100%" height={280}>
             <LineChart data={data.attendanceTrend}>
@@ -175,7 +176,7 @@ export default function DashboardPage() {
 
         <motion.div variants={fadeInUp} className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
           <h3 className="text-lg font-semibold mb-4 flex items-center gap-2 text-gray-900">
-            <CreditCard size={20} className="text-green-600" /> Fee Collection (Current Month)
+            <CreditCard size={20} className="text-green-600" /> {t("feeCollection")} (Current Month)
           </h3>
           <div className="mb-4">
             <div className="flex justify-between text-sm mb-1">
@@ -207,10 +208,10 @@ export default function DashboardPage() {
       <div className="grid lg:grid-cols-2 gap-6">
         <motion.div variants={fadeInUp} className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
           <h3 className="text-lg font-semibold mb-4 flex items-center gap-2 text-gray-900">
-            <Users size={20} className="text-purple-600" /> Student Distribution
+            <Users size={20} className="text-purple-600" /> {t("studentDistribution")}
           </h3>
           {data.classDistribution.length === 0 ? (
-            <div className="h-64 flex items-center justify-center text-gray-400">No data</div>
+            <div className="h-64 flex items-center justify-center text-gray-400">{t("noData")}</div>
           ) : (
             <div className="flex flex-col md:flex-row items-center gap-8">
               <ResponsiveContainer width="100%" height={250}>
@@ -237,7 +238,7 @@ export default function DashboardPage() {
 
         <motion.div variants={fadeInUp} className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
           <h3 className="text-lg font-semibold mb-4 flex items-center gap-2 text-gray-900">
-            <Clock size={20} className="text-orange-500" /> Recent Payments
+            <Clock size={20} className="text-orange-500" /> {t("recentPayments")}
           </h3>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -260,7 +261,7 @@ export default function DashboardPage() {
                 ))}
                 {data.recentPayments.length === 0 && (
                   <tr>
-                    <td colSpan={4} className="p-6 text-center text-gray-400">No payments yet</td>
+                    <td colSpan={4} className="p-6 text-center text-gray-400">{t("noData")}</td>
                   </tr>
                 )}
               </tbody>
