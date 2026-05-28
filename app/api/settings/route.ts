@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
 import { getFirestore } from 'firebase-admin/firestore';
 import { initAdmin } from '@/lib/firebase-admin';
+import { getTenantIdFromRequest } from '@/lib/tenant-utils';
 import { z } from 'zod';
 
 initAdmin();
@@ -22,17 +22,12 @@ const settingsSchema = z.object({
   }))
 });
 
-async function getTenantId(req: NextRequest): Promise<string | null> {
-  const session = await getServerSession();
-  if (!session?.user?.email) return null;
-  const userDoc = await db.collection('users').doc(session.user.email).get();
-  return userDoc.exists ? userDoc.data()?.tenantId : null;
-}
-
 export async function GET(req: NextRequest) {
   try {
-    const tenantId = await getTenantId(req);
-    if (!tenantId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const tenantId = await getTenantIdFromRequest(req);
+    if (!tenantId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
     const settingsDoc = await db.collection('tenants').doc(tenantId).collection('settings').doc('config').get();
     if (!settingsDoc.exists) {
@@ -40,14 +35,17 @@ export async function GET(req: NextRequest) {
     }
     return NextResponse.json(settingsDoc.data());
   } catch (error) {
+    console.error('Settings GET error:', error);
     return NextResponse.json({ error: 'Failed to fetch settings' }, { status: 500 });
   }
 }
 
 export async function POST(req: NextRequest) {
   try {
-    const tenantId = await getTenantId(req);
-    if (!tenantId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const tenantId = await getTenantIdFromRequest(req);
+    if (!tenantId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
     const body = await req.json();
     const validated = settingsSchema.parse(body);
@@ -58,6 +56,7 @@ export async function POST(req: NextRequest) {
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: error.errors }, { status: 400 });
     }
+    console.error('Settings POST error:', error);
     return NextResponse.json({ error: 'Failed to save settings' }, { status: 500 });
   }
 }
