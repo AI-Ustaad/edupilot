@@ -4,114 +4,75 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ========== GLOBAL GLASS & BACKGROUND ========== */
+/* ========== GLOBAL LIGHT BASE ========== */
 body {
   font-family: 'Plus Jakarta Sans', sans-serif;
+  background-color: #f8fafc;
+  color: #1E293B;
 }
 
-/* Glass card utility */
-@layer components {
-  .glass-card {
-    @apply bg-glass-light backdrop-blur-glass border border-glass-medium rounded-3xl shadow-glass;
-    transition: all 0.3s ease;
-  }
-  .glass-card:hover {
-    @apply shadow-glass-hover;
-    transform: translateY(-2px);
-  }
+/* ========== GLASS COMPONENTS ========== */
+.glass-card {
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  border-radius: 24px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+  transition: all 0.3s ease;
+}
+.glass-card:hover {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+  transform: translateY(-2px);
+}
 
-  /* Glass button */
-  .glass-btn {
-    @apply bg-glass-light backdrop-blur-md border border-glass-medium rounded-xl px-6 py-3 font-semibold text-slate-800;
-    transition: all 0.3s ease;
-  }
-  .glass-btn:hover {
-    @apply bg-glass-medium shadow-glow;
-    transform: translateY(-2px);
-  }
+.glass-btn {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 12px;
+  padding: 12px 24px;
+  font-weight: 600;
+  color: #1E293B;
+  transition: all 0.3s ease;
+}
+.glass-btn:hover {
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  transform: translateY(-1px);
+}
 
-  /* Primary button with gradient */
-  .btn-primary {
-    @apply bg-gradient-to-r from-primary to-primary-light text-gray-900 font-bold py-3 px-6 rounded-xl shadow-glow;
-    transition: all 0.3s ease;
-  }
-  .btn-primary:hover {
-    @apply shadow-glass-hover;
-    transform: translateY(-2px);
-  }
+.btn-primary {
+  background: linear-gradient(135deg, #FFB6B8, #FFC78B);
+  border: none;
+  border-radius: 12px;
+  color: white;
+  font-weight: 700;
+  padding: 12px 24px;
+  box-shadow: 0 4px 12px rgba(255, 182, 184, 0.3);
+  transition: all 0.3s ease;
+}
+.btn-primary:hover {
+  box-shadow: 0 6px 20px rgba(255, 182, 184, 0.5);
+  transform: translateY(-2px);
+}
 
-  /* Floating orbs (used in layout) */
-  .orb {
-    position: fixed;
-    border-radius: 50%;
-    filter: blur(100px);
-    opacity: 0.3;
-    z-index: 0;
-    pointer-events: none;
-  }
-  .orb-1 {
-    width: 400px;
-    height: 400px;
-    background: #FFB6B8;
-    top: -100px;
-    right: -100px;
-  }
-  .orb-2 {
-    width: 500px;
-    height: 500px;
-    background: #BEC5FF;
-    bottom: -150px;
-    left: -150px;
-  }
-  .orb-3 {
-    width: 600px;
-    height: 600px;
-    background: #A0E7FF;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    opacity: 0.2;
-  }
+/* ========== OPTIONAL: SIDEBAR (light) ========== */
+.glass-sidebar {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-right: 1px solid rgba(0, 0, 0, 0.05);
+}
 
-  /* Floating flora/coral abstract shapes */
-  .flora {
-    position: fixed;
-    border-radius: 50%;
-    filter: blur(80px);
-    opacity: 0.25;
-    z-index: 0;
-    pointer-events: none;
-  }
-  .flora-1 {
-    width: 250px;
-    height: 250px;
-    background: radial-gradient(circle at 30% 30%, #FFB6B8, #C7A8FF);
-    top: 20%;
-    right: 5%;
-    animation: float 8s ease-in-out infinite;
-  }
-  .flora-2 {
-    width: 200px;
-    height: 200px;
-    background: radial-gradient(circle at 70% 70%, #7EE6A2, #A0E7FF);
-    bottom: 20%;
-    left: 8%;
-    animation: float 10s ease-in-out infinite reverse;
-  }
-  .flora-3 {
-    width: 300px;
-    height: 300px;
-    background: radial-gradient(circle at 40% 60%, #FFC78B, #BEC5FF);
-    top: 60%;
-    right: 15%;
-    animation: float 12s ease-in-out infinite;
-  }
+/* ========== RTL SUPPORT FOR URDU ========== */
+[dir="rtl"] {
+  direction: rtl;
+  text-align: right;
+}
 
-  /* Sidebar specific override */
-  .glass-sidebar {
-    background: rgba(255, 255, 255, 0.08);
-    backdrop-filter: blur(35px);
-    -webkit-backdrop-filter: blur(35px);
-    border-right: 1px solid rgba(255, 255, 255, 0.2);
-  }
+[dir="rtl"] .glass-sidebar {
+  border-right: none;
+  border-left: 1px solid rgba(0, 0, 0, 0.05);
 }
