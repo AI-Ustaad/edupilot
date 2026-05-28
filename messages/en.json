@@ -25,38 +25,38 @@
       "badge": "AI-Powered School Management",
       "titleStart": "The Future of",
       "titleEnd": "Management",
-      "description": "All-in-one AI platform for modern educational institutions. Automate attendance, fees, exams, and communication.",
+      "description": "All-in-one AI platform for modern educational institutions.",
       "startTrial": "Start Free Trial",
       "liveDemo": "Live Demo",
       "bookDemo": "Book a Demo"
     },
     "features": {
-      "heading": "Everything you need to run your school",
-      "subheading": "Powerful features to streamline operations, enhance learning, and save time.",
+      "heading": "Everything you need",
+      "subheading": "Powerful features to streamline operations.",
       "studentManagement": "Student Management",
-      "studentManagementDesc": "Complete student profiles, digital records, and easy search.",
+      "studentManagementDesc": "Complete student profiles.",
       "attendanceAutomation": "Attendance Automation",
-      "attendanceAutomationDesc": "Mark attendance in seconds, track reports automatically.",
+      "attendanceAutomationDesc": "Mark attendance in seconds.",
       "financeFees": "Finance & Fees",
-      "financeFeesDesc": "Collect fees online, generate receipts, track expenses.",
+      "financeFeesDesc": "Collect fees online.",
       "examsResults": "Exams & Results",
-      "examsResultsDesc": "Create exams, enter marks, generate report cards instantly.",
+      "examsResultsDesc": "Generate report cards.",
       "parentPortal": "Parent Portal",
-      "parentPortalDesc": "Keep parents informed about attendance, fees, and progress.",
+      "parentPortalDesc": "Keep parents informed.",
       "aiAnalytics": "AI Analytics",
-      "aiAnalyticsDesc": "Predict student performance and get actionable insights."
+      "aiAnalyticsDesc": "Predict student performance."
     },
     "ai": {
       "badge": "AI Intelligence",
       "heading": "AI-Powered Insights",
-      "description": "Our AI engine analyzes data to predict at-risk students, suggest interventions, and automate report comments.",
-      "weakStudent": "Identify weak students early",
-      "attendanceTrend": "Attendance trend forecasting",
-      "reportGeneration": "Auto-generate report comments",
-      "aiTimetable": "Optimize timetable automatically",
-      "performance": "Performance prediction models",
-      "dashboardTitle": "AI Analytics Dashboard",
-      "predictionLabel": "Risk Prediction Accuracy",
+      "description": "AI analyzes data to predict at-risk students.",
+      "weakStudent": "Identify weak students",
+      "attendanceTrend": "Attendance forecasting",
+      "reportGeneration": "Auto report comments",
+      "aiTimetable": "Optimize timetable",
+      "performance": "Performance prediction",
+      "dashboardTitle": "AI Analytics",
+      "predictionLabel": "Risk Accuracy",
       "predictionAccuracy": "94%",
       "forecastLabel": "Forecast Confidence",
       "forecastConfidence": "92%",
@@ -64,21 +64,21 @@
       "performanceAccuracy": "87%"
     },
     "pricing": {
-      "heading": "Simple, Transparent Pricing",
-      "subheading": "Choose the plan that fits your institution size.",
+      "heading": "Simple Pricing",
+      "subheading": "Choose the right plan.",
       "starter": "Starter",
       "professional": "Professional",
       "enterprise": "Enterprise",
-      "starterTarget": "For small schools",
-      "professionalTarget": "For growing schools",
-      "enterpriseTarget": "For large institutions",
+      "starterTarget": "Small schools",
+      "professionalTarget": "Growing schools",
+      "enterpriseTarget": "Large institutions",
       "free": "Free",
       "monthly": "/month",
       "mostPopular": "Most Popular",
       "getStarted": "Get Started"
     },
     "cta": {
-      "heading": "Ready to transform your school?",
+      "heading": "Ready to transform?",
       "button": "Start Free Trial"
     },
     "footer": {
@@ -95,21 +95,21 @@
       "privacy": "Privacy",
       "terms": "Terms",
       "gdpr": "GDPR",
-      "copyright": "© 2025 EduPilot. All rights reserved."
+      "copyright": "© 2025 EduPilot"
     }
   },
   "Dashboard": {
     "title": "Dashboard",
-    "subtitle": "Welcome back! Here's your school at a glance.",
+    "subtitle": "Welcome back!",
     "totalStudents": "Total Students",
     "totalStaff": "Total Staff",
     "revenue": "Revenue",
     "todayAttendance": "Today's Attendance",
-    "weeklyAttendance": "Weekly Attendance Trend",
+    "weeklyAttendance": "Weekly Attendance",
     "feeCollection": "Fee Collection",
-    "studentDistribution": "Student Distribution by Class",
+    "studentDistribution": "Student Distribution",
     "recentPayments": "Recent Payments",
     "atRisk": "At-Risk Students",
-    "noData": "No data available"
+    "noData": "No data"
   }
 }
