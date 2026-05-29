@@ -1,88 +1,81 @@
-// services/student.service.ts
+import { BaseService } from "./base.service";
 import { StudentRepository } from "@/repositories/student.repository";
+import { CreateStudentSchema } from "@/lib/validation/student.schema";
+import { AppError } from "@/lib/errors/AppError";
 import { Student } from "@/types/student";
-import {
-  createStudentSchema,
-  updateStudentSchema,
-  CreateStudentInput,
-  UpdateStudentInput,
-} from "@/lib/validation/student.schema";   // ← درست راستہ
-import { ZodError } from "zod";
 
-type CreateStudentDto = Omit<
-  Student,
-  "id" | "tenantId" | "createdAt" | "updatedAt"
->;
+export class StudentService extends BaseService {
+constructor(private repo: StudentRepository) {
+super();
+}
 
-export class StudentService {
-  constructor(private repo: StudentRepository) {}
+async createStudent(input: unknown, tenantId: string): Promise<Student> {
+const validated = CreateStudentSchema.parse(input);
 
-  // ------------------ CREATE ------------------
-  async createStudent(data: unknown, tenantId: string): Promise<Student> {
-    let validated: CreateStudentInput;
-    try {
-      validated = createStudentSchema.parse(data);
-    } catch (error) {
-      if (error instanceof ZodError) {
-        throw new Error(
-          `Validation failed: ${error.errors.map(e => e.message).join(', ')}`
-        );
-      }
-      throw error;
-    }
+```
+const existing = await this.repo.findByRollNumber(
+  validated.rollNumber,
+  tenantId
+);
 
-    const createData = {
-      ...validated,
-      tenantId,
-    } as Omit<Student, "id" | "createdAt" | "updatedAt">;
+if (existing) {
+  throw new AppError(
+    "Roll number already exists in this school",
+    409
+  );
+}
 
-    const id = await this.repo.create(createData, tenantId);
-    const student = await this.repo.findById(id, tenantId);
-    if (!student) throw new Error("Student created but could not be retrieved");
-    return student as Student;
-  }
+const id = await this.repo.create(
+  validated as Omit<Student, "id" | "createdAt" | "updatedAt">,
+  tenantId
+);
 
-  // ------------------ READ ------------------
-  async getStudentById(id: string, tenantId: string): Promise<Student | null> {
-    return this.repo.findById(id, tenantId);
-  }
+const student = await this.repo.findById(id, tenantId);
 
-  async listStudents(tenantId: string, page = 1, limit = 20) {
-    return this.repo.paginate(tenantId, page, limit, "createdAt", "desc");
-  }
+if (!student) {
+  throw new AppError(
+    "Student created but could not be retrieved",
+    500
+  );
+}
 
-  // ------------------ UPDATE ------------------
-  async updateStudent(id: string, data: unknown, tenantId: string): Promise<Student> {
-    let validated: UpdateStudentInput;
-    try {
-      validated = updateStudentSchema.parse(data);
-    } catch (error) {
-      if (error instanceof ZodError) {
-        throw new Error(
-          `Validation failed: ${error.errors.map(e => e.message).join(', ')}`
-        );
-      }
-      throw error;
-    }
+return student as Student;
+```
 
-    await this.repo.update(id, validated, tenantId);
-    const updated = await this.repo.findById(id, tenantId);
-    if (!updated) throw new Error("Student not found after update");
-    return updated as Student;
-  }
+}
 
-  // ------------------ DELETE ------------------
-  async deleteStudent(id: string, tenantId: string): Promise<void> {
-    // Enterprise soft delete
-    await this.repo.softDelete(id, tenantId);
-  }
+async listStudents(tenantId: string) {
+return this.repo.findAll(tenantId);
+}
 
-  async hardDeleteStudent(id: string, tenantId: string): Promise<void> {
-    // صرف انتہائی ضرورت کے لیے
-    await this.repo.delete(id, tenantId);
-  }
+async getStudentById(
+id: string,
+tenantId: string
+): Promise<Student | null> {
+return this.repo.findById(id, tenantId) as Promise<Student | null>;
+}
 
-  async countStudents(tenantId: string): Promise<number> {
-    return this.repo.count(tenantId);
-  }
+async updateStudent(
+id: string,
+input: unknown,
+tenantId: string
+): Promise<void> {
+const validated = CreateStudentSchema.partial().parse(input);
+
+```
+await this.repo.update(
+  id,
+  validated as Partial<Student>,
+  tenantId
+);
+```
+
+}
+
+async deleteStudent(
+id: string,
+tenantId: string
+): Promise<void> {
+await this.repo.delete(id, tenantId);
+}
 }
