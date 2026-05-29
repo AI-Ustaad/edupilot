@@ -1,33 +1,24 @@
-import { cookies } from "next/headers";
-import { adminAuth, adminDb } from "@/lib/firebase-admin";
+import { cookies } from 'next/headers';
+import { adminAuth, adminDb } from '@/lib/firebase-admin';
 
 export async function getSessionUser() {
-  const session = cookies().get("session")?.value;
-  if (!session) return null;
+  const cookieStore = cookies();
+  const sessionCookie = cookieStore.get('session')?.value;
+  if (!sessionCookie) return null;
 
   try {
-    const decoded = await adminAuth.verifySessionCookie(session, true);
-    const userDoc = await adminDb.collection("users").doc(decoded.uid).get();
-
-    if (!userDoc.exists) {
-      return {
-        uid: decoded.uid,
-        email: decoded.email,
-        onboardingRequired: true,
-      };
-    }
-
+    const decodedToken = await adminAuth.verifySessionCookie(sessionCookie, true);
+    const userDoc = await adminDb.collection('users').doc(decodedToken.uid).get();
     const userData = userDoc.data();
-    const onboardingRequired = !userData?.tenantId;
-
     return {
-      uid: decoded.uid,
-      email: decoded.email,
-      tenantId: userData?.tenantId || null,
-      role: userData?.role || "teacher",
-      onboardingRequired,
+      uid: decodedToken.uid,
+      email: decodedToken.email,
+      role: userData?.role || 'teacher',
+      tenantId: userData?.tenantId,
+      onboardingRequired: userData?.onboardingRequired || false,
     };
   } catch (error) {
+    console.error('Session verification failed:', error);
     return null;
   }
 }
