@@ -20,7 +20,6 @@ function initAdmin() {
         storageBucket: process.env.FIREBASE_STORAGE_BUCKET,
       });
     } else {
-      // fallback for development (e.g., emulator)
       app = initializeApp();
     }
   } else {
@@ -32,7 +31,7 @@ function initAdmin() {
   return { db, auth, storage };
 }
 
-// Named exports – یہی وہ چیزیں ہیں جو آپ کی API routes استعمال کر رہی ہیں
+// Named exports – these are used across all API routes
 export const adminDb = (() => {
   if (!db) initAdmin();
   return db!;
@@ -50,5 +49,4 @@ export const adminStorage = (() => {
 
 export const dbTimestamp = FieldValue.serverTimestamp();
 
-// اگر کہیں initAdmin() بطور فنکشن چاہیے تو یہ بھی دے دیں
 export { initAdmin };
