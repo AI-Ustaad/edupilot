@@ -2,14 +2,12 @@ import { BaseRepository } from "./base.repository";
 import { Student } from "@/types/student";
 
 export class StudentRepository extends BaseRepository<Student> {
+
   constructor() {
-    super("students");
+    super("students");         // ← collection name BaseRepository کو دیتا ہے
   }
 
-  async findByRollNumber(
-    rollNumber: number,
-    tenantId: string
-  ): Promise<Student | null> {
+  async findByRollNumber(rollNumber: number, tenantId: string): Promise<Student | null> {
     const snapshot = await this.db
       .collection(this.collectionName)
       .where("tenantId", "==", tenantId)
@@ -18,82 +16,30 @@ export class StudentRepository extends BaseRepository<Student> {
       .get();
 
     if (snapshot.empty) return null;
-
     const doc = snapshot.docs[0];
-
-    return {
-      id: doc.id,
-      ...doc.data(),
-    } as Student;
+    return { id: doc.id, ...doc.data() } as Student;
   }
 
-  async findByClass(
-    className: string,
-    tenantId: string
-  ): Promise<Student[]> {
+  async findByClass(className: string, tenantId: string): Promise<Student[]> {
     const snapshot = await this.db
       .collection(this.collectionName)
       .where("tenantId", "==", tenantId)
       .where("classGrade", "==", className)
-      .orderBy("rollNumber")
+      .orderBy("rollNumber", "asc")
       .get();
 
-    return snapshot.docs.map(
-      (doc) =>
-        ({
-          id: doc.id,
-          ...doc.data(),
-        }) as Student
-    );
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Student));
   }
 
-  async findBySection(
-    className: string,
-    section: string,
-    tenantId: string
-  ): Promise<Student[]> {
+  async findBySection(className: string, section: string, tenantId: string): Promise<Student[]> {
     const snapshot = await this.db
       .collection(this.collectionName)
       .where("tenantId", "==", tenantId)
       .where("classGrade", "==", className)
       .where("section", "==", section)
-      .orderBy("rollNumber")
+      .orderBy("rollNumber", "asc")
       .get();
 
-    return snapshot.docs.map(
-      (doc) =>
-        ({
-          id: doc.id,
-          ...doc.data(),
-        }) as Student
-    );
-  }
-
-  async paginate(
-    tenantId: string,
-    page = 1,
-    limit = 20
-  ) {
-    const snapshot = await this.db
-      .collection(this.collectionName)
-      .where("tenantId", "==", tenantId)
-      .get();
-
-    const all = snapshot.docs.map(
-      (doc) =>
-        ({
-          id: doc.id,
-          ...doc.data(),
-        }) as Student
-    );
-
-    const start = (page - 1) * limit;
-
-    return {
-      data: all.slice(start, start + limit),
-      total: all.length,
-      page,
-      limit,
-    };
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Student));
   }
 }
