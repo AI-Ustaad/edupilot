@@ -18,7 +18,9 @@ const snapshot = await this.db
 .get();
 
 ```
-if (snapshot.empty) return null;
+if (snapshot.empty) {
+  return null;
+}
 
 const doc = snapshot.docs[0];
 
