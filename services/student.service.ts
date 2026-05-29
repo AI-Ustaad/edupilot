@@ -1,114 +1,62 @@
-import { BaseService } from "./base.service";
 import { StudentRepository } from "@/repositories/student.repository";
-import { CreateStudentSchema } from "@/lib/validation/student.schema";
-import { AppError } from "@/lib/errors/AppError";
 import { Student } from "@/types/student";
 
-export class StudentService extends BaseService {
-  constructor(private repo: StudentRepository) {
-    super();
-  }
+// وہ تمام فیلڈز جو یوزر بھیج سکتا ہے (سسٹم فیلڈز نکال کر)
+type CreateStudentDto = Omit<
+  Student,
+  "id" | "tenantId" | "createdAt" | "updatedAt"
+>;
 
-  // --------------------------------------------------
-  // CREATE
-  // --------------------------------------------------
-  async createStudent(
-    input: unknown,
-    tenantId: string
-  ): Promise<Student> {
-    const validated = CreateStudentSchema.parse(input);
+export class StudentService {
+  constructor(private repo: StudentRepository) {}
 
-    const existing = await this.repo.findByRollNumber(
-      validated.rollNumber,
-      tenantId
-    );
+  // ------------------ CREATE ------------------
+  async createStudent(data: CreateStudentDto, tenantId: string): Promise<Student> {
+    const validated = this.validate(data);
 
-    if (existing) {
-      throw new AppError(
-        "Roll number already exists in this school",
-        409
-      );
-    }
+    // BaseRepository.create کی توقع کے مطابق tenantId کو بھی آبجیکٹ میں ڈالیں
+    const createData = {
+      ...validated,
+      tenantId,
+    } as Omit<Student, "id" | "createdAt" | "updatedAt">;
 
-    const id = await this.repo.create(
-      {
-        ...validated,
-        tenantId,
-      } as any,
-      tenantId
-    );
-
-    const student = await this.repo.findById(
-      id,
-      tenantId
-    );
-
-    if (!student) {
-      throw new AppError(
-        "Student created but retrieval failed",
-        500
-      );
-    }
-
+    const id = await this.repo.create(createData, tenantId);
+    const student = await this.repo.findById(id, tenantId);
+    if (!student) throw new Error("Student created but could not be retrieved");
     return student as Student;
   }
 
-  // --------------------------------------------------
-  // LIST
-  // --------------------------------------------------
-  async listStudents(
-    tenantId: string,
-    page = 1,
-    limit = 20
-  ) {
-    return await this.repo.paginate(
-      tenantId,
-      page,
-      limit
-    );
+  // ------------------ READ ------------------
+  async getStudentById(id: string, tenantId: string): Promise<Student | null> {
+    return this.repo.findById(id, tenantId);
   }
 
-  // --------------------------------------------------
-  // GET BY ID
-  // --------------------------------------------------
-  async getStudentById(
-    id: string,
-    tenantId: string
-  ): Promise<Student | null> {
-    return (await this.repo.findById(
-      id,
-      tenantId
-    )) as Student | null;
+  async listStudents(tenantId: string): Promise<Student[]> {
+    return (await this.repo.findAll(tenantId)) as Student[];
   }
 
-  // --------------------------------------------------
-  // UPDATE
-  // --------------------------------------------------
+  // ------------------ UPDATE ------------------
   async updateStudent(
     id: string,
-    input: unknown,
+    updates: Partial<CreateStudentDto>,
     tenantId: string
-  ): Promise<void> {
-    const validated =
-      CreateStudentSchema.partial().parse(input);
-
-    await this.repo.update(
-      id,
-      validated,
-      tenantId
-    );
+  ): Promise<Student> {
+    await this.repo.update(id, updates, tenantId);
+    const updated = await this.repo.findById(id, tenantId);
+    if (!updated) throw new Error("Student not found after update");
+    return updated as Student;
   }
 
-  // --------------------------------------------------
-  // DELETE
-  // --------------------------------------------------
-  async deleteStudent(
-    id: string,
-    tenantId: string
-  ): Promise<void> {
-    await this.repo.delete(
-      id,
-      tenantId
-    );
+  // ------------------ DELETE ------------------
+  async deleteStudent(id: string, tenantId: string): Promise<void> {
+    await this.repo.delete(id, tenantId);
+  }
+
+  // ------------------ VALIDATION ------------------
+  private validate(data: CreateStudentDto): CreateStudentDto {
+    if (!data.fullName || !data.classGrade) {
+      throw new Error("Missing required fields: fullName, classGrade");
+    }
+    return data;
   }
 }
