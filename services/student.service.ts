@@ -1,81 +1,92 @@
 import { BaseService } from "./base.service";
 import { StudentRepository } from "@/repositories/student.repository";
-import { CreateStudentSchema } from "@/lib/validation/student.schema";
+import { CreateStudentSchema } from "@/lib/validation";
 import { AppError } from "@/lib/errors/AppError";
 import { Student } from "@/types/student";
 
 export class StudentService extends BaseService {
-constructor(private repo: StudentRepository) {
-super();
-}
+  constructor(private repo: StudentRepository) {
+    super();
+  }
 
-async createStudent(input: unknown, tenantId: string): Promise<Student> {
-const validated = CreateStudentSchema.parse(input);
+  async createStudent(
+    input: unknown,
+    tenantId: string
+  ): Promise<Student> {
+    const validated = CreateStudentSchema.parse(input);
 
-```
-const existing = await this.repo.findByRollNumber(
-  validated.rollNumber,
-  tenantId
-);
+    const existing = await this.repo.findByRollNumber(
+      validated.rollNumber,
+      tenantId
+    );
 
-if (existing) {
-  throw new AppError(
-    "Roll number already exists in this school",
-    409
-  );
-}
+    if (existing) {
+      throw new AppError(
+        "Roll number already exists in this school",
+        409
+      );
+    }
 
-const id = await this.repo.create(
-  validated as Omit<Student, "id" | "createdAt" | "updatedAt">,
-  tenantId
-);
+    const id = await this.repo.create(
+      validated as Omit<Student, "id" | "createdAt" | "updatedAt">,
+      tenantId
+    );
 
-const student = await this.repo.findById(id, tenantId);
+    const student = await this.repo.findById(id, tenantId);
 
-if (!student) {
-  throw new AppError(
-    "Student created but could not be retrieved",
-    500
-  );
-}
+    if (!student) {
+      throw new AppError(
+        "Student created but could not be retrieved",
+        500
+      );
+    }
 
-return student as Student;
-```
+    return student as Student;
+  }
 
-}
+  async listStudents(
+    tenantId: string,
+    page = 1,
+    limit = 20
+  ) {
+    const students = await this.repo.findAll(tenantId);
 
-async listStudents(tenantId: string) {
-return this.repo.findAll(tenantId);
-}
+    const start = (page - 1) * limit;
+    const end = start + limit;
 
-async getStudentById(
-id: string,
-tenantId: string
-): Promise<Student | null> {
-return this.repo.findById(id, tenantId) as Promise<Student | null>;
-}
+    return {
+      data: students.slice(start, end),
+      total: students.length,
+      page,
+      limit,
+    };
+  }
 
-async updateStudent(
-id: string,
-input: unknown,
-tenantId: string
-): Promise<void> {
-const validated = CreateStudentSchema.partial().parse(input);
+  async getStudentById(
+    id: string,
+    tenantId: string
+  ): Promise<Student | null> {
+    return this.repo.findById(id, tenantId) as Promise<Student | null>;
+  }
 
-```
-await this.repo.update(
-  id,
-  validated as Partial<Student>,
-  tenantId
-);
-```
+  async updateStudent(
+    id: string,
+    input: unknown,
+    tenantId: string
+  ): Promise<void> {
+    const validated = CreateStudentSchema.partial().parse(input);
 
-}
+    await this.repo.update(
+      id,
+      validated as Partial<Student>,
+      tenantId
+    );
+  }
 
-async deleteStudent(
-id: string,
-tenantId: string
-): Promise<void> {
-await this.repo.delete(id, tenantId);
-}
+  async deleteStudent(
+    id: string,
+    tenantId: string
+  ): Promise<void> {
+    await this.repo.delete(id, tenantId);
+  }
 }
