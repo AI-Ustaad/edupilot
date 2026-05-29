@@ -8,8 +8,7 @@ let db: Firestore | undefined;
 let auth: Auth | undefined;
 let storage: Storage | undefined;
 
-// Initialize admin SDK
-export function initAdmin() {
+function initAdmin() {
   if (getApps().length === 0) {
     if (process.env.FIREBASE_PRIVATE_KEY) {
       app = initializeApp({
@@ -21,7 +20,7 @@ export function initAdmin() {
         storageBucket: process.env.FIREBASE_STORAGE_BUCKET,
       });
     } else {
-      // For development with default credentials (e.g., local emulator)
+      // fallback for development (e.g., emulator)
       app = initializeApp();
     }
   } else {
@@ -33,7 +32,7 @@ export function initAdmin() {
   return { db, auth, storage };
 }
 
-// Named exports for direct usage in API routes
+// Named exports – یہی وہ چیزیں ہیں جو آپ کی API routes استعمال کر رہی ہیں
 export const adminDb = (() => {
   if (!db) initAdmin();
   return db!;
@@ -51,21 +50,5 @@ export const adminStorage = (() => {
 
 export const dbTimestamp = FieldValue.serverTimestamp();
 
-// Also export initAdmin if needed
-export { initAdmin as default };
-
-// Optional: export a function to get fresh instances
-export function getAdminDb() {
-  if (!db) initAdmin();
-  return db!;
-}
-
-export function getAdminAuth() {
-  if (!auth) initAdmin();
-  return auth!;
-}
-
-export function getAdminStorage() {
-  if (!storage) initAdmin();
-  return storage!;
-}
+// اگر کہیں initAdmin() بطور فنکشن چاہیے تو یہ بھی دے دیں
+export { initAdmin };
