@@ -1,8 +1,12 @@
 // services/student.service.ts
 
 import { StudentRepository } from "@/repositories/student.repository";
-import { CreateStudentDto, Student } from "@/types/student";
+import { Student } from "@/types/student";
 
+type CreateStudentDto = Omit<
+  Student,
+  "id" | "tenantId" | "createdAt" | "updatedAt"
+>;
 export class StudentService {
   constructor(private repo: StudentRepository) {}
 
