@@ -1,115 +1,150 @@
 import { withAuth, withTenant, withErrorHandler } from "@/route-helpers";
 import { createApiResponse } from "@/lib/response/apiResponse";
-import { adminDb } from "@/lib/firebase-admin";
+import { StudentService } from "@/services/student.service";
+import { StudentRepository } from "@/repositories/student.repository";
 import { logAction } from "@/lib/audit";
 
 interface WithTenantContext {
-tenantId: string;
-user: {
-uid: string;
-email: string;
-role: string;
-tenantId: string;
-};
+  tenantId: string;
+  user: {
+    uid: string;
+    email: string;
+    role: string;
+    tenantId: string;
+  };
 }
 
 function getIdFromUrl(req: Request): string {
-const url = new URL(req.url);
-const segments = url.pathname.split("/");
-return segments[segments.length - 1];
+  const url = new URL(req.url);
+  const segments = url.pathname.split("/");
+  return segments[segments.length - 1];
 }
 
 export const GET = withErrorHandler(
-withAuth(
-withTenant(async (req: Request, { tenantId }: WithTenantContext) => {
-const id = getIdFromUrl(req);
+  withAuth(
+    withTenant(async (req: Request, { tenantId }: WithTenantContext) => {
+      const id = getIdFromUrl(req);
 
-```
-  const doc = await adminDb.collection("students").doc(id).get();
+      const service = new StudentService(
+        new StudentRepository()
+      );
 
-  if (!doc.exists || doc.data()?.tenantId !== tenantId) {
-    return createApiResponse(404, null, "Student not found");
-  }
+      const student = await service.getStudentById(
+        id,
+        tenantId
+      );
 
-  return createApiResponse(200, {
-    id: doc.id,
-    ...doc.data(),
-  });
-})
-```
+      if (!student) {
+        return createApiResponse(
+          404,
+          null,
+          "Student not found"
+        );
+      }
 
-)
+      return createApiResponse(
+        200,
+        student
+      );
+    })
+  )
 );
 
 export const PUT = withErrorHandler(
-withAuth(
-withTenant(async (req: Request, { tenantId, user }: WithTenantContext) => {
-if (user.role !== "admin") {
-return createApiResponse(403, null, "Forbidden");
-}
+  withAuth(
+    withTenant(
+      async (
+        req: Request,
+        { tenantId, user }: WithTenantContext
+      ) => {
+        if (user.role !== "admin") {
+          return createApiResponse(
+            403,
+            null,
+            "Forbidden"
+          );
+        }
 
-```
-  const id = getIdFromUrl(req);
-  const body = await req.json();
+        const id = getIdFromUrl(req);
+        const body = await req.json();
 
-  const docRef = adminDb.collection("students").doc(id);
-  const doc = await docRef.get();
+        const service = new StudentService(
+          new StudentRepository()
+        );
 
-  if (!doc.exists || doc.data()?.tenantId !== tenantId) {
-    return createApiResponse(404, null, "Student not found");
-  }
+        await service.updateStudent(
+          id,
+          body,
+          tenantId
+        );
 
-  await docRef.update({
-    ...body,
-    updatedAt: new Date(),
-  });
-
-  return createApiResponse(200, null, "Student updated successfully");
-})
-```
-
-)
+        return createApiResponse(
+          200,
+          null,
+          "Student updated successfully"
+        );
+      }
+    )
+  )
 );
 
 export const DELETE = withErrorHandler(
-withAuth(
-withTenant(async (req: Request, { tenantId, user }: WithTenantContext) => {
-if (user.role !== "admin") {
-return createApiResponse(403, null, "Forbidden");
-}
+  withAuth(
+    withTenant(
+      async (
+        req: Request,
+        { tenantId, user }: WithTenantContext
+      ) => {
+        if (user.role !== "admin") {
+          return createApiResponse(
+            403,
+            null,
+            "Forbidden"
+          );
+        }
 
-```
-  const id = getIdFromUrl(req);
+        const id = getIdFromUrl(req);
 
-  const docRef = adminDb.collection("students").doc(id);
-  const doc = await docRef.get();
+        const service = new StudentService(
+          new StudentRepository()
+        );
 
-  if (!doc.exists || doc.data()?.tenantId !== tenantId) {
-    return createApiResponse(404, null, "Student not found");
-  }
+        const student =
+          await service.getStudentById(
+            id,
+            tenantId
+          );
 
-  const student = doc.data();
+        if (!student) {
+          return createApiResponse(
+            404,
+            null,
+            "Student not found"
+          );
+        }
 
-  await docRef.delete();
+        await service.deleteStudent(
+          id,
+          tenantId
+        );
 
-  await logAction({
-    action: "STUDENT_DELETED",
-    userId: user.uid,
-    tenantId,
-    entityId: id,
-    entityType: "student",
-    metadata: {
-      name: student?.fullName,
-    },
-  });
+        await logAction({
+          action: "STUDENT_DELETED",
+          userId: user.uid,
+          tenantId,
+          entityId: id,
+          entityType: "student",
+          metadata: {
+            name: student.fullName,
+          },
+        });
 
-  return createApiResponse(
-    200,
-    null,
-    "Student deleted successfully"
-  );
-})
-```
-
-)
+        return createApiResponse(
+          200,
+          null,
+          "Student deleted successfully"
+        );
+      }
+    )
+  )
 );
