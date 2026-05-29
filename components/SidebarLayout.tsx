@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { signOut } from "firebase/auth";
@@ -14,14 +14,19 @@ import {
 } from "lucide-react";
 import MobileBottomNav from "./MobileBottomNav";
 import { useTranslations } from "next-intl";
-import LanguageSwitcher from "@/components/LanguageSwitcher"; // 👈 Language Switcher Import
+import LanguageSwitcher from "@/components/LanguageSwitcher";
+import { useAuth } from "@/context/AuthContext";  // ← شامل کریں
 
 export default function SidebarLayout({ children }: { children: React.ReactNode }) {
   const t = useTranslations("Sidebar");
   const pathname = usePathname();
   const router = useRouter();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [role, setRole] = useState<string>("loading");
+  
+  // 🔥 براہ راست AuthContext سے role حاصل کریں
+  const { user } = useAuth();
+  const role = user?.role || "teacher";   // default "teacher" اگر user null ہو
+
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
     academic: true,
     finance: true,
@@ -30,13 +35,6 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
     staff: true,
     aiTools: true,
   });
-
-  useEffect(() => {
-    fetch("/api/users/get", { credentials: "include" })
-      .then((res) => res.json())
-      .then((data) => setRole(data.role || "teacher"))
-      .catch(() => setRole("teacher"));
-  }, []);
 
   const toggleGroup = (key: string) => {
     setOpenGroups((prev) => ({ ...prev, [key]: !prev[key] }));
@@ -173,60 +171,52 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
           <span className="text-xl font-black text-gray-900">EduPilot</span>
         </div>
 
-        {/* 👈 Language Switcher in Sidebar Top */}
+        {/* Language Switcher */}
         <div className="px-4 py-3 border-b border-gray-100 shrink-0">
           <LanguageSwitcher />
         </div>
 
         {/* Navigation */}
         <div className="flex-1 overflow-y-auto py-2 px-4 custom-scrollbar">
-          {role === "loading" ? (
-            <div className="animate-pulse space-y-4">
-              <div className="h-8 bg-gray-100 rounded w-full"></div>
-              <div className="h-8 bg-gray-100 rounded w-full"></div>
-              <div className="h-8 bg-gray-100 rounded w-full"></div>
-            </div>
-          ) : (
-            visibleGroups.map((group) => (
-              <div key={group.title} className="mb-2">
-                <div
-                  className="flex items-center justify-between px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-100 cursor-pointer transition-colors"
-                  onClick={() => group.key && toggleGroup(group.key)}
-                >
-                  <div className="flex items-center gap-2">
-                    <group.icon size={18} className="text-blue-600" />
-                    <span className="text-sm font-semibold">{group.title}</span>
-                  </div>
-                  {group.key && (openGroups[group.key] ? <ChevronDown size={16} /> : <ChevronRight size={16} />)}
+          {visibleGroups.map((group) => (
+            <div key={group.title} className="mb-2">
+              <div
+                className="flex items-center justify-between px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-100 cursor-pointer transition-colors"
+                onClick={() => group.key && toggleGroup(group.key)}
+              >
+                <div className="flex items-center gap-2">
+                  <group.icon size={18} className="text-blue-600" />
+                  <span className="text-sm font-semibold">{group.title}</span>
                 </div>
-
-                {(!group.key || openGroups[group.key]) && (
-                  <div className="ml-6 mt-1 space-y-1">
-                    {group.items
-                      .filter((i) => i.allowed.includes(role))
-                      .map((item) => {
-                        const isActive = pathname === item.path || pathname.startsWith(item.path + "/");
-                        return (
-                          <Link
-                            key={item.name}
-                            href={item.path}
-                            onClick={() => setIsMobileMenuOpen(false)}
-                            className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all ${
-                              isActive
-                                ? "bg-blue-600 text-white shadow-sm"
-                                : "text-gray-600 hover:bg-gray-100"
-                            }`}
-                          >
-                            <item.icon size={18} />
-                            <span>{item.name}</span>
-                          </Link>
-                        );
-                      })}
-                  </div>
-                )}
+                {group.key && (openGroups[group.key] ? <ChevronDown size={16} /> : <ChevronRight size={16} />)}
               </div>
-            ))
-          )}
+
+              {(!group.key || openGroups[group.key]) && (
+                <div className="ml-6 mt-1 space-y-1">
+                  {group.items
+                    .filter((i) => i.allowed.includes(role))
+                    .map((item) => {
+                      const isActive = pathname === item.path || pathname.startsWith(item.path + "/");
+                      return (
+                        <Link
+                          key={item.name}
+                          href={item.path}
+                          onClick={() => setIsMobileMenuOpen(false)}
+                          className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all ${
+                            isActive
+                              ? "bg-blue-600 text-white shadow-sm"
+                              : "text-gray-600 hover:bg-gray-100"
+                          }`}
+                        >
+                          <item.icon size={18} />
+                          <span>{item.name}</span>
+                        </Link>
+                      );
+                    })}
+                </div>
+              )}
+            </div>
+          ))}
         </div>
 
         {/* Logout */}
