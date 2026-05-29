@@ -1,10 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getFirestore } from 'firebase-admin/firestore';
-import { initAdmin, adminDb, dbTimestamp } from '@/lib/firebase-admin';
+import { adminDb, dbTimestamp } from '@/lib/firebase-admin';
 import { getTenantIdFromRequest } from '@/lib/tenant-utils';
-
-// Ensure admin is initialized (though adminDb already does it)
-initAdmin();
+import { getSessionUser } from '@/lib/auth/auth-server';
 
 export async function GET(req: NextRequest) {
   try {
@@ -39,12 +36,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const user = await getSessionUser(); // You need to import getSessionUser if not already
+    const user = await getSessionUser();
     if (!user?.uid) {
       return NextResponse.json({ error: 'User not found' }, { status: 401 });
     }
 
-    const records = await req.json(); // Expecting an array of attendance records
+    const records = await req.json();
     if (!Array.isArray(records) || records.length === 0) {
       return NextResponse.json({ error: 'Invalid payload, expected array of records' }, { status: 400 });
     }
@@ -68,7 +65,7 @@ export async function POST(req: NextRequest) {
         status,
         tenantId,
         createdBy: user.uid,
-        createdAt: dbTimestamp,  // ← Correct: dbTimestamp is already FieldValue.serverTimestamp()
+        createdAt: dbTimestamp,
         updatedAt: dbTimestamp,
       }, { merge: true });
     }
