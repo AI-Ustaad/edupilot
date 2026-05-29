@@ -1,10 +1,7 @@
-// repositories/student.repository.ts
-
 import { BaseRepository } from "./base.repository";
 import { Student } from "@/types/student";
 
 export class StudentRepository extends BaseRepository<Student> {
-
   constructor() {
     super("students");
   }
@@ -14,7 +11,7 @@ export class StudentRepository extends BaseRepository<Student> {
     tenantId: string
   ): Promise<Student | null> {
     const snapshot = await this.db
-      .collection("students")
+      .collection(this.collectionName)
       .where("tenantId", "==", tenantId)
       .where("rollNumber", "==", rollNumber)
       .limit(1)
@@ -35,10 +32,10 @@ export class StudentRepository extends BaseRepository<Student> {
     tenantId: string
   ): Promise<Student[]> {
     const snapshot = await this.db
-      .collection("students")
+      .collection(this.collectionName)
       .where("tenantId", "==", tenantId)
       .where("classGrade", "==", className)
-      .orderBy("rollNumber", "asc")
+      .orderBy("rollNumber")
       .get();
 
     return snapshot.docs.map(
@@ -56,11 +53,11 @@ export class StudentRepository extends BaseRepository<Student> {
     tenantId: string
   ): Promise<Student[]> {
     const snapshot = await this.db
-      .collection("students")
+      .collection(this.collectionName)
       .where("tenantId", "==", tenantId)
       .where("classGrade", "==", className)
       .where("section", "==", section)
-      .orderBy("rollNumber", "asc")
+      .orderBy("rollNumber")
       .get();
 
     return snapshot.docs.map(
@@ -70,5 +67,33 @@ export class StudentRepository extends BaseRepository<Student> {
           ...doc.data(),
         }) as Student
     );
+  }
+
+  async paginate(
+    tenantId: string,
+    page = 1,
+    limit = 20
+  ) {
+    const snapshot = await this.db
+      .collection(this.collectionName)
+      .where("tenantId", "==", tenantId)
+      .get();
+
+    const all = snapshot.docs.map(
+      (doc) =>
+        ({
+          id: doc.id,
+          ...doc.data(),
+        }) as Student
+    );
+
+    const start = (page - 1) * limit;
+
+    return {
+      data: all.slice(start, start + limit),
+      total: all.length,
+      page,
+      limit,
+    };
   }
 }
