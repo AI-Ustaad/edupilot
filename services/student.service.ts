@@ -15,7 +15,13 @@ export class StudentService {
   ): Promise<Student> {
     const validated = this.validate(data);
 
-    const id = await this.repo.create(validated, tenantId);
+    const id = await this.repo.create(
+      {
+        ...validated,
+        tenantId,
+      } as Omit<Student, "id" | "createdAt" | "updatedAt">,
+      tenantId
+    );
 
     const student = await this.repo.findById(id, tenantId);
 
@@ -30,13 +36,13 @@ export class StudentService {
     id: string,
     tenantId: string
   ): Promise<Student | null> {
-    return await this.repo.findById(id, tenantId);
+    return (await this.repo.findById(id, tenantId)) as Student | null;
   }
 
   async listStudents(
     tenantId: string
   ): Promise<Student[]> {
-    return await this.repo.findAll(tenantId) as Student[];
+    return (await this.repo.findAll(tenantId)) as Student[];
   }
 
   async updateStudent(
