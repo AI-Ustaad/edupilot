@@ -1,3 +1,4 @@
+// app/api/students/[id]/route.ts
 import { withAuth, withTenant, withErrorHandler } from "@/route-helpers";
 import { createApiResponse } from "@/lib/response/apiResponse";
 import { StudentService } from "@/services/student.service";
@@ -67,6 +68,7 @@ export const DELETE = withErrorHandler(
         return createApiResponse(404, null, "Student not found");
       }
 
+      // Soft delete (enterprise)
       await service.deleteStudent(id, tenantId);
 
       await logAction({
