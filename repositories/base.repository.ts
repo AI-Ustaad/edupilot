@@ -13,8 +13,8 @@ export class BaseRepository<T> {
   async create(data: Omit<T, 'id' | 'createdAt' | 'updatedAt'>, tenantId: string): Promise<string> {
     const newData = {
       ...data,
-      createdAt: dbTimestamp,      // ← .now() ہٹا دیا
-      updatedAt: dbTimestamp,      // ← .now() ہٹا دیا
+      createdAt: dbTimestamp,
+      updatedAt: dbTimestamp,
       tenantId
     };
     const docRef = await this.db.collection(this.collectionName).add(newData);
@@ -24,7 +24,7 @@ export class BaseRepository<T> {
   async update(id: string, data: Partial<T>, tenantId: string): Promise<void> {
     const updateData = {
       ...data,
-      updatedAt: dbTimestamp       // ← .now() ہٹا دیا
+      updatedAt: dbTimestamp
     };
     const docRef = this.db.collection(this.collectionName).doc(id);
     const docSnap = await docRef.get();
@@ -53,7 +53,10 @@ export class BaseRepository<T> {
   }
 
   async findAll(tenantId: string): Promise<(T & { id: string })[]> {
-    const snapshot = await this.db.collection(this.collectionName).where('tenantId', '==', tenantId).get();
+    const snapshot = await this.db
+      .collection(this.collectionName)
+      .where('tenantId', '==', tenantId)
+      .get();
     return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as T & { id: string }));
   }
 }
