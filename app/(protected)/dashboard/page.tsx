@@ -45,13 +45,19 @@ interface DashboardData {
 
 export default function DashboardPage() {
   const t = useTranslations("Dashboard");
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();  // ← authLoading لیا
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [riskStudents, setRiskStudents] = useState<any[]>([]);
 
   useEffect(() => {
-    if (!user?.tenantId) return;
+    if (authLoading) return;             // اگر auth loading جاری ہے تو کچھ نہ کریں
+
+    if (!user?.tenantId) {
+      setLoading(false);                 // user نہ ہونے کی صورت میں بھی spinner بند کریں
+      return;
+    }
+
     (async () => {
       try {
         const res = await fetch("/api/dashboard");
@@ -69,11 +75,13 @@ export default function DashboardPage() {
     })();
 
     fetch("/api/students/risk")
-      .then(res => res.json())
-      .then(json => {
-        if (json.success) setRiskStudents(json.data);
-      });
-  }, [user?.tenantId]);
+      .then((res) => res.json())
+      .then((json) => {
+        if (json.success) setRiskStudents(json.data || []);
+      })
+      .catch(console.error);
+
+  }, [user, authLoading]);   // dependencies میں authLoading شامل
 
   if (loading) {
     return (
