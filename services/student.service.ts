@@ -1,22 +1,32 @@
 // services/student.service.ts
 import { StudentRepository } from "@/repositories/student.repository";
 import { Student } from "@/types/student";
-import { createStudentSchema, updateStudentSchema, CreateStudentInput, UpdateStudentInput } from "@/validation/student.schema";
+import {
+  createStudentSchema,
+  updateStudentSchema,
+  CreateStudentInput,
+  UpdateStudentInput,
+} from "@/lib/validation/student.schema";   // ← درست راستہ
 import { ZodError } from "zod";
 
-type CreateStudentDto = Omit<Student, "id" | "tenantId" | "createdAt" | "updatedAt">;
+type CreateStudentDto = Omit<
+  Student,
+  "id" | "tenantId" | "createdAt" | "updatedAt"
+>;
 
 export class StudentService {
   constructor(private repo: StudentRepository) {}
 
+  // ------------------ CREATE ------------------
   async createStudent(data: unknown, tenantId: string): Promise<Student> {
-    // Zod validation
     let validated: CreateStudentInput;
     try {
       validated = createStudentSchema.parse(data);
     } catch (error) {
       if (error instanceof ZodError) {
-        throw new Error(`Validation failed: ${error.errors.map(e => e.message).join(', ')}`);
+        throw new Error(
+          `Validation failed: ${error.errors.map(e => e.message).join(', ')}`
+        );
       }
       throw error;
     }
@@ -32,29 +42,25 @@ export class StudentService {
     return student as Student;
   }
 
+  // ------------------ READ ------------------
   async getStudentById(id: string, tenantId: string): Promise<Student | null> {
     return this.repo.findById(id, tenantId);
   }
 
-  async listStudents(
-    tenantId: string,
-    page = 1,
-    limit = 20
-  ) {
-    return this.repo.paginate(tenantId, page, limit, 'createdAt', 'desc');
+  async listStudents(tenantId: string, page = 1, limit = 20) {
+    return this.repo.paginate(tenantId, page, limit, "createdAt", "desc");
   }
 
-  async updateStudent(
-    id: string,
-    data: unknown,
-    tenantId: string
-  ): Promise<Student> {
+  // ------------------ UPDATE ------------------
+  async updateStudent(id: string, data: unknown, tenantId: string): Promise<Student> {
     let validated: UpdateStudentInput;
     try {
       validated = updateStudentSchema.parse(data);
     } catch (error) {
       if (error instanceof ZodError) {
-        throw new Error(`Validation failed: ${error.errors.map(e => e.message).join(', ')}`);
+        throw new Error(
+          `Validation failed: ${error.errors.map(e => e.message).join(', ')}`
+        );
       }
       throw error;
     }
@@ -65,13 +71,14 @@ export class StudentService {
     return updated as Student;
   }
 
+  // ------------------ DELETE ------------------
   async deleteStudent(id: string, tenantId: string): Promise<void> {
     // Enterprise soft delete
     await this.repo.softDelete(id, tenantId);
   }
 
   async hardDeleteStudent(id: string, tenantId: string): Promise<void> {
-    // Only for super admin or special cases
+    // صرف انتہائی ضرورت کے لیے
     await this.repo.delete(id, tenantId);
   }
 
