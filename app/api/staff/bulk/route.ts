@@ -1,84 +1,61 @@
-import { adminDb, adminAuth } from "@/lib/firebase-admin";
+// app/api/staff/bulk/route.ts
 import { withAuth, withTenant, withErrorHandler, withRole } from "@/route-helpers";
 import { createApiResponse } from "@/lib/response/apiResponse";
+import { StaffService } from "@/services/staff.service";
+import { StaffRepository } from "@/repositories/staff.repository";
 import type { TenantContext } from "@/types/api";
-import { Timestamp } from "firebase-admin/firestore";
+import { CreateStaffSchema } from "@/lib/validation"; // barrel export
+import { ZodError } from "zod";
 
 export const POST = withErrorHandler(
   withAuth(
     withTenant(
       withRole(["admin"])(async (req: Request, { tenantId, user }: TenantContext) => {
-        const { staffList } = await req.json();
-        if (!Array.isArray(staffList) || staffList.length === 0) {
-          return createApiResponse(400, null, "No staff provided");
+        const body = await req.json();
+
+        // توقع ہے کہ body.staffMembers ایک array ہوگی
+        if (!Array.isArray(body.staffMembers) || body.staffMembers.length === 0) {
+          return createApiResponse(400, null, "Provide at least one staff member in 'staffMembers' array.");
         }
 
-        const batch = adminDb.batch();
-        let createdCount = 0;
+        const service = new StaffService(new StaffRepository());
+        const createdIds: string[] = [];
+        const errors: { index: number; message: string }[] = [];
 
-        for (const s of staffList) {
-          const email = s.email || `staff_${Date.now()}_${Math.random().toString(36).substr(2, 8)}@temp.com`;
-          const password = s.cnic?.replace(/[^0-9]/g, "") || "temp123456";
-          let uid: string | null = null;
+        // ایک ایک ریکارڈ کی تصدیق اور تخلیق
+        for (let i = 0; i < body.staffMembers.length; i++) {
+          const raw = body.staffMembers[i];
           try {
-            const userRecord = await adminAuth.createUser({
-              email, password,
-              displayName: s.fullName,
-            });
-            uid = userRecord.uid;
-            await adminAuth.setCustomUserClaims(uid, {
-              role: s.role || "teacher",
+            const validated = CreateStaffSchema.parse(raw);
+            const createData = {
+              ...validated,
               tenantId,
-            });
-            createdCount++;
+              createdBy: user.uid,
+            } as any; // TypeScript کو خاموش کرنے کے لیے (BaseRepository کی ضرورت کے مطابق)
+
+            const id = await (service as any).repo.bulkCreate
+              ? await service.repo.bulkCreate([createData], tenantId).then(ids => ids[0])
+              : await service.createStaff(raw, tenantId, user.uid).then(s => s.id); // fallback
+
+            createdIds.push(id || 'unknown');
           } catch (err) {
-            console.error("User creation failed for", email, err);
-            continue;
+            if (err instanceof ZodError) {
+              errors.push({ index: i, message: err.errors.map(e => e.message).join(', ') });
+            } else {
+              errors.push({ index: i, message: (err as Error).message });
+            }
           }
-
-          const staffPayload = {
-            personal: {
-              fullName: s.fullName,
-              fatherName: s.fatherName || "",
-              cnic: s.cnic || "",
-              phone: s.phone || "",
-              email,
-              gender: s.gender || "Male",
-              dob: s.dob || null,
-            },
-            professional: {
-              designation: s.designation || "Teacher",
-              personnelNo: s.personnelNo || "",
-              doj: s.doj || null,
-              bps: s.bps || "",
-              empCategory: s.empCategory || "Active Permanent",
-            },
-            financial: {
-              bankName: s.bankName || "",
-              accountNo: s.accountNo || "",
-              accountTitle: s.accountTitle || "",
-              ntn: s.ntn || "",
-            },
-            allowances: [{ name: "Basic Pay", amount: Number(s.basicPay) || 0 }],
-            deductions: [],
-            netPayDetails: {
-              grossPay: Number(s.basicPay) || 0,
-              totalDeductions: 0,
-              netPay: Number(s.basicPay) || 0,
-            },
-            loginDetails: { email, role: s.role || "teacher" },
-            tenantId,
-            createdBy: user.uid,
-            createdAt: Timestamp.now(),
-            authUid: uid,
-          };
-
-          const ref = adminDb.collection("staff").doc();
-          batch.set(ref, staffPayload);
         }
 
-        await batch.commit();
-        return createApiResponse(201, { count: staffList.length, createdAuth: createdCount }, "Import complete");
+        if (errors.length === body.staffMembers.length) {
+          return createApiResponse(400, { errors }, "All records failed validation.");
+        }
+
+        return createApiResponse(
+          errors.length > 0 ? 207 : 201,  // 207 Multi-Status اگر کچھ ناکام ہوں
+          { createdIds, errors: errors.length > 0 ? errors : undefined },
+          `Created ${createdIds.length} out of ${body.staffMembers.length} staff members.`
+        );
       })
     )
   )
