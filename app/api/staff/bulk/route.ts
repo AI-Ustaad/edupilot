@@ -4,7 +4,7 @@ import { createApiResponse } from "@/lib/response/apiResponse";
 import { StaffService } from "@/services/staff.service";
 import { StaffRepository } from "@/repositories/staff.repository";
 import type { TenantContext } from "@/types/api";
-import { CreateStaffSchema } from "@/lib/validation"; // barrel export
+import { CreateStaffSchema } from "@/lib/validation";
 import { ZodError } from "zod";
 
 export const POST = withErrorHandler(
@@ -13,7 +13,6 @@ export const POST = withErrorHandler(
       withRole(["admin"])(async (req: Request, { tenantId, user }: TenantContext) => {
         const body = await req.json();
 
-        // توقع ہے کہ body.staffMembers ایک array ہوگی
         if (!Array.isArray(body.staffMembers) || body.staffMembers.length === 0) {
           return createApiResponse(400, null, "Provide at least one staff member in 'staffMembers' array.");
         }
@@ -22,22 +21,11 @@ export const POST = withErrorHandler(
         const createdIds: string[] = [];
         const errors: { index: number; message: string }[] = [];
 
-        // ایک ایک ریکارڈ کی تصدیق اور تخلیق
         for (let i = 0; i < body.staffMembers.length; i++) {
-          const raw = body.staffMembers[i];
           try {
-            const validated = CreateStaffSchema.parse(raw);
-            const createData = {
-              ...validated,
-              tenantId,
-              createdBy: user.uid,
-            } as any; // TypeScript کو خاموش کرنے کے لیے (BaseRepository کی ضرورت کے مطابق)
-
-            const id = await (service as any).repo.bulkCreate
-              ? await service.repo.bulkCreate([createData], tenantId).then(ids => ids[0])
-              : await service.createStaff(raw, tenantId, user.uid).then(s => s.id); // fallback
-
-            createdIds.push(id || 'unknown');
+            // سروس کا عوامی createStaff استعمال کریں (یہ زوڈ سے تصدیق بھی کرے گا)
+            const staff = await service.createStaff(body.staffMembers[i], tenantId, user.uid);
+            createdIds.push(staff.id);
           } catch (err) {
             if (err instanceof ZodError) {
               errors.push({ index: i, message: err.errors.map(e => e.message).join(', ') });
@@ -52,7 +40,7 @@ export const POST = withErrorHandler(
         }
 
         return createApiResponse(
-          errors.length > 0 ? 207 : 201,  // 207 Multi-Status اگر کچھ ناکام ہوں
+          errors.length > 0 ? 207 : 201,
           { createdIds, errors: errors.length > 0 ? errors : undefined },
           `Created ${createdIds.length} out of ${body.staffMembers.length} staff members.`
         );
