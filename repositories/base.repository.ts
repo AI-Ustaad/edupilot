@@ -1,68 +1,59 @@
-// repositories/base.repository.ts
-import { adminDb } from "@/lib/firebase-admin";
-import { dbTimestamp } from "@/lib/firebase-admin";
+import { adminDb, dbTimestamp } from '@/lib/firebase-admin';
+import type { Firestore } from 'firebase-admin/firestore';
 
-export abstract class BaseRepository<T> {
-  protected abstract collectionName: string;
+export class BaseRepository<T> {
+  protected collectionName: string;
+  protected db: Firestore;
 
-  // ✅ نئے ڈھانچے کے مطابق collection reference
-  protected getCollection(tenantId: string) {
-    return adminDb.collection(`tenants/${tenantId}/${this.collectionName}`);
+  constructor(collectionName: string) {
+    this.collectionName = collectionName;
+    this.db = adminDb;
   }
 
-  async findById(id: string, tenantId: string): Promise<T | null> {
-    const doc = await this.getCollection(tenantId).doc(id).get();
-    return doc.exists ? ({ id: doc.id, ...doc.data() } as T) : null;
-  }
-
-  async findAll(tenantId: string, limit = 50, offset = 0): Promise<T[]> {
-    const snapshot = await this.getCollection(tenantId)
-      .orderBy("createdAt", "desc")
-      .limit(limit)
-      .offset(offset)
-      .get();
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as T));
-  }
-
-  async create(data: Partial<T>, tenantId: string): Promise<T> {
-    const ref = this.getCollection(tenantId).doc();
-    const newData = { 
-      ...data, 
-      createdAt: dbTimestamp.now(),
-      updatedAt: dbTimestamp.now(),
-      tenantId 
+  async create(data: Omit<T, 'id' | 'createdAt' | 'updatedAt'>, tenantId: string): Promise<string> {
+    const newData = {
+      ...data,
+      createdAt: dbTimestamp,      // ← .now() ہٹا دیا
+      updatedAt: dbTimestamp,      // ← .now() ہٹا دیا
+      tenantId
     };
-    await ref.set(newData);
-    return { id: ref.id, ...newData } as T;
+    const docRef = await this.db.collection(this.collectionName).add(newData);
+    return docRef.id;
   }
 
   async update(id: string, data: Partial<T>, tenantId: string): Promise<void> {
-    await this.getCollection(tenantId).doc(id).update({ 
-      ...data, 
-      updatedAt: dbTimestamp.now() 
-    });
+    const updateData = {
+      ...data,
+      updatedAt: dbTimestamp       // ← .now() ہٹا دیا
+    };
+    const docRef = this.db.collection(this.collectionName).doc(id);
+    const docSnap = await docRef.get();
+    if (!docSnap.exists || docSnap.data()?.tenantId !== tenantId) {
+      throw new Error('Document not found or unauthorized');
+    }
+    await docRef.update(updateData);
   }
 
   async delete(id: string, tenantId: string): Promise<void> {
-    await this.getCollection(tenantId).doc(id).delete();
+    const docRef = this.db.collection(this.collectionName).doc(id);
+    const docSnap = await docRef.get();
+    if (!docSnap.exists || docSnap.data()?.tenantId !== tenantId) {
+      throw new Error('Document not found or unauthorized');
+    }
+    await docRef.delete();
   }
 
-  async paginate(tenantId: string, page = 1, limit = 20): Promise<{ items: T[]; total: number; totalPages: number }> {
-    const offset = (page - 1) * limit;
-    const snapshot = await this.getCollection(tenantId)
-      .orderBy("createdAt", "desc")
-      .limit(limit)
-      .offset(offset)
-      .get();
-    
-    const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as T));
-    const totalSnapshot = await this.getCollection(tenantId).count().get();
-    const total = totalSnapshot.data().count;
-    
-    return {
-      items,
-      total,
-      totalPages: Math.ceil(total / limit),
-    };
+  async findById(id: string, tenantId: string): Promise<(T & { id: string }) | null> {
+    const docRef = this.db.collection(this.collectionName).doc(id);
+    const docSnap = await docRef.get();
+    if (!docSnap.exists || docSnap.data()?.tenantId !== tenantId) {
+      return null;
+    }
+    return { id: docSnap.id, ...docSnap.data() } as T & { id: string };
+  }
+
+  async findAll(tenantId: string): Promise<(T & { id: string })[]> {
+    const snapshot = await this.db.collection(this.collectionName).where('tenantId', '==', tenantId).get();
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as T & { id: string }));
   }
 }
