@@ -40,7 +40,7 @@ export const POST = withErrorHandler(
             ...record,
             tenantId,
             createdBy: user.uid,
-            createdAt: dbTimestamp.now(),
+           createdAt: adminDb.serverTimestamp(),
           });
         }
         await batch.commit();
