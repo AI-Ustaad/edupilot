@@ -29,7 +29,11 @@ export const POST = withErrorHandler(
         const currentCount = await service.countStudents(tenantId);
 
         if (currentCount >= limits.students) {
-          return createApiResponse(403, null, `Student limit reached (${limits.students}). Please upgrade your plan.`);
+          return createApiResponse(
+            403,
+            null,
+            `Student limit reached (${limits.students}). Please upgrade your plan.`
+          );
         }
 
         const body = await req.json();
