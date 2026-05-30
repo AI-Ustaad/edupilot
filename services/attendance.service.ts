@@ -1,16 +1,14 @@
-// services/attendance.service.ts
 import { AttendanceRepository } from "@/repositories/attendance.repository";
 import { Attendance } from "@/types/attendance";
 import {
   MarkAttendanceSchema,
   BulkAttendanceSchema,
-} from "@/lib/validation"; // barrel export
+} from "@/lib/validation";
 import { ZodError } from "zod";
 
 export class AttendanceService {
   constructor(private repo: AttendanceRepository) {}
 
-  // ------------------ CREATE SINGLE ------------------
   async createSingle(data: unknown, tenantId: string, userId: string): Promise<Attendance> {
     let validated;
     try {
@@ -21,7 +19,6 @@ export class AttendanceService {
       }
       throw error;
     }
-
     const createData = {
       ...validated,
       tenantId,
@@ -35,7 +32,6 @@ export class AttendanceService {
     return record as Attendance;
   }
 
-  // ------------------ CREATE BULK ------------------
   async createBulk(data: unknown, tenantId: string, userId: string): Promise<{ success: boolean; message: string }> {
     let records;
     try {
@@ -47,7 +43,7 @@ export class AttendanceService {
       throw error;
     }
 
-    const batch = (this.repo as any).db.batch(); // db property base repository se
+    const batch = (this.repo as any).db.batch();
     for (const rec of records) {
       const docId = `${rec.studentId}_${rec.date}`;
       const docRef = (this.repo as any).db.collection("attendance").doc(docId);
@@ -63,20 +59,14 @@ export class AttendanceService {
     return { success: true, message: `${records.length} attendance records saved` };
   }
 
-  // ------------------ LIST WITH FILTERS ------------------
-  async listAttendance(
-    tenantId: string,
-    filters?: { date?: string; classGrade?: string; section?: string }
-  ): Promise<Attendance[]> {
+  async listAttendance(tenantId: string, filters?: { date?: string; classGrade?: string; section?: string }): Promise<Attendance[]> {
     return this.repo.findWithFilters(tenantId, filters);
   }
 
-  // ------------------ GET BY ID ------------------
   async getById(id: string, tenantId: string): Promise<Attendance | null> {
     return this.repo.findById(id, tenantId);
   }
 
-  // ------------------ UPDATE ------------------
   async updateAttendance(id: string, data: unknown, tenantId: string): Promise<Attendance> {
     const schema = MarkAttendanceSchema.partial();
     let validated;
@@ -88,19 +78,16 @@ export class AttendanceService {
       }
       throw error;
     }
-
     await this.repo.update(id, validated, tenantId);
     const updated = await this.repo.findById(id, tenantId);
     if (!updated) throw new Error("Attendance record not found after update");
     return updated as Attendance;
   }
 
-  // ------------------ DELETE ------------------
   async deleteAttendance(id: string, tenantId: string): Promise<void> {
     await this.repo.delete(id, tenantId);
   }
 
-  // ------------------ TODAY ATTENDANCE (نیا) ------------------
   async getTodayAttendance(tenantId: string): Promise<{ present: number; absent: number; total: number }> {
     const today = new Date().toISOString().slice(0, 10);
     const records = await this.repo.findWithFilters(tenantId, { date: today });
@@ -112,7 +99,6 @@ export class AttendanceService {
     return { present, absent, total: records.length };
   }
 
-  // ------------------ WEEKLY ATTENDANCE TREND (نیا) ------------------
   async getWeeklyAttendanceTrend(tenantId: string): Promise<{ day: string; percent: number }[]> {
     const last7Days = Array.from({ length: 7 }, (_, i) => {
       const d = new Date();
