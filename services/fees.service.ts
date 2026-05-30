@@ -45,14 +45,13 @@ export class FeesService {
     page = 1,
     limit = 20
   ) {
-    // پورا ڈیٹا لے کر دستی فلٹر + pagination
     let fees = await this.repo.findAll(tenantId);
 
     if (studentId) {
       fees = fees.filter(f => (f as any).studentId === studentId);
     }
 
-    // تاریخ کے حساب سے ترتیب (نئی پہلے) – اختیاری
+    // تاریخ کے حساب سے ترتیب (نئی پہلے)
     fees.sort((a, b) => {
       const dateA = (a as any).createdAt?.toDate?.() || 0;
       const dateB = (b as any).createdAt?.toDate?.() || 0;
@@ -91,7 +90,29 @@ export class FeesService {
 
   // ------------------ DELETE ------------------
   async deleteFee(id: string, tenantId: string): Promise<void> {
-    // فی الحال مکمل حذف، بعد میں softDelete پر جا سکتے ہیں
     await this.repo.delete(id, tenantId);
+  }
+
+  // ------------------ TOTAL REVENUE (نیا) ------------------
+  async getTotalRevenue(tenantId: string): Promise<number> {
+    const allFees = await this.repo.findAll(tenantId);
+    return allFees.reduce((sum, fee) => sum + ((fee as any).amountPaid || 0), 0);
+  }
+
+  // ------------------ RECENT PAYMENTS (نیا) ------------------
+  async getRecentPayments(tenantId: string, limit = 5): Promise<any[]> {
+    const allFees = await this.repo.findAll(tenantId);
+    allFees.sort((a, b) => {
+      const dateA = (a as any).createdAt?.toDate?.() || 0;
+      const dateB = (b as any).createdAt?.toDate?.() || 0;
+      return dateB - dateA;
+    });
+    return allFees.slice(0, limit).map(fee => ({
+      id: fee.id,
+      studentName: (fee as any).studentName || 'Unknown',
+      amount: (fee as any).amountPaid || 0,
+      date: (fee as any).feeMonth || '',
+      timestamp: (fee as any).createdAt?.toDate?.().toISOString() || '',
+    }));
   }
 }
