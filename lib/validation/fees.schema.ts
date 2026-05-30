@@ -1,4 +1,3 @@
-// lib/validation/fees.schema.ts
 import { z } from "zod";
 
 export const CreateFeeSchema = z.object({
@@ -13,10 +12,3 @@ export const CreateFeeSchema = z.object({
 });
 
 export const UpdateFeeSchema = CreateFeeSchema.partial();
-
-export const FeeQuerySchema = z.object({
-  studentId: z.string().optional(),
-  month: z.string().optional(),
-  fromDate: z.string().optional(),
-  toDate: z.string().optional(),
-});
