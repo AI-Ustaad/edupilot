@@ -1,4 +1,3 @@
-// repositories/base.repository.ts
 import { adminDb, dbTimestamp } from '@/lib/firebase-admin';
 import type { Firestore } from 'firebase-admin/firestore';
 
@@ -11,7 +10,6 @@ export class BaseRepository<T> {
     this.db = adminDb;
   }
 
-  // ---------- BASIC CRUD ----------
   async create(data: Omit<T, 'id' | 'createdAt' | 'updatedAt'>, tenantId: string): Promise<string> {
     const newData = {
       ...data,
@@ -62,7 +60,6 @@ export class BaseRepository<T> {
     return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as T & { id: string }));
   }
 
-  // ---------- NEW ENTERPRISE METHODS ----------
   async paginate(
     tenantId: string,
     page: number,
