@@ -1,4 +1,3 @@
-// app/api/dashboard/route.ts
 import { withAuth, withTenant, withErrorHandler } from "@/route-helpers";
 import { createApiResponse } from "@/lib/response/apiResponse";
 import { DashboardService } from "@/services/dashboard.service";
