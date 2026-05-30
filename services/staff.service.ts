@@ -4,7 +4,7 @@ import { Staff } from "@/types/staff";
 import {
   CreateStaffSchema,
   UpdateStaffSchema,
-} from "@/lib/validation";   // barrel file سے
+} from "@/lib/validation";   // barrel export
 import { ZodError } from "zod";
 
 export class StaffService {
@@ -40,7 +40,6 @@ export class StaffService {
   }
 
   async listStaff(tenantId: string, page = 1, limit = 20) {
-    // دستی pagination (BaseRepository.findAll استعمال کر کے)
     const allStaff = await this.repo.findAll(tenantId);
     const start = (page - 1) * limit;
     const end = start + limit;
@@ -79,5 +78,10 @@ export class StaffService {
 
   async hardDeleteStaff(id: string, tenantId: string): Promise<void> {
     await this.repo.delete(id, tenantId);
+  }
+
+  // ------------------ COUNT (نیا) ------------------
+  async countStaff(tenantId: string): Promise<number> {
+    return this.repo.count(tenantId);
   }
 }
