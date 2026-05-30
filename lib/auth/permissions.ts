@@ -1,5 +1,3 @@
-// lib/auth/permissions.ts
-
 export const PERMISSIONS = {
   students: {
     view: 'students.view',
@@ -47,7 +45,6 @@ export const PERMISSIONS = {
 
 export type Permission = typeof PERMISSIONS[keyof typeof PERMISSIONS][keyof typeof PERMISSIONS[keyof typeof PERMISSIONS]];
 
-// Default role → permissions mapping (can be overridden per tenant later)
 export const ROLE_PERMISSIONS: Record<string, Permission[]> = {
   admin: [
     ...Object.values(PERMISSIONS).flatMap(module => Object.values(module)),
@@ -67,6 +64,5 @@ export const ROLE_PERMISSIONS: Record<string, Permission[]> = {
   parent: [
     PERMISSIONS.parents.view,
     PERMISSIONS.parents.manage,
-    // children-specific restrictions handled in service
   ],
 };
