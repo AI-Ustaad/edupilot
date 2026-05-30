@@ -1,4 +1,3 @@
-// app/api/parents/dashboard/route.ts
 import { withAuth, withTenant, withErrorHandler, withRole } from "@/route-helpers";
 import { createApiResponse } from "@/lib/response/apiResponse";
 import { ParentsService } from "@/services/parents.service";
@@ -18,10 +17,8 @@ export const GET = withErrorHandler(
         const children = await parentService.getChildren(user.uid, tenantId);
         const childIds = children.map(c => c.id);
 
-        // آج کی تاریخ
         const today = new Date().toISOString().slice(0, 10);
 
-        // ہر بچے کی آج کی حاضری
         const attendanceService = new AttendanceService(new AttendanceRepository());
         const attendancePromises = childIds.map(id =>
           attendanceService.listAttendance(tenantId, { date: today }).then(recs =>
@@ -30,7 +27,6 @@ export const GET = withErrorHandler(
         );
         const attendanceResults = await Promise.all(attendancePromises);
 
-        // ہر بچے کی فیس کی معلومات (تازہ ترین)
         const feesService = new FeesService(new FeesRepository());
         const feesPromises = childIds.map(id =>
           feesService.listFees(tenantId, id, 1, 1)
