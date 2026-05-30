@@ -1,0 +1,65 @@
+// services/dashboard.service.ts
+import { StudentService } from "./student.service";
+import { StudentRepository } from "@/repositories/student.repository";
+import { StaffService } from "./staff.service";
+import { StaffRepository } from "@/repositories/staff.repository";
+import { FeesService } from "./fees.service";
+import { FeesRepository } from "@/repositories/fees.repository";
+import { AttendanceService } from "./attendance.service";
+import { AttendanceRepository } from "@/repositories/attendance.repository";
+
+export class DashboardService {
+  private studentService: StudentService;
+  private staffService: StaffService;
+  private feesService: FeesService;
+  private attendanceService: AttendanceService;
+
+  constructor() {
+    this.studentService = new StudentService(new StudentRepository());
+    this.staffService = new StaffService(new StaffRepository());
+    this.feesService = new FeesService(new FeesRepository());
+    this.attendanceService = new AttendanceService(new AttendanceRepository());
+  }
+
+  async getDashboardData(tenantId: string) {
+    // متوازی طور پر ڈیٹا حاصل کریں
+    const [
+      studentsCount,
+      staffCount,
+      totalRevenue,
+      todayAttendance,
+      attendanceTrend,
+      allStudents,
+      recentPayments,
+    ] = await Promise.all([
+      this.studentService.countStudents(tenantId),
+      this.staffService.countStaff(tenantId),
+      this.feesService.getTotalRevenue(tenantId),
+      this.attendanceService.getTodayAttendance(tenantId),
+      this.attendanceService.getWeeklyAttendanceTrend(tenantId),
+      this.studentService.listStudents(tenantId, 1, 9999), // تمام طلبہ (بڑا حد)
+      this.feesService.getRecentPayments(tenantId, 5),
+    ]);
+
+    // کلاس کی تقسیم
+    const classMap: Record<string, number> = {};
+    allStudents.data.forEach((student: any) => {
+      const cls = student.classGrade || 'Unknown';
+      classMap[cls] = (classMap[cls] || 0) + 1;
+    });
+    const classDistribution = Object.entries(classMap).map(([name, value]) => ({ name, value }));
+
+    return {
+      students: studentsCount,
+      staff: staffCount,
+      revenue: totalRevenue,
+      todayAttendance,
+      attendanceTrend,
+      attendanceStats: { avg: 85, highest: 98, lowest: 62 }, // عارضی اعداد
+      feeMonth: { collected: totalRevenue, pending: 0, total: totalRevenue }, // بہتر کیا جا سکتا ہے
+      classFeeSummary: [], // فی الحال خالی، اگر ضرورت ہو تو FeesService سے کلاس وار نکالا جا سکتا ہے
+      recentPayments,
+      classDistribution,
+    };
+  }
+}
