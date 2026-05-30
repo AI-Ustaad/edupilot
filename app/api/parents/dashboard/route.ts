@@ -1,71 +1,49 @@
-import { adminDb } from "@/lib/firebase-admin";
+// app/api/parents/dashboard/route.ts
 import { withAuth, withTenant, withErrorHandler, withRole } from "@/route-helpers";
 import { createApiResponse } from "@/lib/response/apiResponse";
+import { ParentsService } from "@/services/parents.service";
+import { ParentsRepository } from "@/repositories/parents.repository";
+import { StudentRepository } from "@/repositories/student.repository";
+import { AttendanceService } from "@/services/attendance.service";
+import { AttendanceRepository } from "@/repositories/attendance.repository";
+import { FeesService } from "@/services/fees.service";
+import { FeesRepository } from "@/repositories/fees.repository";
 import type { TenantContext } from "@/types/api";
 
 export const GET = withErrorHandler(
   withAuth(
     withTenant(
       withRole(["parent"])(async (req: Request, { tenantId, user }: TenantContext) => {
-        // والدین کے بچوں کی IDs حاصل کریں
-        const parentDoc = await adminDb.collection("parents").doc(user.uid).get();
-        const childIds: string[] = parentDoc.data()?.studentIds || [];
-        if (childIds.length === 0) {
-          return createApiResponse(200, { children: [] });
-        }
+        const parentService = new ParentsService(new ParentsRepository(), new StudentRepository());
+        const children = await parentService.getChildren(user.uid, tenantId);
+        const childIds = children.map(c => c.id);
 
-        // بچوں کی معلومات لائیں
-        const studentsSnap = await adminDb
-          .collection("students")
-          .where("tenantId", "==", tenantId)
-          .where("__name__", "in", childIds)
-          .get();
-        const children = studentsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        // آج کی تاریخ
+        const today = new Date().toISOString().slice(0, 10);
 
-        // ہر بچے کے لیے آج کی حاضری اور تازہ ترین مارکس حاصل کریں
-        const enriched = await Promise.all(
-          children.map(async (child: any) => {
-            // آج کی تاریخ
-            const today = new Date().toISOString().slice(0, 10);
-
-            // آج کی حاضری
-            const attSnap = await adminDb
-              .collection("attendance")
-              .where("studentId", "==", child.id)
-              .where("date", "==", today)
-              .where("tenantId", "==", tenantId)
-              .limit(1)
-              .get();
-            const todayAttendance = attSnap.empty ? "Not marked" : attSnap.docs[0].data().status;
-
-            // تازہ ترین مارکس (آخری 1 ریکارڈ)
-            const marksSnap = await adminDb
-              .collection("marks")
-              .where("studentId", "==", child.id)
-              .where("tenantId", "==", tenantId)
-              .orderBy("updatedAt", "desc")
-              .limit(1)
-              .get();
-            const latestMarks = marksSnap.empty ? null : marksSnap.docs[0].data();
-
-            return {
-              ...child,
-              todayAttendance,
-              latestMarks,
-            };
-          })
+        // ہر بچے کی آج کی حاضری
+        const attendanceService = new AttendanceService(new AttendanceRepository());
+        const attendancePromises = childIds.map(id =>
+          attendanceService.listAttendance(tenantId, { date: today }).then(recs =>
+            recs.filter(r => (r as any).studentId === id)
+          )
         );
+        const attendanceResults = await Promise.all(attendancePromises);
 
-        // حالیہ نوٹس/ہوم ورک (پورے اسکول کے)
-        const noticesSnap = await adminDb
-          .collection("homework")
-          .where("tenantId", "==", tenantId)
-          .orderBy("createdAt", "desc")
-          .limit(5)
-          .get();
-        const notices = noticesSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        // ہر بچے کی فیس کی معلومات (تازہ ترین)
+        const feesService = new FeesService(new FeesRepository());
+        const feesPromises = childIds.map(id =>
+          feesService.listFees(tenantId, id, 1, 1)
+        );
+        const feesResults = await Promise.all(feesPromises);
 
-        return createApiResponse(200, { children: enriched, notices });
+        const dashboardData = children.map((child, index) => ({
+          student: child,
+          todayAttendance: attendanceResults[index]?.[0]?.status || 'N/A',
+          recentFee: feesResults[index]?.data?.[0] || null,
+        }));
+
+        return createApiResponse(200, dashboardData);
       })
     )
   )
