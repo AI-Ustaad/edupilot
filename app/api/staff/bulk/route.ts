@@ -1,15 +1,17 @@
-import { withAuth, withTenant, withErrorHandler, withRole } from "@/route-helpers";
+import { withAuth, withTenant, withErrorHandler } from "@/route-helpers";
 import { createApiResponse } from "@/lib/response/apiResponse";
 import { StaffService } from "@/services/staff.service";
 import { StaffRepository } from "@/repositories/staff.repository";
 import type { TenantContext } from "@/types/api";
 import { CreateStaffSchema } from "@/lib/validation";
 import { ZodError } from "zod";
+import { withPermission } from '@/lib/auth/rbac';
+import { PERMISSIONS } from '@/lib/auth/permissions';
 
 export const POST = withErrorHandler(
   withAuth(
     withTenant(
-      withRole(["admin"])(async (req: Request, { tenantId, user }: TenantContext) => {
+      withPermission(PERMISSIONS.staff.create)(async (req: Request, { tenantId, user }: TenantContext) => {
         const body = await req.json();
         if (!Array.isArray(body.staffMembers) || body.staffMembers.length === 0) {
           return createApiResponse(400, null, "Provide at least one staff member in 'staffMembers' array.");
