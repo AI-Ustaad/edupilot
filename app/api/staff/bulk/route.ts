@@ -1,4 +1,3 @@
-// app/api/staff/bulk/route.ts
 import { withAuth, withTenant, withErrorHandler, withRole } from "@/route-helpers";
 import { createApiResponse } from "@/lib/response/apiResponse";
 import { StaffService } from "@/services/staff.service";
@@ -12,7 +11,6 @@ export const POST = withErrorHandler(
     withTenant(
       withRole(["admin"])(async (req: Request, { tenantId, user }: TenantContext) => {
         const body = await req.json();
-
         if (!Array.isArray(body.staffMembers) || body.staffMembers.length === 0) {
           return createApiResponse(400, null, "Provide at least one staff member in 'staffMembers' array.");
         }
@@ -23,7 +21,6 @@ export const POST = withErrorHandler(
 
         for (let i = 0; i < body.staffMembers.length; i++) {
           try {
-            // سروس کا عوامی createStaff استعمال کریں (یہ زوڈ سے تصدیق بھی کرے گا)
             const staff = await service.createStaff(body.staffMembers[i], tenantId, user.uid);
             createdIds.push(staff.id);
           } catch (err) {
