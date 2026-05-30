@@ -1,13 +1,12 @@
-import { getSessionUser } from "@/lib/auth/auth-server";
-import { createApiResponse } from "@/lib/response/apiResponse";
+import { NextResponse } from 'next/server';
 
 export function withTenant(handler: Function) {
-  return async (req: Request, context?: any) => {
-    const user = await getSessionUser();
-    if (!user?.tenantId) {
-      return createApiResponse(403, null, "Forbidden: No school access");
+  return async (req: Request, context: any = {}) => {
+    const user = context.user;
+    if (!user || !user.tenantId) {
+      return NextResponse.json({ error: 'Tenant not found' }, { status: 401 });
     }
-    // context میں اضافی معلومات پاس کریں
-    return handler(req, { ...context, tenantId: user.tenantId, user });
+    context.tenantId = user.tenantId;
+    return handler(req, context);
   };
 }
