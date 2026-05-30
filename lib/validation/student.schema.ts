@@ -1,4 +1,4 @@
-// validation/student.schema.ts
+// lib/validation/student.schema.ts
 import { z } from 'zod';
 
 export const createStudentSchema = z.object({
