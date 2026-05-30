@@ -1,12 +1,14 @@
-import { getSessionUser } from "@/lib/auth/auth-server";
-import { createApiResponse } from "@/lib/response/apiResponse";
+import { getSessionUser } from '@/lib/auth/auth-server'; // اپنے درست راستے سے بدلیں
+import { NextResponse } from 'next/server';
 
 export function withAuth(handler: Function) {
-  return async (req: Request, context?: any) => {
+  return async (req: Request, context: any = {}) => {
     const user = await getSessionUser();
     if (!user) {
-      return createApiResponse(401, null, "Unauthorized");
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    return handler(req, { ...context, user });
+    // 🚨 ضروری: صارف کو context میں ڈالیں تاکہ withPermission اور دیگر helpers استعمال کر سکیں
+    context.user = user;
+    return handler(req, context);
   };
 }
