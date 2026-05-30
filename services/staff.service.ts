@@ -1,16 +1,14 @@
-// services/staff.service.ts
 import { StaffRepository } from "@/repositories/staff.repository";
 import { Staff } from "@/types/staff";
 import {
   CreateStaffSchema,
   UpdateStaffSchema,
-} from "@/lib/validation";   // barrel export
+} from "@/lib/validation";
 import { ZodError } from "zod";
 
 export class StaffService {
   constructor(private repo: StaffRepository) {}
 
-  // ------------------ CREATE ------------------
   async createStaff(data: unknown, tenantId: string, userId: string): Promise<Staff> {
     let validated;
     try {
@@ -34,7 +32,6 @@ export class StaffService {
     return staff as Staff;
   }
 
-  // ------------------ READ ------------------
   async getStaffById(id: string, tenantId: string): Promise<Staff | null> {
     return this.repo.findById(id, tenantId);
   }
@@ -53,7 +50,6 @@ export class StaffService {
     };
   }
 
-  // ------------------ UPDATE ------------------
   async updateStaff(id: string, data: unknown, tenantId: string, userId: string): Promise<Staff> {
     let validated;
     try {
@@ -71,7 +67,6 @@ export class StaffService {
     return updated as Staff;
   }
 
-  // ------------------ DELETE (soft) ------------------
   async deleteStaff(id: string, tenantId: string): Promise<void> {
     await this.repo.softDelete(id, tenantId);
   }
@@ -80,7 +75,6 @@ export class StaffService {
     await this.repo.delete(id, tenantId);
   }
 
-  // ------------------ COUNT (نیا) ------------------
   async countStaff(tenantId: string): Promise<number> {
     return this.repo.count(tenantId);
   }
