@@ -1,79 +1,43 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { adminDb, dbTimestamp } from '@/lib/firebase-admin';
-import { getTenantIdFromRequest } from '@/lib/tenant-utils';
-import { getSessionUser } from '@/lib/auth/auth-server';
+// app/api/attendance/route.ts
+import { withAuth, withTenant, withErrorHandler, withRole } from "@/route-helpers";
+import { createApiResponse } from "@/lib/response/apiResponse";
+import { AttendanceService } from "@/services/attendance.service";
+import { AttendanceRepository } from "@/repositories/attendance.repository";
+import type { TenantContext } from "@/types/api";
 
-export async function GET(req: NextRequest) {
-  try {
-    const tenantId = await getTenantIdFromRequest(req);
-    if (!tenantId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+export const GET = withErrorHandler(
+  withAuth(
+    withTenant(async (req: Request, { tenantId }: TenantContext) => {
+      const url = new URL(req.url);
+      const filters = {
+        date: url.searchParams.get('date') || undefined,
+        classGrade: url.searchParams.get('classGrade') || undefined,
+        section: url.searchParams.get('section') || undefined,
+      };
 
-    const { searchParams } = new URL(req.url);
-    const date = searchParams.get('date');
-    const classGrade = searchParams.get('classGrade');
-    const section = searchParams.get('section');
+      const service = new AttendanceService(new AttendanceRepository());
+      const records = await service.listAttendance(tenantId, filters);
+      return createApiResponse(200, records);
+    })
+  )
+);
 
-    let query = adminDb.collection('attendance').where('tenantId', '==', tenantId);
-    if (date) query = query.where('date', '==', date);
-    if (classGrade) query = query.where('classGrade', '==', classGrade);
-    if (section) query = query.where('section', '==', section);
+export const POST = withErrorHandler(
+  withAuth(
+    withTenant(
+      withRole(["admin", "teacher"])(async (req: Request, { tenantId, user }: TenantContext) => {
+        const body = await req.json();
+        const service = new AttendanceService(new AttendanceRepository());
 
-    const snapshot = await query.get();
-    const records = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    return NextResponse.json(records);
-  } catch (error) {
-    console.error('Attendance GET error:', error);
-    return NextResponse.json({ error: 'Failed to fetch attendance' }, { status: 500 });
-  }
-}
-
-export async function POST(req: NextRequest) {
-  try {
-    const tenantId = await getTenantIdFromRequest(req);
-    if (!tenantId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const user = await getSessionUser();
-    if (!user?.uid) {
-      return NextResponse.json({ error: 'User not found' }, { status: 401 });
-    }
-
-    const records = await req.json();
-    if (!Array.isArray(records) || records.length === 0) {
-      return NextResponse.json({ error: 'Invalid payload, expected array of records' }, { status: 400 });
-    }
-
-    const batch = adminDb.batch();
-    for (const record of records) {
-      const { studentId, studentName, rollNumber, classGrade, section, date, status } = record;
-      if (!studentId || !date || !status) {
-        return NextResponse.json({ error: 'Missing required fields in one or more records' }, { status: 400 });
-      }
-
-      const docId = `${studentId}_${date}`;
-      const docRef = adminDb.collection('attendance').doc(docId);
-      batch.set(docRef, {
-        studentId,
-        studentName: studentName || '',
-        rollNumber: rollNumber || '',
-        classGrade: classGrade || '',
-        section: section || '',
-        date,
-        status,
-        tenantId,
-        createdBy: user.uid,
-        createdAt: dbTimestamp,
-        updatedAt: dbTimestamp,
-      }, { merge: true });
-    }
-    await batch.commit();
-
-    return NextResponse.json({ success: true, message: 'Attendance saved successfully' });
-  } catch (error) {
-    console.error('Attendance POST error:', error);
-    return NextResponse.json({ error: 'Failed to save attendance' }, { status: 500 });
-  }
-}
+        // اگر Array بھیجی گئی تو بلک، ورنہ سنگل
+        if (Array.isArray(body)) {
+          const result = await service.createBulk(body, tenantId, user.uid);
+          return createApiResponse(201, result, result.message);
+        } else {
+          const record = await service.createSingle(body, tenantId, user.uid);
+          return createApiResponse(201, record, "Attendance marked successfully");
+        }
+      })
+    )
+  )
+);
