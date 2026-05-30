@@ -1,4 +1,3 @@
-// lib/validation/attendance.schema.ts
 import { z } from "zod";
 
 export const MarkAttendanceSchema = z.object({
