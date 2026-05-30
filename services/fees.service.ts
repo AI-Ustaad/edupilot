@@ -1,16 +1,14 @@
-// services/fees.service.ts
 import { FeesRepository } from "@/repositories/fees.repository";
 import { Fee } from "@/types/fees";
 import {
   CreateFeeSchema,
   UpdateFeeSchema,
-} from "@/lib/validation"; // barrel export
+} from "@/lib/validation";
 import { ZodError } from "zod";
 
 export class FeesService {
   constructor(private repo: FeesRepository) {}
 
-  // ------------------ CREATE ------------------
   async createFee(data: unknown, tenantId: string): Promise<Fee> {
     let validated;
     try {
@@ -21,7 +19,6 @@ export class FeesService {
       }
       throw error;
     }
-
     const createData = {
       ...validated,
       tenantId,
@@ -34,33 +31,22 @@ export class FeesService {
     return fee as Fee;
   }
 
-  // ------------------ READ ------------------
   async getFeeById(id: string, tenantId: string): Promise<Fee | null> {
     return this.repo.findById(id, tenantId);
   }
 
-  async listFees(
-    tenantId: string,
-    studentId?: string,
-    page = 1,
-    limit = 20
-  ) {
+  async listFees(tenantId: string, studentId?: string, page = 1, limit = 20) {
     let fees = await this.repo.findAll(tenantId);
-
     if (studentId) {
       fees = fees.filter(f => (f as any).studentId === studentId);
     }
-
-    // تاریخ کے حساب سے ترتیب (نئی پہلے)
     fees.sort((a, b) => {
       const dateA = (a as any).createdAt?.toDate?.() || 0;
       const dateB = (b as any).createdAt?.toDate?.() || 0;
       return dateB - dateA;
     });
-
     const start = (page - 1) * limit;
     const end = start + limit;
-
     return {
       data: fees.slice(start, end),
       total: fees.length,
@@ -70,7 +56,6 @@ export class FeesService {
     };
   }
 
-  // ------------------ UPDATE ------------------
   async updateFee(id: string, data: unknown, tenantId: string): Promise<Fee> {
     let validated;
     try {
@@ -81,25 +66,21 @@ export class FeesService {
       }
       throw error;
     }
-
     await this.repo.update(id, validated, tenantId);
     const updated = await this.repo.findById(id, tenantId);
     if (!updated) throw new Error("Fee record not found after update");
     return updated as Fee;
   }
 
-  // ------------------ DELETE ------------------
   async deleteFee(id: string, tenantId: string): Promise<void> {
     await this.repo.delete(id, tenantId);
   }
 
-  // ------------------ TOTAL REVENUE (نیا) ------------------
   async getTotalRevenue(tenantId: string): Promise<number> {
     const allFees = await this.repo.findAll(tenantId);
     return allFees.reduce((sum, fee) => sum + ((fee as any).amountPaid || 0), 0);
   }
 
-  // ------------------ RECENT PAYMENTS (نیا) ------------------
   async getRecentPayments(tenantId: string, limit = 5): Promise<any[]> {
     const allFees = await this.repo.findAll(tenantId);
     allFees.sort((a, b) => {
