@@ -5,7 +5,7 @@ import {
   updateStudentSchema,
   CreateStudentInput,
   UpdateStudentInput,
-} from "@/lib/validation";   // barrel file سے import – یہاں چھوٹے حروف میں نام
+} from "@/lib/validation"; // barrel file سے import – چھوٹے حروف میں نام
 import { ZodError } from "zod";
 
 type CreateStudentDto = Omit<
