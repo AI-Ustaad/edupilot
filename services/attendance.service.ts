@@ -10,9 +10,7 @@ import { ZodError } from "zod";
 export class AttendanceService {
   constructor(private repo: AttendanceRepository) {}
 
-  /**
-   * ایک ہی ریکارڈ تخلیق کرنے کے لیے
-   */
+  // ------------------ CREATE SINGLE ------------------
   async createSingle(data: unknown, tenantId: string, userId: string): Promise<Attendance> {
     let validated;
     try {
@@ -31,16 +29,13 @@ export class AttendanceService {
     } as Omit<Attendance, "id" | "createdAt" | "updatedAt">;
 
     const docId = `${validated.studentId}_${validated.date}`;
-    // آئی ڈی کو دستاویز کا نام بنایا تاکہ دوبارہ ریکارڈ نہ بنے (merge)
     const id = await this.repo.create({ ...createData, id: docId } as any, tenantId);
     const record = await this.repo.findById(id || docId, tenantId);
     if (!record) throw new Error("Attendance record could not be retrieved");
     return record as Attendance;
   }
 
-  /**
-   * ایک ساتھ کئی ریکارڈ (بلک) تخلیق کرنا
-   */
+  // ------------------ CREATE BULK ------------------
   async createBulk(data: unknown, tenantId: string, userId: string): Promise<{ success: boolean; message: string }> {
     let records;
     try {
@@ -52,10 +47,10 @@ export class AttendanceService {
       throw error;
     }
 
-    const batch = this.repo["db"].batch(); // اب BaseRepository میں db موجود ہے
+    const batch = (this.repo as any).db.batch(); // db property base repository se
     for (const rec of records) {
       const docId = `${rec.studentId}_${rec.date}`;
-      const docRef = this.repo["db"].collection("attendance").doc(docId);
+      const docRef = (this.repo as any).db.collection("attendance").doc(docId);
       batch.set(docRef, {
         ...rec,
         tenantId,
@@ -65,13 +60,10 @@ export class AttendanceService {
       }, { merge: true });
     }
     await batch.commit();
-
     return { success: true, message: `${records.length} attendance records saved` };
   }
 
-  /**
-   * فلٹرز کے ساتھ حاضری لسٹ
-   */
+  // ------------------ LIST WITH FILTERS ------------------
   async listAttendance(
     tenantId: string,
     filters?: { date?: string; classGrade?: string; section?: string }
@@ -79,18 +71,13 @@ export class AttendanceService {
     return this.repo.findWithFilters(tenantId, filters);
   }
 
-  /**
-   * ایک ریکارڈ حاصل کریں
-   */
+  // ------------------ GET BY ID ------------------
   async getById(id: string, tenantId: string): Promise<Attendance | null> {
     return this.repo.findById(id, tenantId);
   }
 
-  /**
-   * ریکارڈ اپ ڈیٹ کریں (اکثر اسٹیٹس تبدیل کرنے کے لیے)
-   */
+  // ------------------ UPDATE ------------------
   async updateAttendance(id: string, data: unknown, tenantId: string): Promise<Attendance> {
-    // یہاں MarkAttendanceSchema کا partial استعمال کر سکتے ہیں
     const schema = MarkAttendanceSchema.partial();
     let validated;
     try {
@@ -108,10 +95,38 @@ export class AttendanceService {
     return updated as Attendance;
   }
 
-  /**
-   * حذف کریں
-   */
+  // ------------------ DELETE ------------------
   async deleteAttendance(id: string, tenantId: string): Promise<void> {
     await this.repo.delete(id, tenantId);
+  }
+
+  // ------------------ TODAY ATTENDANCE (نیا) ------------------
+  async getTodayAttendance(tenantId: string): Promise<{ present: number; absent: number; total: number }> {
+    const today = new Date().toISOString().slice(0, 10);
+    const records = await this.repo.findWithFilters(tenantId, { date: today });
+    let present = 0, absent = 0;
+    records.forEach(r => {
+      if (r.status === 'Present') present++;
+      else if (r.status === 'Absent') absent++;
+    });
+    return { present, absent, total: records.length };
+  }
+
+  // ------------------ WEEKLY ATTENDANCE TREND (نیا) ------------------
+  async getWeeklyAttendanceTrend(tenantId: string): Promise<{ day: string; percent: number }[]> {
+    const last7Days = Array.from({ length: 7 }, (_, i) => {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      return d.toISOString().slice(0, 10);
+    }).reverse();
+
+    const trend = [];
+    for (const day of last7Days) {
+      const records = await this.repo.findWithFilters(tenantId, { date: day });
+      const present = records.filter(r => r.status === 'Present').length;
+      const percent = records.length > 0 ? (present / records.length) * 100 : 0;
+      trend.push({ day: day.slice(5), percent: Math.round(percent) });
+    }
+    return trend;
   }
 }
