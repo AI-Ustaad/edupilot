@@ -19,4 +19,3 @@ export function withPermission(requiredPermission: Permission) {
     };
   };
 }
-EOF
