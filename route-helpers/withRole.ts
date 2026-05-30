@@ -1,12 +1,13 @@
-import { getSessionUser } from "@/lib/auth/auth-server";
-import { createApiResponse } from "@/lib/response/apiResponse";
+import { NextResponse } from 'next/server';
 
-export function withRole(allowedRoles: string[]) {
-  return (handler: Function) => async (req: Request, context?: any) => {
-    const user = await getSessionUser();
-    if (!user || !allowedRoles.includes(user.role)) {
-      return createApiResponse(403, null, "Insufficient permissions");
-    }
-    return handler(req, { ...context, user });
+export function withRole(roles: string[]) {
+  return (handler: Function) => {
+    return async (req: Request, context: any) => {
+      const user = context.user;
+      if (!user || !roles.includes(user.role)) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      }
+      return handler(req, context);
+    };
   };
 }
