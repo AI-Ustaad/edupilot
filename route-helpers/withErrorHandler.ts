@@ -1,20 +1,15 @@
-import { AppError } from "@/lib/errors/AppError";
-import { createApiResponse } from "@/lib/response/apiResponse";
+import { NextResponse } from 'next/server';
 
 export function withErrorHandler(handler: Function) {
-  return async (req: Request, context?: any) => {
+  return async (req: Request, context: any) => {
     try {
       return await handler(req, context);
-    } catch (error) {
-      console.error("[API Error]", {
-        url: req.url,
-        method: req.method,
-        error: error instanceof Error ? error.message : error,
-      });
-      if (error instanceof AppError) {
-        return createApiResponse(error.statusCode, null, error.message, error.details);
-      }
-      return createApiResponse(500, null, "Internal server error");
+    } catch (error: any) {
+      console.error('API Error:', error);
+      return NextResponse.json(
+        { error: error.message || 'Internal Server Error' },
+        { status: 500 }
+      );
     }
   };
 }
