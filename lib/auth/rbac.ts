@@ -1,5 +1,6 @@
+cat > lib/auth/rbac.ts << 'EOF'
 import { NextResponse } from 'next/server';
-import { Permission, ROLE_PERMISSIONS } from './permissions';
+import { Permission, ROLE_PERMISSIONS } from '@/lib/permissions-new';
 
 export function withPermission(requiredPermission: Permission) {
   return (handler: Function) => {
@@ -18,3 +19,4 @@ export function withPermission(requiredPermission: Permission) {
     };
   };
 }
+EOF
