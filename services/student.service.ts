@@ -1,4 +1,3 @@
-// services/student.service.ts
 import { StudentRepository } from "@/repositories/student.repository";
 import { Student } from "@/types/student";
 import {
@@ -17,7 +16,6 @@ type CreateStudentDto = Omit<
 export class StudentService {
   constructor(private repo: StudentRepository) {}
 
-  // ------------------ CREATE ------------------
   async createStudent(data: unknown, tenantId: string): Promise<Student> {
     let validated: CreateStudentInput;
     try {
@@ -42,7 +40,6 @@ export class StudentService {
     return student as Student;
   }
 
-  // ------------------ READ ------------------
   async getStudentById(id: string, tenantId: string): Promise<Student | null> {
     return this.repo.findById(id, tenantId);
   }
@@ -52,11 +49,9 @@ export class StudentService {
     page = 1,
     limit = 20
   ) {
-    // BaseRepository.paginate استعمال کریں (وہ پہلے سے موجود ہے)
     return this.repo.paginate(tenantId, page, limit, "createdAt", "desc");
   }
 
-  // ------------------ UPDATE ------------------
   async updateStudent(id: string, data: unknown, tenantId: string): Promise<Student> {
     let validated: UpdateStudentInput;
     try {
@@ -76,7 +71,6 @@ export class StudentService {
     return updated as Student;
   }
 
-  // ------------------ DELETE ------------------
   async deleteStudent(id: string, tenantId: string): Promise<void> {
     await this.repo.softDelete(id, tenantId);
   }
