@@ -1,4 +1,3 @@
-// services/dashboard.service.ts
 import { StudentService } from "./student.service";
 import { StudentRepository } from "@/repositories/student.repository";
 import { StaffService } from "./staff.service";
@@ -22,7 +21,6 @@ export class DashboardService {
   }
 
   async getDashboardData(tenantId: string) {
-    // متوازی طور پر ڈیٹا حاصل کریں
     const [
       studentsCount,
       staffCount,
@@ -37,11 +35,10 @@ export class DashboardService {
       this.feesService.getTotalRevenue(tenantId),
       this.attendanceService.getTodayAttendance(tenantId),
       this.attendanceService.getWeeklyAttendanceTrend(tenantId),
-      this.studentService.listStudents(tenantId, 1, 9999), // تمام طلبہ (بڑا حد)
+      this.studentService.listStudents(tenantId, 1, 9999),
       this.feesService.getRecentPayments(tenantId, 5),
     ]);
 
-    // کلاس کی تقسیم
     const classMap: Record<string, number> = {};
     allStudents.data.forEach((student: any) => {
       const cls = student.classGrade || 'Unknown';
@@ -55,9 +52,9 @@ export class DashboardService {
       revenue: totalRevenue,
       todayAttendance,
       attendanceTrend,
-      attendanceStats: { avg: 85, highest: 98, lowest: 62 }, // عارضی اعداد
-      feeMonth: { collected: totalRevenue, pending: 0, total: totalRevenue }, // بہتر کیا جا سکتا ہے
-      classFeeSummary: [], // فی الحال خالی، اگر ضرورت ہو تو FeesService سے کلاس وار نکالا جا سکتا ہے
+      attendanceStats: { avg: 85, highest: 98, lowest: 62 },
+      feeMonth: { collected: totalRevenue, pending: 0, total: totalRevenue },
+      classFeeSummary: [],
       recentPayments,
       classDistribution,
     };
