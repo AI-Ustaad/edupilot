@@ -1,4 +1,4 @@
-import { withAuth, withTenant, withErrorHandler, withRole } from "@/route-helpers";
+import { withAuth, withTenant, withErrorHandler } from "@/route-helpers";
 import { createApiResponse } from "@/lib/response/apiResponse";
 import { ParentsService } from "@/services/parents.service";
 import { ParentsRepository } from "@/repositories/parents.repository";
@@ -6,11 +6,13 @@ import { StudentRepository } from "@/repositories/student.repository";
 import { FeesService } from "@/services/fees.service";
 import { FeesRepository } from "@/repositories/fees.repository";
 import type { TenantContext } from "@/types/api";
+import { withPermission } from '@/lib/auth/rbac';
+import { PERMISSIONS } from '@/lib/auth/permissions';
 
 export const GET = withErrorHandler(
   withAuth(
     withTenant(
-      withRole(["parent"])(async (req: Request, { tenantId, user }: TenantContext) => {
+      withPermission(PERMISSIONS.parents.view)(async (req: Request, { tenantId, user }: TenantContext) => {
         const url = new URL(req.url);
         const studentId = url.searchParams.get('studentId');
 
