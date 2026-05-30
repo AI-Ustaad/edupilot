@@ -1,3 +1,4 @@
+// lib/auth/rbac.ts
 import { NextResponse } from 'next/server';
 import { Permission, ROLE_PERMISSIONS } from './permissions';
 
