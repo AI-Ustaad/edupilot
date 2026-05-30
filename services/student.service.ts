@@ -5,7 +5,7 @@ import {
   updateStudentSchema,
   CreateStudentInput,
   UpdateStudentInput,
-} from "@/lib/validation";   // barrel file سے import
+} from "@/lib/validation";   // barrel file سے import – یہاں چھوٹے حروف میں نام
 import { ZodError } from "zod";
 
 type CreateStudentDto = Omit<
@@ -16,6 +16,7 @@ type CreateStudentDto = Omit<
 export class StudentService {
   constructor(private repo: StudentRepository) {}
 
+  // ------------------ CREATE ------------------
   async createStudent(data: unknown, tenantId: string): Promise<Student> {
     let validated: CreateStudentInput;
     try {
@@ -40,6 +41,7 @@ export class StudentService {
     return student as Student;
   }
 
+  // ------------------ READ ------------------
   async getStudentById(id: string, tenantId: string): Promise<Student | null> {
     return this.repo.findById(id, tenantId);
   }
@@ -52,6 +54,7 @@ export class StudentService {
     return this.repo.paginate(tenantId, page, limit, "createdAt", "desc");
   }
 
+  // ------------------ UPDATE ------------------
   async updateStudent(id: string, data: unknown, tenantId: string): Promise<Student> {
     let validated: UpdateStudentInput;
     try {
@@ -71,6 +74,7 @@ export class StudentService {
     return updated as Student;
   }
 
+  // ------------------ DELETE ------------------
   async deleteStudent(id: string, tenantId: string): Promise<void> {
     await this.repo.softDelete(id, tenantId);
   }
