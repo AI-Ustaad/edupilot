@@ -1,4 +1,3 @@
-// app/api/parents/fees/route.ts
 import { withAuth, withTenant, withErrorHandler, withRole } from "@/route-helpers";
 import { createApiResponse } from "@/lib/response/apiResponse";
 import { ParentsService } from "@/services/parents.service";
@@ -17,9 +16,7 @@ export const GET = withErrorHandler(
 
         const parentService = new ParentsService(new ParentsRepository(), new StudentRepository());
         const childIds = await parentService.getChildIds(user.uid, tenantId);
-        if (childIds.length === 0) {
-          return createApiResponse(200, []);
-        }
+        if (childIds.length === 0) return createApiResponse(200, []);
 
         const feesService = new FeesService(new FeesRepository());
         let allFees: any[] = [];
@@ -27,11 +24,9 @@ export const GET = withErrorHandler(
           const result = await feesService.listFees(tenantId, id);
           allFees = allFees.concat(result.data);
         }
-
         if (studentId) {
           allFees = allFees.filter(f => f.studentId === studentId);
         }
-
         return createApiResponse(200, allFees);
       })
     )
