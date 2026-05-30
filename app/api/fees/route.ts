@@ -1,65 +1,34 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { getFirestore } from 'firebase-admin/firestore';
-import { initAdmin } from '@/lib/firebase-admin';
-import { getTenantIdFromRequest } from '@/lib/tenant-utils';
+// app/api/fees/route.ts
+import { withAuth, withTenant, withErrorHandler, withRole } from "@/route-helpers";
+import { createApiResponse } from "@/lib/response/apiResponse";
+import { FeesService } from "@/services/fees.service";
+import { FeesRepository } from "@/repositories/fees.repository";
+import type { TenantContext } from "@/types/api";
 
-initAdmin();
-const db = getFirestore();
+export const GET = withErrorHandler(
+  withAuth(
+    withTenant(async (req: Request, { tenantId }: TenantContext) => {
+      const url = new URL(req.url);
+      const studentId = url.searchParams.get('studentId') || undefined;
+      const page = parseInt(url.searchParams.get('page') || '1');
+      const limit = parseInt(url.searchParams.get('limit') || '20');
 
-export async function GET(req: NextRequest) {
-  try {
-    const tenantId = await getTenantIdFromRequest(req);
-    if (!tenantId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+      const service = new FeesService(new FeesRepository());
+      const result = await service.listFees(tenantId, studentId, page, limit);
+      return createApiResponse(200, result);
+    })
+  )
+);
 
-    const { searchParams } = new URL(req.url);
-    const studentId = searchParams.get('studentId');
-
-    let query = db.collection('fees').where('tenantId', '==', tenantId);
-    if (studentId) query = query.where('studentId', '==', studentId);
-
-    const snapshot = await query.get();
-    const fees = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    return NextResponse.json(fees);
-  } catch (error) {
-    console.error('Fees GET error:', error);
-    return NextResponse.json({ error: 'Failed to fetch fees' }, { status: 500 });
-  }
-}
-
-export async function POST(req: NextRequest) {
-  try {
-    const tenantId = await getTenantIdFromRequest(req);
-    if (!tenantId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const body = await req.json();
-    const { studentId, studentName, rollNumber, classGrade, feeMonth, amountPaid, paymentMethod, remarks } = body;
-
-    if (!studentId || !amountPaid) {
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
-    }
-
-    const newFee = {
-      studentId,
-      studentName: studentName || '',
-      rollNumber: rollNumber || '',
-      classGrade: classGrade || '',
-      feeMonth: feeMonth || new Date().toLocaleString('default', { month: 'long', year: 'numeric' }),
-      amountPaid: Number(amountPaid),
-      paymentMethod: paymentMethod || 'Cash',
-      remarks: remarks || '',
-      tenantId,
-      timestamp: new Date().toISOString(),
-      createdAt: new Date()
-    };
-
-    const docRef = await db.collection('fees').add(newFee);
-    return NextResponse.json({ success: true, id: docRef.id });
-  } catch (error) {
-    console.error('Fees POST error:', error);
-    return NextResponse.json({ error: 'Failed to save fee' }, { status: 500 });
-  }
-}
+export const POST = withErrorHandler(
+  withAuth(
+    withTenant(
+      withRole(["admin", "accountant"])(async (req: Request, { tenantId }: TenantContext) => {
+        const body = await req.json();
+        const service = new FeesService(new FeesRepository());
+        const fee = await service.createFee(body, tenantId);
+        return createApiResponse(201, fee, "Fee record created successfully");
+      })
+    )
+  )
+);
