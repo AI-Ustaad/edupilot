@@ -1,54 +1,72 @@
 // lib/auth/permissions.ts
-export type Role = "admin" | "teacher" | "accountant" | "parent";
 
-export type Permission =
-  | "student.create"
-  | "student.view"
-  | "student.delete"
-  | "staff.view"
-  | "staff.manage"
-  | "staff.read"
-  | "staff.write"
-  | "attendance.mark"
-  | "attendance.read"
-  | "attendance.write"
-  | "fees.view"
-  | "fees.read"
-  | "fees.write"
-  | "fees.create"
-  | "fees.manage"
-  | "dashboard.view"
-  | "analytics.view"
-  | "parent.view"
-  | "parent.manage";
+export const PERMISSIONS = {
+  students: {
+    view: 'students.view',
+    create: 'students.create',
+    update: 'students.update',
+    delete: 'students.delete',
+  },
+  staff: {
+    view: 'staff.view',
+    create: 'staff.create',
+    update: 'staff.update',
+    delete: 'staff.delete',
+  },
+  fees: {
+    view: 'fees.view',
+    create: 'fees.create',
+    update: 'fees.update',
+    delete: 'fees.delete',
+  },
+  attendance: {
+    view: 'attendance.view',
+    create: 'attendance.create',
+    update: 'attendance.update',
+    delete: 'attendance.delete',
+  },
+  parents: {
+    view: 'parents.view',
+    manage: 'parents.manage',
+  },
+  dashboard: {
+    view: 'dashboard.view',
+  },
+  settings: {
+    view: 'settings.view',
+    manage: 'settings.manage',
+  },
+  billing: {
+    view: 'billing.view',
+    manage: 'billing.manage',
+  },
+  audit: {
+    view: 'audit.view',
+  },
+} as const;
 
-const rolePermissions: Record<Role, Permission[]> = {
+export type Permission = typeof PERMISSIONS[keyof typeof PERMISSIONS][keyof typeof PERMISSIONS[keyof typeof PERMISSIONS]];
+
+// Default role → permissions mapping (can be overridden per tenant later)
+export const ROLE_PERMISSIONS: Record<string, Permission[]> = {
   admin: [
-    "student.create", "student.view", "student.delete",
-    "staff.view", "staff.manage", "staff.read", "staff.write",
-    "attendance.mark", "attendance.read", "attendance.write",
-    "fees.view", "fees.read", "fees.write", "fees.create", "fees.manage",
-    "dashboard.view", "analytics.view",
-    "parent.view", "parent.manage",
+    ...Object.values(PERMISSIONS).flatMap(module => Object.values(module)),
   ],
   teacher: [
-    "student.view",
-    "attendance.mark", "attendance.read", "attendance.write",
-    "dashboard.view",
+    PERMISSIONS.students.view,
+    PERMISSIONS.attendance.view,
+    PERMISSIONS.attendance.create,
+    PERMISSIONS.dashboard.view,
   ],
   accountant: [
-    "fees.view", "fees.read", "fees.write", "fees.create",
-    "dashboard.view", "analytics.view",
+    PERMISSIONS.fees.view,
+    PERMISSIONS.fees.create,
+    PERMISSIONS.fees.update,
+    PERMISSIONS.billing.view,
   ],
   parent: [
-    "student.view",
-    "attendance.read",
-    "fees.view",
-    "dashboard.view",
+    PERMISSIONS.parents.view,
+    PERMISSIONS.parents.manage,
+    // children-specific restrictions handled in service
   ],
 };
-
-export function hasPermission(role: Role, permission: Permission): boolean {
-  if (!role) return false;
-  return rolePermissions[role]?.includes(permission) ?? false;
-}
