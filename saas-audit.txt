@@ -1,0 +1,975 @@
+================ AUTH CONTEXT ================
+"use client";
+import { createContext, useContext, useEffect, useState } from "react";
+
+type UserType = {
+  uid: string;
+  email: string;
+  role: string;
+  tenantId: string;
+  onboardingRequired?: boolean;
+};
+
+const AuthContext = createContext<{ user: UserType | null; loading: boolean }>({ user: null, loading: true });
+
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const [user, setUser] = useState<UserType | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadUser() {
+      try {
+        const res = await fetch("/api/auth/me");
+        if (!res.ok) throw new Error();
+        const userData = await res.json();
+        setUser(userData);
+      } catch {
+        setUser(null);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadUser();
+  }, []);
+
+  return (
+    <AuthContext.Provider value={{ user, loading }}>
+      {children}
+    </AuthContext.Provider>
+  );
+}
+
+export const useAuth = () => useContext(AuthContext);
+
+
+================ SIDEBAR LAYOUT ================
+"use client";
+
+import { useState } from "react";
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
+import { signOut } from "firebase/auth";
+import { auth } from "@/lib/firebase";
+import {
+  LayoutDashboard, Users, BookOpen, UserCircle, ClipboardCheck,
+  Wallet, Clock, Settings, Menu, X, ShieldCheck, LogOut,
+  GraduationCap, DollarSign, Calendar, FileText, Heart,
+  ChevronDown, ChevronRight, CreditCard, Sparkles, Bus, CalendarDays, Bot,
+  TrendingUp, Film, Send, Star, PlusCircle,
+} from "lucide-react";
+import MobileBottomNav from "./MobileBottomNav";
+import { useTranslations } from "next-intl";
+import LanguageSwitcher from "@/components/LanguageSwitcher";
+import { useAuth } from "@/context/AuthContext";  // ← شامل کریں
+
+export default function SidebarLayout({ children }: { children: React.ReactNode }) {
+  const t = useTranslations("Sidebar");
+  const pathname = usePathname();
+  const router = useRouter();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  
+  // 🔥 براہ راست AuthContext سے role حاصل کریں
+  const { user } = useAuth();
+  const role = user?.role || "teacher";   // default "teacher" اگر user null ہو
+
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
+    academic: true,
+    finance: true,
+    adminTools: true,
+    operations: true,
+    staff: true,
+    aiTools: true,
+  });
+
+  const toggleGroup = (key: string) => {
+    setOpenGroups((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  const menuGroups = [
+    {
+      title: t("commandCenter"),
+      icon: LayoutDashboard,
+      items: [
+        {
+          name: t("commandCenter"),
+          icon: LayoutDashboard,
+          path: "/dashboard",
+          allowed: ["admin", "teacher", "accountant"],
+        },
+      ],
+      allowed: ["admin", "teacher", "accountant"],
+      key: null,
+    },
+    {
+      title: t("academic"),
+      icon: BookOpen,
+      items: [
+        { name: t("students"), icon: Users, path: "/students", allowed: ["admin", "teacher"] },
+        { name: t("classes"), icon: GraduationCap, path: "/classes", allowed: ["admin"] },
+        { name: t("syllabus"), icon: FileText, path: "/admin/syllabus", allowed: ["admin"] },
+        { name: t("academicYear"), icon: Calendar, path: "/admin/academic-year", allowed: ["admin"] },
+        { name: t("videoLibrary"), icon: Film, path: "/video-lectures", allowed: ["admin", "teacher", "parent"] },
+      ],
+      allowed: ["admin", "teacher", "parent"],
+      key: "academic",
+    },
+    {
+      title: t("finance"),
+      icon: DollarSign,
+      items: [
+        { name: t("fees"), icon: Wallet, path: "/fees", allowed: ["admin", "accountant"] },
+        { name: t("ledger"), icon: ClipboardCheck, path: "/ledger", allowed: ["admin", "accountant"] },
+      ],
+      allowed: ["admin", "accountant"],
+      key: "finance",
+    },
+    {
+      title: t("operations"),
+      icon: Clock,
+      items: [
+        { name: t("attendance"), icon: ClipboardCheck, path: "/attendance", allowed: ["admin", "teacher"] },
+        { name: t("timetable"), icon: Clock, path: "/timetable", allowed: ["admin", "teacher"] },
+        { name: t("aiTimetable"), icon: Sparkles, path: "/ai-timetable", allowed: ["admin", "teacher"] },
+        { name: t("buses"), icon: Bus, path: "/admin/buses", allowed: ["admin"] },
+      ],
+      allowed: ["admin", "teacher"],
+      key: "operations",
+    },
+    {
+      title: t("staff"),
+      icon: UserCircle,
+      items: [
+        { name: t("staffManagement"), icon: UserCircle, path: "/staff", allowed: ["admin"] },
+        { name: t("parents"), icon: Heart, path: "/admin/parents", allowed: ["admin"] },
+        { name: t("leaveRequests"), icon: CalendarDays, path: "/leave-requests", allowed: ["admin"] },
+        { name: t("postHomework"), icon: FileText, path: "/teacher/homework", allowed: ["admin", "teacher"] },
+        { name: t("assignments"), icon: FileText, path: "/teacher/assignments", allowed: ["admin", "teacher"] },
+        { name: t("quizzes"), icon: FileText, path: "/teacher/quizzes", allowed: ["admin", "teacher"] },
+        { name: t("lessonPlans"), icon: Calendar, path: "/teacher/lesson-plans", allowed: ["admin", "teacher"] },
+        { name: t("bookCenter"), icon: BookOpen, path: "/teacher/book-center", allowed: ["admin", "teacher"] },
+        { name: t("manageBooks"), icon: FileText, path: "/teacher/manage-books", allowed: ["admin", "teacher"] },
+        { name: t("examCenter"), icon: FileText, path: "/teacher/exam-center", allowed: ["admin", "teacher"] },
+        { name: t("videoLectures"), icon: Film, path: "/teacher/video-lectures", allowed: ["admin", "teacher"] },
+        { name: t("chat"), icon: Send, path: "/teacher/chat", allowed: ["admin", "teacher"] },
+        { name: t("admissions"), icon: FileText, path: "/admin/admissions", allowed: ["admin"] },
+        { name: t("addSkills"), icon: Star, path: "/teacher/skills", allowed: ["admin", "teacher"] },
+        { name: t("behaviorPoints"), icon: PlusCircle, path: "/teacher/behavior", allowed: ["admin", "teacher"] },
+      ],
+      allowed: ["admin"],
+      key: "staff",
+    },
+    {
+      title: t("adminTools"),
+      icon: Settings,
+      items: [
+        { name: t("settings"), icon: Settings, path: "/settings", allowed: ["admin"] },
+        { name: t("users"), icon: ShieldCheck, path: "/admin/users", allowed: ["admin"] },
+        { name: t("auditLogs"), icon: FileText, path: "/admin/audit", allowed: ["admin"] },
+        { name: t("billing"), icon: CreditCard, path: "/settings/billing", allowed: ["admin"] },
+      ],
+      allowed: ["admin"],
+      key: "adminTools",
+    },
+    {
+      title: t("aiTools"),
+      icon: Sparkles,
+      items: [
+        { name: t("aiAssistant"), icon: Bot, path: "/ai-chatbot", allowed: ["admin", "teacher"] },
+        { name: t("aiTimetable"), icon: Sparkles, path: "/ai-timetable", allowed: ["admin", "teacher"] },
+        { name: t("examQuestions"), icon: FileText, path: "/ai-exam-questions", allowed: ["admin", "teacher"] },
+      ],
+      allowed: ["admin", "teacher"],
+      key: "aiTools",
+    },
+  ];
+
+  const visibleGroups = menuGroups.filter((g) => g.allowed.includes(role));
+
+  const handleLogout = async () => {
+    await signOut(auth);
+    await fetch("/api/auth/logout", { method: "POST" });
+    window.location.href = "/";
+  };
+
+  return (
+    <div className="flex h-screen bg-white">
+      {/* Mobile Menu Button */}
+      <button
+        className="md:hidden fixed top-4 right-4 z-50 p-2 bg-white rounded-lg shadow"
+        onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+      >
+        {isMobileMenuOpen ? <X size={24} className="text-gray-700" /> : <Menu size={24} className="text-gray-700" />}
+      </button>
+
+      {/* Sidebar */}
+      <div
+        className={`fixed inset-y-0 left-0 z-40 w-72 flex flex-col transform transition-transform md:relative md:translate-x-0 ${
+          isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"
+        } bg-white border-r border-gray-200`}
+      >
+        {/* Logo */}
+        <div
+          className="h-20 px-6 border-b border-gray-200 flex items-center gap-2 cursor-pointer shrink-0"
+          onClick={() => router.push("/dashboard")}
+        >
+          <ShieldCheck className="text-blue-600 w-8 h-8" />
+          <span className="text-xl font-black text-gray-900">EduPilot</span>
+        </div>
+
+        {/* Language Switcher */}
+        <div className="px-4 py-3 border-b border-gray-100 shrink-0">
+          <LanguageSwitcher />
+        </div>
+
+        {/* Navigation */}
+        <div className="flex-1 overflow-y-auto py-2 px-4 custom-scrollbar">
+          {visibleGroups.map((group) => (
+            <div key={group.title} className="mb-2">
+              <div
+                className="flex items-center justify-between px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-100 cursor-pointer transition-colors"
+                onClick={() => group.key && toggleGroup(group.key)}
+              >
+                <div className="flex items-center gap-2">
+                  <group.icon size={18} className="text-blue-600" />
+                  <span className="text-sm font-semibold">{group.title}</span>
+                </div>
+                {group.key && (openGroups[group.key] ? <ChevronDown size={16} /> : <ChevronRight size={16} />)}
+              </div>
+
+              {(!group.key || openGroups[group.key]) && (
+                <div className="ml-6 mt-1 space-y-1">
+                  {group.items
+                    .filter((i) => i.allowed.includes(role))
+                    .map((item) => {
+                      const isActive = pathname === item.path || pathname.startsWith(item.path + "/");
+                      return (
+                        <Link
+                          key={item.name}
+                          href={item.path}
+                          onClick={() => setIsMobileMenuOpen(false)}
+                          className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all ${
+                            isActive
+                              ? "bg-blue-600 text-white shadow-sm"
+                              : "text-gray-600 hover:bg-gray-100"
+                          }`}
+                        >
+                          <item.icon size={18} />
+                          <span>{item.name}</span>
+                        </Link>
+                      );
+                    })}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+
+        {/* Logout */}
+        <div className="p-4 border-t border-gray-200 shrink-0">
+          <button
+            onClick={handleLogout}
+            className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-red-600 hover:bg-red-50 transition-colors"
+          >
+            <LogOut size={18} />
+            <span className="text-sm font-medium">Secure Logout</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className="flex-1 overflow-y-auto bg-slate-50">
+        <div className="p-4 md:p-8 max-w-[1600px] mx-auto">{children}</div>
+        <MobileBottomNav />
+      </div>
+
+      {/* Mobile Overlay */}
+      {isMobileMenuOpen && (
+        <div className="fixed inset-0 bg-black/50 z-30 md:hidden" onClick={() => setIsMobileMenuOpen(false)} />
+      )}
+    </div>
+  );
+}
+
+
+================ AUTH ME API ================
+import { NextResponse } from "next/server";
+import { getSessionUser } from "@/lib/auth/auth-server";
+
+export async function GET() {
+  const user = await getSessionUser();
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  return NextResponse.json(user);
+}
+
+
+================ DASHBOARD PAGE ================
+"use client";
+
+import React, { useEffect, useState } from "react";
+import { motion } from "framer-motion";
+import { useAuth } from "@/context/AuthContext";
+import {
+  Users, Briefcase, DollarSign, Activity, CalendarDays,
+  CreditCard, Clock, AlertTriangle,
+} from "lucide-react";
+import {
+  LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer,
+  PieChart, Pie, Cell,
+} from "recharts";
+import { useTranslations } from "next-intl";
+
+const fadeInUp = {
+  hidden: { opacity: 0, y: 40 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: "easeOut" } }
+};
+
+const staggerContainer = {
+  hidden: { opacity: 0 },
+  visible: { opacity: 1, transition: { staggerChildren: 0.1, delayChildren: 0.2 } }
+};
+
+const cardHover = {
+  rest: { scale: 1, y: 0 },
+  hover: { scale: 1.02, y: -6 }
+};
+
+const CHART_COLORS = ["#FF7D8F", "#64D8FF", "#FF9A9E", "#7EE6A2", "#FFC78B", "#A0E7FF"];
+
+interface DashboardData {
+  students: number;
+  staff: number;
+  revenue: number;
+  todayAttendance: { present: number; absent: number };
+  attendanceTrend: { day: string; percent: number }[];
+  attendanceStats: { avg: number; highest: number; lowest: number };
+  feeMonth: { collected: number; pending: number; total: number };
+  classFeeSummary: { class: string; collected: number; total: number }[];
+  recentPayments: { id: string; studentName: string; amount: number; date: string; timestamp: string }[];
+  classDistribution: { name: string; value: number }[];
+}
+
+export default function DashboardPage() {
+  const t = useTranslations("Dashboard");
+  const { user, loading: authLoading } = useAuth();  // ← authLoading لیا
+  const [data, setData] = useState<DashboardData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [riskStudents, setRiskStudents] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (authLoading) return;             // اگر auth loading جاری ہے تو کچھ نہ کریں
+
+    if (!user?.tenantId) {
+      setLoading(false);                 // user نہ ہونے کی صورت میں بھی spinner بند کریں
+      return;
+    }
+
+    (async () => {
+      try {
+        const res = await fetch("/api/dashboard");
+        const json = await res.json();
+        if (json.success) {
+          setData(json.data);
+        } else {
+          console.error("Dashboard API error:", json.message);
+        }
+      } catch (err) {
+        console.error("Dashboard fetch error:", err);
+      } finally {
+        setLoading(false);
+      }
+    })();
+
+    fetch("/api/students/risk")
+      .then((res) => res.json())
+      .then((json) => {
+        if (json.success) setRiskStudents(json.data || []);
+      })
+      .catch(console.error);
+
+  }, [user, authLoading]);   // dependencies میں authLoading شامل
+
+  if (loading) {
+    return (
+      <div className="flex h-96 items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-blue-600" />
+      </div>
+    );
+  }
+
+  if (!data) return null;
+
+  const attendancePercent =
+    data.todayAttendance.present + data.todayAttendance.absent > 0
+      ? ((data.todayAttendance.present / (data.todayAttendance.present + data.todayAttendance.absent)) * 100).toFixed(0)
+      : "0";
+
+  return (
+    <motion.div
+      initial="hidden"
+      animate="visible"
+      variants={staggerContainer}
+      className="space-y-8"
+    >
+      {/* Header */}
+      <motion.div variants={fadeInUp}>
+        <h1 className="text-3xl font-black text-gray-900">{t("title")}</h1>
+        <p className="text-gray-500 mt-1">{t("subtitle")}</p>
+      </motion.div>
+
+      {/* KPI Cards */}
+      <motion.div
+        variants={staggerContainer}
+        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6"
+      >
+        <KpiCard title={t("totalStudents")} value={data.students} icon={<Users size={28} className="text-blue-600" />} />
+        <KpiCard title={t("totalStaff")} value={data.staff} icon={<Briefcase size={28} className="text-purple-600" />} />
+        <KpiCard title={t("revenue")} value={data.revenue.toLocaleString()} icon={<DollarSign size={28} className="text-green-600" />} />
+        <KpiCard
+          title={t("todayAttendance")}
+          value={`${data.todayAttendance.present} / ${data.todayAttendance.present + data.todayAttendance.absent}`}
+          subtitle={`${attendancePercent}% present`}
+          icon={<Activity size={28} className="text-cyan-600" />}
+        />
+      </motion.div>
+
+      {/* At Risk Students Section */}
+      {riskStudents.length > 0 && (
+        <motion.div
+          variants={fadeInUp}
+          className="bg-red-50 border border-red-200 rounded-2xl p-6"
+        >
+          <h2 className="text-lg font-bold text-red-800 mb-4 flex items-center gap-2">
+            <AlertTriangle className="text-red-600" /> {t("atRisk")} ({riskStudents.length})
+          </h2>
+          <div className="space-y-3">
+            {riskStudents.map((student: any) => (
+              <div
+                key={student.id}
+                className="flex justify-between items-center bg-white border border-red-100 rounded-xl p-4"
+              >
+                <div>
+                  <p className="font-semibold text-gray-900">{student.fullName || student.name}</p>
+                  <p className="text-sm text-gray-500">
+                    {student.classGrade} {student.section || ""}
+                  </p>
+                </div>
+                <div className="flex gap-4 text-sm items-center">
+                  <span className="text-red-600 font-bold">Att: {student.attendance}%</span>
+                  <span className="text-orange-600 font-bold">Marks: {student.marks}%</span>
+                  <span className="text-xs bg-red-100 text-red-800 px-2 py-1 rounded-full">
+                    {student.riskReason}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </motion.div>
+      )}
+
+      {/* Charts Row 1 */}
+      <div className="grid lg:grid-cols-2 gap-6">
+        <motion.div variants={fadeInUp} className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
+          <h3 className="text-lg font-semibold flex items-center gap-2 mb-4 text-gray-900">
+            <CalendarDays size={20} className="text-blue-600" /> {t("weeklyAttendance")}
+          </h3>
+          <ResponsiveContainer width="100%" height={280}>
+            <LineChart data={data.attendanceTrend}>
+              <XAxis dataKey="day" stroke="#9ca3af" />
+              <YAxis domain={[0, 100]} stroke="#9ca3af" />
+              <Tooltip contentStyle={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: "8px", color: "#000" }} />
+              <Line type="monotone" dataKey="percent" stroke="#3b82f6" strokeWidth={3} dot={{ r: 4, fill: "#3b82f6" }} />
+            </LineChart>
+          </ResponsiveContainer>
+          <div className="grid grid-cols-3 gap-4 mt-4 text-center">
+            <div><p className="text-gray-500 text-sm">Average</p><p className="text-xl font-bold text-gray-900">{data.attendanceStats.avg}%</p></div>
+            <div><p className="text-gray-500 text-sm">Highest</p><p className="text-xl font-bold text-green-600">{data.attendanceStats.highest}%</p></div>
+            <div><p className="text-gray-500 text-sm">Lowest</p><p className="text-xl font-bold text-red-500">{data.attendanceStats.lowest}%</p></div>
+          </div>
+        </motion.div>
+
+        <motion.div variants={fadeInUp} className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
+          <h3 className="text-lg font-semibold mb-4 flex items-center gap-2 text-gray-900">
+            <CreditCard size={20} className="text-green-600" /> {t("feeCollection")} (Current Month)
+          </h3>
+          <div className="mb-4">
+            <div className="flex justify-between text-sm mb-1">
+              <span className="text-gray-600">Collected: Rs {data.feeMonth.collected.toLocaleString()}</span>
+              <span className="text-gray-500">Pending: Rs {data.feeMonth.pending.toLocaleString()}</span>
+            </div>
+            <div className="w-full bg-gray-200 rounded-full h-2.5">
+              <div className="bg-green-500 h-2.5 rounded-full" style={{ width: `${(data.feeMonth.collected / (data.feeMonth.total || 1)) * 100}%` }} />
+            </div>
+          </div>
+          <h4 className="font-semibold mb-2 text-gray-900">Class‑wise collection</h4>
+          <div className="space-y-2">
+            {data.classFeeSummary.map((c, idx) => (
+              <div key={c.class}>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-700">{c.class}</span>
+                  <span className="text-gray-500">Rs {c.collected.toLocaleString()}</span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-1.5">
+                  <div className="bg-blue-500 h-1.5 rounded-full" style={{ width: `${(c.collected / (c.total || 1)) * 100}%` }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </motion.div>
+      </div>
+
+      {/* Charts Row 2 */}
+      <div className="grid lg:grid-cols-2 gap-6">
+        <motion.div variants={fadeInUp} className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
+          <h3 className="text-lg font-semibold mb-4 flex items-center gap-2 text-gray-900">
+            <Users size={20} className="text-purple-600" /> {t("studentDistribution")}
+          </h3>
+          {data.classDistribution.length === 0 ? (
+            <div className="h-64 flex items-center justify-center text-gray-400">{t("noData")}</div>
+          ) : (
+            <div className="flex flex-col md:flex-row items-center gap-8">
+              <ResponsiveContainer width="100%" height={250}>
+                <PieChart>
+                  <Pie data={data.classDistribution} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80}>
+                    {data.classDistribution.map((_, idx) => (
+                      <Cell key={idx} fill={CHART_COLORS[idx % CHART_COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="flex flex-col gap-2">
+                {data.classDistribution.map((item, idx) => (
+                  <div key={idx} className="flex items-center gap-2">
+                    <div className="w-4 h-4 rounded-full" style={{ backgroundColor: CHART_COLORS[idx % CHART_COLORS.length] }} />
+                    <span className="text-sm text-gray-700">{item.name}: {item.value}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </motion.div>
+
+        <motion.div variants={fadeInUp} className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
+          <h3 className="text-lg font-semibold mb-4 flex items-center gap-2 text-gray-900">
+            <Clock size={20} className="text-orange-500" /> {t("recentPayments")}
+          </h3>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="text-gray-500 border-b border-gray-200">
+                <tr>
+                  <th className="p-3 text-left">Student</th>
+                  <th>Month</th>
+                  <th>Amount</th>
+                  <th>Date</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.recentPayments.map((p) => (
+                  <tr key={p.id} className="border-b border-gray-100">
+                    <td className="p-3 text-gray-900 font-medium">{p.studentName}</td>
+                    <td className="p-3 text-gray-600">{p.date}</td>
+                    <td className="p-3 text-green-600 font-bold">Rs {p.amount.toLocaleString()}</td>
+                    <td className="p-3 text-gray-500">{new Date(p.timestamp).toLocaleDateString()}</td>
+                  </tr>
+                ))}
+                {data.recentPayments.length === 0 && (
+                  <tr>
+                    <td colSpan={4} className="p-6 text-center text-gray-400">{t("noData")}</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </motion.div>
+      </div>
+    </motion.div>
+  );
+}
+
+// KPI Card component
+function KpiCard({
+  title,
+  value,
+  icon,
+  subtitle,
+}: {
+  title: string;
+  value: string | number;
+  icon: React.ReactNode;
+  subtitle?: string;
+}) {
+  return (
+    <motion.div variants={fadeInUp} whileHover="hover" initial="rest" animate="rest" custom={cardHover}>
+      <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow">
+        <div className="flex justify-between items-start">
+          <div>
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{title}</p>
+            <p className="text-2xl font-bold mt-1 text-gray-900">{value}</p>
+            {subtitle && <p className="text-sm text-gray-500 mt-1">{subtitle}</p>}
+          </div>
+          <div className="p-2 rounded-lg bg-gray-100">{icon}</div>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+
+================ DASHBOARD API ================
+FILE: app/api/parents/dashboard/route.ts
+import { withAuth, withTenant, withErrorHandler } from "@/route-helpers";
+import { createApiResponse } from "@/lib/response/apiResponse";
+import { ParentsService } from "@/services/parents.service";
+import { ParentsRepository } from "@/repositories/parents.repository";
+import { StudentRepository } from "@/repositories/student.repository";
+import { AttendanceService } from "@/services/attendance.service";
+import { AttendanceRepository } from "@/repositories/attendance.repository";
+import { FeesService } from "@/services/fees.service";
+import { FeesRepository } from "@/repositories/fees.repository";
+import type { TenantContext } from "@/types/api";
+import { withPermission } from '@/lib/auth/rbac';
+import { PERMISSIONS } from '@/lib/auth/permissions';
+
+export const GET = withErrorHandler(
+  withAuth(
+    withTenant(
+      withPermission(PERMISSIONS.parents.view)(async (req: Request, { tenantId, user }: TenantContext) => {
+        const parentService = new ParentsService(new ParentsRepository(), new StudentRepository());
+        const children = await parentService.getChildren(user.uid, tenantId);
+        const childIds = children.map(c => c.id);
+
+        const today = new Date().toISOString().slice(0, 10);
+
+        const attendanceService = new AttendanceService(new AttendanceRepository());
+        const attendancePromises = childIds.map(id =>
+          attendanceService.listAttendance(tenantId, { date: today }).then(recs =>
+            recs.filter(r => (r as any).studentId === id)
+          )
+        );
+        const attendanceResults = await Promise.all(attendancePromises);
+
+        const feesService = new FeesService(new FeesRepository());
+        const feesPromises = childIds.map(id =>
+          feesService.listFees(tenantId, id, 1, 1)
+        );
+        const feesResults = await Promise.all(feesPromises);
+
+        const dashboardData = children.map((child, index) => ({
+          student: child,
+          todayAttendance: attendanceResults[index]?.[0]?.status || 'N/A',
+          recentFee: feesResults[index]?.data?.[0] || null,
+        }));
+
+        return createApiResponse(200, dashboardData);
+      })
+    )
+  )
+);
+FILE: app/api/dashboard/route.ts
+import { withAuth, withTenant, withErrorHandler } from "@/route-helpers";
+import { createApiResponse } from "@/lib/response/apiResponse";
+import { DashboardService } from "@/services/dashboard.service";
+import type { TenantContext } from "@/types/api";
+import { withPermission } from '@/lib/auth/rbac';
+import { PERMISSIONS } from '@/lib/auth/permissions';
+
+export const GET = withErrorHandler(
+  withAuth(
+    withTenant(
+      withPermission(PERMISSIONS.dashboard.view)(async (_req: Request, { tenantId }: TenantContext) => {
+        const service = new DashboardService();
+        const data = await service.getDashboardData(tenantId);
+        return createApiResponse(200, { success: true, data });
+      })
+    )
+  )
+);
+
+
+================ PERMISSIONS ================
+export const PERMISSIONS = {
+  students: {
+    view: 'students.view',
+    create: 'students.create',
+    update: 'students.update',
+    delete: 'students.delete',
+  },
+  staff: {
+    view: 'staff.view',
+    create: 'staff.create',
+    update: 'staff.update',
+    delete: 'staff.delete',
+  },
+  fees: {
+    view: 'fees.view',
+    create: 'fees.create',
+    update: 'fees.update',
+    delete: 'fees.delete',
+  },
+  attendance: {
+    view: 'attendance.view',
+    create: 'attendance.create',
+    update: 'attendance.update',
+    delete: 'attendance.delete',
+  },
+  parents: {
+    view: 'parents.view',
+    manage: 'parents.manage',
+  },
+  dashboard: {
+    view: 'dashboard.view',
+  },
+  settings: {
+    view: 'settings.view',
+    manage: 'settings.manage',
+  },
+  billing: {
+    view: 'billing.view',
+    manage: 'billing.manage',
+  },
+  audit: {
+    view: 'audit.view',
+  },
+} as const;
+
+export type Permission = typeof PERMISSIONS[keyof typeof PERMISSIONS][keyof typeof PERMISSIONS[keyof typeof PERMISSIONS]];
+
+export const ROLE_PERMISSIONS: Record<string, Permission[]> = {
+  admin: [
+    ...Object.values(PERMISSIONS).flatMap(module => Object.values(module)),
+  ],
+  teacher: [
+    PERMISSIONS.students.view,
+    PERMISSIONS.attendance.view,
+    PERMISSIONS.attendance.create,
+    PERMISSIONS.dashboard.view,
+  ],
+  accountant: [
+    PERMISSIONS.fees.view,
+    PERMISSIONS.fees.create,
+    PERMISSIONS.fees.update,
+    PERMISSIONS.billing.view,
+  ],
+  parent: [
+    PERMISSIONS.parents.view,
+    PERMISSIONS.parents.manage,
+  ],
+};
+
+
+================ RBAC ================
+import { NextResponse } from 'next/server';
+import { Permission, ROLE_PERMISSIONS } from '@/lib/auth/permissions';
+
+export function withPermission(requiredPermission: Permission) {
+  return (handler: Function) => {
+    return async (req: Request, context: any) => {
+      const user = context.user;
+
+      if (!user) {
+        return NextResponse.json(
+          { error: 'Unauthorized' },
+          { status: 401 }
+        );
+      }
+
+      const allowedPermissions =
+        ROLE_PERMISSIONS[user.role] || [];
+
+      if (!allowedPermissions.includes(requiredPermission)) {
+        return NextResponse.json(
+          { error: 'Forbidden' },
+          { status: 403 }
+        );
+      }
+
+      return handler(req, context);
+    };
+  };
+}
+
+
+
+================ AUTH INDEX ================
+export * from "./auth-client";
+export * from "./auth-server";
+export * from "./permissions";
+export * from "./rbac";
+
+
+================ SUBSCRIPTION ================
+// lib/subscription.ts
+import { adminDb } from "@/lib/firebase-admin";
+
+export interface PlanLimits {
+  students: number;
+  staff: number;
+}
+
+const PLAN_LIMITS: Record<string, PlanLimits> = {
+  free: { students: 50, staff: 10 },
+  basic: { students: 200, staff: 50 },
+  pro: { students: 1000, staff: 200 },
+  enterprise: { students: 9999, staff: 9999 },
+};
+
+export async function getPlanLimits(tenantId: string): Promise<PlanLimits> {
+  const subDoc = await adminDb.collection("subscriptions").doc(tenantId).get();
+  const sub = subDoc.data();
+  const planId = sub?.planId || "free";
+  return PLAN_LIMITS[planId] || PLAN_LIMITS.free;
+}
+
+export async function isSubscriptionValid(tenantId: string): Promise<{ valid: boolean; message?: string }> {
+  // ڈیمو اسکولز کے لیے خصوصی استثنا
+  const demoTenants = (process.env.DEMO_TENANTS || "").split(",");
+  if (demoTenants.includes(tenantId)) {
+    return { valid: true };
+  }
+
+  const subDoc = await adminDb.collection("subscriptions").doc(tenantId).get();
+  const sub = subDoc.data();
+
+  if (!sub) {
+    return { valid: true };  // فری پلان ہمیشہ فعال
+  }
+
+  if (sub.status !== "active") {
+    return { valid: false, message: "Your subscription is inactive. Please upgrade." };
+  }
+
+  if (sub.trialEndsAt) {
+    const trialEnd = sub.trialEndsAt.toDate ? sub.trialEndsAt.toDate() : new Date(sub.trialEndsAt);
+    if (new Date() > trialEnd) {
+      if (sub.planId === "free" || !sub.planId) {
+        return { valid: false, message: "Your free trial has ended. Please select a plan." };
+      }
+    }
+  }
+
+  return { valid: true };
+}
+
+
+================ STRIPE ================
+import Stripe from "stripe";
+
+export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+  apiVersion: "2023-10-16",
+});
+
+export const PLANS = {
+  free: { 
+    id: "free", 
+    name: "Free", 
+    price: 0, 
+    currency: "PKR",
+    limits: { students: 50, staff: 10 } 
+  },
+  basic: { 
+    id: "basic", 
+    name: "Basic", 
+    price: 2000, 
+    currency: "PKR",
+    priceId: process.env.STRIPE_BASIC_PRICE_ID || "price_basic_placeholder", 
+    limits: { students: 200, staff: 50 } 
+  },
+  pro: { 
+    id: "pro", 
+    name: "Pro", 
+    price: 3000, 
+    currency: "PKR",
+    priceId: process.env.STRIPE_PRO_PRICE_ID || "price_pro_placeholder", 
+    limits: { students: 1000, staff: 200 } 
+  },
+  enterprise: { 
+    id: "enterprise", 
+    name: "Enterprise", 
+    price: 5000, 
+    currency: "PKR",
+    priceId: process.env.STRIPE_ENTERPRISE_PRICE_ID || "price_enterprise_placeholder", 
+    limits: { students: 9999, staff: 9999 } 
+  },
+};
+
+
+================ TENANT UTILS ================
+import { NextRequest } from 'next/server';
+import { getSessionUser } from '@/lib/auth/auth-server';
+
+export async function getTenantIdFromRequest(req: NextRequest): Promise<string | null> {
+  const user = await getSessionUser();
+  if (!user) return null;
+  return user.tenantId || null;
+}
+
+
+================ PACKAGE.JSON ================
+{
+  "name": "edupilot",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage"
+  },
+  "dependencies": {
+    "@dnd-kit/core": "^6.0.8",
+    "@dnd-kit/sortable": "^7.0.2",
+    "@sendgrid/mail": "^8.1.0",
+    "@stripe/stripe-js": "^2.4.0",
+    "firebase": "^10.8.1",
+    "firebase-admin": "^12.1.0",
+    "framer-motion": "^10.16.4",
+    "html2canvas": "^1.4.1",
+    "jspdf": "^2.5.2",
+    "jspdf-autotable": "^3.8.0",
+    "lucide-react": "^0.344.0",
+    "mammoth": "^1.6.0",
+    "next": "14.2.3",
+    "next-intl": "^4.12.0",
+    "next-pwa": "^5.6.0",
+    "pdf-parse": "^1.1.1",
+    "react": "^18.2.0",
+    "react-colorful": "^5.6.1",
+    "react-dom": "^18.2.0",
+    "react-simple-typewriter": "^5.0.1",
+    "recharts": "^2.12.3",
+    "resend": "^3.0.0",
+    "stripe": "^14.21.0",
+    "tailwindcss-rtl": "^0.9.0",
+    "tesseract.js": "^5.0.5",
+    "twilio": "^4.19.0",
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "@babel/preset-env": "^7.24.0",
+    "@babel/preset-react": "^7.24.0",
+    "@babel/preset-typescript": "^7.24.0",
+    "@testing-library/jest-dom": "^6.4.2",
+    "@testing-library/react": "^14.2.0",
+    "@testing-library/user-event": "^14.5.2",
+    "@types/jest": "^29.5.12",
+    "@types/node": "^20.11.24",
+    "@types/pdf-parse": "^1.1.4",
+    "@types/react": "^18.2.61",
+    "@types/react-dom": "^18.2.19",
+    "autoprefixer": "^10.4.18",
+    "babel-jest": "^29.7.0",
+    "eslint": "^8.57.0",
+    "eslint-config-next": "14.2.3",
+    "jest": "^29.7.0",
+    "jest-environment-jsdom": "^29.7.0",
+    "postcss": "^8.4.35",
+    "tailwindcss": "^3.4.1",
+    "ts-jest": "^29.1.2",
+    "typescript": "^5.3.3"
+  }
+}
