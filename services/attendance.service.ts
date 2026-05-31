@@ -1,10 +1,8 @@
 import { AttendanceRepository } from "@/repositories/attendance.repository";
 import { Attendance } from "@/types/attendance";
-import {
-  MarkAttendanceSchema,
-  BulkAttendanceSchema,
-} from "@/lib/validation";
+import { MarkAttendanceSchema, BulkAttendanceSchema } from "@/lib/validation";
 import { ZodError } from "zod";
+import { deleteCache, attendanceKey, dashboardKey } from "@/lib/cache/cache";
 
 export class AttendanceService {
   constructor(private repo: AttendanceRepository) {}
@@ -19,16 +17,19 @@ export class AttendanceService {
       }
       throw error;
     }
-    const createData = {
-      ...validated,
-      tenantId,
-      createdBy: userId,
-    } as Omit<Attendance, "id" | "createdAt" | "updatedAt">;
 
+    const createData = { ...validated, tenantId, createdBy: userId } as Omit<Attendance, "id" | "createdAt" | "updatedAt">;
     const docId = `${validated.studentId}_${validated.date}`;
     const id = await this.repo.create({ ...createData, id: docId } as any, tenantId);
     const record = await this.repo.findById(id || docId, tenantId);
     if (!record) throw new Error("Attendance record could not be retrieved");
+
+    // Invalidate caches (attendance for that date and dashboard)
+    if (validated.date) {
+      await deleteCache(attendanceKey(tenantId, validated.date));
+    }
+    await deleteCache(dashboardKey(tenantId));
+
     return record as Attendance;
   }
 
@@ -44,6 +45,7 @@ export class AttendanceService {
     }
 
     const batch = (this.repo as any).db.batch();
+    const datesSet = new Set<string>();
     for (const rec of records) {
       const docId = `${rec.studentId}_${rec.date}`;
       const docRef = (this.repo as any).db.collection("attendance").doc(docId);
@@ -54,8 +56,16 @@ export class AttendanceService {
         createdAt: new Date(),
         updatedAt: new Date(),
       }, { merge: true });
+      datesSet.add(rec.date);
     }
     await batch.commit();
+
+    // Invalidate cache for each affected date
+    for (const date of datesSet) {
+      await deleteCache(attendanceKey(tenantId, date));
+    }
+    await deleteCache(dashboardKey(tenantId));
+
     return { success: true, message: `${records.length} attendance records saved` };
   }
 
@@ -78,14 +88,31 @@ export class AttendanceService {
       }
       throw error;
     }
+
     await this.repo.update(id, validated, tenantId);
     const updated = await this.repo.findById(id, tenantId);
     if (!updated) throw new Error("Attendance record not found after update");
+
+    // Invalidate cache for that date (if we know it)
+    if ((updated as any).date) {
+      await deleteCache(attendanceKey(tenantId, (updated as any).date));
+    }
+    await deleteCache(dashboardKey(tenantId));
+
     return updated as Attendance;
   }
 
   async deleteAttendance(id: string, tenantId: string): Promise<void> {
+    // اصل ریکارڈ کی معلومات نکالیں
+    const record = await this.repo.findById(id, tenantId);
     await this.repo.delete(id, tenantId);
+
+    if (record) {
+      if ((record as any).date) {
+        await deleteCache(attendanceKey(tenantId, (record as any).date));
+      }
+      await deleteCache(dashboardKey(tenantId));
+    }
   }
 
   async getTodayAttendance(tenantId: string): Promise<{ present: number; absent: number; total: number }> {
