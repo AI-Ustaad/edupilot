@@ -1,44 +1,30 @@
-// services/featureFlag.service.ts
 import { adminDb } from '@/lib/firebase-admin';
 import { ALL_FEATURES, Feature } from '@/lib/features/featureFlags';
+import { SubscriptionService } from './subscription.service';
 
 const COLLECTION = 'tenantFeatures';
+const subscriptionService = new SubscriptionService();
 
 export class FeatureFlagService {
+  // ... existing methods ...
+
   /**
-   * Check if a specific feature is enabled for a given tenant.
+   * Enhanced canUse: checks both tenant override AND plan limits.
    */
   async canUse(tenantId: string, feature: Feature): Promise<boolean> {
+    // 1. Plan must allow the feature
+    const planAllows = await subscriptionService.canUseFeature(tenantId, feature);
+    if (!planAllows) return false;
+
+    // 2. Check manual override (tenant can disable a feature even if plan allows it)
     const doc = await adminDb.collection(COLLECTION).doc(tenantId).get();
-    if (!doc.exists) return true; // no restrictions → all features on
+    if (doc.exists) {
+      const features = doc.data()?.features || {};
+      if (features[feature] === false) return false;   // manual override off
+    }
 
-    const data = doc.data();
-    const features = data?.features || {};
-    // If the feature key is explicitly set to false, it's disabled.
-    return features[feature] !== false;
-  }
-
-  /**
-   * Enable or disable a feature for a tenant.
-   */
-  async setFeature(tenantId: string, feature: Feature, enabled: boolean): Promise<void> {
-    const ref = adminDb.collection(COLLECTION).doc(tenantId);
-    await ref.set(
-      {
-        features: {
-          [feature]: enabled,
-        },
-      },
-      { merge: true }
-    );
-  }
-
-  /**
-   * Return all feature flags for a tenant as a record (e.g., { videoLectures: true, transport: false }).
-   */
-  async getAllFlags(tenantId: string): Promise<Record<string, boolean>> {
-    const doc = await adminDb.collection(COLLECTION).doc(tenantId).get();
-    if (!doc.exists) return {};
-    return doc.data()?.features || {};
+    // 3. Feature must be defined in ALL_FEATURES
+    if (!Object.values(ALL_FEATURES).includes(feature)) return true; // if unknown, allow
+    return true;
   }
 }
