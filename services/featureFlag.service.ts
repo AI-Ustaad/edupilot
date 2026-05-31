@@ -1,3 +1,4 @@
+// services/featureFlag.service.ts
 import { adminDb } from '@/lib/firebase-admin';
 import { ALL_FEATURES, Feature } from '@/lib/features/featureFlags';
 import { SubscriptionService } from './subscription.service';
@@ -6,8 +7,6 @@ const COLLECTION = 'tenantFeatures';
 const subscriptionService = new SubscriptionService();
 
 export class FeatureFlagService {
-  // ... existing methods ...
-
   /**
    * Enhanced canUse: checks both tenant override AND plan limits.
    */
@@ -16,15 +15,33 @@ export class FeatureFlagService {
     const planAllows = await subscriptionService.canUseFeature(tenantId, feature);
     if (!planAllows) return false;
 
-    // 2. Check manual override (tenant can disable a feature even if plan allows it)
+    // 2. Check manual override
     const doc = await adminDb.collection(COLLECTION).doc(tenantId).get();
     if (doc.exists) {
       const features = doc.data()?.features || {};
-      if (features[feature] === false) return false;   // manual override off
+      if (features[feature] === false) return false;
     }
 
-    // 3. Feature must be defined in ALL_FEATURES
-    if (!Object.values(ALL_FEATURES).includes(feature)) return true; // if unknown, allow
     return true;
+  }
+
+  /**
+   * Enable or disable a feature for a tenant.
+   */
+  async setFeature(tenantId: string, feature: Feature, enabled: boolean): Promise<void> {
+    const ref = adminDb.collection(COLLECTION).doc(tenantId);
+    await ref.set(
+      { features: { [feature]: enabled } },
+      { merge: true }
+    );
+  }
+
+  /**
+   * Return all feature flags for a tenant (manual overrides only).
+   */
+  async getAllFlags(tenantId: string): Promise<Record<string, boolean>> {
+    const doc = await adminDb.collection(COLLECTION).doc(tenantId).get();
+    if (!doc.exists) return {};
+    return doc.data()?.features || {};
   }
 }
