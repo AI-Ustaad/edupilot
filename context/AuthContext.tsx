@@ -1,5 +1,6 @@
 "use client";
-import { createContext, useContext, useEffect, useState } from "react";
+
+import { createContext, useContext, useEffect, useState, useCallback } from "react";
 
 type UserType = {
   uid: string;
@@ -9,30 +10,39 @@ type UserType = {
   onboardingRequired?: boolean;
 };
 
-const AuthContext = createContext<{ user: UserType | null; loading: boolean }>({ user: null, loading: true });
+const AuthContext = createContext<{ 
+  user: UserType | null; 
+  loading: boolean;
+  refreshUser: () => Promise<void>;
+}>({ user: null, loading: true, refreshUser: async () => {} });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<UserType | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    async function loadUser() {
-      try {
-        const res = await fetch("/api/auth/me");
-        if (!res.ok) throw new Error("Auth Failed");
-        const userData = await res.json();
-        setUser(userData);
-      } catch {
-        setUser(null);
-      } finally {
-        setLoading(false);
-      }
+  const loadUser = useCallback(async () => {
+    try {
+      setLoading(true);
+      // 'no-store' ensures fresh data directly from the server on every reload
+      const res = await fetch("/api/auth/me", { cache: "no-store" });
+      if (!res.ok) throw new Error("Auth Session Expired");
+      
+      const userData = await res.json();
+      setUser(userData);
+    } catch (error) {
+      console.error("Auth Load Error:", error);
+      setUser(null);
+    } finally {
+      setLoading(false);
     }
-    loadUser();
   }, []);
 
+  useEffect(() => {
+    loadUser();
+  }, [loadUser]);
+
   return (
-    <AuthContext.Provider value={{ user, loading }}>
+    <AuthContext.Provider value={{ user, loading, refreshUser: loadUser }}>
       {children}
     </AuthContext.Provider>
   );
