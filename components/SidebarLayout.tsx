@@ -10,12 +10,12 @@ import {
   Wallet, Clock, Settings, Menu, X, ShieldCheck, LogOut,
   GraduationCap, DollarSign, Calendar, FileText, Heart,
   ChevronDown, ChevronRight, CreditCard, Sparkles, Bus, CalendarDays, Bot,
-  TrendingUp, Film, Send, Star, PlusCircle,
+  TrendingUp, Film, Send, Star, PlusCircle, Loader2
 } from "lucide-react";
 import MobileBottomNav from "./MobileBottomNav";
 import { useTranslations } from "next-intl";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
-import { useAuth } from "@/context/AuthContext";  // ← شامل کریں
+import { useAuth } from "@/context/AuthContext";
 
 export default function SidebarLayout({ children }: { children: React.ReactNode }) {
   const t = useTranslations("Sidebar");
@@ -23,9 +23,9 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
   const router = useRouter();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   
-  // 🔥 براہ راست AuthContext سے role حاصل کریں
-  const { user } = useAuth();
-  const role = user?.role || "teacher";   // default "teacher" اگر user null ہو
+  // براہ راست AuthContext سے role اور loading حاصل کریں
+  const { user, loading } = useAuth();
+  const role = user?.role || "teacher";
 
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
     academic: true,
@@ -42,11 +42,11 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
 
   const menuGroups = [
     {
-      title: t("commandCenter"),
+      title: t("commandCenter") || "Command Center",
       icon: LayoutDashboard,
       items: [
         {
-          name: t("commandCenter"),
+          name: t("commandCenter") || "Dashboard",
           icon: LayoutDashboard,
           path: "/dashboard",
           allowed: ["admin", "teacher", "accountant"],
@@ -56,82 +56,80 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
       key: null,
     },
     {
-      title: t("academic"),
+      title: t("academic") || "Academic",
       icon: BookOpen,
       items: [
-        { name: t("students"), icon: Users, path: "/students", allowed: ["admin", "teacher"] },
-        { name: t("classes"), icon: GraduationCap, path: "/classes", allowed: ["admin"] },
-        { name: t("syllabus"), icon: FileText, path: "/admin/syllabus", allowed: ["admin"] },
-        { name: t("academicYear"), icon: Calendar, path: "/admin/academic-year", allowed: ["admin"] },
-        { name: t("videoLibrary"), icon: Film, path: "/video-lectures", allowed: ["admin", "teacher", "parent"] },
+        { name: t("students") || "Students", icon: Users, path: "/students", allowed: ["admin", "teacher"] },
+        { name: t("classes") || "Classes", icon: GraduationCap, path: "/classes", allowed: ["admin"] },
+        { name: t("syllabus") || "Syllabus", icon: FileText, path: "/admin/syllabus", allowed: ["admin"] },
+        { name: t("academicYear") || "Academic Year", icon: Calendar, path: "/admin/academic-year", allowed: ["admin"] },
+        { name: t("videoLibrary") || "Video Library", icon: Film, path: "/video-lectures", allowed: ["admin", "teacher", "parent"] },
       ],
       allowed: ["admin", "teacher", "parent"],
       key: "academic",
     },
     {
-      title: t("finance"),
+      title: t("finance") || "Finance",
       icon: DollarSign,
       items: [
-        { name: t("fees"), icon: Wallet, path: "/fees", allowed: ["admin", "accountant"] },
-        { name: t("ledger"), icon: ClipboardCheck, path: "/ledger", allowed: ["admin", "accountant"] },
+        { name: t("fees") || "Fees", icon: Wallet, path: "/fees", allowed: ["admin", "accountant"] },
+        { name: t("ledger") || "Ledger", icon: ClipboardCheck, path: "/ledger", allowed: ["admin", "accountant"] },
       ],
       allowed: ["admin", "accountant"],
       key: "finance",
     },
     {
-      title: t("operations"),
+      title: t("operations") || "Operations",
       icon: Clock,
       items: [
-        { name: t("attendance"), icon: ClipboardCheck, path: "/attendance", allowed: ["admin", "teacher"] },
-        { name: t("timetable"), icon: Clock, path: "/timetable", allowed: ["admin", "teacher"] },
-        { name: t("aiTimetable"), icon: Sparkles, path: "/ai-timetable", allowed: ["admin", "teacher"] },
-        { name: t("buses"), icon: Bus, path: "/admin/buses", allowed: ["admin"] },
+        { name: t("attendance") || "Attendance", icon: ClipboardCheck, path: "/attendance", allowed: ["admin", "teacher"] },
+        { name: t("timetable") || "Timetable", icon: Clock, path: "/timetable", allowed: ["admin", "teacher"] },
+        { name: t("aiTimetable") || "AI Timetable", icon: Sparkles, path: "/ai-timetable", allowed: ["admin", "teacher"] },
+        { name: t("buses") || "Buses", icon: Bus, path: "/admin/buses", allowed: ["admin"] },
       ],
       allowed: ["admin", "teacher"],
       key: "operations",
     },
     {
-      title: t("staff"),
+      title: t("staff") || "Staff & Comms",
       icon: UserCircle,
       items: [
-        { name: t("staffManagement"), icon: UserCircle, path: "/staff", allowed: ["admin"] },
-        { name: t("parents"), icon: Heart, path: "/admin/parents", allowed: ["admin"] },
-        { name: t("leaveRequests"), icon: CalendarDays, path: "/leave-requests", allowed: ["admin"] },
-        { name: t("postHomework"), icon: FileText, path: "/teacher/homework", allowed: ["admin", "teacher"] },
-        { name: t("assignments"), icon: FileText, path: "/teacher/assignments", allowed: ["admin", "teacher"] },
-        { name: t("quizzes"), icon: FileText, path: "/teacher/quizzes", allowed: ["admin", "teacher"] },
-        { name: t("lessonPlans"), icon: Calendar, path: "/teacher/lesson-plans", allowed: ["admin", "teacher"] },
-        { name: t("bookCenter"), icon: BookOpen, path: "/teacher/book-center", allowed: ["admin", "teacher"] },
-        { name: t("manageBooks"), icon: FileText, path: "/teacher/manage-books", allowed: ["admin", "teacher"] },
-        { name: t("examCenter"), icon: FileText, path: "/teacher/exam-center", allowed: ["admin", "teacher"] },
-        { name: t("videoLectures"), icon: Film, path: "/teacher/video-lectures", allowed: ["admin", "teacher"] },
-        { name: t("chat"), icon: Send, path: "/teacher/chat", allowed: ["admin", "teacher"] },
-        { name: t("admissions"), icon: FileText, path: "/admin/admissions", allowed: ["admin"] },
-        { name: t("addSkills"), icon: Star, path: "/teacher/skills", allowed: ["admin", "teacher"] },
-        { name: t("behaviorPoints"), icon: PlusCircle, path: "/teacher/behavior", allowed: ["admin", "teacher"] },
+        { name: t("staffManagement") || "Staff", icon: UserCircle, path: "/staff", allowed: ["admin"] },
+        { name: t("parents") || "Parents", icon: Heart, path: "/admin/parents", allowed: ["admin"] },
+        { name: t("leaveRequests") || "Leave Requests", icon: CalendarDays, path: "/leave-requests", allowed: ["admin"] },
+        { name: t("postHomework") || "Homework", icon: FileText, path: "/teacher/homework", allowed: ["admin", "teacher"] },
+        { name: t("assignments") || "Assignments", icon: FileText, path: "/teacher/assignments", allowed: ["admin", "teacher"] },
+        { name: t("quizzes") || "Quizzes", icon: FileText, path: "/teacher/quizzes", allowed: ["admin", "teacher"] },
+        { name: t("lessonPlans") || "Lesson Plans", icon: Calendar, path: "/teacher/lesson-plans", allowed: ["admin", "teacher"] },
+        { name: t("bookCenter") || "Book Center", icon: BookOpen, path: "/teacher/book-center", allowed: ["admin", "teacher"] },
+        { name: t("examCenter") || "Exam Center", icon: FileText, path: "/teacher/exam-center", allowed: ["admin", "teacher"] },
+        { name: t("videoLectures") || "Video Lectures", icon: Film, path: "/teacher/video-lectures", allowed: ["admin", "teacher"] },
+        { name: t("chat") || "Chat", icon: Send, path: "/teacher/chat", allowed: ["admin", "teacher"] },
+        { name: t("admissions") || "Admissions", icon: FileText, path: "/admin/admissions", allowed: ["admin"] },
+        { name: t("addSkills") || "Add Skills", icon: Star, path: "/teacher/skills", allowed: ["admin", "teacher"] },
+        { name: t("behaviorPoints") || "Behavior", icon: PlusCircle, path: "/teacher/behavior", allowed: ["admin", "teacher"] },
       ],
       allowed: ["admin"],
       key: "staff",
     },
     {
-      title: t("adminTools"),
+      title: t("adminTools") || "Admin Tools",
       icon: Settings,
       items: [
-        { name: t("settings"), icon: Settings, path: "/settings", allowed: ["admin"] },
-        { name: t("users"), icon: ShieldCheck, path: "/admin/users", allowed: ["admin"] },
-        { name: t("auditLogs"), icon: FileText, path: "/admin/audit", allowed: ["admin"] },
-        { name: t("billing"), icon: CreditCard, path: "/settings/billing", allowed: ["admin"] },
+        { name: t("settings") || "Settings", icon: Settings, path: "/settings", allowed: ["admin"] },
+        { name: t("users") || "Users & Roles", icon: ShieldCheck, path: "/admin/users", allowed: ["admin"] },
+        { name: t("auditLogs") || "Audit Logs", icon: FileText, path: "/admin/audit", allowed: ["admin"] },
+        { name: t("billing") || "Billing", icon: CreditCard, path: "/settings/billing", allowed: ["admin"] },
       ],
       allowed: ["admin"],
       key: "adminTools",
     },
     {
-      title: t("aiTools"),
+      title: t("aiTools") || "AI Tools",
       icon: Sparkles,
       items: [
-        { name: t("aiAssistant"), icon: Bot, path: "/ai-chatbot", allowed: ["admin", "teacher"] },
-        { name: t("aiTimetable"), icon: Sparkles, path: "/ai-timetable", allowed: ["admin", "teacher"] },
-        { name: t("examQuestions"), icon: FileText, path: "/ai-exam-questions", allowed: ["admin", "teacher"] },
+        { name: t("aiAssistant") || "AI Assistant", icon: Bot, path: "/ai-chatbot", allowed: ["admin", "teacher"] },
+        { name: t("examQuestions") || "AI Exams", icon: FileText, path: "/ai-exam-questions", allowed: ["admin", "teacher"] },
       ],
       allowed: ["admin", "teacher"],
       key: "aiTools",
@@ -176,47 +174,54 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
           <LanguageSwitcher />
         </div>
 
-        {/* Navigation */}
+        {/* Navigation / Loading State */}
         <div className="flex-1 overflow-y-auto py-2 px-4 custom-scrollbar">
-          {visibleGroups.map((group) => (
-            <div key={group.title} className="mb-2">
-              <div
-                className="flex items-center justify-between px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-100 cursor-pointer transition-colors"
-                onClick={() => group.key && toggleGroup(group.key)}
-              >
-                <div className="flex items-center gap-2">
-                  <group.icon size={18} className="text-blue-600" />
-                  <span className="text-sm font-semibold">{group.title}</span>
+          {loading ? (
+             <div className="flex flex-col items-center justify-center h-full text-slate-400 gap-2">
+               <Loader2 className="animate-spin" size={24} />
+               <span className="text-sm">Loading Menu...</span>
+             </div>
+          ) : (
+            visibleGroups.map((group) => (
+              <div key={group.title} className="mb-2">
+                <div
+                  className="flex items-center justify-between px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-100 cursor-pointer transition-colors"
+                  onClick={() => group.key && toggleGroup(group.key)}
+                >
+                  <div className="flex items-center gap-2">
+                    <group.icon size={18} className="text-blue-600" />
+                    <span className="text-sm font-semibold">{group.title}</span>
+                  </div>
+                  {group.key && (openGroups[group.key] ? <ChevronDown size={16} /> : <ChevronRight size={16} />)}
                 </div>
-                {group.key && (openGroups[group.key] ? <ChevronDown size={16} /> : <ChevronRight size={16} />)}
-              </div>
 
-              {(!group.key || openGroups[group.key]) && (
-                <div className="ml-6 mt-1 space-y-1">
-                  {group.items
-                    .filter((i) => i.allowed.includes(role))
-                    .map((item) => {
-                      const isActive = pathname === item.path || pathname.startsWith(item.path + "/");
-                      return (
-                        <Link
-                          key={item.name}
-                          href={item.path}
-                          onClick={() => setIsMobileMenuOpen(false)}
-                          className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all ${
-                            isActive
-                              ? "bg-blue-600 text-white shadow-sm"
-                              : "text-gray-600 hover:bg-gray-100"
-                          }`}
-                        >
-                          <item.icon size={18} />
-                          <span>{item.name}</span>
-                        </Link>
-                      );
-                    })}
-                </div>
-              )}
-            </div>
-          ))}
+                {(!group.key || openGroups[group.key]) && (
+                  <div className="ml-6 mt-1 space-y-1">
+                    {group.items
+                      .filter((i) => i.allowed.includes(role))
+                      .map((item) => {
+                        const isActive = pathname === item.path || pathname.startsWith(item.path + "/");
+                        return (
+                          <Link
+                            key={item.name}
+                            href={item.path}
+                            onClick={() => setIsMobileMenuOpen(false)}
+                            className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all ${
+                              isActive
+                                ? "bg-blue-600 text-white shadow-sm"
+                                : "text-gray-600 hover:bg-gray-100"
+                            }`}
+                          >
+                            <item.icon size={18} />
+                            <span>{item.name}</span>
+                          </Link>
+                        );
+                      })}
+                  </div>
+                )}
+              </div>
+            ))
+          )}
         </div>
 
         {/* Logout */}
