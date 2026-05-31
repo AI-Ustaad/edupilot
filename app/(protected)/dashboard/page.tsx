@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import { useAuth } from "@/context/AuthContext";
 import {
   Users, Briefcase, DollarSign, Activity, CalendarDays,
-  CreditCard, Clock, AlertTriangle,
+  CreditCard, Clock, AlertTriangle, Loader2
 } from "lucide-react";
 import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer,
@@ -45,53 +45,79 @@ interface DashboardData {
 
 export default function DashboardPage() {
   const t = useTranslations("Dashboard");
-  const { user, loading: authLoading } = useAuth();  // ← authLoading لیا
+  const { user, loading: authLoading } = useAuth();
+  
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [riskStudents, setRiskStudents] = useState<any[]>([]);
+  const [errorMsg, setErrorMsg] = useState("");
 
   useEffect(() => {
-    if (authLoading) return;             // اگر auth loading جاری ہے تو کچھ نہ کریں
+    // 1. اگر Auth لوڈ ہو رہا ہے، تو انتظار کریں
+    if (authLoading) return;
 
+    // 2. اگر یوزر کا ٹیننٹ آئی ڈی نہیں ملا تو سپنر بند کریں
     if (!user?.tenantId) {
-      setLoading(false);                 // user نہ ہونے کی صورت میں بھی spinner بند کریں
+      setLoading(false);
       return;
     }
 
-    (async () => {
+    // 3. API سے ڈیٹا لانے کا محفوظ طریقہ
+    const fetchDashboardData = async () => {
       try {
         const res = await fetch("/api/dashboard");
+        if (!res.ok) throw new Error("Failed to fetch dashboard data");
+        
         const json = await res.json();
         if (json.success) {
           setData(json.data);
         } else {
-          console.error("Dashboard API error:", json.message);
+          setErrorMsg(json.message || "Failed to load analytics");
         }
-      } catch (err) {
+      } catch (err: any) {
         console.error("Dashboard fetch error:", err);
+        setErrorMsg("Network error or API is down.");
       } finally {
-        setLoading(false);
+        setLoading(false); // ہر حال میں سپنر بند ہو جائے گا
       }
-    })();
+    };
 
-    fetch("/api/students/risk")
-      .then((res) => res.json())
-      .then((json) => {
+    const fetchRiskStudents = async () => {
+      try {
+        const res = await fetch("/api/students/risk");
+        if (!res.ok) return;
+        const json = await res.json();
         if (json.success) setRiskStudents(json.data || []);
-      })
-      .catch(console.error);
+      } catch (err) {
+        console.error("Risk students fetch error:", err);
+      }
+    };
 
-  }, [user, authLoading]);   // dependencies میں authLoading شامل
+    fetchDashboardData();
+    fetchRiskStudents();
 
-  if (loading) {
+  }, [user, authLoading]); // Dependency Array میں authLoading شامل ہے
+
+  // جب تک Auth یا Dashboard لوڈ ہو رہا ہے، سپنر دکھائیں
+  if (loading || authLoading) {
     return (
-      <div className="flex h-96 items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-blue-600" />
+      <div className="flex h-96 flex-col items-center justify-center gap-4">
+        <Loader2 className="animate-spin text-blue-600 w-12 h-12" />
+        <p className="text-gray-500 font-medium animate-pulse">Loading Your Dashboard...</p>
       </div>
     );
   }
 
-  if (!data) return null;
+  // اگر API نے ڈیٹا نہیں دیا، تو خالی پیج کے بجائے ایرر یا ڈمی سٹرکچر دکھائیں
+  if (!data) {
+    return (
+      <div className="flex flex-col items-center justify-center h-96 text-center">
+        <AlertTriangle className="text-red-500 w-16 h-16 mb-4" />
+        <h2 className="text-2xl font-bold text-gray-800">No Analytics Data Found</h2>
+        <p className="text-gray-500 mt-2">{errorMsg || "We couldn't load the dashboard analytics. Please ensure your database has data."}</p>
+      </div>
+    );
+  }
 
   const attendancePercent =
     data.todayAttendance.present + data.todayAttendance.absent > 0
@@ -107,8 +133,8 @@ export default function DashboardPage() {
     >
       {/* Header */}
       <motion.div variants={fadeInUp}>
-        <h1 className="text-3xl font-black text-gray-900">{t("title")}</h1>
-        <p className="text-gray-500 mt-1">{t("subtitle")}</p>
+        <h1 className="text-3xl font-black text-gray-900">{t("title") || "Dashboard Overview"}</h1>
+        <p className="text-gray-500 mt-1">{t("subtitle") || "Welcome to your EduPilot dashboard"}</p>
       </motion.div>
 
       {/* KPI Cards */}
@@ -116,11 +142,11 @@ export default function DashboardPage() {
         variants={staggerContainer}
         className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6"
       >
-        <KpiCard title={t("totalStudents")} value={data.students} icon={<Users size={28} className="text-blue-600" />} />
-        <KpiCard title={t("totalStaff")} value={data.staff} icon={<Briefcase size={28} className="text-purple-600" />} />
-        <KpiCard title={t("revenue")} value={data.revenue.toLocaleString()} icon={<DollarSign size={28} className="text-green-600" />} />
+        <KpiCard title={t("totalStudents") || "Total Students"} value={data.students} icon={<Users size={28} className="text-blue-600" />} />
+        <KpiCard title={t("totalStaff") || "Total Staff"} value={data.staff} icon={<Briefcase size={28} className="text-purple-600" />} />
+        <KpiCard title={t("revenue") || "Revenue"} value={`Rs ${data.revenue.toLocaleString()}`} icon={<DollarSign size={28} className="text-green-600" />} />
         <KpiCard
-          title={t("todayAttendance")}
+          title={t("todayAttendance") || "Today's Attendance"}
           value={`${data.todayAttendance.present} / ${data.todayAttendance.present + data.todayAttendance.absent}`}
           subtitle={`${attendancePercent}% present`}
           icon={<Activity size={28} className="text-cyan-600" />}
@@ -134,7 +160,7 @@ export default function DashboardPage() {
           className="bg-red-50 border border-red-200 rounded-2xl p-6"
         >
           <h2 className="text-lg font-bold text-red-800 mb-4 flex items-center gap-2">
-            <AlertTriangle className="text-red-600" /> {t("atRisk")} ({riskStudents.length})
+            <AlertTriangle className="text-red-600" /> {t("atRisk") || "Students At Risk"} ({riskStudents.length})
           </h2>
           <div className="space-y-3">
             {riskStudents.map((student: any) => (
@@ -165,7 +191,7 @@ export default function DashboardPage() {
       <div className="grid lg:grid-cols-2 gap-6">
         <motion.div variants={fadeInUp} className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
           <h3 className="text-lg font-semibold flex items-center gap-2 mb-4 text-gray-900">
-            <CalendarDays size={20} className="text-blue-600" /> {t("weeklyAttendance")}
+            <CalendarDays size={20} className="text-blue-600" /> {t("weeklyAttendance") || "Weekly Attendance Trend"}
           </h3>
           <ResponsiveContainer width="100%" height={280}>
             <LineChart data={data.attendanceTrend}>
@@ -176,29 +202,29 @@ export default function DashboardPage() {
             </LineChart>
           </ResponsiveContainer>
           <div className="grid grid-cols-3 gap-4 mt-4 text-center">
-            <div><p className="text-gray-500 text-sm">Average</p><p className="text-xl font-bold text-gray-900">{data.attendanceStats.avg}%</p></div>
-            <div><p className="text-gray-500 text-sm">Highest</p><p className="text-xl font-bold text-green-600">{data.attendanceStats.highest}%</p></div>
-            <div><p className="text-gray-500 text-sm">Lowest</p><p className="text-xl font-bold text-red-500">{data.attendanceStats.lowest}%</p></div>
+            <div><p className="text-gray-500 text-sm">Average</p><p className="text-xl font-bold text-gray-900">{data.attendanceStats?.avg || 0}%</p></div>
+            <div><p className="text-gray-500 text-sm">Highest</p><p className="text-xl font-bold text-green-600">{data.attendanceStats?.highest || 0}%</p></div>
+            <div><p className="text-gray-500 text-sm">Lowest</p><p className="text-xl font-bold text-red-500">{data.attendanceStats?.lowest || 0}%</p></div>
           </div>
         </motion.div>
 
         <motion.div variants={fadeInUp} className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
           <h3 className="text-lg font-semibold mb-4 flex items-center gap-2 text-gray-900">
-            <CreditCard size={20} className="text-green-600" /> {t("feeCollection")} (Current Month)
+            <CreditCard size={20} className="text-green-600" /> {t("feeCollection") || "Fee Collection"} (Current Month)
           </h3>
           <div className="mb-4">
             <div className="flex justify-between text-sm mb-1">
-              <span className="text-gray-600">Collected: Rs {data.feeMonth.collected.toLocaleString()}</span>
-              <span className="text-gray-500">Pending: Rs {data.feeMonth.pending.toLocaleString()}</span>
+              <span className="text-gray-600">Collected: Rs {data.feeMonth?.collected?.toLocaleString() || 0}</span>
+              <span className="text-gray-500">Pending: Rs {data.feeMonth?.pending?.toLocaleString() || 0}</span>
             </div>
             <div className="w-full bg-gray-200 rounded-full h-2.5">
-              <div className="bg-green-500 h-2.5 rounded-full" style={{ width: `${(data.feeMonth.collected / (data.feeMonth.total || 1)) * 100}%` }} />
+              <div className="bg-green-500 h-2.5 rounded-full" style={{ width: `${((data.feeMonth?.collected || 0) / (data.feeMonth?.total || 1)) * 100}%` }} />
             </div>
           </div>
           <h4 className="font-semibold mb-2 text-gray-900">Class‑wise collection</h4>
           <div className="space-y-2">
-            {data.classFeeSummary.map((c, idx) => (
-              <div key={c.class}>
+            {(data.classFeeSummary || []).map((c, idx) => (
+              <div key={c.class || idx}>
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-700">{c.class}</span>
                   <span className="text-gray-500">Rs {c.collected.toLocaleString()}</span>
@@ -216,10 +242,10 @@ export default function DashboardPage() {
       <div className="grid lg:grid-cols-2 gap-6">
         <motion.div variants={fadeInUp} className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
           <h3 className="text-lg font-semibold mb-4 flex items-center gap-2 text-gray-900">
-            <Users size={20} className="text-purple-600" /> {t("studentDistribution")}
+            <Users size={20} className="text-purple-600" /> {t("studentDistribution") || "Student Distribution"}
           </h3>
-          {data.classDistribution.length === 0 ? (
-            <div className="h-64 flex items-center justify-center text-gray-400">{t("noData")}</div>
+          {!data.classDistribution || data.classDistribution.length === 0 ? (
+            <div className="h-64 flex items-center justify-center text-gray-400">{t("noData") || "No Data"}</div>
           ) : (
             <div className="flex flex-col md:flex-row items-center gap-8">
               <ResponsiveContainer width="100%" height={250}>
@@ -246,7 +272,7 @@ export default function DashboardPage() {
 
         <motion.div variants={fadeInUp} className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
           <h3 className="text-lg font-semibold mb-4 flex items-center gap-2 text-gray-900">
-            <Clock size={20} className="text-orange-500" /> {t("recentPayments")}
+            <Clock size={20} className="text-orange-500" /> {t("recentPayments") || "Recent Payments"}
           </h3>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -259,7 +285,7 @@ export default function DashboardPage() {
                 </tr>
               </thead>
               <tbody>
-                {data.recentPayments.map((p) => (
+                {(data.recentPayments || []).map((p) => (
                   <tr key={p.id} className="border-b border-gray-100">
                     <td className="p-3 text-gray-900 font-medium">{p.studentName}</td>
                     <td className="p-3 text-gray-600">{p.date}</td>
@@ -267,9 +293,9 @@ export default function DashboardPage() {
                     <td className="p-3 text-gray-500">{new Date(p.timestamp).toLocaleDateString()}</td>
                   </tr>
                 ))}
-                {data.recentPayments.length === 0 && (
+                {(!data.recentPayments || data.recentPayments.length === 0) && (
                   <tr>
-                    <td colSpan={4} className="p-6 text-center text-gray-400">{t("noData")}</td>
+                    <td colSpan={4} className="p-6 text-center text-gray-400">{t("noData") || "No Data"}</td>
                   </tr>
                 )}
               </tbody>
@@ -281,18 +307,7 @@ export default function DashboardPage() {
   );
 }
 
-// KPI Card component
-function KpiCard({
-  title,
-  value,
-  icon,
-  subtitle,
-}: {
-  title: string;
-  value: string | number;
-  icon: React.ReactNode;
-  subtitle?: string;
-}) {
+function KpiCard({ title, value, icon, subtitle }: { title: string; value: string | number; icon: React.ReactNode; subtitle?: string; }) {
   return (
     <motion.div variants={fadeInUp} whileHover="hover" initial="rest" animate="rest" custom={cardHover}>
       <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow">
