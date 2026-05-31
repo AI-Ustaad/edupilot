@@ -1,29 +1,38 @@
-import { adminDb } from "@/lib/firebase-admin";
-import { withAuth, withErrorHandler } from "@/route-helpers";
-import { createApiResponse } from "@/lib/response/apiResponse";
-import type { TenantContext } from "@/types/api";
+import { NextResponse } from "next/server";
+import { withErrorHandler, withRateLimit } from "@/route-helpers";
+import { authRateLimit } from "@/lib/ratelimit";
+import { adminAuth, adminDb } from "@/lib/firebase-admin";
 
 export const POST = withErrorHandler(
-  withAuth(async (req: Request, { user }: TenantContext) => {
-    const { name } = await req.json();
+  withRateLimit(authRateLimit)(
+    async (req: Request) => {
+      const { email, password, name, role, tenantId } = await req.json();
 
-    if (!name) {
-      return createApiResponse(400, null, "Name is required");
+      if (!email || !password || !name) {
+        return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+      }
+
+      try {
+        // Create user in Firebase Auth
+        const userRecord = await adminAuth.createUser({
+          email,
+          password,
+          displayName: name,
+        });
+
+        // Save extra data in Firestore
+        await adminDb.collection("users").doc(userRecord.uid).set({
+          email,
+          name,
+          role: role || "teacher",
+          tenantId: tenantId || null,
+          createdAt: new Date(),
+        });
+
+        return NextResponse.json({ success: true, uid: userRecord.uid });
+      } catch (error: any) {
+        return NextResponse.json({ error: error.message }, { status: 400 });
+      }
     }
-
-    const userRef = adminDb.collection("users").doc(user.uid);
-    const doc = await userRef.get();
-
-    if (!doc.exists) {
-      await userRef.set({
-        email: user.email,
-        name: name,
-        role: user.role || "teacher",
-        tenantId: user.tenantId,
-        createdAt: new Date().toISOString(),
-      });
-    }
-
-    return createApiResponse(200, { success: true, uid: user.uid });
-  })
+  )
 );
