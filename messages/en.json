@@ -1,53 +1,75 @@
-"Sidebar": {
-"dashboard": "Dashboard",
-"commandCenter": "Command Center",
-
-"academic": "Academic",
-"students": "Students",
-"classes": "Classes",
-"syllabus": "Syllabus",
-"academicYear": "Academic Year",
-"videoLibrary": "Video Library",
-
-"attendance": "Attendance",
-"marks": "Marks",
-"results": "Results",
-
-"finance": "Finance",
-"fees": "Fees",
-"ledger": "Ledger",
-
-"operations": "Operations",
-"timetable": "Timetable",
-"buses": "Buses",
-
-"staff": "Staff",
-"staffManagement": "Staff Management",
-"parents": "Parents",
-"leaveRequests": "Leave Requests",
-
-"postHomework": "Post Homework",
-"assignments": "Assignments",
-"quizzes": "Quizzes",
-"lessonPlans": "Lesson Plans",
-
-"bookCenter": "Book Center",
-"examCenter": "Exam Center",
-"videoLectures": "Video Lectures",
-
-"chat": "Chat",
-"admissions": "Admissions",
-"addSkills": "Add Skills",
-
-"adminTools": "Admin Tools",
-"users": "Users",
-"analytics": "Analytics",
-"auditLogs": "Audit Logs",
-
-"settings": "Settings",
-"logout": "Logout",
-
-"aiChatbot": "AI Assistant",
-"aiExam": "AI Exam Generator",
-"aiTimetable": "AI Timetable"
+{
+  "Sidebar": {
+    "commandCenter": "Command Center",
+    "academic": "Academic",
+    "students": "Students",
+    "classes": "Classes",
+    "syllabus": "Syllabus",
+    "academicYear": "Academic Year",
+    "videoLibrary": "Video Library",
+    "finance": "Finance",
+    "fees": "Fees",
+    "ledger": "Ledger",
+    "operations": "Operations",
+    "attendance": "Attendance",
+    "timetable": "Timetable",
+    "aiTimetable": "AI Timetable",
+    "buses": "Buses",
+    "staff": "Staff & Comms",
+    "staffManagement": "Staff Management",
+    "parents": "Parents",
+    "leaveRequests": "Leave Requests",
+    "postHomework": "Post Homework",
+    "assignments": "Assignments",
+    "quizzes": "Quizzes",
+    "lessonPlans": "Lesson Plans",
+    "bookCenter": "Book Center",
+    "manageBooks": "Manage Books",
+    "examCenter": "Exam Center",
+    "videoLectures": "Video Lectures",
+    "chat": "Chat",
+    "admissions": "Admissions",
+    "addSkills": "Add Skills",
+    "behaviorPoints": "Behavior Points",
+    "adminTools": "Admin Tools",
+    "settings": "Settings",
+    "users": "Users & Roles",
+    "auditLogs": "Audit Logs",
+    "billing": "Billing",
+    "aiTools": "AI Tools",
+    "aiAssistant": "AI Assistant",
+    "examQuestions": "AI Exam Generator"
+  },
+  "Dashboard": {
+    "title": "Dashboard Overview",
+    "subtitle": "Welcome to your EduPilot dashboard",
+    "totalStudents": "Total Students",
+    "totalStaff": "Total Staff",
+    "revenue": "Revenue",
+    "todayAttendance": "Today's Attendance",
+    "atRisk": "Students At Risk",
+    "weeklyAttendance": "Weekly Attendance Trend",
+    "feeCollection": "Fee Collection",
+    "studentDistribution": "Student Distribution",
+    "recentPayments": "Recent Payments",
+    "noData": "No data available"
+  },
+  "Landing": {
+    "nav": {
+      "features": "Features",
+      "pricing": "Pricing",
+      "security": "Security",
+      "login": "Log in",
+      "startFree": "Start Free"
+    },
+    "hero": {
+      "badge": "AI-Powered • Cloud-Based • Enterprise SaaS",
+      "titleStart": "Run Your Entire",
+      "titleEnd": "with AI",
+      "description": "Manage students, staff, attendance, finance, analytics, exams, and communication — all from one intelligent cloud platform.",
+      "startTrial": "Start Free Trial",
+      "liveDemo": "Live Demo",
+      "bookDemo": "Book Live Demo"
+    }
+  }
 }
