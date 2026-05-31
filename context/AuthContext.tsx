@@ -19,7 +19,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     async function loadUser() {
       try {
         const res = await fetch("/api/auth/me");
-        if (!res.ok) throw new Error();
+        if (!res.ok) throw new Error("Auth Failed");
         const userData = await res.json();
         setUser(userData);
       } catch {
