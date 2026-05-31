@@ -1,26 +1,40 @@
 import { NextResponse } from "next/server";
-import { adminAuth } from "../../../../lib/firebase-admin";
-import { cookies } from "next/headers";
+import { withErrorHandler, withAuth, withRateLimit } from "@/route-helpers";
+import { authRateLimit } from "@/lib/ratelimit";
+import { signInWithEmailAndPassword, getAuth } from "firebase/auth";
+import { auth } from "@/lib/firebase";
+import { adminAuth } from "@/lib/firebase-admin";
 
-export async function POST(req: Request) {
-  try {
-    const { idToken } = await req.json();
+export const POST = withErrorHandler(
+  withRateLimit(authRateLimit)(   // <-- Rate limit (10 req/min)
+    withAuth(async (req: Request, context: any) => {
+      const { email, password } = await req.json();
+      if (!email || !password) {
+        return NextResponse.json({ error: "Email and password are required" }, { status: 400 });
+      }
 
-    const expiresIn = 60 * 60 * 24 * 5 * 1000;
+      try {
+        // Sign in with Firebase client SDK (for cookie generation)
+        const userCredential = await signInWithEmailAndPassword(auth, email, password);
+        const idToken = await userCredential.user.getIdToken();
 
-    const sessionCookie = await adminAuth.createSessionCookie(idToken, {
-      expiresIn,
-    });
+        // Create session cookie
+        const expiresIn = 60 * 60 * 24 * 5 * 1000; // 5 days
+        const sessionCookie = await adminAuth.createSessionCookie(idToken, { expiresIn });
 
-    cookies().set("session", sessionCookie, {
-      maxAge: expiresIn,
-      httpOnly: true,
-      secure: true,
-      path: "/",
-    });
+        const response = NextResponse.json({ success: true });
+        response.cookies.set("session", sessionCookie, {
+          maxAge: expiresIn,
+          httpOnly: true,
+          secure: true,
+          sameSite: "lax",
+          path: "/",
+        });
 
-    return NextResponse.json({ success: true });
-  } catch {
-    return NextResponse.json({ error: "Login failed" }, { status: 401 });
-  }
-}
+        return response;
+      } catch (error: any) {
+        return NextResponse.json({ error: error.message }, { status: 401 });
+      }
+    })
+  )
+);
