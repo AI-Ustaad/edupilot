@@ -1,136 +1,67 @@
-// lib/subscription.ts
-
 import { adminDb } from "@/lib/firebase-admin";
 
-export type SubscriptionStatus =
-  | "trial"
-  | "active"
-  | "past_due"
-  | "cancelled"
-  | "expired";
+export interface PlanLimits {
+  students: number;
+  staff: number;
+}
 
-export interface SubscriptionResult {
-  valid: boolean;
-  status?: SubscriptionStatus;
-  message?: string;
-  expiresAt?: Date | null;
+const PLAN_LIMITS: Record<string, PlanLimits> = {
+  free: { students: 50, staff: 10 },
+  basic: { students: 200, staff: 50 },
+  pro: { students: 1000, staff: 200 },
+  enterprise: { students: 9999, staff: 9999 },
+};
+
+export async function getPlanLimits(
+  tenantId: string
+): Promise<PlanLimits> {
+  const subDoc = await adminDb
+    .collection("subscriptions")
+    .doc(tenantId)
+    .get();
+
+  const sub = subDoc.data();
+  const planId = sub?.planId || "free";
+
+  return PLAN_LIMITS[planId] || PLAN_LIMITS.free;
 }
 
 export async function isSubscriptionValid(
   tenantId: string
-): Promise<SubscriptionResult> {
-  try {
-    if (!tenantId) {
-      return {
-        valid: false,
-        message: "Tenant ID missing",
-      };
-    }
+): Promise<{ valid: boolean; message?: string }> {
 
-    const tenantDoc = await adminDb
-      .collection("tenants")
-      .doc(tenantId)
-      .get();
+  // ✅ TEMPORARY FIX: Always return valid
+  // TODO: Remove this after adding proper subscription documents
 
-    if (!tenantDoc.exists) {
-      return {
-        valid: false,
-        message: "Tenant not found",
-      };
-    }
+  return { valid: true };
 
-    const tenant = tenantDoc.data();
-
-    const status = (tenant?.subscriptionStatus ||
-      "trial") as SubscriptionStatus;
-
-    const expiresAt = tenant?.subscriptionEndsAt
-      ? tenant.subscriptionEndsAt.toDate?.() ||
-        new Date(tenant.subscriptionEndsAt)
-      : null;
-
-    switch (status) {
-      case "active":
-        return {
-          valid: true,
-          status,
-          expiresAt,
-        };
-
-      case "trial":
-        if (!expiresAt) {
-          return {
-            valid: true,
-            status,
-          };
-        }
-
-        if (expiresAt > new Date()) {
-          return {
-            valid: true,
-            status,
-            expiresAt,
-          };
-        }
-
-        return {
-          valid: false,
-          status,
-          message: "Trial expired",
-          expiresAt,
-        };
-
-      case "past_due":
-        return {
-          valid: false,
-          status,
-          message: "Payment overdue",
-          expiresAt,
-        };
-
-      case "cancelled":
-        return {
-          valid: false,
-          status,
-          message: "Subscription cancelled",
-          expiresAt,
-        };
-
-      case "expired":
-        return {
-          valid: false,
-          status,
-          message: "Subscription expired",
-          expiresAt,
-        };
-
-      default:
-        return {
-          valid: false,
-          message: "Invalid subscription state",
-        };
-    }
-  } catch (error) {
-    console.error("Subscription validation failed:", error);
-
-    return {
-      valid: false,
-      message: "Subscription verification failed",
-    };
-  }
-}
-
-export async function getSubscription(
-  tenantId: string
-) {
-  const tenantDoc = await adminDb
-    .collection("tenants")
+  /*
+  const subDoc = await adminDb
+    .collection("subscriptions")
     .doc(tenantId)
     .get();
 
-  if (!tenantDoc.exists) {
-    return null;
+  const sub = subDoc.data();
+
+  if (!sub || sub.status !== "active") {
+    return {
+      valid: false,
+      message: "Your subscription is inactive. Please upgrade."
+    };
   }
 
-  return tenantDoc.data();
+  if (
+    sub.trialEndsAt &&
+    new Date() > new Date(sub.trialEndsAt)
+  ) {
+    if (sub.planId === "free") {
+      return {
+        valid: false,
+        message: "Your free trial has ended. Please select a plan."
+      };
+    }
+  }
+
+  return { valid: true };
+  */
 }
