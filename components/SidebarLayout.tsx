@@ -132,7 +132,7 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
             <div className="text-center text-gray-500 mt-10">No menu items available</div>
           ) : (
             menuGroups.map((group) => {
-              const groupKey = group.labelKey; // e.g., "commandCenter"
+              const groupKey = group.labelKey;
               const IconComponent = iconMap[group.icon] || FileText;
               const isOpen = openGroups[groupKey] !== false; // default open
 
@@ -174,7 +174,6 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
                             </Link>
                           );
                         } else {
-                          // اگر صرف گروپ ہیڈر ہو (غیر معمولی)
                           return (
                             <div key={item.labelKey} className="flex items-center gap-3 px-3 py-2 text-sm text-gray-500">
                               <ItemIcon size={18} />
