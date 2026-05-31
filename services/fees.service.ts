@@ -1,10 +1,8 @@
 import { FeesRepository } from "@/repositories/fees.repository";
 import { Fee } from "@/types/fees";
-import {
-  CreateFeeSchema,
-  UpdateFeeSchema,
-} from "@/lib/validation";
+import { CreateFeeSchema, UpdateFeeSchema } from "@/lib/validation";
 import { ZodError } from "zod";
+import { deleteCache, feeListKey, dashboardKey } from "@/lib/cache/cache";
 
 export class FeesService {
   constructor(private repo: FeesRepository) {}
@@ -19,15 +17,19 @@ export class FeesService {
       }
       throw error;
     }
-    const createData = {
-      ...validated,
-      tenantId,
-      createdAt: new Date(),
-    } as Omit<Fee, "id" | "updatedAt">;
 
+    const createData = { ...validated, tenantId, createdAt: new Date() } as Omit<Fee, "id" | "updatedAt">;
     const id = await this.repo.create(createData as any, tenantId);
     const fee = await this.repo.findById(id, tenantId);
     if (!fee) throw new Error("Fee record created but could not be retrieved");
+
+    // Invalidate caches
+    await deleteCache(feeListKey(tenantId));
+    if ((fee as any).studentId) {
+      await deleteCache(feeListKey(tenantId, (fee as any).studentId));
+    }
+    await deleteCache(dashboardKey(tenantId));
+
     return fee as Fee;
   }
 
@@ -36,6 +38,7 @@ export class FeesService {
   }
 
   async listFees(tenantId: string, studentId?: string, page = 1, limit = 20) {
+    // (اختیاری: cache read)
     let fees = await this.repo.findAll(tenantId);
     if (studentId) {
       fees = fees.filter(f => (f as any).studentId === studentId);
@@ -66,14 +69,33 @@ export class FeesService {
       }
       throw error;
     }
+
     await this.repo.update(id, validated, tenantId);
     const updated = await this.repo.findById(id, tenantId);
     if (!updated) throw new Error("Fee record not found after update");
+
+    // Invalidate caches
+    await deleteCache(feeListKey(tenantId));
+    if ((updated as any).studentId) {
+      await deleteCache(feeListKey(tenantId, (updated as any).studentId));
+    }
+    await deleteCache(dashboardKey(tenantId));
+
     return updated as Fee;
   }
 
   async deleteFee(id: string, tenantId: string): Promise<void> {
+    // اصل دستاویز کی معلومات نکال لیں (بعد میں cache key بنانے کے لیے)
+    const fee = await this.repo.findById(id, tenantId);
     await this.repo.delete(id, tenantId);
+
+    if (fee) {
+      await deleteCache(feeListKey(tenantId));
+      if ((fee as any).studentId) {
+        await deleteCache(feeListKey(tenantId, (fee as any).studentId));
+      }
+      await deleteCache(dashboardKey(tenantId));
+    }
   }
 
   async getTotalRevenue(tenantId: string): Promise<number> {
