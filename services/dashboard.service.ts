@@ -6,6 +6,7 @@ import { FeesService } from "./fees.service";
 import { FeesRepository } from "@/repositories/fees.repository";
 import { AttendanceService } from "./attendance.service";
 import { AttendanceRepository } from "@/repositories/attendance.repository";
+import { getCached, setCache, dashboardKey } from "@/lib/cache/cache";
 
 export class DashboardService {
   private studentService: StudentService;
@@ -21,6 +22,13 @@ export class DashboardService {
   }
 
   async getDashboardData(tenantId: string) {
+    // 1. پہلے cache چیک کریں
+    const cached = await getCached<any>(dashboardKey(tenantId));
+    if (cached) {
+      return cached;
+    }
+
+    // 2. اصل ڈیٹا اکٹھا کریں
     const [
       studentsCount,
       staffCount,
@@ -47,17 +55,22 @@ export class DashboardService {
     });
     const classDistribution = Object.entries(classMap).map(([name, value]) => ({ name, value }));
 
-    return {
+    const result = {
       students: studentsCount,
       staff: staffCount,
       revenue: totalRevenue,
-      todayAttendance,               // ← یہ present/absent پر مشتمل ہے
+      todayAttendance,
       attendanceTrend,
-      attendanceStats: { avg: 85, highest: 98, lowest: 62 }, // عارضی اعداد (بعد میں بہتر کریں)
+      attendanceStats: { avg: 85, highest: 98, lowest: 62 }, // عارضی
       feeMonth: { collected: totalRevenue, pending: 0, total: totalRevenue },
       classFeeSummary: [],
       recentPayments,
       classDistribution,
     };
+
+    // 3. cache میں 5 منٹ کے لیے محفوظ کریں
+    await setCache(dashboardKey(tenantId), result, 300);
+
+    return result;
   }
 }
