@@ -53,16 +53,25 @@ export const PERMISSIONS = {
   },
 } as const;
 
-/**
- * Recursively extract all nested string values
- */
-type NestedValueOf<T> =
-  T extends object
-    ? NestedValueOf<T[keyof T]>
-    : T;
+// -------------------------------------------------------
+// Permission type – explicit union per module
+// -------------------------------------------------------
+type PermissionModule = typeof PERMISSIONS;
 
-export type Permission = NestedValueOf<typeof PERMISSIONS>;
+export type Permission =
+  | PermissionModule["students"][keyof PermissionModule["students"]]
+  | PermissionModule["staff"][keyof PermissionModule["staff"]]
+  | PermissionModule["fees"][keyof PermissionModule["fees"]]
+  | PermissionModule["attendance"][keyof PermissionModule["attendance"]]
+  | PermissionModule["parents"][keyof PermissionModule["parents"]]
+  | PermissionModule["dashboard"][keyof PermissionModule["dashboard"]]
+  | PermissionModule["settings"][keyof PermissionModule["settings"]]
+  | PermissionModule["billing"][keyof PermissionModule["billing"]]
+  | PermissionModule["audit"][keyof PermissionModule["audit"]];
 
+// -------------------------------------------------------
+// Role → permission mapping
+// -------------------------------------------------------
 export const ROLE_PERMISSIONS: Record<string, Permission[]> = {
   admin: [
     ...Object.values(PERMISSIONS).flatMap((module) =>
