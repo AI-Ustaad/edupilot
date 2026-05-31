@@ -38,7 +38,9 @@
     "billing": "Billing",
     "aiTools": "AI Tools",
     "aiAssistant": "AI Assistant",
-    "examQuestions": "AI Exam Generator"
+    "examQuestions": "AI Exam Generator",
+    "logout": "Secure Logout",
+    "loading": "Securely Loading Menu..."
   },
   "Dashboard": {
     "title": "Dashboard Overview",
@@ -52,7 +54,9 @@
     "feeCollection": "Fee Collection",
     "studentDistribution": "Student Distribution",
     "recentPayments": "Recent Payments",
-    "noData": "No data available"
+    "noData": "No data available",
+    "loading": "Loading Your Dashboard...",
+    "error": "Failed to load analytics. Please try again."
   },
   "Landing": {
     "nav": {
