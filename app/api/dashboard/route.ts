@@ -8,7 +8,8 @@ export const GET = withErrorHandler(
     withTenant(async (_req: Request, { tenantId }: TenantContext) => {
       const service = new DashboardService();
       const data = await service.getDashboardData(tenantId);
-      return createApiResponse(200, { success: true, data });
+      // createApiResponse خود success:true اور data کو لپیٹتا ہے
+      return createApiResponse(200, data);
     })
   )
 );
