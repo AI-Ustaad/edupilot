@@ -13,35 +13,17 @@ export const PLANS: Record<string, Plan> = {
     name: "Free",
     maxStudents: 50,
     maxStaff: 10,
-    features: [
-      // only basic features – adjust to your actual Feature strings
-      "aiAssistant",
-      "aiExamGenerator",
-      "aiTimetable",
-      "transport",
-      "videoLectures",
-      "ledger",
-      "behavior",
-      "skills",
-      "chat",
-      "assignments",
-      "homework",
-      "quizzes",
-      "lessonPlans",
-      "bookCenter",
-      "examCenter",
-      "admissions",
-      "parents",
-      "leaveRequests",
-      "advancedAnalytics",
-    ].filter(f => ["aiAssistant", "transport", "videoLectures"].includes(f)), // minimal features
+    // Only essential features – adjust as needed
+    features: Object.values(ALL_FEATURES).filter(f =>
+      ['videoLectures', 'ledger', 'behavior', 'skills', 'chat', 'assignments', 'homework', 'quizzes', 'lessonPlans', 'bookCenter', 'examCenter', 'admissions', 'parents', 'leaveRequests'].includes(f)
+    ) as Feature[],
   },
   starter: {
     name: "Starter",
     maxStudents: 200,
     maxStaff: 50,
     features: Object.values(ALL_FEATURES).filter(
-      f => !["aiAssistant", "aiExamGenerator", "aiTimetable"].includes(f)
+      f => !["aiAssistant", "aiExamGenerator", "aiTimetable", "transport"].includes(f)
     ) as Feature[],
   },
   professional: {
