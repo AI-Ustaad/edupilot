@@ -53,42 +53,51 @@ export default function DashboardPage() {
   const [errorMsg, setErrorMsg] = useState("");
 
   useEffect(() => {
-    // 1. اگر Auth لوڈ ہو رہا ہے، تو انتظار کریں
+    // 1. جب تک سرور سے سیشن وریفائی ہو رہا ہے، ڈیش بورڈ کو روکے رکھیں
     if (authLoading) return;
 
-    // 2. اگر یوزر کا ٹیننٹ آئی ڈی نہیں ملا تو سپنر بند کریں
+    // 2. یوزر یا ٹیننٹ آئی ڈی نہ ہونے کی صورت میں ڈیش بورڈ لوڈنگ ختم کریں (تاکہ مڈل ویئر ری ڈائریکٹ کر سکے)
     if (!user?.tenantId) {
       setLoading(false);
       return;
     }
 
-    // 3. API سے ڈیٹا لانے کا محفوظ طریقہ
+    const abortController = new AbortController();
+
     const fetchDashboardData = async () => {
       try {
-        const res = await fetch("/api/dashboard");
+        setLoading(true);
+        // کیش بسٹنگ ہیڈرز کے ساتھ فائنل ریکویسٹ
+        const res = await fetch("/api/dashboard", { 
+          signal: abortController.signal,
+          headers: { 'Cache-Control': 'no-cache' }
+        });
+        
         if (!res.ok) throw new Error("Failed to fetch dashboard data");
         
         const json = await res.json();
         if (json.success) {
           setData(json.data);
         } else {
-          setErrorMsg(json.message || "Failed to load analytics");
+          setErrorMsg(json.message || t("error"));
         }
       } catch (err: any) {
+        if (err.name === 'AbortError') return;
         console.error("Dashboard fetch error:", err);
-        setErrorMsg("Network error or API is down.");
+        setErrorMsg(t("error"));
       } finally {
-        setLoading(false); // ہر حال میں سپنر بند ہو جائے گا
+        setLoading(false); 
       }
     };
 
     const fetchRiskStudents = async () => {
       try {
-        const res = await fetch("/api/students/risk");
+        const res = await fetch("/api/students/risk", { signal: abortController.signal });
         if (!res.ok) return;
         const json = await res.json();
         if (json.success) setRiskStudents(json.data || []);
-      } catch (err) {
+      } catch (err: any) {
+        if (err.name === 'AbortError') return;
         console.error("Risk students fetch error:", err);
       }
     };
@@ -96,25 +105,27 @@ export default function DashboardPage() {
     fetchDashboardData();
     fetchRiskStudents();
 
-  }, [user, authLoading]); // Dependency Array میں authLoading شامل ہے
+    return () => {
+      abortController.abort(); // Cleanup function to prevent memory leaks
+    };
 
-  // جب تک Auth یا Dashboard لوڈ ہو رہا ہے، سپنر دکھائیں
+  }, [user, authLoading, t]);
+
   if (loading || authLoading) {
     return (
       <div className="flex h-96 flex-col items-center justify-center gap-4">
         <Loader2 className="animate-spin text-blue-600 w-12 h-12" />
-        <p className="text-gray-500 font-medium animate-pulse">Loading Your Dashboard...</p>
+        <p className="text-gray-500 font-medium animate-pulse">{t("loading")}</p>
       </div>
     );
   }
 
-  // اگر API نے ڈیٹا نہیں دیا، تو خالی پیج کے بجائے ایرر یا ڈمی سٹرکچر دکھائیں
   if (!data) {
     return (
       <div className="flex flex-col items-center justify-center h-96 text-center">
         <AlertTriangle className="text-red-500 w-16 h-16 mb-4" />
         <h2 className="text-2xl font-bold text-gray-800">No Analytics Data Found</h2>
-        <p className="text-gray-500 mt-2">{errorMsg || "We couldn't load the dashboard analytics. Please ensure your database has data."}</p>
+        <p className="text-gray-500 mt-2">{errorMsg || "We couldn't load the dashboard analytics."}</p>
       </div>
     );
   }
@@ -125,61 +136,40 @@ export default function DashboardPage() {
       : "0";
 
   return (
-    <motion.div
-      initial="hidden"
-      animate="visible"
-      variants={staggerContainer}
-      className="space-y-8"
-    >
-      {/* Header */}
+    <motion.div initial="hidden" animate="visible" variants={staggerContainer} className="space-y-8">
       <motion.div variants={fadeInUp}>
-        <h1 className="text-3xl font-black text-gray-900">{t("title") || "Dashboard Overview"}</h1>
-        <p className="text-gray-500 mt-1">{t("subtitle") || "Welcome to your EduPilot dashboard"}</p>
+        <h1 className="text-3xl font-black text-gray-900">{t("title")}</h1>
+        <p className="text-gray-500 mt-1">{t("subtitle")}</p>
       </motion.div>
 
-      {/* KPI Cards */}
-      <motion.div
-        variants={staggerContainer}
-        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6"
-      >
-        <KpiCard title={t("totalStudents") || "Total Students"} value={data.students} icon={<Users size={28} className="text-blue-600" />} />
-        <KpiCard title={t("totalStaff") || "Total Staff"} value={data.staff} icon={<Briefcase size={28} className="text-purple-600" />} />
-        <KpiCard title={t("revenue") || "Revenue"} value={`Rs ${data.revenue.toLocaleString()}`} icon={<DollarSign size={28} className="text-green-600" />} />
+      <motion.div variants={staggerContainer} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <KpiCard title={t("totalStudents")} value={data.students} icon={<Users size={28} className="text-blue-600" />} />
+        <KpiCard title={t("totalStaff")} value={data.staff} icon={<Briefcase size={28} className="text-purple-600" />} />
+        <KpiCard title={t("revenue")} value={`Rs ${data.revenue.toLocaleString()}`} icon={<DollarSign size={28} className="text-green-600" />} />
         <KpiCard
-          title={t("todayAttendance") || "Today's Attendance"}
+          title={t("todayAttendance")}
           value={`${data.todayAttendance.present} / ${data.todayAttendance.present + data.todayAttendance.absent}`}
           subtitle={`${attendancePercent}% present`}
           icon={<Activity size={28} className="text-cyan-600" />}
         />
       </motion.div>
 
-      {/* At Risk Students Section */}
       {riskStudents.length > 0 && (
-        <motion.div
-          variants={fadeInUp}
-          className="bg-red-50 border border-red-200 rounded-2xl p-6"
-        >
+        <motion.div variants={fadeInUp} className="bg-red-50 border border-red-200 rounded-2xl p-6">
           <h2 className="text-lg font-bold text-red-800 mb-4 flex items-center gap-2">
-            <AlertTriangle className="text-red-600" /> {t("atRisk") || "Students At Risk"} ({riskStudents.length})
+            <AlertTriangle className="text-red-600" /> {t("atRisk")} ({riskStudents.length})
           </h2>
           <div className="space-y-3">
             {riskStudents.map((student: any) => (
-              <div
-                key={student.id}
-                className="flex justify-between items-center bg-white border border-red-100 rounded-xl p-4"
-              >
+              <div key={student.id} className="flex justify-between items-center bg-white border border-red-100 rounded-xl p-4">
                 <div>
                   <p className="font-semibold text-gray-900">{student.fullName || student.name}</p>
-                  <p className="text-sm text-gray-500">
-                    {student.classGrade} {student.section || ""}
-                  </p>
+                  <p className="text-sm text-gray-500">{student.classGrade} {student.section || ""}</p>
                 </div>
                 <div className="flex gap-4 text-sm items-center">
                   <span className="text-red-600 font-bold">Att: {student.attendance}%</span>
                   <span className="text-orange-600 font-bold">Marks: {student.marks}%</span>
-                  <span className="text-xs bg-red-100 text-red-800 px-2 py-1 rounded-full">
-                    {student.riskReason}
-                  </span>
+                  <span className="text-xs bg-red-100 text-red-800 px-2 py-1 rounded-full">{student.riskReason}</span>
                 </div>
               </div>
             ))}
@@ -187,11 +177,10 @@ export default function DashboardPage() {
         </motion.div>
       )}
 
-      {/* Charts Row 1 */}
       <div className="grid lg:grid-cols-2 gap-6">
         <motion.div variants={fadeInUp} className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
           <h3 className="text-lg font-semibold flex items-center gap-2 mb-4 text-gray-900">
-            <CalendarDays size={20} className="text-blue-600" /> {t("weeklyAttendance") || "Weekly Attendance Trend"}
+            <CalendarDays size={20} className="text-blue-600" /> {t("weeklyAttendance")}
           </h3>
           <ResponsiveContainer width="100%" height={280}>
             <LineChart data={data.attendanceTrend}>
@@ -210,7 +199,7 @@ export default function DashboardPage() {
 
         <motion.div variants={fadeInUp} className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
           <h3 className="text-lg font-semibold mb-4 flex items-center gap-2 text-gray-900">
-            <CreditCard size={20} className="text-green-600" /> {t("feeCollection") || "Fee Collection"} (Current Month)
+            <CreditCard size={20} className="text-green-600" /> {t("feeCollection")} (Current Month)
           </h3>
           <div className="mb-4">
             <div className="flex justify-between text-sm mb-1">
@@ -238,14 +227,13 @@ export default function DashboardPage() {
         </motion.div>
       </div>
 
-      {/* Charts Row 2 */}
       <div className="grid lg:grid-cols-2 gap-6">
         <motion.div variants={fadeInUp} className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
           <h3 className="text-lg font-semibold mb-4 flex items-center gap-2 text-gray-900">
-            <Users size={20} className="text-purple-600" /> {t("studentDistribution") || "Student Distribution"}
+            <Users size={20} className="text-purple-600" /> {t("studentDistribution")}
           </h3>
           {!data.classDistribution || data.classDistribution.length === 0 ? (
-            <div className="h-64 flex items-center justify-center text-gray-400">{t("noData") || "No Data"}</div>
+            <div className="h-64 flex items-center justify-center text-gray-400">{t("noData")}</div>
           ) : (
             <div className="flex flex-col md:flex-row items-center gap-8">
               <ResponsiveContainer width="100%" height={250}>
@@ -272,7 +260,7 @@ export default function DashboardPage() {
 
         <motion.div variants={fadeInUp} className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
           <h3 className="text-lg font-semibold mb-4 flex items-center gap-2 text-gray-900">
-            <Clock size={20} className="text-orange-500" /> {t("recentPayments") || "Recent Payments"}
+            <Clock size={20} className="text-orange-500" /> {t("recentPayments")}
           </h3>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -295,7 +283,7 @@ export default function DashboardPage() {
                 ))}
                 {(!data.recentPayments || data.recentPayments.length === 0) && (
                   <tr>
-                    <td colSpan={4} className="p-6 text-center text-gray-400">{t("noData") || "No Data"}</td>
+                    <td colSpan={4} className="p-6 text-center text-gray-400">{t("noData")}</td>
                   </tr>
                 )}
               </tbody>
