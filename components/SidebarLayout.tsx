@@ -62,6 +62,7 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
 
   const [menuGroups, setMenuGroups] = useState<MenuGroup[]>([]);
   const [menuLoading, setMenuLoading] = useState(true);
+  const [disabledFeatures, setDisabledFeatures] = useState<string[]>([]);
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
     academic: true,
     finance: true,
@@ -71,15 +72,33 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
     aiTools: true,
   });
 
-  // ڈائنامک مینو حاصل کریں
+  // Fetch feature flags from API
   useEffect(() => {
-    if (loading) return; // auth کا انتظار کریں
+    fetch("/api/feature-flags")
+      .then((res) => res.json())
+      .then((data) => {
+        // data is { features: { videoLectures: true, transport: false, ... } }
+        const flags = data.features || data;
+        const disabled = Object.entries(flags)
+          .filter(([_, val]) => val === false)
+          .map(([key]) => key);
+        setDisabledFeatures(disabled);
+      })
+      .catch(() => {
+        // If the API fails, we assume all features are enabled (empty disabled list)
+        setDisabledFeatures([]);
+      });
+  }, []);
+
+  // Build menu based on role, permissions, and feature flags
+  useEffect(() => {
+    if (loading) return;
     const service = new MenuService();
     service
-      .getMenuForUser(role)
+      .getMenuForUser(role, undefined, disabledFeatures)
       .then((groups) => setMenuGroups(groups))
       .finally(() => setMenuLoading(false));
-  }, [role, loading]);
+  }, [role, loading, disabledFeatures]);
 
   const toggleGroup = (key: string) => {
     setOpenGroups((prev) => ({ ...prev, [key]: !prev[key] }));
@@ -134,7 +153,7 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
             menuGroups.map((group) => {
               const groupKey = group.labelKey;
               const IconComponent = iconMap[group.icon] || FileText;
-              const isOpen = openGroups[groupKey] !== false; // default open
+              const isOpen = openGroups[groupKey] !== false;
 
               return (
                 <div key={groupKey} className="mb-2">
