@@ -3,6 +3,7 @@ import { Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 import { getLocale, getMessages } from "next-intl/server";
 import { NextIntlClientProvider } from "next-intl";
+import ClientWrapper from "./ClientWrapper"; // 🔥 یہ سب سے اہم لائن ہے جو مسنگ تھی!
 
 const font = Plus_Jakarta_Sans({ subsets: ["latin"] });
 
@@ -16,16 +17,24 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  // سرور سے زبان (locale) اور ٹرانسلیشن کی فائل (messages) حاصل کریں
   const locale = await getLocale();
-  const messages = await getMessages();
+  let messages;
+  
+  try {
+    messages = await getMessages();
+  } catch (error) {
+    console.error("Messages not found for locale:", locale);
+    messages = {}; // Fallback in case of error
+  }
 
   return (
     <html lang={locale} dir={["ur", "ar"].includes(locale) ? "rtl" : "ltr"}>
       <body className={font.className}>
-        {/* Next.js 14 میں locale پراپرٹی کا پاس ہونا لازمی ہے ورنہ کیز (Keys) نظر آئیں گی */}
         <NextIntlClientProvider locale={locale} messages={messages}>
-          {children}
+          {/* 🔥 ClientWrapper کا ہونا لازمی ہے ورنہ لاڈنگ سپنر کبھی ختم نہیں ہوگا */}
+          <ClientWrapper>
+            {children}
+          </ClientWrapper>
         </NextIntlClientProvider>
       </body>
     </html>
