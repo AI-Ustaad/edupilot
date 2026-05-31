@@ -10,7 +10,7 @@ import {
   Wallet, Clock, Settings, Menu, X, ShieldCheck, LogOut,
   GraduationCap, DollarSign, Calendar, FileText, Heart,
   ChevronDown, ChevronRight, CreditCard, Sparkles, Bus, CalendarDays, Bot,
-  Film, Send, Star, PlusCircle, Loader2
+  Film, Send, Star, PlusCircle,
 } from "lucide-react";
 import MobileBottomNav from "./MobileBottomNav";
 import { useTranslations } from "next-intl";
@@ -22,10 +22,9 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
   const pathname = usePathname();
   const router = useRouter();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  
-  const { user, loading } = useAuth();
-  // ڈیفالٹ رول تاکہ کمپوننٹ کریش نہ ہو
-  const role = user?.role || "teacher";
+
+  const { user } = useAuth();
+  const role = user?.role || "teacher";   // اگر user null تو ڈیفالٹ teacher
 
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
     academic: true,
@@ -167,52 +166,45 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
         </div>
 
         <div className="flex-1 overflow-y-auto py-2 px-4 custom-scrollbar">
-          {loading ? (
-             <div className="flex flex-col items-center justify-center h-full text-slate-400 gap-2">
-               <Loader2 className="animate-spin" size={24} />
-               <span className="text-sm font-medium">{t("loading")}</span>
-             </div>
-          ) : (
-            visibleGroups.map((group) => (
-              <div key={group.title} className="mb-2">
-                <div
-                  className="flex items-center justify-between px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-100 cursor-pointer transition-colors"
-                  onClick={() => group.key && toggleGroup(group.key)}
-                >
-                  <div className="flex items-center gap-2">
-                    <group.icon size={18} className="text-blue-600" />
-                    <span className="text-sm font-semibold">{group.title}</span>
-                  </div>
-                  {group.key && (openGroups[group.key] ? <ChevronDown size={16} /> : <ChevronRight size={16} />)}
+          {visibleGroups.map((group) => (
+            <div key={group.title} className="mb-2">
+              <div
+                className="flex items-center justify-between px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-100 cursor-pointer transition-colors"
+                onClick={() => group.key && toggleGroup(group.key)}
+              >
+                <div className="flex items-center gap-2">
+                  <group.icon size={18} className="text-blue-600" />
+                  <span className="text-sm font-semibold">{group.title}</span>
                 </div>
-
-                {(!group.key || openGroups[group.key]) && (
-                  <div className="ml-6 mt-1 space-y-1">
-                    {group.items
-                      .filter((i) => i.allowed.includes(role))
-                      .map((item) => {
-                        const isActive = pathname === item.path || pathname.startsWith(item.path + "/");
-                        return (
-                          <Link
-                            key={item.name}
-                            href={item.path}
-                            onClick={() => setIsMobileMenuOpen(false)}
-                            className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all ${
-                              isActive
-                                ? "bg-blue-600 text-white shadow-sm"
-                                : "text-gray-600 hover:bg-gray-100"
-                            }`}
-                          >
-                            <item.icon size={18} />
-                            <span>{item.name}</span>
-                          </Link>
-                        );
-                      })}
-                  </div>
-                )}
+                {group.key && (openGroups[group.key] ? <ChevronDown size={16} /> : <ChevronRight size={16} />)}
               </div>
-            ))
-          )}
+
+              {(!group.key || openGroups[group.key]) && (
+                <div className="ml-6 mt-1 space-y-1">
+                  {group.items
+                    .filter((i) => i.allowed.includes(role))
+                    .map((item) => {
+                      const isActive = pathname === item.path || pathname.startsWith(item.path + "/");
+                      return (
+                        <Link
+                          key={item.name}
+                          href={item.path}
+                          onClick={() => setIsMobileMenuOpen(false)}
+                          className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all ${
+                            isActive
+                              ? "bg-blue-600 text-white shadow-sm"
+                              : "text-gray-600 hover:bg-gray-100"
+                          }`}
+                        >
+                          <item.icon size={18} />
+                          <span>{item.name}</span>
+                        </Link>
+                      );
+                    })}
+                </div>
+              )}
+            </div>
+          ))}
         </div>
 
         <div className="p-4 border-t border-gray-200 shrink-0">
@@ -221,7 +213,7 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
             className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-red-600 hover:bg-red-50 transition-colors"
           >
             <LogOut size={18} />
-            <span className="text-sm font-medium">{t("logout")}</span>
+            <span className="text-sm font-medium">Secure Logout</span>
           </button>
         </div>
       </div>
