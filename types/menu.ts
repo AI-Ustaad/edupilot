@@ -1,10 +1,13 @@
+// types/menu.ts
+import { Permission } from "@/lib/auth/permissions"; // <-- must be present
+
 export interface MenuItem {
   labelKey: string;
   icon: string;
   path?: string;
   permission?: Permission;
   allowedRoles?: string[];
-  featureFlag?: string;        // <-- add this
+  featureFlag?: string;
   children?: MenuItem[];
 }
 
@@ -13,6 +16,6 @@ export interface MenuGroup {
   icon: string;
   permission?: Permission;
   allowedRoles?: string[];
-  featureFlag?: string;        // <-- add this
+  featureFlag?: string;
   children: MenuItem[];
 }
