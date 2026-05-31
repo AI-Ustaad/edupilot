@@ -1,6 +1,5 @@
 {
   "Sidebar": {
-    "dashboard": "Dashboard",
     "commandCenter": "Command Center",
     "academic": "Academic",
     "students": "Students",
@@ -8,13 +7,11 @@
     "syllabus": "Syllabus",
     "academicYear": "Academic Year",
     "videoLibrary": "Video Library",
-    "attendance": "Attendance",
-    "marks": "Marks",
-    "results": "Results",
     "finance": "Finance",
     "fees": "Fees",
     "ledger": "Ledger",
     "operations": "Operations",
+    "attendance": "Attendance",
     "timetable": "Timetable",
     "aiTimetable": "AI Timetable",
     "buses": "Buses",
@@ -35,13 +32,10 @@
     "addSkills": "Add Skills",
     "behaviorPoints": "Behavior Points",
     "adminTools": "Admin Tools",
-    "users": "Users & Roles",
-    "analytics": "Analytics",
-    "auditLogs": "Audit Logs",
     "settings": "Settings",
+    "users": "Users & Roles",
+    "auditLogs": "Audit Logs",
     "billing": "Billing",
-    "logout": "Secure Logout",
-    "loading": "Loading Menu...",
     "aiTools": "AI Tools",
     "aiAssistant": "AI Assistant",
     "examQuestions": "AI Exam Generator"
@@ -58,9 +52,7 @@
     "feeCollection": "Fee Collection",
     "studentDistribution": "Student Distribution",
     "recentPayments": "Recent Payments",
-    "noData": "No data available",
-    "loading": "Loading Your Dashboard...",
-    "error": "Failed to load analytics. Please try again."
+    "noData": "No data available"
   },
   "Landing": {
     "nav": {
@@ -68,7 +60,7 @@
       "pricing": "Pricing",
       "security": "Security",
       "login": "Log in",
-      "startFree": "Start Free Trial"
+      "startFree": "Start Free"
     },
     "hero": {
       "badge": "AI-Powered • Cloud-Based • Enterprise SaaS",
@@ -78,78 +70,6 @@
       "startTrial": "Start Free Trial",
       "liveDemo": "Live Demo",
       "bookDemo": "Book Live Demo"
-    },
-    "features": {
-      "heading": "Everything you need",
-      "subheading": "Powerful features to streamline operations.",
-      "studentManagement": "Student Management",
-      "studentManagementDesc": "Complete student profiles.",
-      "attendanceAutomation": "Attendance Automation",
-      "attendanceAutomationDesc": "Mark attendance in seconds.",
-      "financeFees": "Finance & Fees",
-      "financeFeesDesc": "Collect fees online.",
-      "examsResults": "Exams & Results",
-      "examsResultsDesc": "Generate report cards.",
-      "parentPortal": "Parent Portal",
-      "parentPortalDesc": "Keep parents informed.",
-      "aiAnalytics": "AI Analytics",
-      "aiAnalyticsDesc": "Predict student performance."
-    },
-    "ai": {
-      "badge": "AI Intelligence",
-      "heading": "AI-Powered Insights",
-      "description": "AI analyzes data to predict at-risk students.",
-      "weakStudent": "Identify weak students",
-      "attendanceTrend": "Attendance forecasting",
-      "reportGeneration": "Auto report comments",
-      "aiTimetable": "Optimize timetable",
-      "performance": "Performance prediction",
-      "dashboardTitle": "AI Analytics",
-      "predictionLabel": "Risk Accuracy",
-      "predictionAccuracy": "94%",
-      "forecastLabel": "Forecast Confidence",
-      "forecastConfidence": "92%",
-      "performanceLabel": "Performance Accuracy",
-      "performanceAccuracy": "87%"
-    },
-    "pricing": {
-      "heading": "Simple Pricing",
-      "subheading": "Choose the right plan.",
-      "starter": "Starter",
-      "professional": "Professional",
-      "enterprise": "Enterprise",
-      "starterTarget": "Small schools",
-      "professionalTarget": "Growing schools",
-      "enterpriseTarget": "Large institutions",
-      "free": "Free",
-      "monthly": "/month",
-      "mostPopular": "Most Popular",
-      "getStarted": "Get Started"
-    },
-    "cta": {
-      "heading": "Ready to transform?",
-      "button": "Start Free Trial"
-    },
-    "footer": {
-      "tagline": "AI-Powered School Management",
-      "product": "Product",
-      "features": "Features",
-      "pricing": "Pricing",
-      "security": "Security",
-      "resources": "Resources",
-      "documentation": "Documentation",
-      "api": "API",
-      "support": "Support",
-      "legal": "Legal",
-      "privacy": "Privacy",
-      "terms": "Terms",
-      "gdpr": "GDPR",
-      "copyright": "© 2026 EduPilot"
     }
-  },
-  "Auth": {
-    "welcome": "Welcome Back",
-    "signIn": "Sign In to your account",
-    "terms": "Terms and Conditions"
   }
 }
