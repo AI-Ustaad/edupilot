@@ -6,8 +6,7 @@ const COLLECTION = 'tenantFeatures';
 
 export class FeatureFlagService {
   /**
-   * Check if a feature is enabled for a given tenant.
-   * By default, if no override exists, all features are enabled.
+   * Check if a specific feature is enabled for a given tenant.
    */
   async canUse(tenantId: string, feature: Feature): Promise<boolean> {
     const doc = await adminDb.collection(COLLECTION).doc(tenantId).get();
@@ -20,14 +19,26 @@ export class FeatureFlagService {
   }
 
   /**
-   * Set a feature on/off for a tenant.
+   * Enable or disable a feature for a tenant.
    */
   async setFeature(tenantId: string, feature: Feature, enabled: boolean): Promise<void> {
     const ref = adminDb.collection(COLLECTION).doc(tenantId);
-    await ref.set({
-      features: {
-        [feature]: enabled,
+    await ref.set(
+      {
+        features: {
+          [feature]: enabled,
+        },
       },
-    }, { merge: true });
+      { merge: true }
+    );
+  }
+
+  /**
+   * Return all feature flags for a tenant as a record (e.g., { videoLectures: true, transport: false }).
+   */
+  async getAllFlags(tenantId: string): Promise<Record<string, boolean>> {
+    const doc = await adminDb.collection(COLLECTION).doc(tenantId).get();
+    if (!doc.exists) return {};
+    return doc.data()?.features || {};
   }
 }
