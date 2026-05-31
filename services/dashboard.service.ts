@@ -39,6 +39,7 @@ export class DashboardService {
       this.feesService.getRecentPayments(tenantId, 5),
     ]);
 
+    // کلاس ڈسٹری بیوشن
     const classMap: Record<string, number> = {};
     allStudents.data.forEach((student: any) => {
       const cls = student.classGrade || 'Unknown';
@@ -50,9 +51,9 @@ export class DashboardService {
       students: studentsCount,
       staff: staffCount,
       revenue: totalRevenue,
-      todayAttendance,
+      todayAttendance,               // ← یہ present/absent پر مشتمل ہے
       attendanceTrend,
-      attendanceStats: { avg: 85, highest: 98, lowest: 62 },
+      attendanceStats: { avg: 85, highest: 98, lowest: 62 }, // عارضی اعداد (بعد میں بہتر کریں)
       feeMonth: { collected: totalRevenue, pending: 0, total: totalRevenue },
       classFeeSummary: [],
       recentPayments,
