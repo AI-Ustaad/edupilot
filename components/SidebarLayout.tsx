@@ -16,15 +16,37 @@ import MobileBottomNav from "./MobileBottomNav";
 import { useTranslations } from "next-intl";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { useAuth } from "@/context/AuthContext";
-import { useBranding } from "@/context/BrandingContext"; // 👈 نیا
+import { useBranding } from "@/context/BrandingContext"; // 👈 corrected import
 
-// آئیکون میپنگ
 const iconMap: Record<string, React.ComponentType<any>> = {
-  LayoutDashboard, Users, BookOpen, UserCircle, ClipboardCheck,
-  Wallet, Clock, Settings, ShieldCheck, LogOut, GraduationCap,
-  DollarSign, Calendar, FileText, Heart, ChevronDown, ChevronRight,
-  CreditCard, Sparkles, Bus, CalendarDays, Bot, Film, Send, Star, PlusCircle,
-  Menu, X,
+  LayoutDashboard,
+  Users,
+  BookOpen,
+  UserCircle,
+  ClipboardCheck,
+  Wallet,
+  Clock,
+  Settings,
+  ShieldCheck,
+  GraduationCap,
+  DollarSign,
+  Calendar,
+  FileText,
+  Heart,
+  ChevronDown,
+  ChevronRight,
+  CreditCard,
+  Sparkles,
+  Bus,
+  CalendarDays,
+  Bot,
+  Film,
+  Send,
+  Star,
+  PlusCircle,
+  Menu,
+  X,
+  LogOut,
 };
 
 export default function SidebarLayout({ children }: { children: React.ReactNode }) {
@@ -35,18 +57,21 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
 
   const { user, loading } = useAuth();
   const role = user?.role || "teacher";
-  const branding = useBranding(); // 👈 برانڈنگ ڈیٹا
+  const branding = useBranding(); // 👈 get branding data
 
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
-    academic: true, finance: true, adminTools: true,
-    operations: true, staff: true, aiTools: true,
+    academic: true,
+    finance: true,
+    adminTools: true,
+    operations: true,
+    staff: true,
+    aiTools: true,
   });
 
   const toggleGroup = (key: string) => {
     setOpenGroups((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
-  // مینو گروپس (پہلے کی طرح)
   const menuGroups = [
     {
       title: t("commandCenter"),
@@ -57,7 +82,84 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
       allowed: ["admin", "teacher", "accountant"],
       key: null,
     },
-    // ... (باقی تمام گروپس بالکل ویسے ہی جیسے پہلے تھے)
+    {
+      title: t("academic"),
+      icon: BookOpen,
+      items: [
+        { name: t("students"), icon: Users, path: "/students", allowed: ["admin", "teacher"] },
+        { name: t("classes"), icon: GraduationCap, path: "/classes", allowed: ["admin"] },
+        { name: t("syllabus"), icon: FileText, path: "/admin/syllabus", allowed: ["admin"] },
+        { name: t("academicYear"), icon: Calendar, path: "/admin/academic-year", allowed: ["admin"] },
+        { name: t("videoLibrary"), icon: Film, path: "/video-lectures", allowed: ["admin", "teacher", "parent"] },
+      ],
+      allowed: ["admin", "teacher", "parent"],
+      key: "academic",
+    },
+    {
+      title: t("finance"),
+      icon: DollarSign,
+      items: [
+        { name: t("fees"), icon: Wallet, path: "/fees", allowed: ["admin", "accountant"] },
+      ],
+      allowed: ["admin", "accountant"],
+      key: "finance",
+    },
+    {
+      title: t("operations"),
+      icon: Clock,
+      items: [
+        { name: t("attendance"), icon: ClipboardCheck, path: "/attendance", allowed: ["admin", "teacher"] },
+        { name: t("timetable"), icon: Clock, path: "/timetable", allowed: ["admin", "teacher"] },
+        { name: t("aiTimetable"), icon: Sparkles, path: "/ai-timetable", allowed: ["admin", "teacher"] },
+        { name: t("buses"), icon: Bus, path: "/admin/buses", allowed: ["admin"] },
+      ],
+      allowed: ["admin", "teacher"],
+      key: "operations",
+    },
+    {
+      title: t("staff"),
+      icon: UserCircle,
+      items: [
+        { name: t("staffManagement"), icon: UserCircle, path: "/staff", allowed: ["admin"] },
+        { name: t("parents"), icon: Heart, path: "/admin/parents", allowed: ["admin"] },
+        { name: t("leaveRequests"), icon: CalendarDays, path: "/leave-requests", allowed: ["admin"] },
+        { name: t("postHomework"), icon: FileText, path: "/teacher/homework", allowed: ["admin", "teacher"] },
+        { name: t("assignments"), icon: FileText, path: "/teacher/assignments", allowed: ["admin", "teacher"] },
+        { name: t("quizzes"), icon: FileText, path: "/teacher/quizzes", allowed: ["admin", "teacher"] },
+        { name: t("lessonPlans"), icon: Calendar, path: "/teacher/lesson-plans", allowed: ["admin", "teacher"] },
+        { name: t("bookCenter"), icon: BookOpen, path: "/teacher/book-center", allowed: ["admin", "teacher"] },
+        { name: t("examCenter"), icon: FileText, path: "/teacher/exam-center", allowed: ["admin", "teacher"] },
+        { name: t("videoLectures"), icon: Film, path: "/teacher/video-lectures", allowed: ["admin", "teacher"] },
+        { name: t("chat"), icon: Send, path: "/teacher/chat", allowed: ["admin", "teacher"] },
+        { name: t("admissions"), icon: FileText, path: "/admin/admissions", allowed: ["admin"] },
+        { name: t("addSkills"), icon: Star, path: "/teacher/skills", allowed: ["admin", "teacher"] },
+        { name: t("behaviorPoints"), icon: PlusCircle, path: "/teacher/behavior", allowed: ["admin", "teacher"] },
+      ],
+      allowed: ["admin"],
+      key: "staff",
+    },
+    {
+      title: t("adminTools"),
+      icon: Settings,
+      items: [
+        { name: t("settings"), icon: Settings, path: "/settings", allowed: ["admin"] },
+        { name: t("users"), icon: ShieldCheck, path: "/admin/users", allowed: ["admin"] },
+        { name: t("auditLogs"), icon: FileText, path: "/admin/audit", allowed: ["admin"] },
+        { name: t("billing"), icon: CreditCard, path: "/settings/billing", allowed: ["admin"] },
+      ],
+      allowed: ["admin"],
+      key: "adminTools",
+    },
+    {
+      title: t("aiTools"),
+      icon: Sparkles,
+      items: [
+        { name: t("aiAssistant"), icon: Bot, path: "/ai-chatbot", allowed: ["admin", "teacher"] },
+        { name: t("examQuestions"), icon: FileText, path: "/ai-exam-questions", allowed: ["admin", "teacher"] },
+      ],
+      allowed: ["admin", "teacher"],
+      key: "aiTools",
+    },
   ];
 
   const visibleGroups = menuGroups.filter((g) => g.allowed.includes(role));
@@ -70,31 +172,27 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
 
   return (
     <div className="flex h-screen bg-white">
-      {/* موبائل مینو بٹن */}
+      {/* Mobile Menu Button */}
       <button
         className="md:hidden fixed top-4 right-4 z-50 p-2 bg-white rounded-lg shadow"
         onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
       >
-        {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+        {isMobileMenuOpen ? <X size={24} className="text-gray-700" /> : <Menu size={24} className="text-gray-700" />}
       </button>
 
-      {/* سائڈبار */}
+      {/* Sidebar */}
       <div
         className={`fixed inset-y-0 left-0 z-40 w-72 flex flex-col transform transition-transform md:relative md:translate-x-0 ${
           isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"
         } bg-white border-r border-gray-200`}
       >
-        {/* 👇 برانڈڈ لوگو / نام */}
+        {/* Logo / School Name */}
         <div
           className="h-20 px-6 border-b border-gray-200 flex items-center gap-2 cursor-pointer shrink-0"
           onClick={() => router.push("/dashboard")}
         >
           {branding.logo ? (
-            <img
-              src={branding.logo}
-              alt="Logo"
-              className="w-8 h-8 object-contain rounded"
-            />
+            <img src={branding.logo} alt="Logo" className="w-8 h-8 object-contain rounded" />
           ) : (
             <ShieldCheck className="text-blue-600 w-8 h-8" />
           )}
@@ -103,12 +201,12 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
           </span>
         </div>
 
-        {/* زبان بدلنے والا */}
+        {/* Language Switcher */}
         <div className="px-4 py-3 border-b border-gray-100 shrink-0">
           <LanguageSwitcher />
         </div>
 
-        {/* نیویگیشن */}
+        {/* Navigation */}
         <div className="flex-1 overflow-y-auto py-2 px-4 custom-scrollbar">
           {loading ? (
             <div className="flex flex-col items-center justify-center h-full text-slate-400 gap-2">
@@ -166,7 +264,7 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
           )}
         </div>
 
-        {/* لاگ آؤٹ */}
+        {/* Logout */}
         <div className="p-4 border-t border-gray-200 shrink-0">
           <button
             onClick={handleLogout}
@@ -178,13 +276,13 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
         </div>
       </div>
 
-      {/* مرکزی مواد */}
+      {/* Main Content */}
       <div className="flex-1 overflow-y-auto bg-slate-50">
         <div className="p-4 md:p-8 max-w-[1600px] mx-auto">{children}</div>
         <MobileBottomNav />
       </div>
 
-      {/* موبائل اوورلے */}
+      {/* Mobile Overlay */}
       {isMobileMenuOpen && (
         <div className="fixed inset-0 bg-black/50 z-30 md:hidden" onClick={() => setIsMobileMenuOpen(false)} />
       )}
