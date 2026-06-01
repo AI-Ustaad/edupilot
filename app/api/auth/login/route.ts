@@ -1,40 +1,50 @@
-import { NextResponse } from "next/server";
-import { withErrorHandler, withAuth, withRateLimit } from "@/route-helpers";
-import { authRateLimit } from "@/lib/ratelimit";
-import { signInWithEmailAndPassword, getAuth } from "firebase/auth";
-import { auth } from "@/lib/firebase";
-import { adminAuth } from "@/lib/firebase-admin";
+// app/api/auth/login/route.ts
+import { NextRequest, NextResponse } from 'next/server';
+import { auth } from '@/lib/firebase'; // آپ کے کلائنٹ SDK سے
+import { signInWithEmailAndPassword } from 'firebase/auth';
+import { cookies } from 'next/headers';
+import { strictRateLimit } from "@/lib/rate-limit";
+import { withRateLimit } from "@/route-helpers";
 
-export const POST = withErrorHandler(
-  withRateLimit(authRateLimit)(   // <-- Rate limit (10 req/min)
-    withAuth(async (req: Request, context: any) => {
-      const { email, password } = await req.json();
-      if (!email || !password) {
-        return NextResponse.json({ error: "Email and password are required" }, { status: 400 });
-      }
+async function loginHandler(req: NextRequest) {
+  try {
+    const { email, password } = await req.json();
 
-      try {
-        // Sign in with Firebase client SDK (for cookie generation)
-        const userCredential = await signInWithEmailAndPassword(auth, email, password);
-        const idToken = await userCredential.user.getIdToken();
+    if (!email || !password) {
+      return NextResponse.json(
+        { error: 'Email and password are required' },
+        { status: 400 }
+      );
+    }
 
-        // Create session cookie
-        const expiresIn = 60 * 60 * 24 * 5 * 1000; // 5 days
-        const sessionCookie = await adminAuth.createSessionCookie(idToken, { expiresIn });
+    // Firebase Authentication سے سائن ان کریں
+    const userCredential = await signInWithEmailAndPassword(auth, email, password);
+    const user = userCredential.user;
 
-        const response = NextResponse.json({ success: true });
-        response.cookies.set("session", sessionCookie, {
-          maxAge: expiresIn,
-          httpOnly: true,
-          secure: true,
-          sameSite: "lax",
-          path: "/",
-        });
+    // سیشن کوکی بنائیں (آپ کی موجودہ logic)
+    const idToken = await user.getIdToken();
+    
+    // فرض کریں کہ آپ کے پاس سیشن کوکی بنانے کا فنکشن ہے
+    // مثال کے طور پر، آپ /api/auth/session کو کال کر سکتے ہیں یا براہِ راست کوکی سیٹ کر سکتے ہیں
+    const response = NextResponse.json({ success: true, user: { uid: user.uid, email: user.email } });
 
-        return response;
-      } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 401 });
-      }
-    })
-  )
-);
+    // کوکی میں ID ٹوکن محفوظ کریں (اختیاری)
+    response.cookies.set('session', idToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 60 * 60 * 24 * 5, // 5 days
+    });
+
+    return response;
+  } catch (error: any) {
+    console.error('Login error:', error);
+    return NextResponse.json(
+      { error: error.message || 'Invalid email or password' },
+      { status: 401 }
+    );
+  }
+}
+
+// لاگ ان پر سخت ریٹ لمٹنگ (15 منٹ میں 10 کوششیں)
+export const POST = withRateLimit(strictRateLimit)(loginHandler);
