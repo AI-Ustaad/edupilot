@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/firebase';
 import { signInWithEmailAndPassword } from 'firebase/auth';
-import { strictRateLimit } from "@/lib/rate-limit";
+import { strictRateLimit } from "@/lib/ratelimit";
 import { withRateLimit } from "@/route-helpers";
 
 async function loginHandler(req: NextRequest) {

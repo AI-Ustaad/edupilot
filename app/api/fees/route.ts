@@ -5,7 +5,7 @@ import { FeesRepository } from "@/repositories/fees.repository";
 import type { TenantContext } from "@/types/api";
 import { withPermission } from "@/lib/auth/rbac";
 import { PERMISSIONS } from "@/lib/auth/permissions";
-import { standardRateLimit } from "@/lib/rate-limit";
+import { standardRateLimit } from "@/lib/ratelimit";
 import { withRateLimit } from "@/route-helpers";
 
 export const GET = withErrorHandler(
