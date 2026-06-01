@@ -1,3 +1,4 @@
+// services/dashboard.service.ts
 import { StudentService } from "./student.service";
 import { StudentRepository } from "@/repositories/student.repository";
 import { StaffService } from "./staff.service";
@@ -6,7 +7,9 @@ import { FeesService } from "./fees.service";
 import { FeesRepository } from "@/repositories/fees.repository";
 import { AttendanceService } from "./attendance.service";
 import { AttendanceRepository } from "@/repositories/attendance.repository";
-import { getCached, setCache, dashboardKey } from "@/lib/cache/cache";
+import { getOrSet } from "@/lib/cache";
+
+const DASHBOARD_CACHE_TTL = 300; // 5 minutes
 
 export class DashboardService {
   private studentService: StudentService;
@@ -22,55 +25,46 @@ export class DashboardService {
   }
 
   async getDashboardData(tenantId: string) {
-    // 1. پہلے cache چیک کریں
-    const cached = await getCached<any>(dashboardKey(tenantId));
-    if (cached) {
-      return cached;
-    }
+    const cacheKey = `dashboard:${tenantId}`;
 
-    // 2. اصل ڈیٹا اکٹھا کریں
-    const [
-      studentsCount,
-      staffCount,
-      totalRevenue,
-      todayAttendance,
-      attendanceTrend,
-      allStudents,
-      recentPayments,
-    ] = await Promise.all([
-      this.studentService.countStudents(tenantId),
-      this.staffService.countStaff(tenantId),
-      this.feesService.getTotalRevenue(tenantId),
-      this.attendanceService.getTodayAttendance(tenantId),
-      this.attendanceService.getWeeklyAttendanceTrend(tenantId),
-      this.studentService.listStudents(tenantId, 1, 9999),
-      this.feesService.getRecentPayments(tenantId, 5),
-    ]);
+    return getOrSet(cacheKey, DASHBOARD_CACHE_TTL, async () => {
+      const [
+        studentsCount,
+        staffCount,
+        totalRevenue,
+        todayAttendance,
+        attendanceTrend,
+        allStudents,
+        recentPayments,
+      ] = await Promise.all([
+        this.studentService.countStudents(tenantId),
+        this.staffService.countStaff(tenantId),
+        this.feesService.getTotalRevenue(tenantId),
+        this.attendanceService.getTodayAttendance(tenantId),
+        this.attendanceService.getWeeklyAttendanceTrend(tenantId),
+        this.studentService.listStudents(tenantId, 1, 9999),
+        this.feesService.getRecentPayments(tenantId, 5),
+      ]);
 
-    // کلاس ڈسٹری بیوشن
-    const classMap: Record<string, number> = {};
-    allStudents.data.forEach((student: any) => {
-      const cls = student.classGrade || 'Unknown';
-      classMap[cls] = (classMap[cls] || 0) + 1;
+      const classMap: Record<string, number> = {};
+      allStudents.data.forEach((student: any) => {
+        const cls = student.classGrade || "Unknown";
+        classMap[cls] = (classMap[cls] || 0) + 1;
+      });
+      const classDistribution = Object.entries(classMap).map(([name, value]) => ({ name, value }));
+
+      return {
+        students: studentsCount,
+        staff: staffCount,
+        revenue: totalRevenue,
+        todayAttendance,
+        attendanceTrend,
+        attendanceStats: { avg: 85, highest: 98, lowest: 62 }, // placeholder
+        feeMonth: { collected: totalRevenue, pending: 0, total: totalRevenue },
+        classFeeSummary: [],
+        recentPayments,
+        classDistribution,
+      };
     });
-    const classDistribution = Object.entries(classMap).map(([name, value]) => ({ name, value }));
-
-    const result = {
-      students: studentsCount,
-      staff: staffCount,
-      revenue: totalRevenue,
-      todayAttendance,
-      attendanceTrend,
-      attendanceStats: { avg: 85, highest: 98, lowest: 62 }, // عارضی
-      feeMonth: { collected: totalRevenue, pending: 0, total: totalRevenue },
-      classFeeSummary: [],
-      recentPayments,
-      classDistribution,
-    };
-
-    // 3. cache میں 5 منٹ کے لیے محفوظ کریں
-    await setCache(dashboardKey(tenantId), result, 300);
-
-    return result;
   }
 }
