@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { useAuth } from "@/context/AuthContext";
+import { useBranding } from "@/context/BrandingContext"; // 👈 وائٹ لیبل
 import {
   Users, Briefcase, DollarSign, Activity, CalendarDays,
   CreditCard, Clock, AlertTriangle,
@@ -46,12 +47,15 @@ interface DashboardData {
 export default function DashboardPage() {
   const t = useTranslations("Dashboard");
   const { user, loading: authLoading } = useAuth();
+  const branding = useBranding();                        // 👈 برانڈنگ حاصل کریں
+  const primaryColor = branding.primaryColor || "#3b82f6";
+
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [riskStudents, setRiskStudents] = useState<any[]>([]);
 
   useEffect(() => {
-    if (authLoading) return;           // auth لوڈ ہونے تک رکیں
+    if (authLoading) return;
 
     if (!user?.tenantId) {
       setLoading(false);
@@ -77,7 +81,7 @@ export default function DashboardPage() {
     fetch("/api/students/risk")
       .then((res) => res.json())
       .then((json) => {
-        if (json.success) setRiskStudents(json.data);
+        if (json.success) setRiskStudents(json.data || []);
       });
   }, [user, authLoading]);
 
@@ -103,42 +107,69 @@ export default function DashboardPage() {
       variants={staggerContainer}
       className="space-y-8"
     >
-      {/* Header */}
+      {/* Header – اب اسکول کا نام دکھاتا ہے */}
       <motion.div variants={fadeInUp}>
-        <h1 className="text-3xl font-black text-gray-900">{t("title")}</h1>
+        <h1 className="text-3xl font-black text-gray-900">
+          {branding.schoolName || t("title")}
+        </h1>
         <p className="text-gray-500 mt-1">{t("subtitle")}</p>
       </motion.div>
 
-      {/* KPI Cards */}
-      <motion.div variants={staggerContainer} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        <KpiCard title={t("totalStudents")} value={data.students} icon={<Users size={28} className="text-blue-600" />} />
-        <KpiCard title={t("totalStaff")} value={data.staff} icon={<Briefcase size={28} className="text-purple-600" />} />
-        <KpiCard title={t("revenue")} value={data.revenue.toLocaleString()} icon={<DollarSign size={28} className="text-green-600" />} />
+      {/* KPI Cards – پرائمری رنگ میں آئیکن */}
+      <motion.div
+        variants={staggerContainer}
+        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6"
+      >
+        <KpiCard
+          title={t("totalStudents")}
+          value={data.students}
+          icon={<Users size={28} style={{ color: primaryColor }} />}
+        />
+        <KpiCard
+          title={t("totalStaff")}
+          value={data.staff}
+          icon={<Briefcase size={28} style={{ color: primaryColor }} />}
+        />
+        <KpiCard
+          title={t("revenue")}
+          value={data.revenue.toLocaleString()}
+          icon={<DollarSign size={28} style={{ color: primaryColor }} />}
+        />
         <KpiCard
           title={t("todayAttendance")}
           value={`${data.todayAttendance.present} / ${data.todayAttendance.present + data.todayAttendance.absent}`}
           subtitle={`${attendancePercent}% present`}
-          icon={<Activity size={28} className="text-cyan-600" />}
+          icon={<Activity size={28} style={{ color: primaryColor }} />}
         />
       </motion.div>
 
       {/* At Risk Students */}
       {riskStudents.length > 0 && (
-        <motion.div variants={fadeInUp} className="bg-red-50 border border-red-200 rounded-2xl p-6">
+        <motion.div
+          variants={fadeInUp}
+          className="bg-red-50 border border-red-200 rounded-2xl p-6"
+        >
           <h2 className="text-lg font-bold text-red-800 mb-4 flex items-center gap-2">
             <AlertTriangle className="text-red-600" /> {t("atRisk")} ({riskStudents.length})
           </h2>
           <div className="space-y-3">
             {riskStudents.map((student: any) => (
-              <div key={student.id} className="flex justify-between items-center bg-white border border-red-100 rounded-xl p-4">
+              <div
+                key={student.id}
+                className="flex justify-between items-center bg-white border border-red-100 rounded-xl p-4"
+              >
                 <div>
                   <p className="font-semibold text-gray-900">{student.fullName || student.name}</p>
-                  <p className="text-sm text-gray-500">{student.classGrade} {student.section || ""}</p>
+                  <p className="text-sm text-gray-500">
+                    {student.classGrade} {student.section || ""}
+                  </p>
                 </div>
                 <div className="flex gap-4 text-sm items-center">
                   <span className="text-red-600 font-bold">Att: {student.attendance}%</span>
                   <span className="text-orange-600 font-bold">Marks: {student.marks}%</span>
-                  <span className="text-xs bg-red-100 text-red-800 px-2 py-1 rounded-full">{student.riskReason}</span>
+                  <span className="text-xs bg-red-100 text-red-800 px-2 py-1 rounded-full">
+                    {student.riskReason}
+                  </span>
                 </div>
               </div>
             ))}
@@ -150,14 +181,14 @@ export default function DashboardPage() {
       <div className="grid lg:grid-cols-2 gap-6">
         <motion.div variants={fadeInUp} className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
           <h3 className="text-lg font-semibold flex items-center gap-2 mb-4 text-gray-900">
-            <CalendarDays size={20} className="text-blue-600" /> {t("weeklyAttendance")}
+            <CalendarDays size={20} style={{ color: primaryColor }} /> {t("weeklyAttendance")}
           </h3>
           <ResponsiveContainer width="100%" height={280}>
             <LineChart data={data.attendanceTrend}>
               <XAxis dataKey="day" stroke="#9ca3af" />
               <YAxis domain={[0, 100]} stroke="#9ca3af" />
               <Tooltip contentStyle={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: "8px", color: "#000" }} />
-              <Line type="monotone" dataKey="percent" stroke="#3b82f6" strokeWidth={3} dot={{ r: 4, fill: "#3b82f6" }} />
+              <Line type="monotone" dataKey="percent" stroke={primaryColor} strokeWidth={3} dot={{ r: 4, fill: primaryColor }} />
             </LineChart>
           </ResponsiveContainer>
           <div className="grid grid-cols-3 gap-4 mt-4 text-center">
@@ -169,7 +200,7 @@ export default function DashboardPage() {
 
         <motion.div variants={fadeInUp} className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
           <h3 className="text-lg font-semibold mb-4 flex items-center gap-2 text-gray-900">
-            <CreditCard size={20} className="text-green-600" /> {t("feeCollection")} (Current Month)
+            <CreditCard size={20} style={{ color: primaryColor }} /> {t("feeCollection")} (Current Month)
           </h3>
           <div className="mb-4">
             <div className="flex justify-between text-sm mb-1">
@@ -177,7 +208,7 @@ export default function DashboardPage() {
               <span className="text-gray-500">Pending: Rs {data.feeMonth.pending.toLocaleString()}</span>
             </div>
             <div className="w-full bg-gray-200 rounded-full h-2.5">
-              <div className="bg-green-500 h-2.5 rounded-full" style={{ width: `${(data.feeMonth.collected / (data.feeMonth.total || 1)) * 100}%` }} />
+              <div className="rounded-full h-2.5" style={{ width: `${(data.feeMonth.collected / (data.feeMonth.total || 1)) * 100}%`, backgroundColor: primaryColor }} />
             </div>
           </div>
           <h4 className="font-semibold mb-2 text-gray-900">Class‑wise collection</h4>
@@ -189,7 +220,7 @@ export default function DashboardPage() {
                   <span className="text-gray-500">Rs {c.collected.toLocaleString()}</span>
                 </div>
                 <div className="w-full bg-gray-200 rounded-full h-1.5">
-                  <div className="bg-blue-500 h-1.5 rounded-full" style={{ width: `${(c.collected / (c.total || 1)) * 100}%` }} />
+                  <div className="rounded-full h-1.5" style={{ width: `${(c.collected / (c.total || 1)) * 100}%`, backgroundColor: primaryColor }} />
                 </div>
               </div>
             ))}
@@ -201,7 +232,7 @@ export default function DashboardPage() {
       <div className="grid lg:grid-cols-2 gap-6">
         <motion.div variants={fadeInUp} className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
           <h3 className="text-lg font-semibold mb-4 flex items-center gap-2 text-gray-900">
-            <Users size={20} className="text-purple-600" /> {t("studentDistribution")}
+            <Users size={20} style={{ color: primaryColor }} /> {t("studentDistribution")}
           </h3>
           {data.classDistribution.length === 0 ? (
             <div className="h-64 flex items-center justify-center text-gray-400">{t("noData")}</div>
@@ -231,7 +262,7 @@ export default function DashboardPage() {
 
         <motion.div variants={fadeInUp} className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
           <h3 className="text-lg font-semibold mb-4 flex items-center gap-2 text-gray-900">
-            <Clock size={20} className="text-orange-500" /> {t("recentPayments")}
+            <Clock size={20} style={{ color: primaryColor }} /> {t("recentPayments")}
           </h3>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
