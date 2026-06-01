@@ -95,14 +95,14 @@ export const DEFAULT_MENU: MenuGroup[] = [
         icon: "Sparkles",
         path: "/ai-timetable",
         allowedRoles: ["admin", "teacher"],
-        featureFlag: "aiTimetable",
+        featureFlag: "aiTimetable",    // درست
       },
       {
         name: "buses",
         icon: "Bus",
         path: "/admin/buses",
         allowedRoles: ["admin"],
-        featureFlag: "buses",
+        featureFlag: "transport",      // "buses" کی جگہ "transport"
       },
     ],
     allowedRoles: ["admin", "teacher"],
@@ -246,14 +246,14 @@ export const DEFAULT_MENU: MenuGroup[] = [
         icon: "Bot",
         path: "/ai-chatbot",
         allowedRoles: ["admin", "teacher"],
-        featureFlag: "aiChatbot",
+        featureFlag: "aiAssistant",       // "aiChatbot" کی جگہ "aiAssistant"
       },
       {
         name: "examQuestions",
         icon: "FileText",
         path: "/ai-exam-questions",
         allowedRoles: ["admin", "teacher"],
-        featureFlag: "aiExams",
+        featureFlag: "aiExamGenerator",   // "aiExams" کی جگہ "aiExamGenerator"
       },
     ],
     allowedRoles: ["admin", "teacher"],
