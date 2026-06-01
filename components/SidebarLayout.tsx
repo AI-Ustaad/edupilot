@@ -16,7 +16,7 @@ import MobileBottomNav from "./MobileBottomNav";
 import { useTranslations } from "next-intl";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { useAuth } from "@/context/AuthContext";
-import { useBranding } from "@/context/BrandingContext"; // 👈 corrected import
+import { useBranding } from "@/context/BrandingContext";
 
 const iconMap: Record<string, React.ComponentType<any>> = {
   LayoutDashboard,
@@ -57,7 +57,7 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
 
   const { user, loading } = useAuth();
   const role = user?.role || "teacher";
-  const branding = useBranding(); // 👈 get branding data
+  const branding = useBranding();
 
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
     academic: true,
@@ -215,7 +215,7 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
             </div>
           ) : (
             visibleGroups.map((group) => {
-              const GroupIcon = iconMap[group.icon] || BookOpen;
+              const GroupIcon = iconMap[group.icon as string] || BookOpen; // 👈 cast to string
               return (
                 <div key={group.title} className="mb-2">
                   <div
@@ -234,6 +234,7 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
                       {group.items
                         .filter((i) => i.allowed.includes(role))
                         .map((item) => {
+                          const ItemIcon = iconMap[item.icon as string] || FileText; // 👈 cast to string
                           const isActive = pathname === item.path || pathname.startsWith(item.path + "/");
                           return (
                             <Link
@@ -251,7 +252,7 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
                                   : {}
                               }
                             >
-                              <item.icon size={18} />
+                              <ItemIcon size={18} />
                               <span>{item.name}</span>
                             </Link>
                           );
