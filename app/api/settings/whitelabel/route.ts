@@ -1,24 +1,32 @@
-import { adminDb } from "@/lib/firebase-admin";
-import { withAuth, withTenant, withErrorHandler, withRole } from "@/route-helpers";
+import { withAuth, withTenant, withErrorHandler } from "@/route-helpers";
 import { createApiResponse } from "@/lib/response/apiResponse";
+import { TenantBrandingService } from "@/services/tenant-branding.service";
+import { TenantBrandingRepository } from "@/repositories/tenant-branding.repository";
 import type { TenantContext } from "@/types/api";
+import { withPermission } from "@/lib/auth/rbac";
+import { PERMISSIONS } from "@/lib/auth/permissions";
 
 export const GET = withErrorHandler(
   withAuth(
-    withTenant(async (req: Request, { tenantId }: TenantContext) => {
-      const doc = await adminDb.collection("whitelabel").doc(tenantId).get();
-      return createApiResponse(200, doc.data() || { logo: "", favicon: "", schoolName: "", primaryColor: "#3b82f6" });
-    })
+    withTenant(
+      withPermission(PERMISSIONS.settings.view)(async (req: Request, { tenantId }: TenantContext) => {
+        const service = new TenantBrandingService(new TenantBrandingRepository());
+        const branding = await service.getBranding(tenantId);
+        return createApiResponse(200, branding || {});
+      })
+    )
   )
 );
 
-export const POST = withErrorHandler(
+export const PUT = withErrorHandler(
   withAuth(
     withTenant(
-      withRole(["admin"])(async (req: Request, { tenantId }: TenantContext) => {
-        const data = await req.json();
-        await adminDb.collection("whitelabel").doc(tenantId).set(data, { merge: true });
-        return createApiResponse(200, null, "Whitelabel saved");
+      withPermission(PERMISSIONS.settings.manage)(async (req: Request, { tenantId }: TenantContext) => {
+        const body = await req.json();
+        const { schoolName, logo, primaryColor, customDomain } = body;
+        const service = new TenantBrandingService(new TenantBrandingRepository());
+        await service.saveBranding(tenantId, { schoolName, logo, primaryColor, customDomain });
+        return createApiResponse(200, null, "Branding updated");
       })
     )
   )
