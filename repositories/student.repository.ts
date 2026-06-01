@@ -1,74 +1,68 @@
-import { StudentRepository } from './student.repository';
+// repositories/student.repository.ts
+import { BaseRepository } from "./base.repository";
+import { Student } from "@/types/student";
 
-// Mock the Firebase Admin module
-jest.mock('@/lib/firebase-admin', () => {
-  const mockCollection = {
-    add: jest.fn().mockResolvedValue({ id: 'mock-id' }),
-    doc: jest.fn().mockReturnThis(),
-    get: jest.fn().mockResolvedValue({
-      empty: false,
-      docs: [
-        {
-          id: 'mock-id',
-          data: () => ({
-            fullName: 'Test Student',
-            classGrade: '10',
-            section: 'A',
-            rollNumber: 1,
-            tenantId: 'test-tenant',
-          }),
-        },
-      ],
-    }),
-    where: jest.fn().mockReturnThis(),
-    orderBy: jest.fn().mockReturnThis(),
-    limit: jest.fn().mockReturnThis(),
-    count: jest.fn().mockReturnValue({
-      get: jest.fn().mockResolvedValue({ data: { count: 5 } }),
-    }),
-  };
+export class StudentRepository extends BaseRepository<Student> {
 
-  const mockFirestore = {
-    collection: jest.fn().mockReturnValue(mockCollection),
-    batch: jest.fn(() => ({
-      set: jest.fn(),
-      delete: jest.fn(),
-      commit: jest.fn().mockResolvedValue(undefined),
-    })),
-  };
+  constructor() {
+    super("students");
+  }
 
-  return {
-    adminDb: mockFirestore,
-    dbTimestamp: jest.fn(),
-  };
-});
+  async findByRollNumber(
+    rollNumber: number,
+    tenantId: string
+  ): Promise<Student | null> {
+    const snapshot = await this.db
+      .collection(this.collectionName)
+      .where("tenantId", "==", tenantId)
+      .where("rollNumber", "==", rollNumber)
+      .limit(1)
+      .get();
 
-describe('StudentRepository', () => {
-  const repo = new StudentRepository();
-  const tenantId = 'test-tenant';
+    if (snapshot.empty) {
+      return null;
+    }
 
-  test('create returns a string id', async () => {
-    const id = await repo.create({
-      fullName: 'Test',
-      classGrade: '10',
-      section: 'A',
-      rollNumber: 1,
-      tenantId,
-    } as any, tenantId);
-    expect(typeof id).toBe('string');
-  });
+    const doc = snapshot.docs[0];
+    return {
+      id: doc.id,
+      ...doc.data(),
+    } as Student;
+  }
 
-  test('findById returns a student', async () => {
-    const student = await repo.findById('mock-id', tenantId);
-    expect(student).not.toBeNull();
-    expect(student?.fullName).toBe('Test Student');
-  });
+  async findByClass(
+    className: string,
+    tenantId: string
+  ): Promise<Student[]> {
+    const snapshot = await this.db
+      .collection(this.collectionName)
+      .where("tenantId", "==", tenantId)
+      .where("classGrade", "==", className)
+      .orderBy("rollNumber", "asc")
+      .get();
 
-  test('paginate returns paginated results', async () => {
-    const result = await repo.paginate(tenantId, 1, 3);
-    expect(result.data).toHaveLength(1);
-    expect(result.total).toBe(5);
-    expect(result.page).toBe(1);
-    expect(result.totalPages).toBeGreaterThanOrEqual(2);
-  });
-});
+    return snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+    } as Student));
+  }
+
+  async findBySection(
+    className: string,
+    section: string,
+    tenantId: string
+  ): Promise<Student[]> {
+    const snapshot = await this.db
+      .collection(this.collectionName)
+      .where("tenantId", "==", tenantId)
+      .where("classGrade", "==", className)
+      .where("section", "==", section)
+      .orderBy("rollNumber", "asc")
+      .get();
+
+    return snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+    } as Student));
+  }
+}
