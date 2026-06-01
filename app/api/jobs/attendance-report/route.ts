@@ -12,23 +12,19 @@ export async function GET(req: Request) {
 
     for (const tenantId of tenants) {
       const attendanceService = new AttendanceService(new AttendanceRepository());
-      // پچھلے مہینے کی حاضری کی رپورٹ تیار کریں
       const now = new Date();
       const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-      const lastMonthStr = lastMonth.toISOString().slice(0, 7); // YYYY-MM
+      const lastMonthStr = lastMonth.toISOString().slice(0, 7);
 
-      // آپ اپنی مرضی کے مطابق رپورٹ ڈیٹا نکال سکتے ہیں
-      const records = await attendanceService.listAttendance(tenantId, {
-        // date filters if needed
-      });
+      const records = await attendanceService.listAttendance(tenantId);
 
-      // مثال کے طور پر، انتظامیہ کو ای میل کریں
+      // انتظامیہ کو ای میل بھیجیں
       const adminEmail = process.env.ADMIN_EMAIL || 'admin@school.com';
-      await sendEmail({
-        to: adminEmail,
-        subject: `Monthly Attendance Report - ${lastMonthStr}`,
-        html: `<p>Attendance report for ${lastMonthStr} has been generated.</p>`
-      });
+      await sendEmail(
+        adminEmail,
+        `Monthly Attendance Report - ${lastMonthStr}`,
+        `<p>Attendance report for ${lastMonthStr} has been generated. Total records: ${records.length}</p>`
+      );
     }
 
     return NextResponse.json({ success: true });
