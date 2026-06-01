@@ -6,10 +6,6 @@ const redis = new Redis({
   token: process.env.UPSTASH_REDIS_REST_TOKEN || "",
 });
 
-/**
- * Get a cached value. If not found, execute the `fetchFunction`,
- * store the result in cache, and return it.
- */
 export async function getOrSet<T>(
   key: string,
   ttlSeconds: number,
@@ -27,9 +23,6 @@ export async function getOrSet<T>(
   return fresh;
 }
 
-/**
- * Delete a cached entry (useful when data changes).
- */
 export async function invalidateCache(key: string) {
   await redis.del(key);
 }
