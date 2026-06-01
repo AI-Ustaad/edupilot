@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 import { FeesService } from '@/services/fees.service';
 import { FeesRepository } from '@/repositories/fees.repository';
 import { sendEmail } from '@/lib/email';
-import { adminDb } from '@/lib/firebase-admin'; // صرف ٹیننٹس کی فہرست کے لیے
+import { adminDb } from '@/lib/firebase-admin';
 
 export async function GET(req: Request) {
   try {
@@ -21,7 +21,8 @@ export async function GET(req: Request) {
       });
 
       for (const fee of overdue) {
-        const email = fee.studentEmail || fee.email;
+        // فی الحال طالب علم کے نام سے ای میل نکالنے کی بجائے لاگ کریں، یا اپنے موجودہ فیلڈ کے مطابق بدلیں
+        const email = (fee as any).email || (fee as any).parentEmail;
         if (email) {
           await sendEmail(
             email,
