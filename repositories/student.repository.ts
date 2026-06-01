@@ -8,7 +8,6 @@ export class StudentRepository extends BaseRepository<Student> {
     super("students");
   }
 
-  // طالب علم کو رول نمبر سے تلاش کریں
   async findByRollNumber(
     rollNumber: number,
     tenantId: string
@@ -21,7 +20,7 @@ export class StudentRepository extends BaseRepository<Student> {
       .get();
 
     if (snapshot.empty) {
-      return null;                     // ← واپسی یقینی بنائی
+      return null;
     }
 
     const doc = snapshot.docs[0];
@@ -31,7 +30,6 @@ export class StudentRepository extends BaseRepository<Student> {
     } as Student;
   }
 
-  // کلاس کے تمام طلبہ
   async findByClass(
     className: string,
     tenantId: string
@@ -49,7 +47,6 @@ export class StudentRepository extends BaseRepository<Student> {
     } as Student));
   }
 
-  // کلاس + سیکشن کے طلبہ
   async findBySection(
     className: string,
     section: string,
