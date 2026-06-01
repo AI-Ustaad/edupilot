@@ -7,7 +7,6 @@ interface Branding {
   logo?: string;
   primaryColor?: string;
   customDomain?: string;
-  timezone?: string;
 }
 
 const BrandingContext = createContext<Branding>({});
@@ -25,22 +24,18 @@ export function BrandingProvider({ children }: { children: React.ReactNode }) {
           const b = data.data;
           setBranding(b);
 
+          // رنگ کو CSS متغیر میں محفوظ کریں
           if (b.primaryColor) {
             document.documentElement.style.setProperty(
               "--brand-primary",
               b.primaryColor
             );
           }
+          // لوگو کا URL (اگر ہو)
           if (b.logo) {
             document.documentElement.style.setProperty(
               "--brand-logo",
               `url(${b.logo})`
-            );
-          }
-          if (b.timezone) {
-            document.documentElement.style.setProperty(
-              "--brand-timezone",
-              b.timezone
             );
           }
         }
