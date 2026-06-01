@@ -5,7 +5,7 @@ export const createVideoLectureSchema = z.object({
   description: z.string().optional(),
   classGrade: z.string().min(1, "Class is required"),
   subject: z.string().min(1, "Subject is required"),
-  videoUrl: z.string().url("Must be a valid URL").or(z.literal("")), // or handle file upload separately
+  videoUrl: z.string().url("Must be a valid URL").or(z.literal("")),
 });
 
 export const updateVideoLectureSchema = createVideoLectureSchema.partial();
