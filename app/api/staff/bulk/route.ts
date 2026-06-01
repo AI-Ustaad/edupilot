@@ -5,45 +5,49 @@ import { StaffRepository } from "@/repositories/staff.repository";
 import type { TenantContext } from "@/types/api";
 import { CreateStaffSchema } from "@/lib/validation";
 import { ZodError } from "zod";
-import { withPermission } from '@/lib/auth/rbac';
-import { PERMISSIONS } from '@/lib/auth/permissions';
+import { withPermission } from "@/lib/auth/rbac";
+import { PERMISSIONS } from "@/lib/auth/permissions";
+import { standardRateLimit } from "@/lib/rate-limit";
+import { withRateLimit } from "@/route-helpers";
 
-export const POST = withErrorHandler(
-  withAuth(
-    withTenant(
-      withPermission(PERMISSIONS.staff.create)(async (req: Request, { tenantId, user }: TenantContext) => {
-        const body = await req.json();
-        if (!Array.isArray(body.staffMembers) || body.staffMembers.length === 0) {
-          return createApiResponse(400, null, "Provide at least one staff member in 'staffMembers' array.");
-        }
+export const POST = withRateLimit(standardRateLimit)(
+  withErrorHandler(
+    withAuth(
+      withTenant(
+        withPermission(PERMISSIONS.staff.create)(async (req: Request, { tenantId, user }: TenantContext) => {
+          const body = await req.json();
+          if (!Array.isArray(body.staffMembers) || body.staffMembers.length === 0) {
+            return createApiResponse(400, null, "Provide at least one staff member in 'staffMembers' array.");
+          }
 
-        const service = new StaffService(new StaffRepository());
-        const createdIds: string[] = [];
-        const errors: { index: number; message: string }[] = [];
+          const service = new StaffService(new StaffRepository());
+          const createdIds: string[] = [];
+          const errors: { index: number; message: string }[] = [];
 
-        for (let i = 0; i < body.staffMembers.length; i++) {
-          try {
-            const staff = await service.createStaff(body.staffMembers[i], tenantId, user.uid);
-            createdIds.push(staff.id);
-          } catch (err) {
-            if (err instanceof ZodError) {
-              errors.push({ index: i, message: err.errors.map(e => e.message).join(', ') });
-            } else {
-              errors.push({ index: i, message: (err as Error).message });
+          for (let i = 0; i < body.staffMembers.length; i++) {
+            try {
+              const staff = await service.createStaff(body.staffMembers[i], tenantId, user.uid);
+              createdIds.push(staff.id);
+            } catch (err) {
+              if (err instanceof ZodError) {
+                errors.push({ index: i, message: err.errors.map(e => e.message).join(', ') });
+              } else {
+                errors.push({ index: i, message: (err as Error).message });
+              }
             }
           }
-        }
 
-        if (errors.length === body.staffMembers.length) {
-          return createApiResponse(400, { errors }, "All records failed validation.");
-        }
+          if (errors.length === body.staffMembers.length) {
+            return createApiResponse(400, { errors }, "All records failed validation.");
+          }
 
-        return createApiResponse(
-          errors.length > 0 ? 207 : 201,
-          { createdIds, errors: errors.length > 0 ? errors : undefined },
-          `Created ${createdIds.length} out of ${body.staffMembers.length} staff members.`
-        );
-      })
+          return createApiResponse(
+            errors.length > 0 ? 207 : 201,
+            { createdIds, errors: errors.length > 0 ? errors : undefined },
+            `Created ${createdIds.length} out of ${body.staffMembers.length} staff members.`
+          );
+        })
+      )
     )
   )
 );
