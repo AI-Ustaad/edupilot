@@ -11,7 +11,6 @@ import {
   GraduationCap, DollarSign, Calendar, FileText, Heart,
   ChevronDown, ChevronRight, CreditCard, Sparkles, Bus, CalendarDays, Bot,
   Film, Send, Star, PlusCircle, Loader2,
-  // add any other icons used in DEFAULT_MENU
 } from "lucide-react";
 import MobileBottomNav from "./MobileBottomNav";
 import { useTranslations } from "next-intl";
@@ -68,23 +67,26 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
   useEffect(() => {
     if (loading || !user) return;
 
-    const menuService = new MenuService();
-    // For now, pass all permissions allowed for the role. Later, you can fetch actual permissions from a server.
-    const permissions = ROLE_PERMISSIONS[role] || [];
-    // disabledFeatures can come from a context/API – for now empty array
-    const disabledFeatures: string[] = [];
+    const loadMenu = async () => {
+      const menuService = new MenuService();
+      const permissions = ROLE_PERMISSIONS[role] || [];
+      const disabledFeatures: string[] = [];
 
-    const filteredMenu = menuService.getMenuForUser(role, permissions, disabledFeatures);
-    setMenu(filteredMenu);
+      // Await the async method
+      const filteredMenu = await menuService.getMenuForUser(role, permissions, disabledFeatures);
+      setMenu(filteredMenu);
 
-    // Initialize openGroups based on the keys that exist
-    const initialOpen: Record<string, boolean> = {};
-    filteredMenu.forEach(group => {
-      if (group.key) {
-        initialOpen[group.key] = true; // default open
-      }
-    });
-    setOpenGroups(initialOpen);
+      // Initialize open groups
+      const initialOpen: Record<string, boolean> = {};
+      filteredMenu.forEach(group => {
+        if (group.key) {
+          initialOpen[group.key] = true;
+        }
+      });
+      setOpenGroups(initialOpen);
+    };
+
+    loadMenu();
   }, [user, loading, role]);
 
   const toggleGroup = (key: string) => {
@@ -97,9 +99,7 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
     window.location.href = "/";
   };
 
-  // Map translated title from the key stored in config (e.g., t("commandCenter"))
   const getTitle = (group: MenuGroup) => {
-    // Translation keys are stored in the title field (e.g., "commandCenter")
     return t(group.title as any) || group.title;
   };
 
