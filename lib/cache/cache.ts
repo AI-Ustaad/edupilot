@@ -1,4 +1,4 @@
-// lib/cache.ts
+// lib/cache/cache.ts
 import { Redis } from "@upstash/redis";
 
 const redis = new Redis({
@@ -12,9 +12,7 @@ export async function getOrSet<T>(
   fetchFunction: () => Promise<T>
 ): Promise<T> {
   const cached = await redis.get<T>(key);
-  if (cached) {
-    return cached;
-  }
+  if (cached) return cached;
 
   const fresh = await fetchFunction();
   if (fresh !== null && fresh !== undefined) {
