@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { signOut } from "firebase/auth";
@@ -10,138 +10,101 @@ import {
   Wallet, Clock, Settings, Menu, X, ShieldCheck, LogOut,
   GraduationCap, DollarSign, Calendar, FileText, Heart,
   ChevronDown, ChevronRight, CreditCard, Sparkles, Bus, CalendarDays, Bot,
-  Film, Send, Star, PlusCircle, Loader2
+  Film, Send, Star, PlusCircle, Loader2,
+  // add any other icons used in DEFAULT_MENU
 } from "lucide-react";
 import MobileBottomNav from "./MobileBottomNav";
 import { useTranslations } from "next-intl";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { useAuth } from "@/context/AuthContext";
+import { MenuService } from "@/services/menu.service";
+import { MenuGroup } from "@/types/menu";
+import { ROLE_PERMISSIONS } from "@/lib/auth/permissions";
+
+// Map icon strings to Lucide components
+const iconMap: Record<string, React.ComponentType<any>> = {
+  LayoutDashboard,
+  Users,
+  BookOpen,
+  UserCircle,
+  ClipboardCheck,
+  Wallet,
+  Clock,
+  Settings,
+  ShieldCheck,
+  GraduationCap,
+  DollarSign,
+  Calendar,
+  FileText,
+  Heart,
+  ChevronDown,
+  ChevronRight,
+  CreditCard,
+  Sparkles,
+  Bus,
+  CalendarDays,
+  Bot,
+  Film,
+  Send,
+  Star,
+  PlusCircle,
+  Menu,
+  X,
+  LogOut,
+};
 
 export default function SidebarLayout({ children }: { children: React.ReactNode }) {
   const t = useTranslations("Sidebar");
   const pathname = usePathname();
   const router = useRouter();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  
-  // AuthContext سے role اور loading حاصل کریں
+
   const { user, loading } = useAuth();
   const role = user?.role || "teacher";
 
-  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
-    academic: true,
-    finance: true,
-    adminTools: true,
-    operations: true,
-    staff: true,
-    aiTools: true,
-  });
+  const [menu, setMenu] = useState<MenuGroup[]>([]);
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    if (loading || !user) return;
+
+    const menuService = new MenuService();
+    // For now, pass all permissions allowed for the role. Later, you can fetch actual permissions from a server.
+    const permissions = ROLE_PERMISSIONS[role] || [];
+    // disabledFeatures can come from a context/API – for now empty array
+    const disabledFeatures: string[] = [];
+
+    const filteredMenu = menuService.getMenuForUser(role, permissions, disabledFeatures);
+    setMenu(filteredMenu);
+
+    // Initialize openGroups based on the keys that exist
+    const initialOpen: Record<string, boolean> = {};
+    filteredMenu.forEach(group => {
+      if (group.key) {
+        initialOpen[group.key] = true; // default open
+      }
+    });
+    setOpenGroups(initialOpen);
+  }, [user, loading, role]);
 
   const toggleGroup = (key: string) => {
     setOpenGroups((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
-  const menuGroups = [
-    {
-      title: t("commandCenter") || "Command Center",
-      icon: LayoutDashboard,
-      items: [
-        {
-          name: t("commandCenter") || "Dashboard",
-          icon: LayoutDashboard,
-          path: "/dashboard",
-          allowed: ["admin", "teacher", "accountant"],
-        },
-      ],
-      allowed: ["admin", "teacher", "accountant"],
-      key: null,
-    },
-    {
-      title: t("academic") || "Academic",
-      icon: BookOpen,
-      items: [
-        { name: t("students") || "Students", icon: Users, path: "/students", allowed: ["admin", "teacher"] },
-        { name: t("classes") || "Classes", icon: GraduationCap, path: "/classes", allowed: ["admin"] },
-        { name: t("syllabus") || "Syllabus", icon: FileText, path: "/admin/syllabus", allowed: ["admin"] },
-        { name: t("academicYear") || "Academic Year", icon: Calendar, path: "/admin/academic-year", allowed: ["admin"] },
-        { name: t("videoLibrary") || "Video Library", icon: Film, path: "/video-lectures", allowed: ["admin", "teacher", "parent"] },
-      ],
-      allowed: ["admin", "teacher", "parent"],
-      key: "academic",
-    },
-    {
-      title: t("finance") || "Finance",
-      icon: DollarSign,
-      items: [
-        { name: t("fees") || "Fees", icon: Wallet, path: "/fees", allowed: ["admin", "accountant"] },
-        // 📌 یہاں سے ledger کو ہٹا دیا گیا
-      ],
-      allowed: ["admin", "accountant"],
-      key: "finance",
-    },
-    {
-      title: t("operations") || "Operations",
-      icon: Clock,
-      items: [
-        { name: t("attendance") || "Attendance", icon: ClipboardCheck, path: "/attendance", allowed: ["admin", "teacher"] },
-        { name: t("timetable") || "Timetable", icon: Clock, path: "/timetable", allowed: ["admin", "teacher"] },
-        { name: t("aiTimetable") || "AI Timetable", icon: Sparkles, path: "/ai-timetable", allowed: ["admin", "teacher"] },
-        { name: t("buses") || "Buses", icon: Bus, path: "/admin/buses", allowed: ["admin"] },
-      ],
-      allowed: ["admin", "teacher"],
-      key: "operations",
-    },
-    {
-      title: t("staff") || "Staff & Comms",
-      icon: UserCircle,
-      items: [
-        { name: t("staffManagement") || "Staff", icon: UserCircle, path: "/staff", allowed: ["admin"] },
-        { name: t("parents") || "Parents", icon: Heart, path: "/admin/parents", allowed: ["admin"] },
-        { name: t("leaveRequests") || "Leave Requests", icon: CalendarDays, path: "/leave-requests", allowed: ["admin"] },
-        { name: t("postHomework") || "Homework", icon: FileText, path: "/teacher/homework", allowed: ["admin", "teacher"] },
-        { name: t("assignments") || "Assignments", icon: FileText, path: "/teacher/assignments", allowed: ["admin", "teacher"] },
-        { name: t("quizzes") || "Quizzes", icon: FileText, path: "/teacher/quizzes", allowed: ["admin", "teacher"] },
-        { name: t("lessonPlans") || "Lesson Plans", icon: Calendar, path: "/teacher/lesson-plans", allowed: ["admin", "teacher"] },
-        { name: t("bookCenter") || "Book Center", icon: BookOpen, path: "/teacher/book-center", allowed: ["admin", "teacher"] },
-        { name: t("examCenter") || "Exam Center", icon: FileText, path: "/teacher/exam-center", allowed: ["admin", "teacher"] },
-        { name: t("videoLectures") || "Video Lectures", icon: Film, path: "/teacher/video-lectures", allowed: ["admin", "teacher"] },
-        { name: t("chat") || "Chat", icon: Send, path: "/teacher/chat", allowed: ["admin", "teacher"] },
-        { name: t("admissions") || "Admissions", icon: FileText, path: "/admin/admissions", allowed: ["admin"] },
-        { name: t("addSkills") || "Add Skills", icon: Star, path: "/teacher/skills", allowed: ["admin", "teacher"] },
-        { name: t("behaviorPoints") || "Behavior", icon: PlusCircle, path: "/teacher/behavior", allowed: ["admin", "teacher"] },
-      ],
-      allowed: ["admin"],
-      key: "staff",
-    },
-    {
-      title: t("adminTools") || "Admin Tools",
-      icon: Settings,
-      items: [
-        { name: t("settings") || "Settings", icon: Settings, path: "/settings", allowed: ["admin"] },
-        { name: t("users") || "Users & Roles", icon: ShieldCheck, path: "/admin/users", allowed: ["admin"] },
-        { name: t("auditLogs") || "Audit Logs", icon: FileText, path: "/admin/audit", allowed: ["admin"] },
-        { name: t("billing") || "Billing", icon: CreditCard, path: "/settings/billing", allowed: ["admin"] },
-      ],
-      allowed: ["admin"],
-      key: "adminTools",
-    },
-    {
-      title: t("aiTools") || "AI Tools",
-      icon: Sparkles,
-      items: [
-        { name: t("aiAssistant") || "AI Assistant", icon: Bot, path: "/ai-chatbot", allowed: ["admin", "teacher"] },
-        { name: t("examQuestions") || "AI Exams", icon: FileText, path: "/ai-exam-questions", allowed: ["admin", "teacher"] },
-      ],
-      allowed: ["admin", "teacher"],
-      key: "aiTools",
-    },
-  ];
-
-  const visibleGroups = menuGroups.filter((g) => g.allowed.includes(role));
-
   const handleLogout = async () => {
     await signOut(auth);
     await fetch("/api/auth/logout", { method: "POST" });
     window.location.href = "/";
+  };
+
+  // Map translated title from the key stored in config (e.g., t("commandCenter"))
+  const getTitle = (group: MenuGroup) => {
+    // Translation keys are stored in the title field (e.g., "commandCenter")
+    return t(group.title as any) || group.title;
+  };
+
+  const getItemName = (item: any) => {
+    return t(item.name as any) || item.name;
   };
 
   return (
@@ -174,32 +137,33 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
           <LanguageSwitcher />
         </div>
 
-        {/* Navigation / Loading State */}
+        {/* Navigation */}
         <div className="flex-1 overflow-y-auto py-2 px-4 custom-scrollbar">
           {loading ? (
-             <div className="flex flex-col items-center justify-center h-full text-slate-400 gap-2">
-               <Loader2 className="animate-spin" size={24} />
-               <span className="text-sm">Loading Menu...</span>
-             </div>
+            <div className="flex flex-col items-center justify-center h-full text-slate-400 gap-2">
+              <Loader2 className="animate-spin" size={24} />
+              <span className="text-sm">Loading Menu...</span>
+            </div>
           ) : (
-            visibleGroups.map((group) => (
-              <div key={group.title} className="mb-2">
-                <div
-                  className="flex items-center justify-between px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-100 cursor-pointer transition-colors"
-                  onClick={() => group.key && toggleGroup(group.key)}
-                >
-                  <div className="flex items-center gap-2">
-                    <group.icon size={18} className="text-blue-600" />
-                    <span className="text-sm font-semibold">{group.title}</span>
+            menu.map((group) => {
+              const GroupIcon = iconMap[group.icon] || BookOpen;
+              return (
+                <div key={group.title} className="mb-2">
+                  <div
+                    className="flex items-center justify-between px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-100 cursor-pointer transition-colors"
+                    onClick={() => group.key && toggleGroup(group.key)}
+                  >
+                    <div className="flex items-center gap-2">
+                      <GroupIcon size={18} className="text-blue-600" />
+                      <span className="text-sm font-semibold">{getTitle(group)}</span>
+                    </div>
+                    {group.key && (openGroups[group.key] ? <ChevronDown size={16} /> : <ChevronRight size={16} />)}
                   </div>
-                  {group.key && (openGroups[group.key] ? <ChevronDown size={16} /> : <ChevronRight size={16} />)}
-                </div>
 
-                {(!group.key || openGroups[group.key]) && (
-                  <div className="ml-6 mt-1 space-y-1">
-                    {group.items
-                      .filter((i) => i.allowed.includes(role))
-                      .map((item) => {
+                  {(!group.key || openGroups[group.key]) && (
+                    <div className="ml-6 mt-1 space-y-1">
+                      {group.children.map((item) => {
+                        const ItemIcon = iconMap[item.icon] || FileText;
                         const isActive = pathname === item.path || pathname.startsWith(item.path + "/");
                         return (
                           <Link
@@ -212,15 +176,16 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
                                 : "text-gray-600 hover:bg-gray-100"
                             }`}
                           >
-                            <item.icon size={18} />
-                            <span>{item.name}</span>
+                            <ItemIcon size={18} />
+                            <span>{getItemName(item)}</span>
                           </Link>
                         );
                       })}
-                  </div>
-                )}
-              </div>
-            ))
+                    </div>
+                  )}
+                </div>
+              );
+            })
           )}
         </div>
 
