@@ -15,17 +15,15 @@ export async function GET(req: Request) {
       const feesService = new FeesService(new FeesRepository());
       const allFees = await feesService.listFees(tenantId);
       
-      const overdue = allFees.data.filter((fee: any) => {
-        const dueDate = new Date(fee.dueDate);
-        return dueDate < new Date() && fee.status === 'pending';
+      const overdue = allFees.data.filter(fee => {
+        const dueDate = fee.dueDate ? new Date(fee.dueDate) : null;
+        return dueDate && dueDate < new Date() && fee.status === 'pending';
       });
 
       for (const fee of overdue) {
-        // فی الحال طالب علم کے نام سے ای میل نکالنے کی بجائے لاگ کریں، یا اپنے موجودہ فیلڈ کے مطابق بدلیں
-        const email = (fee as any).email || (fee as any).parentEmail;
-        if (email) {
+        if (fee.email) {
           await sendEmail(
-            email,
+            fee.email,
             `Fee Reminder: ${fee.feeMonth}`,
             `<p>Dear Parent,<br/>This is a reminder that the fee of Rs. ${fee.amountPaid} for ${fee.feeMonth} is pending.<br/>Please make the payment at your earliest convenience.</p>`
           );
