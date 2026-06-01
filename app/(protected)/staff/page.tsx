@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { useAuth } from "@/context/AuthContext";
-import { Users, Search, Plus, Pencil, Trash2, Loader2 } from "lucide-react";
+import { Search, Plus, Pencil, Trash2, Loader2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 
@@ -34,9 +34,14 @@ export default function StaffPage() {
       if (!res.ok) throw new Error("Failed to fetch");
       const json = await res.json();
 
-      // The API returns: { success: true, data: { data: [...], total, page, totalPages } }
-      // We only need the inner array of staff members.
-      const staffData = json.data?.data || json.data || [];  // fallback for safety
+      // API returns { success: true, data: { data: [...], total, page, ... } }
+      // Extract the array safely
+      const staffData = Array.isArray(json?.data?.data)
+        ? json.data.data
+        : Array.isArray(json?.data)
+        ? json.data
+        : [];
+
       setStaffList(staffData);
     } catch (err) {
       console.error("Staff fetch error:", err);
@@ -49,7 +54,7 @@ export default function StaffPage() {
     fetchStaff();
   }, []);
 
-  const filtered = staffList.filter((s) =>
+  const filtered = (Array.isArray(staffList) ? staffList : []).filter((s) =>
     s.personal?.fullName?.toLowerCase().includes(search.toLowerCase())
   );
 
