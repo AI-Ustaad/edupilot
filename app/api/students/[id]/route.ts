@@ -1,3 +1,4 @@
+import { invalidateCache } from "@/lib/cache";
 import { withAuth, withTenant, withErrorHandler } from "@/route-helpers";
 import { createApiResponse } from "@/lib/response/apiResponse";
 import { StudentService } from "@/services/student.service";
@@ -24,7 +25,9 @@ export const GET = withErrorHandler(
         const id = getIdFromUrl(req);
         const service = new StudentService(new StudentRepository());
         const student = await service.getStudentById(id, tenantId);
+    await invalidateCache(`dashboard:${tenantId}`);
         if (!student) return createApiResponse(404, null, "Student not found");
+    await invalidateCache(`dashboard:${tenantId}`);
         return createApiResponse(200, student);
       })
     )
@@ -39,6 +42,7 @@ export const PUT = withErrorHandler(
         const body = await req.json();
         const service = new StudentService(new StudentRepository());
         await service.updateStudent(id, body, tenantId);
+    await invalidateCache(`dashboard:${tenantId}`);
         return createApiResponse(200, null, "Student updated successfully");
       })
     )
@@ -52,6 +56,7 @@ export const DELETE = withErrorHandler(
         const id = getIdFromUrl(req);
         const service = new StudentService(new StudentRepository());
         const student = await service.getStudentById(id, tenantId);
+    await invalidateCache(`dashboard:${tenantId}`);
         if (!student) return createApiResponse(404, null, "Student not found");
         await service.deleteStudent(id, tenantId);
         await logAction({
@@ -62,6 +67,7 @@ export const DELETE = withErrorHandler(
           entityType: "student",
           metadata: { name: student.fullName },
         });
+    await invalidateCache(`dashboard:${tenantId}`);
         return createApiResponse(200, null, "Student deleted successfully");
       })
     )

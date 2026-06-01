@@ -1,8 +1,8 @@
+import { invalidateCache } from "@/lib/cache";
 import { AttendanceRepository } from "@/repositories/attendance.repository";
 import { Attendance } from "@/types/attendance";
 import { MarkAttendanceSchema, BulkAttendanceSchema } from "@/lib/validation";
 import { ZodError } from "zod";
-import { deleteCache, attendanceKey, dashboardKey } from "@/lib/cache/cache";
 
 export class AttendanceService {
   constructor(private repo: AttendanceRepository) {}
@@ -26,9 +26,7 @@ export class AttendanceService {
 
     // Invalidate caches (attendance for that date and dashboard)
     if (validated.date) {
-      await deleteCache(attendanceKey(tenantId, validated.date));
     }
-    await deleteCache(dashboardKey(tenantId));
 
     return record as Attendance;
   }
@@ -62,9 +60,7 @@ export class AttendanceService {
 
     // Invalidate cache for each affected date
     for (const date of datesSet) {
-      await deleteCache(attendanceKey(tenantId, date));
     }
-    await deleteCache(dashboardKey(tenantId));
 
     return { success: true, message: `${records.length} attendance records saved` };
   }
@@ -95,9 +91,7 @@ export class AttendanceService {
 
     // Invalidate cache for that date (if we know it)
     if ((updated as any).date) {
-      await deleteCache(attendanceKey(tenantId, (updated as any).date));
     }
-    await deleteCache(dashboardKey(tenantId));
 
     return updated as Attendance;
   }
@@ -109,9 +103,7 @@ export class AttendanceService {
 
     if (record) {
       if ((record as any).date) {
-        await deleteCache(attendanceKey(tenantId, (record as any).date));
       }
-      await deleteCache(dashboardKey(tenantId));
     }
   }
 

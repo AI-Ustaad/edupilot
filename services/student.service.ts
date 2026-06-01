@@ -1,3 +1,4 @@
+import { invalidateCache } from "@/lib/cache";
 import { StudentRepository } from "@/repositories/student.repository";
 import { Student } from "@/types/student";
 import {
@@ -7,7 +8,6 @@ import {
   UpdateStudentInput,
 } from "@/lib/validation";
 import { ZodError } from "zod";
-import { deleteCache, studentListKey, dashboardKey } from "@/lib/cache/cache";
 
 type CreateStudentDto = Omit<Student, "id" | "tenantId" | "createdAt" | "updatedAt">;
 
@@ -31,8 +31,6 @@ export class StudentService {
     if (!student) throw new Error("Student created but could not be retrieved");
 
     // Cache invalidation
-    await deleteCache(studentListKey(tenantId));
-    await deleteCache(dashboardKey(tenantId));
 
     return student as Student;
   }
@@ -62,8 +60,6 @@ export class StudentService {
     if (!updated) throw new Error("Student not found after update");
 
     // Cache invalidation
-    await deleteCache(studentListKey(tenantId));
-    await deleteCache(dashboardKey(tenantId));
 
     return updated as Student;
   }
@@ -72,15 +68,11 @@ export class StudentService {
     await this.repo.softDelete(id, tenantId);
 
     // Cache invalidation
-    await deleteCache(studentListKey(tenantId));
-    await deleteCache(dashboardKey(tenantId));
   }
 
   async hardDeleteStudent(id: string, tenantId: string): Promise<void> {
     await this.repo.delete(id, tenantId);
 
-    await deleteCache(studentListKey(tenantId));
-    await deleteCache(dashboardKey(tenantId));
   }
 
   async countStudents(tenantId: string): Promise<number> {

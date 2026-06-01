@@ -1,3 +1,4 @@
+import { invalidateCache } from "@/lib/cache";
 import { withAuth, withTenant, withErrorHandler } from "@/route-helpers";
 import { createApiResponse } from "@/lib/response/apiResponse";
 import { StudentService } from "@/services/student.service";
@@ -18,6 +19,7 @@ export const GET = withErrorHandler(
         const limit = parseInt(url.searchParams.get('limit') || '20');
         const service = new StudentService(new StudentRepository());
         const result = await service.listStudents(tenantId, page, limit);
+    await invalidateCache(`dashboard:${tenantId}`);
         return createApiResponse(200, result);
       })
     )
@@ -33,10 +35,12 @@ export const POST = withRateLimit(standardRateLimit)(
           const service = new StudentService(new StudentRepository());
           const currentCount = await service.countStudents(tenantId);
           if (currentCount >= limits.students) {
+    await invalidateCache(`dashboard:${tenantId}`);
             return createApiResponse(403, null, `Student limit reached (${limits.students}). Please upgrade your plan.`);
           }
           const body = await req.json();
           const student = await service.createStudent(body, tenantId);
+    await invalidateCache(`dashboard:${tenantId}`);
           return createApiResponse(201, student, "Student added successfully");
         })
       )

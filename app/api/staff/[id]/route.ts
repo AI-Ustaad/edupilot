@@ -1,3 +1,4 @@
+import { invalidateCache } from "@/lib/cache";
 // app/api/staff/[id]/route.ts
 import { withAuth, withTenant, withErrorHandler } from "@/route-helpers";
 import { createApiResponse } from "@/lib/response/apiResponse";
@@ -32,8 +33,10 @@ export const GET = withErrorHandler(
           const service = new StaffService(new StaffRepository());
           const staff = await service.getStaffById(id, tenantId);
           if (!staff) {
+    await invalidateCache(`dashboard:${tenantId}`);
             return createApiResponse(404, null, "Staff not found");
           }
+    await invalidateCache(`dashboard:${tenantId}`);
           return createApiResponse(200, staff);
         }
       )
@@ -50,6 +53,7 @@ export const PUT = withErrorHandler(
           const body = await req.json();
           const service = new StaffService(new StaffRepository());
           await service.updateStaff(id, body, tenantId, user.uid);
+    await invalidateCache(`dashboard:${tenantId}`);
           return createApiResponse(200, null, "Staff updated successfully");
         }
       )
@@ -66,6 +70,7 @@ export const DELETE = withErrorHandler(
           const service = new StaffService(new StaffRepository());
           const staff = await service.getStaffById(id, tenantId);
           if (!staff) {
+    await invalidateCache(`dashboard:${tenantId}`);
             return createApiResponse(404, null, "Staff not found");
           }
 
@@ -81,6 +86,7 @@ export const DELETE = withErrorHandler(
             metadata: { name: staff.personal?.fullName },
           });
 
+    await invalidateCache(`dashboard:${tenantId}`);
           return createApiResponse(200, null, "Staff deleted successfully");
         }
       )

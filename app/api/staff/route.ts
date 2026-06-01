@@ -1,3 +1,4 @@
+import { invalidateCache } from "@/lib/cache";
 import { withAuth, withTenant, withErrorHandler } from "@/route-helpers";
 import { createApiResponse } from "@/lib/response/apiResponse";
 import { StaffService } from "@/services/staff.service";
@@ -20,6 +21,7 @@ export const GET = withErrorHandler(
         const limit = parseInt(url.searchParams.get('limit') || '20');
         const service = new StaffService(new StaffRepository());
         const result = await service.listStaff(tenantId, page, limit);
+    await invalidateCache(`dashboard:${tenantId}`);
         return createApiResponse(200, result);
       })
     )
@@ -35,10 +37,12 @@ export const POST = withRateLimit(standardRateLimit)(
           const service = new StaffService(new StaffRepository());
           const currentCount = await service.countStaff(tenantId);
           if (currentCount >= limits.maxStaff) {
+    await invalidateCache(`dashboard:${tenantId}`);
             return createApiResponse(403, null, `Staff limit reached (${limits.maxStaff}). Please upgrade your plan.`);
           }
           const body = await req.json();
           const staff = await service.createStaff(body, tenantId, user.uid);
+    await invalidateCache(`dashboard:${tenantId}`);
           return createApiResponse(201, staff, "Staff added successfully");
         })
       )

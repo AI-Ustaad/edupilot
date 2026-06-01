@@ -1,3 +1,4 @@
+import { invalidateCache } from "@/lib/cache";
 import { withAuth, withTenant, withErrorHandler } from "@/route-helpers";
 import { createApiResponse } from "@/lib/response/apiResponse";
 import { FeesService } from "@/services/fees.service";
@@ -18,6 +19,7 @@ export const GET = withErrorHandler(
         const limit = parseInt(url.searchParams.get('limit') || '20');
         const service = new FeesService(new FeesRepository());
         const result = await service.listFees(tenantId, studentId, page, limit);
+    await invalidateCache(`dashboard:${tenantId}`);
         return createApiResponse(200, result);
       })
     )
@@ -32,6 +34,7 @@ export const POST = withRateLimit(standardRateLimit)(
           const body = await req.json();
           const service = new FeesService(new FeesRepository());
           const fee = await service.createFee(body, tenantId);
+    await invalidateCache(`dashboard:${tenantId}`);
           return createApiResponse(201, fee, "Fee record created successfully");
         })
       )

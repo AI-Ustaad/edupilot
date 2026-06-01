@@ -1,3 +1,4 @@
+import { invalidateCache } from "@/lib/cache";
 // app/api/attendance/[id]/route.ts
 import { withAuth, withTenant, withErrorHandler } from "@/route-helpers";
 import { createApiResponse } from "@/lib/response/apiResponse";
@@ -32,8 +33,10 @@ export const GET = withErrorHandler(
           const service = new AttendanceService(new AttendanceRepository());
           const record = await service.getById(id, tenantId);
           if (!record) {
+    await invalidateCache(`dashboard:${tenantId}`);
             return createApiResponse(404, null, "Attendance record not found");
           }
+    await invalidateCache(`dashboard:${tenantId}`);
           return createApiResponse(200, record);
         }
       )
@@ -50,6 +53,7 @@ export const PUT = withErrorHandler(
           const body = await req.json();
           const service = new AttendanceService(new AttendanceRepository());
           await service.updateAttendance(id, body, tenantId);
+    await invalidateCache(`dashboard:${tenantId}`);
           return createApiResponse(200, null, "Attendance updated successfully");
         }
       )
@@ -66,6 +70,7 @@ export const DELETE = withErrorHandler(
           const service = new AttendanceService(new AttendanceRepository());
           const record = await service.getById(id, tenantId);
           if (!record) {
+    await invalidateCache(`dashboard:${tenantId}`);
             return createApiResponse(404, null, "Attendance record not found");
           }
 
@@ -84,6 +89,7 @@ export const DELETE = withErrorHandler(
             },
           });
 
+    await invalidateCache(`dashboard:${tenantId}`);
           return createApiResponse(200, null, "Attendance record deleted successfully");
         }
       )

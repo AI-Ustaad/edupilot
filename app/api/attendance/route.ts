@@ -1,3 +1,4 @@
+import { invalidateCache } from "@/lib/cache";
 import { withAuth, withTenant, withErrorHandler } from "@/route-helpers";
 import { createApiResponse } from "@/lib/response/apiResponse";
 import { AttendanceService } from "@/services/attendance.service";
@@ -20,6 +21,7 @@ export const GET = withErrorHandler(
         };
         const service = new AttendanceService(new AttendanceRepository());
         const records = await service.listAttendance(tenantId, filters);
+    await invalidateCache(`dashboard:${tenantId}`);
         return createApiResponse(200, records);
       })
     )
@@ -35,9 +37,11 @@ export const POST = withRateLimit(standardRateLimit)(
           const service = new AttendanceService(new AttendanceRepository());
           if (Array.isArray(body)) {
             const result = await service.createBulk(body, tenantId, user.uid);
+    await invalidateCache(`dashboard:${tenantId}`);
             return createApiResponse(201, result, result.message);
           } else {
             const record = await service.createSingle(body, tenantId, user.uid);
+    await invalidateCache(`dashboard:${tenantId}`);
             return createApiResponse(201, record, "Attendance marked successfully");
           }
         })

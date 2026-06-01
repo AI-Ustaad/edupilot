@@ -1,8 +1,8 @@
+import { invalidateCache } from "@/lib/cache";
 import { FeesRepository } from "@/repositories/fees.repository";
 import { Fee } from "@/types/fees";
 import { CreateFeeSchema, UpdateFeeSchema } from "@/lib/validation";
 import { ZodError } from "zod";
-import { deleteCache, feeListKey, dashboardKey } from "@/lib/cache/cache";
 
 export class FeesService {
   constructor(private repo: FeesRepository) {}
@@ -24,11 +24,8 @@ export class FeesService {
     if (!fee) throw new Error("Fee record created but could not be retrieved");
 
     // Invalidate caches
-    await deleteCache(feeListKey(tenantId));
     if ((fee as any).studentId) {
-      await deleteCache(feeListKey(tenantId, (fee as any).studentId));
     }
-    await deleteCache(dashboardKey(tenantId));
 
     return fee as Fee;
   }
@@ -75,11 +72,8 @@ export class FeesService {
     if (!updated) throw new Error("Fee record not found after update");
 
     // Invalidate caches
-    await deleteCache(feeListKey(tenantId));
     if ((updated as any).studentId) {
-      await deleteCache(feeListKey(tenantId, (updated as any).studentId));
     }
-    await deleteCache(dashboardKey(tenantId));
 
     return updated as Fee;
   }
@@ -90,11 +84,8 @@ export class FeesService {
     await this.repo.delete(id, tenantId);
 
     if (fee) {
-      await deleteCache(feeListKey(tenantId));
       if ((fee as any).studentId) {
-        await deleteCache(feeListKey(tenantId, (fee as any).studentId));
       }
-      await deleteCache(dashboardKey(tenantId));
     }
   }
 

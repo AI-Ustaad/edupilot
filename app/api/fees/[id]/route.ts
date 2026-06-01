@@ -1,3 +1,4 @@
+import { invalidateCache } from "@/lib/cache";
 import { withAuth, withTenant, withErrorHandler } from "@/route-helpers";
 import { createApiResponse } from "@/lib/response/apiResponse";
 import { FeesService } from "@/services/fees.service";
@@ -24,7 +25,9 @@ export const GET = withErrorHandler(
         const id = getIdFromUrl(req);
         const service = new FeesService(new FeesRepository());
         const fee = await service.getFeeById(id, tenantId);
+    await invalidateCache(`dashboard:${tenantId}`);
         if (!fee) return createApiResponse(404, null, "Fee record not found");
+    await invalidateCache(`dashboard:${tenantId}`);
         return createApiResponse(200, fee);
       })
     )
@@ -39,6 +42,7 @@ export const PUT = withErrorHandler(
         const body = await req.json();
         const service = new FeesService(new FeesRepository());
         await service.updateFee(id, body, tenantId);
+    await invalidateCache(`dashboard:${tenantId}`);
         return createApiResponse(200, null, "Fee record updated successfully");
       })
     )
@@ -52,6 +56,7 @@ export const DELETE = withErrorHandler(
         const id = getIdFromUrl(req);
         const service = new FeesService(new FeesRepository());
         const fee = await service.getFeeById(id, tenantId);
+    await invalidateCache(`dashboard:${tenantId}`);
         if (!fee) return createApiResponse(404, null, "Fee record not found");
         await service.deleteFee(id, tenantId);
         await logAction({
@@ -62,6 +67,7 @@ export const DELETE = withErrorHandler(
           entityType: "fee",
           metadata: { studentName: (fee as any).studentName, amount: (fee as any).amountPaid },
         });
+    await invalidateCache(`dashboard:${tenantId}`);
         return createApiResponse(200, null, "Fee record deleted successfully");
       })
     )
