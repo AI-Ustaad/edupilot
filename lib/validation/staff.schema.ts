@@ -1,61 +1,97 @@
 import { z } from "zod";
 
-export const PersonalInfoSchema = z.object({
-  fullName: z.string().min(3, "Full name must be at least 3 characters"),
-  fatherName: z.string().optional(),
-  cnic: z.string().regex(/^\d{5}-\d{7}-\d$/, "Invalid CNIC format").optional(),
-  dob: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Invalid date format (YYYY-MM-DD)").optional(),
-  gender: z.enum(["Male", "Female", "Other"]).default("Male"),
-  maritalStatus: z.enum(["Single", "Married", "Divorced", "Widowed"]).default("Single"),
-  email: z.string().email("Invalid email address").optional(),
-  phone: z.string().regex(/^03\d{9}$/, "Invalid Pakistani phone number").optional(),
-  currentAddress: z.string().optional(),
-  permanentAddress: z.string().optional(),
-  emergencyContact: z.string().optional(),
-  photo: z.string().optional(),
-});
-
-export const ProfessionalInfoSchema = z.object({
-  personnelNo: z.string().min(1, "Employee ID is required"),
-  doj: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
-  bps: z.string().optional(),
-  empCategory: z.enum(["Active Permanent", "Contract", "Visiting", "Retired"]).default("Active Permanent"),
-  designation: z.string().min(1, "Designation is required"),
-  ddoCode: z.string().optional(),
-  prevExperience: z.string().optional(),
-  prevInstitution: z.string().optional(),
-});
-
-export const FinancialInfoSchema = z.object({
-  bankName: z.string().optional(),
-  accountNo: z.string().optional(),
-  accountTitle: z.string().optional(),
-  ntn: z.string().optional(),
-});
-
-export const AllowanceSchema = z.object({
-  name: z.string().min(1, "Allowance name is required"),
-  amount: z.number().nonnegative("Amount must be zero or positive"),
-});
-
-export const DeductionSchema = z.object({
-  name: z.string().min(1, "Deduction name is required"),
-  amount: z.number().nonnegative("Amount must be zero or positive"),
-});
-
 export const CreateStaffSchema = z.object({
-  personal: PersonalInfoSchema,
-  professional: ProfessionalInfoSchema,
-  financial: FinancialInfoSchema.optional(),
-  education: z.array(z.object({
-    level: z.string(),
-    institute: z.string(),
-    passingYear: z.string(),
-    subjects: z.string(),
-    document: z.string().optional(),
-  })).optional(),
-  allowances: z.array(AllowanceSchema).default([]),
-  deductions: z.array(DeductionSchema).default([]),
+  personal: z.object({
+    fullName: z.string().min(3),
+    fatherName: z.string().optional(),
+    cnic: z.string().regex(/^\d{5}-\d{7}-\d$/).optional(),
+    dob: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+    gender: z.enum(["Male", "Female", "Other"]).default("Male"),
+    bloodGroup: z.string().optional(),
+    nationality: z.string().optional(),
+    religion: z.string().optional(),
+    maritalStatus: z.enum(["Single", "Married", "Divorced", "Widowed"]).default("Single"),
+    photo: z.string().optional(),
+  }),
+  contact: z.object({
+    mobile: z.string().regex(/^03\d{9}$/).optional(),
+    whatsapp: z.string().optional(),
+    email: z.string().email().optional(),
+    currentAddress: z.string().optional(),
+    permanentAddress: z.string().optional(),
+    city: z.string().optional(),
+    province: z.string().optional(),
+    country: z.string().optional(),
+    postalCode: z.string().optional(),
+  }).default({}),
+  professional: z.object({
+    personnelNo: z.string().min(1, "Personnel No is required"),
+    employeeId: z.string().optional(),
+    designation: z.string().min(1, "Designation is required"),
+    department: z.string().optional(),
+    role: z.string().optional(),
+    employmentType: z.string().optional(),
+    joiningDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+    confirmationDate: z.string().optional(),
+    experience: z.string().optional(),
+    qualification: z.string().optional(),
+  }),
+  payroll: z.object({
+    basicSalary: z.number().optional(),
+    allowances: z.object({
+      houseRent: z.number().optional(),
+      medical: z.number().optional(),
+      transport: z.number().optional(),
+    }).optional(),
+    grossSalary: z.number().optional(),
+    bankName: z.string().optional(),
+    accountNumber: z.string().optional(),
+    iban: z.string().optional(),
+    salaryPaymentMethod: z.string().optional(),
+  }).optional(),
+  academic: z.object({
+    subjects: z.array(z.string()).optional(),
+    classesAssigned: z.array(z.string()).optional(),
+    timetable: z.string().optional(),
+    sectionAssignment: z.string().optional(),
+    classTeacher: z.boolean().optional(),
+  }).optional(),
+  attendance: z.object({
+    presentDays: z.number().optional(),
+    absentDays: z.number().optional(),
+    lateArrivals: z.number().optional(),
+    leaves: z.number().optional(),
+    attendancePercent: z.number().optional(),
+  }).optional(),
+  leaves: z.object({
+    casualLeaves: z.number().optional(),
+    medicalLeaves: z.number().optional(),
+    annualLeaves: z.number().optional(),
+    remainingLeaves: z.number().optional(),
+  }).optional(),
+  documents: z.object({
+    cnicFront: z.string().optional(),
+    cnicBack: z.string().optional(),
+    degreeCertificates: z.array(z.string()).optional(),
+    experienceCertificates: z.array(z.string()).optional(),
+    appointmentLetter: z.string().optional(),
+    contract: z.string().optional(),
+    cv: z.string().optional(),
+  }).optional(),
+  emergency: z.object({
+    name: z.string().optional(),
+    relation: z.string().optional(),
+    phone: z.string().optional(),
+    alternatePhone: z.string().optional(),
+  }).optional(),
+  performance: z.object({
+    score: z.number().optional(),
+    principalRemarks: z.string().optional(),
+    warnings: z.number().optional(),
+    achievements: z.array(z.string()).optional(),
+    promotions: z.array(z.string()).optional(),
+    trainingHistory: z.array(z.string()).optional(),
+  }).optional(),
 });
 
 export const UpdateStaffSchema = CreateStaffSchema.partial();
