@@ -1,26 +1,34 @@
-// lib/ratelimit.ts
-import { Redis } from "@upstash/redis";
+// lib/rate-limit.ts
 import { Ratelimit } from "@upstash/ratelimit";
+import { Redis } from "@upstash/redis";
 
-const redis = Redis.fromEnv();  // UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN
-
-// عام API کے لیے – 100 requests per minute
-export const apiRateLimit = new Ratelimit({
-  redis,
-  limiter: Ratelimit.slidingWindow(100, "1 m"),
-  analytics: true,
+// اپنی Upstash Redis ڈیٹابیس سے کنکشن بنائیں
+const redis = new Redis({
+  url: process.env.UPSTASH_REDIS_REST_URL || "",
+  token: process.env.UPSTASH_REDIS_REST_TOKEN || "",
 });
 
-// تصدیق والے روٹس (login, register) – 10 requests per minute
-export const authRateLimit = new Ratelimit({
+// مختلف حالات کے لیے مختلف لیمیٹرز بنا سکتے ہیں
+export const strictRateLimit = new Ratelimit({
   redis,
-  limiter: Ratelimit.slidingWindow(10, "1 m"),
+  limiter: Ratelimit.slidingWindow(5, "1 m"),  // 1 منٹ میں زیادہ سے زیادہ 5 درخواستیں
   analytics: true,
+  prefix: "ratelimit:strict",
 });
 
-// AI endpoints – 20 requests per minute (لاگت کنٹرول)
-export const aiRateLimit = new Ratelimit({
+export const standardRateLimit = new Ratelimit({
   redis,
-  limiter: Ratelimit.slidingWindow(20, "1 m"),
+  limiter: Ratelimit.slidingWindow(30, "1 m"), // 1 منٹ میں 30 درخواستیں
   analytics: true,
+  prefix: "ratelimit:standard",
 });
+
+export const loginRateLimit = new Ratelimit({
+  redis,
+  limiter: Ratelimit.slidingWindow(10, "15 m"), // 15 منٹ میں 10 کوششیں (بروٹ فورس روکنے کے لیے)
+  analytics: true,
+  prefix: "ratelimit:login",
+});
+
+// عام استعمال کے لیے مددگار فنکشن (rate limiter object واپس کرتا ہے)
+// آپ مڈل ویئر میں براہِ راست limiter استعمال کریں گے
