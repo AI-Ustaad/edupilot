@@ -33,8 +33,11 @@ export default function StaffPage() {
       const res = await fetch("/api/staff");
       if (!res.ok) throw new Error("Failed to fetch");
       const json = await res.json();
-      // API returns { success: true, data: [...] }
-      setStaffList(json.data || json);
+
+      // The API returns: { success: true, data: { data: [...], total, page, totalPages } }
+      // We only need the inner array of staff members.
+      const staffData = json.data?.data || json.data || [];  // fallback for safety
+      setStaffList(staffData);
     } catch (err) {
       console.error("Staff fetch error:", err);
     } finally {
