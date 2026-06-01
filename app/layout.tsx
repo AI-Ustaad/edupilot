@@ -3,7 +3,8 @@ import { Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 import { getLocale, getMessages } from "next-intl/server";
 import { NextIntlClientProvider } from "next-intl";
-import { ClientAuthWrapper } from "@/components/ClientAuthWrapper"; // ← نیا
+import { ClientAuthWrapper } from "@/components/ClientAuthWrapper";
+import { BrandingProvider } from "@/context/BrandingContext"; // 👈 نیا
 
 const font = Plus_Jakarta_Sans({ subsets: ["latin"] });
 
@@ -20,7 +21,11 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     <html lang={locale}>
       <body className={font.className}>
         <NextIntlClientProvider locale={locale} messages={messages}>
-          <ClientAuthWrapper>{children}</ClientAuthWrapper>
+          <ClientAuthWrapper>
+            <BrandingProvider>
+              {children}
+            </BrandingProvider>
+          </ClientAuthWrapper>
         </NextIntlClientProvider>
       </body>
     </html>
