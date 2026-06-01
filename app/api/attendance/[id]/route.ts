@@ -1,13 +1,20 @@
+// app/api/attendance/[id]/route.ts
 import { withAuth, withTenant, withErrorHandler } from "@/route-helpers";
 import { createApiResponse } from "@/lib/response/apiResponse";
 import { AttendanceService } from "@/services/attendance.service";
 import { AttendanceRepository } from "@/repositories/attendance.repository";
-import { withPermission } from '@/lib/auth/rbac';
-import { PERMISSIONS } from '@/lib/auth/permissions';
+import { logAction } from "@/lib/audit";
+import { withPermission } from "@/lib/auth/rbac";
+import { PERMISSIONS } from "@/lib/auth/permissions";   // ← درست جگہ
 
 interface WithTenantContext {
   tenantId: string;
-  user: { uid: string; email: string; role: string; tenantId: string; };
+  user: {
+    uid: string;
+    email: string;
+    role: string;
+    tenantId: string;
+  };
 }
 
 function getIdFromUrl(req: Request): string {
@@ -19,13 +26,17 @@ function getIdFromUrl(req: Request): string {
 export const GET = withErrorHandler(
   withAuth(
     withTenant(
-      withPermission(PERMISSIONS.attendance.view)(async (req: Request, { tenantId }: WithTenantContext) => {
-        const id = getIdFromUrl(req);
-        const service = new AttendanceService(new AttendanceRepository());
-        const record = await service.getById(id, tenantId);
-        if (!record) return createApiResponse(404, null, "Attendance record not found");
-        return createApiResponse(200, record);
-      })
+      withPermission(PERMISSIONS.attendance.view)(
+        async (req: Request, { tenantId }: WithTenantContext) => {
+          const id = getIdFromUrl(req);
+          const service = new AttendanceService(new AttendanceRepository());
+          const record = await service.getById(id, tenantId);
+          if (!record) {
+            return createApiResponse(404, null, "Attendance record not found");
+          }
+          return createApiResponse(200, record);
+        }
+      )
     )
   )
 );
@@ -33,13 +44,15 @@ export const GET = withErrorHandler(
 export const PUT = withErrorHandler(
   withAuth(
     withTenant(
-      withPermission(PERMISSIONS.attendance.update)(async (req: Request, { tenantId, user }: WithTenantContext) => {
-        const id = getIdFromUrl(req);
-        const body = await req.json();
-        const service = new AttendanceService(new AttendanceRepository());
-        await service.updateAttendance(id, body, tenantId);
-        return createApiResponse(200, null, "Attendance updated successfully");
-      })
+      withPermission(PERMISSIONS.attendance.update)(
+        async (req: Request, { tenantId, user }: WithTenantContext) => {
+          const id = getIdFromUrl(req);
+          const body = await req.json();
+          const service = new AttendanceService(new AttendanceRepository());
+          await service.updateAttendance(id, body, tenantId);
+          return createApiResponse(200, null, "Attendance updated successfully");
+        }
+      )
     )
   )
 );
@@ -47,14 +60,33 @@ export const PUT = withErrorHandler(
 export const DELETE = withErrorHandler(
   withAuth(
     withTenant(
-      withPermission(PERMISSIONS.attendance.delete)(async (req: Request, { tenantId, user }: WithTenantContext) => {
-        const id = getIdFromUrl(req);
-        const service = new AttendanceService(new AttendanceRepository());
-        const record = await service.getById(id, tenantId);
-        if (!record) return createApiResponse(404, null, "Attendance record not found");
-        await service.deleteAttendance(id, tenantId);
-        return createApiResponse(200, null, "Attendance record deleted successfully");
-      })
+      withPermission(PERMISSIONS.attendance.delete)(
+        async (req: Request, { tenantId, user }: WithTenantContext) => {
+          const id = getIdFromUrl(req);
+          const service = new AttendanceService(new AttendanceRepository());
+          const record = await service.getById(id, tenantId);
+          if (!record) {
+            return createApiResponse(404, null, "Attendance record not found");
+          }
+
+          await service.deleteAttendance(id, tenantId);
+
+          // Audit log
+          await logAction({
+            action: "ATTENDANCE_DELETED",
+            userId: user.uid,
+            tenantId,
+            entityId: id,
+            entityType: "attendance",
+            metadata: {
+              studentId: (record as any).studentId,
+              date: (record as any).date,
+            },
+          });
+
+          return createApiResponse(200, null, "Attendance record deleted successfully");
+        }
+      )
     )
   )
 );

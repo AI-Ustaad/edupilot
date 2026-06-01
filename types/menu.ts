@@ -1,21 +1,20 @@
-// types/menu.ts
-import { Permission } from "@/lib/auth/permissions"; // <-- must be present
+import { Permission } from "@/lib/auth/permissions";
 
 export interface MenuItem {
-  labelKey: string;
-  icon: string;
-  path?: string;
-  permission?: Permission;
+  name: string;
+  icon: string;            // lucide icon name as string (we'll map them in the component)
+  path: string;
   allowedRoles?: string[];
-  featureFlag?: string;
-  children?: MenuItem[];
+  permission?: Permission;
+  featureFlag?: string;    // key from FeatureFlags
 }
 
 export interface MenuGroup {
-  labelKey: string;
+  title: string;
   icon: string;
-  permission?: Permission;
+  key?: string | null;
   allowedRoles?: string[];
+  permission?: Permission;
   featureFlag?: string;
   children: MenuItem[];
 }
