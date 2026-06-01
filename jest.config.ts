@@ -1,9 +1,10 @@
+// jest.config.ts
 import type { Config } from '@jest/types';
 
 const config: Config.InitialOptions = {
   preset: 'ts-jest',
   testEnvironment: 'node',
-  roots: ['<rootDir>/repositories', '<rootDir>/services'],
+  roots: ['<rootDir>/repositories', '<rootDir>/services', '<rootDir>/__tests__'],
   transform: {
     '^.+\\.tsx?$': ['ts-jest', { tsconfig: 'tsconfig.json' }],
   },
