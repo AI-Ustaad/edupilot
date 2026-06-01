@@ -1,5 +1,3 @@
-// lib/features/featureFlags.ts
-
 export const ALL_FEATURES = {
   aiAssistant: 'aiAssistant',
   aiExamGenerator: 'aiExamGenerator',
