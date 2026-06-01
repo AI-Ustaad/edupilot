@@ -1,0 +1,48 @@
+import { withAuth, withTenant, withErrorHandler } from "@/route-helpers";
+import { createApiResponse } from "@/lib/response/apiResponse";
+import { StudentService } from "@/services/student.service";
+import { StudentRepository } from "@/repositories/student.repository";
+import { AttendanceService } from "@/services/attendance.service";
+import { AttendanceRepository } from "@/repositories/attendance.repository";
+import { FeesService } from "@/services/fees.service";
+import { FeesRepository } from "@/repositories/fees.repository";
+import type { TenantContext } from "@/types/api";
+import { withPermission } from "@/lib/auth/rbac";
+import { PERMISSIONS } from "@/lib/auth/permissions";
+
+function getIdFromUrl(req: Request) {
+  const url = new URL(req.url);
+  const segments = url.pathname.split("/");
+  return segments[segments.length - 1];
+}
+
+export const GET = withErrorHandler(
+  withAuth(
+    withTenant(
+      withPermission(PERMISSIONS.students.view)(async (req: Request, { tenantId }: TenantContext) => {
+        const id = getIdFromUrl(req);
+        const studentService = new StudentService(new StudentRepository());
+        const student = await studentService.getStudentById(id, tenantId);
+        if (!student) return createApiResponse(404, null, "Student not found");
+
+        const attendanceService = new AttendanceService(new AttendanceRepository());
+        const allAttendance = await attendanceService.listAttendance(tenantId);
+        const studentAttendance = allAttendance.filter(r => (r as any).studentId === id);
+
+        const feesService = new FeesService(new FeesRepository());
+        const allFees = await feesService.listFees(tenantId);
+        const studentFees = allFees.data.filter(f => (f as any).studentId === id);
+
+        // Add more data types as needed
+
+        const exportData = {
+          student,
+          attendance: studentAttendance,
+          fees: studentFees,
+        };
+
+        return createApiResponse(200, exportData);
+      })
+    )
+  )
+);
