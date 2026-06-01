@@ -1,37 +1,26 @@
-// lib/cache.ts
+// lib/cache/cache.ts
 import { Redis } from "@upstash/redis";
 
-const redis = Redis.fromEnv(); // وہی Upstash credentials استعمال کرے گا
+const redis = new Redis({
+  url: process.env.UPSTASH_REDIS_REST_URL || "",
+  token: process.env.UPSTASH_REDIS_REST_TOKEN || "",
+});
 
-const DEFAULT_TTL = 300; // 5 منٹ
+export async function getOrSet<T>(
+  key: string,
+  ttlSeconds: number,
+  fetchFunction: () => Promise<T>
+): Promise<T> {
+  const cached = await redis.get<T>(key);
+  if (cached) return cached;
 
-export async function getCached<T>(key: string): Promise<T | null> {
-  const data = await redis.get(key);
-  if (!data) return null;
-  return data as T;
+  const fresh = await fetchFunction();
+  if (fresh !== null && fresh !== undefined) {
+    await redis.set(key, fresh, { ex: ttlSeconds });
+  }
+  return fresh;
 }
 
-export async function setCache(key: string, value: any, ttlSeconds: number = DEFAULT_TTL) {
-  await redis.set(key, value, { ex: ttlSeconds });
-}
-
-export async function deleteCache(key: string) {
+export async function invalidateCache(key: string) {
   await redis.del(key);
-}
-
-// خاص keys بنانے کے لیے helpers
-export function dashboardKey(tenantId: string) {
-  return `dashboard:${tenantId}`;
-}
-
-export function studentListKey(tenantId: string) {
-  return `students:list:${tenantId}`;
-}
-
-export function feeListKey(tenantId: string, studentId?: string) {
-  return `fees:list:${tenantId}${studentId ? `:${studentId}` : ''}`;
-}
-
-export function attendanceKey(tenantId: string, date: string) {
-  return `attendance:${tenantId}:${date}`;
 }
