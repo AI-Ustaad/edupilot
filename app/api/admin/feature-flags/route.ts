@@ -4,6 +4,7 @@ import { FeatureFlagService } from "@/services/featureFlag.service";
 import type { TenantContext } from "@/types/api";
 import { withPermission } from "@/lib/auth/rbac";
 import { PERMISSIONS } from "@/lib/auth/permissions";
+import { Feature } from "@/lib/features/featureFlags";   // 👈 اضافہ
 
 const featureFlagService = new FeatureFlagService();
 
@@ -27,7 +28,8 @@ export const POST = withErrorHandler(
         if (typeof feature !== "string" || typeof enabled !== "boolean") {
           return createApiResponse(400, null, "Invalid payload");
         }
-        await featureFlagService.setFeature(tenantId, feature, enabled);
+        // Cast to Feature type (you may also validate that feature is in ALL_FEATURES)
+        await featureFlagService.setFeature(tenantId, feature as Feature, enabled);
         return createApiResponse(200, { feature, enabled }, "Feature flag updated");
       })
     )
