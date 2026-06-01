@@ -3,8 +3,10 @@ import { createApiResponse } from "@/lib/response/apiResponse";
 import { FeesService } from "@/services/fees.service";
 import { FeesRepository } from "@/repositories/fees.repository";
 import type { TenantContext } from "@/types/api";
-import { withPermission } from '@/lib/auth/rbac';
-import { PERMISSIONS } from '@/lib/auth/permissions';
+import { withPermission } from "@/lib/auth/rbac";
+import { PERMISSIONS } from "@/lib/auth/permissions";
+import { standardRateLimit } from "@/lib/rate-limit";
+import { withRateLimit } from "@/route-helpers";
 
 export const GET = withErrorHandler(
   withAuth(
@@ -22,15 +24,17 @@ export const GET = withErrorHandler(
   )
 );
 
-export const POST = withErrorHandler(
-  withAuth(
-    withTenant(
-      withPermission(PERMISSIONS.fees.create)(async (req: Request, { tenantId }: TenantContext) => {
-        const body = await req.json();
-        const service = new FeesService(new FeesRepository());
-        const fee = await service.createFee(body, tenantId);
-        return createApiResponse(201, fee, "Fee record created successfully");
-      })
+export const POST = withRateLimit(standardRateLimit)(
+  withErrorHandler(
+    withAuth(
+      withTenant(
+        withPermission(PERMISSIONS.fees.create)(async (req: Request, { tenantId }: TenantContext) => {
+          const body = await req.json();
+          const service = new FeesService(new FeesRepository());
+          const fee = await service.createFee(body, tenantId);
+          return createApiResponse(201, fee, "Fee record created successfully");
+        })
+      )
     )
   )
 );
