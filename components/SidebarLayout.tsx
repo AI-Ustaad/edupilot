@@ -17,7 +17,6 @@ import { useTranslations } from "next-intl";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { useAuth } from "@/context/AuthContext";
 import { MenuService } from "@/services/menu.service";
-import { FeatureFlagService } from "@/services/featureFlag.service"; // 👈 اضافہ
 import { MenuGroup } from "@/types/menu";
 import { ROLE_PERMISSIONS } from "@/lib/auth/permissions";
 
@@ -69,33 +68,32 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
     if (loading || !user) return;
 
     const loadMenu = async () => {
-      const menuService = new MenuService();
-      const featureFlagService = new FeatureFlagService();
-      const permissions = ROLE_PERMISSIONS[role] || [];
-      const tenantId = user.tenantId;
+      try {
+        // 1. غیر فعال خصوصیات حاصل کریں (API کے ذریعے)
+        const res = await fetch("/api/feature-flags/disabled");
+        const disabledFeatures: string[] = res.ok ? (await res.json()).data ?? [] : [];
 
-      // 1. معلوم کریں کہ کون سی خصوصیات بند ہیں
-      const allFlags = await featureFlagService.getAllFlags(tenantId);
-      const disabledFeatures = Object.entries(allFlags)
-        .filter(([_, enabled]) => !enabled)
-        .map(([key]) => key);
+        // 2. مینیو تیار کریں
+        const menuService = new MenuService();
+        const permissions = ROLE_PERMISSIONS[role] || [];
+        const filteredMenu = await menuService.getMenuForUser(
+          role,
+          permissions,
+          disabledFeatures
+        );
+        setMenu(filteredMenu);
 
-      // 2. ان خصوصیات کو مدنظر رکھتے ہوئے مینیو حاصل کریں
-      const filteredMenu = await menuService.getMenuForUser(
-        role,
-        permissions,
-        disabledFeatures
-      );
-      setMenu(filteredMenu);
-
-      // 3. ابتدائی طور پر کھلے گروپس ترتیب دیں
-      const initialOpen: Record<string, boolean> = {};
-      filteredMenu.forEach(group => {
-        if (group.key) {
-          initialOpen[group.key] = true;
-        }
-      });
-      setOpenGroups(initialOpen);
+        // 3. ابتدائی طور پر کھلے گروپس سیٹ کریں
+        const initialOpen: Record<string, boolean> = {};
+        filteredMenu.forEach(group => {
+          if (group.key) initialOpen[group.key] = true;
+        });
+        setOpenGroups(initialOpen);
+      } catch (error) {
+        console.error("Failed to load menu:", error);
+        // فال بیک: خالی مینیو
+        setMenu([]);
+      }
     };
 
     loadMenu();
