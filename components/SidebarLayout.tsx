@@ -17,10 +17,11 @@ import { useTranslations } from "next-intl";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { useAuth } from "@/context/AuthContext";
 import { MenuService } from "@/services/menu.service";
+import { FeatureFlagService } from "@/services/featureFlag.service"; // 👈 اضافہ
 import { MenuGroup } from "@/types/menu";
 import { ROLE_PERMISSIONS } from "@/lib/auth/permissions";
 
-// Map icon strings to Lucide components
+// آئیکون ناموں کو حقیقی اجزا سے نقشہ کریں
 const iconMap: Record<string, React.ComponentType<any>> = {
   LayoutDashboard,
   Users,
@@ -69,14 +70,25 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
 
     const loadMenu = async () => {
       const menuService = new MenuService();
+      const featureFlagService = new FeatureFlagService();
       const permissions = ROLE_PERMISSIONS[role] || [];
-      const disabledFeatures: string[] = [];
+      const tenantId = user.tenantId;
 
-      // Await the async method
-      const filteredMenu = await menuService.getMenuForUser(role, permissions, disabledFeatures);
+      // 1. معلوم کریں کہ کون سی خصوصیات بند ہیں
+      const allFlags = await featureFlagService.getAllFlags(tenantId);
+      const disabledFeatures = Object.entries(allFlags)
+        .filter(([_, enabled]) => !enabled)
+        .map(([key]) => key);
+
+      // 2. ان خصوصیات کو مدنظر رکھتے ہوئے مینیو حاصل کریں
+      const filteredMenu = await menuService.getMenuForUser(
+        role,
+        permissions,
+        disabledFeatures
+      );
       setMenu(filteredMenu);
 
-      // Initialize open groups
+      // 3. ابتدائی طور پر کھلے گروپس ترتیب دیں
       const initialOpen: Record<string, boolean> = {};
       filteredMenu.forEach(group => {
         if (group.key) {
@@ -109,7 +121,7 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
 
   return (
     <div className="flex h-screen bg-white">
-      {/* Mobile Menu Button */}
+      {/* موبائل مینو بٹن */}
       <button
         className="md:hidden fixed top-4 right-4 z-50 p-2 bg-white rounded-lg shadow"
         onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
@@ -117,13 +129,13 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
         {isMobileMenuOpen ? <X size={24} className="text-gray-700" /> : <Menu size={24} className="text-gray-700" />}
       </button>
 
-      {/* Sidebar */}
+      {/* سائڈبار */}
       <div
         className={`fixed inset-y-0 left-0 z-40 w-72 flex flex-col transform transition-transform md:relative md:translate-x-0 ${
           isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"
         } bg-white border-r border-gray-200`}
       >
-        {/* Logo */}
+        {/* لوگو */}
         <div
           className="h-20 px-6 border-b border-gray-200 flex items-center gap-2 cursor-pointer shrink-0"
           onClick={() => router.push("/dashboard")}
@@ -132,12 +144,12 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
           <span className="text-xl font-black text-gray-900">EduPilot</span>
         </div>
 
-        {/* Language Switcher */}
+        {/* زبان بدلنے والا */}
         <div className="px-4 py-3 border-b border-gray-100 shrink-0">
           <LanguageSwitcher />
         </div>
 
-        {/* Navigation */}
+        {/* نیویگیشن */}
         <div className="flex-1 overflow-y-auto py-2 px-4 custom-scrollbar">
           {loading ? (
             <div className="flex flex-col items-center justify-center h-full text-slate-400 gap-2">
@@ -189,7 +201,7 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
           )}
         </div>
 
-        {/* Logout */}
+        {/* لاگ آؤٹ */}
         <div className="p-4 border-t border-gray-200 shrink-0">
           <button
             onClick={handleLogout}
@@ -201,13 +213,13 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
         </div>
       </div>
 
-      {/* Main Content */}
+      {/* مرکزی مواد */}
       <div className="flex-1 overflow-y-auto bg-slate-50">
         <div className="p-4 md:p-8 max-w-[1600px] mx-auto">{children}</div>
         <MobileBottomNav />
       </div>
 
-      {/* Mobile Overlay */}
+      {/* موبائل اوورلے */}
       {isMobileMenuOpen && (
         <div className="fixed inset-0 bg-black/50 z-30 md:hidden" onClick={() => setIsMobileMenuOpen(false)} />
       )}
