@@ -7,7 +7,7 @@ interface Branding {
   logo?: string;
   primaryColor?: string;
   customDomain?: string;
-  timezone?: string;            // 👈 newly added
+  timezone?: string;
 }
 
 const BrandingContext = createContext<Branding>({});
@@ -25,23 +25,18 @@ export function BrandingProvider({ children }: { children: React.ReactNode }) {
           const b = data.data;
           setBranding(b);
 
-          // Primary colour → CSS variable
           if (b.primaryColor) {
             document.documentElement.style.setProperty(
               "--brand-primary",
               b.primaryColor
             );
           }
-
-          // Logo URL → CSS variable (useful for CSS backgrounds)
           if (b.logo) {
             document.documentElement.style.setProperty(
               "--brand-logo",
               `url(${b.logo})`
             );
           }
-
-          // Timezone → CSS variable (optional, can be used by helper utilities)
           if (b.timezone) {
             document.documentElement.style.setProperty(
               "--brand-timezone",
