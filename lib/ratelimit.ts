@@ -1,26 +1,32 @@
 // lib/ratelimit.ts
-import { Redis } from "@upstash/redis";
 import { Ratelimit } from "@upstash/ratelimit";
+import { Redis } from "@upstash/redis";
 
-const redis = Redis.fromEnv();  // UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN
-
-// عام API کے لیے – 100 requests per minute
-export const apiRateLimit = new Ratelimit({
-  redis,
-  limiter: Ratelimit.slidingWindow(100, "1 m"),
-  analytics: true,
+const redis = new Redis({
+  url: process.env.UPSTASH_REDIS_REST_URL || "",
+  token: process.env.UPSTASH_REDIS_REST_TOKEN || "",
 });
 
-// تصدیق والے روٹس (login, register) – 10 requests per minute
+// سخت لمٹ – لاگ ان، رجسٹریشن (15 منٹ میں 10 کوششیں)
 export const authRateLimit = new Ratelimit({
   redis,
-  limiter: Ratelimit.slidingWindow(10, "1 m"),
+  limiter: Ratelimit.slidingWindow(10, "15 m"),
   analytics: true,
+  prefix: "ratelimit:auth",
 });
 
-// AI endpoints – 20 requests per minute (لاگت کنٹرول)
+// AI خصوصیات کے لیے – (1 منٹ میں 5 درخواستیں)
 export const aiRateLimit = new Ratelimit({
   redis,
-  limiter: Ratelimit.slidingWindow(20, "1 m"),
+  limiter: Ratelimit.slidingWindow(5, "1 m"),
   analytics: true,
+  prefix: "ratelimit:ai",
+});
+
+// عام APIs کے لیے – (1 منٹ میں 30 درخواستیں)
+export const standardRateLimit = new Ratelimit({
+  redis,
+  limiter: Ratelimit.slidingWindow(30, "1 m"),
+  analytics: true,
+  prefix: "ratelimit:standard",
 });
