@@ -1,71 +1,74 @@
-// repositories/student.repository.ts
-import { BaseRepository } from "./base.repository";
-import { Student } from "@/types/student";
+import { StudentRepository } from './student.repository';
 
-export class StudentRepository extends BaseRepository<Student> {
+// Mock the Firebase Admin module
+jest.mock('@/lib/firebase-admin', () => {
+  const mockCollection = {
+    add: jest.fn().mockResolvedValue({ id: 'mock-id' }),
+    doc: jest.fn().mockReturnThis(),
+    get: jest.fn().mockResolvedValue({
+      empty: false,
+      docs: [
+        {
+          id: 'mock-id',
+          data: () => ({
+            fullName: 'Test Student',
+            classGrade: '10',
+            section: 'A',
+            rollNumber: 1,
+            tenantId: 'test-tenant',
+          }),
+        },
+      ],
+    }),
+    where: jest.fn().mockReturnThis(),
+    orderBy: jest.fn().mockReturnThis(),
+    limit: jest.fn().mockReturnThis(),
+    count: jest.fn().mockReturnValue({
+      get: jest.fn().mockResolvedValue({ data: { count: 5 } }),
+    }),
+  };
 
-  constructor() {
-    super("students");
-  }
+  const mockFirestore = {
+    collection: jest.fn().mockReturnValue(mockCollection),
+    batch: jest.fn(() => ({
+      set: jest.fn(),
+      delete: jest.fn(),
+      commit: jest.fn().mockResolvedValue(undefined),
+    })),
+  };
 
-  // طالب علم کو رول نمبر سے تلاش کریں
-  async findByRollNumber(
-    rollNumber: number,
-    tenantId: string
-  ): Promise<Student | null> {
-    const snapshot = await this.db
-      .collection(this.collectionName)
-      .where("tenantId", "==", tenantId)
-      .where("rollNumber", "==", rollNumber)
-      .limit(1)
-      .get();
+  return {
+    adminDb: mockFirestore,
+    dbTimestamp: jest.fn(),
+  };
+});
 
-    if (snapshot.empty) {
-      return null;                     // ← واپسی یقینی بنائی
-    }
+describe('StudentRepository', () => {
+  const repo = new StudentRepository();
+  const tenantId = 'test-tenant';
 
-    const doc = snapshot.docs[0];
-    return {
-      id: doc.id,
-      ...doc.data(),
-    } as Student;
-  }
+  test('create returns a string id', async () => {
+    const id = await repo.create({
+      fullName: 'Test',
+      classGrade: '10',
+      section: 'A',
+      rollNumber: 1,
+      tenantId,
+    } as any, tenantId);
+    expect(typeof id).toBe('string');
+  });
 
-  // کلاس کے تمام طلبہ
-  async findByClass(
-    className: string,
-    tenantId: string
-  ): Promise<Student[]> {
-    const snapshot = await this.db
-      .collection(this.collectionName)
-      .where("tenantId", "==", tenantId)
-      .where("classGrade", "==", className)
-      .orderBy("rollNumber", "asc")
-      .get();
+  test('findById returns a student', async () => {
+    const student = await repo.findById('mock-id', tenantId);
+    expect(student).not.toBeNull();
+    expect(student?.fullName).toBe('Test Student');
+  });
 
-    return snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data(),
-    } as Student));
-  }
-
-  // کلاس + سیکشن کے طلبہ
-  async findBySection(
-    className: string,
-    section: string,
-    tenantId: string
-  ): Promise<Student[]> {
-    const snapshot = await this.db
-      .collection(this.collectionName)
-      .where("tenantId", "==", tenantId)
-      .where("classGrade", "==", className)
-      .where("section", "==", section)
-      .orderBy("rollNumber", "asc")
-      .get();
-
-    return snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data(),
-    } as Student));
-  }
-}
+  test('paginate returns paginated results', async () => {
+    const result = await repo.paginate(tenantId, 1, 3);
+    expect(result.data).toHaveLength(1);
+    expect(result.total).toBe(5);
+    expect(result.page).toBe(1);
+    expect(result.totalPages).toBeGreaterThanOrEqual(2);
+  });
+});
