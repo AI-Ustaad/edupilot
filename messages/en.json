@@ -70,6 +70,84 @@
       "startTrial": "Start Free Trial",
       "liveDemo": "Live Demo",
       "bookDemo": "Book Live Demo"
+    },
+    "features": {
+      "heading": "Everything You Need to Run Your School",
+      "subheading": "Powerful tools designed for modern educational institutions.",
+      "studentManagement": "Student Management",
+      "studentManagementDesc": "Complete student profiles, enrollment, and academic history.",
+      "attendanceAutomation": "Attendance Automation",
+      "attendanceAutomationDesc": "Track daily attendance with smart reports and notifications.",
+      "financeFees": "Finance & Fees",
+      "financeFeesDesc": "Manage fee collection, expenses, and financial reports effortlessly.",
+      "examsResults": "Exams & Results",
+      "examsResultsDesc": "Create exams, record marks, and generate instant result cards.",
+      "parentPortal": "Parent Portal",
+      "parentPortalDesc": "Keep parents informed with real‑time updates on attendance and performance.",
+      "aiAnalytics": "AI‑Powered Analytics",
+      "aiAnalyticsDesc": "Predict student performance and get actionable insights."
+    },
+    "ai": {
+      "badge": "AI Intelligence",
+      "heading": "Powered by Advanced AI",
+      "description": "Our AI engine helps you make data‑driven decisions for your school.",
+      "weakStudent": "Identify weak students automatically",
+      "attendanceTrend": "Predict attendance trends",
+      "reportGeneration": "Auto‑generate report comments",
+      "aiTimetable": "AI‑based timetable creation",
+      "performance": "Student performance forecasting",
+      "dashboardTitle": "AI Insights",
+      "predictionLabel": "Prediction Accuracy",
+      "predictionAccuracy": "85%",
+      "forecastLabel": "Forecast Confidence",
+      "forecastConfidence": "92%",
+      "performanceLabel": "Performance Score",
+      "performanceAccuracy": "78%"
+    },
+    "pricing": {
+      "heading": "Simple, Transparent Pricing",
+      "subheading": "Choose a plan that fits your school's needs.",
+      "starter": "Starter",
+      "starterTarget": "Perfect for small schools",
+      "professional": "Professional",
+      "professionalTarget": "Best for growing institutions",
+      "enterprise": "Enterprise",
+      "enterpriseTarget": "For large school chains",
+      "mostPopular": "Most Popular",
+      "free": "Free",
+      "monthly": "/month",
+      "getStarted": "Get Started"
+    },
+    "cta": {
+      "heading": "Ready to Transform Your School?",
+      "button": "Start Free Trial"
+    },
+    "footer": {
+      "tagline": "AI-Powered School Management System",
+      "product": "Product",
+      "features": "Features",
+      "pricing": "Pricing",
+      "security": "Security",
+      "resources": "Resources",
+      "documentation": "Documentation",
+      "api": "API",
+      "support": "Support",
+      "legal": "Legal",
+      "privacy": "Privacy Policy",
+      "terms": "Terms of Service",
+      "gdpr": "GDPR",
+      "copyright": "© 2026 EduPilot. All rights reserved."
     }
+  },
+  "Auth": {
+    "login": "Login",
+    "signup": "Sign Up",
+    "email": "Email",
+    "password": "Password",
+    "forgotPassword": "Forgot password?",
+    "signIn": "Sign In",
+    "createAccount": "Create Account",
+    "alreadyHaveAccount": "Already have an account?",
+    "dontHaveAccount": "Don't have an account?"
   }
 }
