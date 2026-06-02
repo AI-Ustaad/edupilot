@@ -148,6 +148,9 @@
     "signIn": "Sign In",
     "createAccount": "Create Account",
     "alreadyHaveAccount": "Already have an account?",
-    "dontHaveAccount": "Don't have an account?"
+    "dontHaveAccount": "Don't have an account?",
+    "welcome": "Welcome Back",
+    "googleSignIn": "Continue with Google",
+    "terms": "Terms and Conditions"
   }
 }
