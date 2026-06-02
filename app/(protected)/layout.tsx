@@ -1,10 +1,8 @@
 import { redirect } from "next/navigation";
-
 import { getSessionUser } from "@/lib/auth/auth-server";
 import { isSubscriptionValid } from "@/lib/subscription";
-
 import SidebarLayout from "@/components/SidebarLayout";
-import ClientAuthWrapper from "@/components/ClientAuthWrapper";
+import { ClientAuthWrapper } from "@/components/ClientAuthWrapper";
 
 export default async function ProtectedLayout({
   children,
@@ -12,35 +10,18 @@ export default async function ProtectedLayout({
   children: React.ReactNode;
 }) {
   const user = await getSessionUser();
+  if (!user) redirect("/login");
+  if (user.onboardingRequired || !user.tenantId) redirect("/onboarding");
 
-  if (!user) {
-    redirect("/login");
-  }
-
-  if (
-    user.onboardingRequired === true ||
-    !user.tenantId
-  ) {
-    redirect("/onboarding");
-  }
-
-  const { valid, message } =
-    await isSubscriptionValid(user.tenantId);
-
+  const { valid, message } = await isSubscriptionValid(user.tenantId);
   if (!valid) {
-    redirect(
-      `/settings/billing?error=${encodeURIComponent(
-        message || "Subscription inactive"
-      )}`
-    );
+    redirect(`/settings/billing?error=${encodeURIComponent(message || "Subscription inactive")}`);
   }
 
   return (
     <ClientAuthWrapper>
       <div className="min-h-screen bg-slate-50">
-        <SidebarLayout>
-          {children}
-        </SidebarLayout>
+        <SidebarLayout>{children}</SidebarLayout>
       </div>
     </ClientAuthWrapper>
   );
