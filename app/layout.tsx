@@ -4,7 +4,7 @@ import "./globals.css";
 import { getLocale, getMessages } from "next-intl/server";
 import { NextIntlClientProvider } from "next-intl";
 import { ClientAuthWrapper } from "@/components/ClientAuthWrapper";
-import { BrandingProvider } from "@/context/BrandingContext"; // 👈 corrected import
+import { BrandingProvider } from "@/context/BrandingContext";
 
 const font = Plus_Jakarta_Sans({ subsets: ["latin"] });
 
