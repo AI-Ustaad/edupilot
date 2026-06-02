@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/firebase';
 import { signInWithEmailAndPassword } from 'firebase/auth';
-import { adminAuth } from "@/lib/firebase-admin";   // 👈 Server-side auth
+import { adminAuth } from "@/lib/firebase-admin";
 import { authRateLimit } from "@/lib/ratelimit";
 import { withRateLimit } from "@/route-helpers";
 
@@ -16,8 +16,8 @@ async function loginHandler(req: NextRequest) {
     const user = userCredential.user;
     const idToken = await user.getIdToken();
 
-    // 🔁 ID Token ko Session Cookie mein badlen
-    const expiresIn = 60 * 60 * 24 * 5 * 1000; // 5 din (milliseconds)
+    // Create a Firebase session cookie (5 days)
+    const expiresIn = 60 * 60 * 24 * 5 * 1000; // ms
     const sessionCookie = await adminAuth.createSessionCookie(idToken, { expiresIn });
 
     const response = NextResponse.json({ success: true, user: { uid: user.uid, email: user.email } });
@@ -26,7 +26,7 @@ async function loginHandler(req: NextRequest) {
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       path: '/',
-      maxAge: 60 * 60 * 24 * 5,   // seconds mein
+      maxAge: 60 * 60 * 24 * 5,
     });
 
     return response;
