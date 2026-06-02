@@ -4,33 +4,48 @@ import { NextRequest, NextResponse } from "next/server";
 const intlMiddleware = createMiddleware({
   locales: ["en", "ur", "ar", "hi", "es", "fr", "zh"],
   defaultLocale: "en",
-  localePrefix: "as-needed",          // <-- prevents /en/ prefix for default locale
+  localePrefix: "as-needed",      // no /en prefix for default locale
 });
+
+// Helper: check if a path is public (also considers locale‑prefixed versions)
+function isPublicPath(pathname: string): boolean {
+  const publicBasePaths = ["/login", "/signup", "/callback"];
+
+  // Exact root
+  if (pathname === "/") return true;
+
+  // Bare paths (e.g., /login)
+  if (publicBasePaths.some(p => pathname.startsWith(p))) return true;
+
+  // Locale‑prefixed paths (e.g., /ur/login)
+  const locales = ["en", "ur", "ar", "hi", "es", "fr", "zh"];
+  return locales.some(locale =>
+    publicBasePaths.some(p => pathname.startsWith(`/${locale}${p}`))
+  );
+}
 
 export default async function middleware(req: NextRequest) {
   const session = req.cookies.get("session")?.value;
   const { pathname } = req.nextUrl;
 
-  const isPublicPath =
-    pathname === "/" ||
-    pathname.startsWith("/login") ||
-    pathname.startsWith("/signup") ||
-    pathname.startsWith("/callback") ||
-    ["en", "ur", "ar", "hi", "es", "fr", "zh"].some(
-      (locale) =>
-        pathname.startsWith(`/${locale}/login`) ||
-        pathname.startsWith(`/${locale}/signup`) ||
-        pathname.startsWith(`/${locale}/callback`)
-    );
+  // 1. If the route is public, let the request through – no session required
+  if (isPublicPath(pathname)) {
+    return intlMiddleware(req);
+  }
 
-  const isApiRoute = pathname.startsWith("/api");
+  // 2. Skip session check for API routes (they have their own auth)
+  if (pathname.startsWith("/api")) {
+    return intlMiddleware(req);
+  }
 
-  if (!session && !isPublicPath && !isApiRoute) {
+  // 3. Protected routes: require a session, otherwise redirect to login
+  if (!session) {
     const loginUrl = new URL("/login", req.url);
     loginUrl.searchParams.set("redirect", pathname);
     return NextResponse.redirect(loginUrl);
   }
 
+  // 4. User is authenticated – continue with locale handling
   return intlMiddleware(req);
 }
 
