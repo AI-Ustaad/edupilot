@@ -5,7 +5,7 @@ const intlMiddleware = createMiddleware({
   locales: ["en", "ur", "ar", "hi", "es", "fr", "zh"],
   defaultLocale: "en",
   localePrefix: "as-needed",
-  localeDetection: false,   // 👈 this is the crucial addition
+  localeDetection: false,   // disable automatic redirect from cookies/headers
 });
 
 function isPublicPath(pathname: string) {
@@ -21,14 +21,17 @@ function isPublicPath(pathname: string) {
 export default async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
+  // Public pages – just pass through (no redirect)
   if (isPublicPath(pathname)) {
     return intlMiddleware(req);
   }
 
+  // API routes – pass through
   if (pathname.startsWith("/api")) {
     return intlMiddleware(req);
   }
 
+  // Protected routes – require session
   const session = req.cookies.get("session")?.value;
   if (!session) {
     const loginUrl = new URL("/login", req.url);
