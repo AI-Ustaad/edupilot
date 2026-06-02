@@ -5,6 +5,7 @@ const intlMiddleware = createMiddleware({
   locales: ["en", "ur", "ar", "hi", "es", "fr", "zh"],
   defaultLocale: "en",
   localePrefix: "as-needed",
+  localeDetection: false,   // 👈 this is the crucial addition
 });
 
 function isPublicPath(pathname: string) {
