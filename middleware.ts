@@ -10,12 +10,13 @@ export default async function middleware(req: NextRequest) {
   const session = req.cookies.get("session")?.value;
   const { pathname } = req.nextUrl;
 
-  // عوامی راستوں کی فہرست – اصل اور لوکیل والے دونوں
+  // عوامی راستے – بغیر لوکیل اور لوکیل دونوں شامل
   const isPublicPath =
     pathname === "/" ||
-    pathname.startsWith("/login") ||            // /login
-    pathname.startsWith("/signup") ||           // /signup
-    pathname.startsWith("/callback") ||         // /callback
+    pathname.startsWith("/login") ||
+    pathname.startsWith("/signup") ||
+    pathname.startsWith("/callback") ||
+    // لوکیل والے راستے (مثلاً /en/login)
     ["en", "ur", "ar", "hi", "es", "fr", "zh"].some(
       (locale) =>
         pathname.startsWith(`/${locale}/login`) ||
@@ -31,6 +32,7 @@ export default async function middleware(req: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
+  // next‑intl کو باقی کام سنبھالنے دیں
   return intlMiddleware(req);
 }
 
