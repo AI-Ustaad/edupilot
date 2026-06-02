@@ -4,14 +4,13 @@ import { NextRequest, NextResponse } from "next/server";
 const intlMiddleware = createMiddleware({
   locales: ["en", "ur", "ar", "hi", "es", "fr", "zh"],
   defaultLocale: "en",
-  localePrefix: "as-needed",          // 👈 no prefix for default locale
+  localePrefix: "as-needed",          // <-- prevents /en/ prefix for default locale
 });
 
 export default async function middleware(req: NextRequest) {
   const session = req.cookies.get("session")?.value;
   const { pathname } = req.nextUrl;
 
-  // Public pages (both prefixed and non‑prefixed)
   const isPublicPath =
     pathname === "/" ||
     pathname.startsWith("/login") ||
