@@ -1,19 +1,16 @@
-import { adminDb } from "@/lib/firebase-admin";
+// app/api/v1/homework/route.ts
 import { withAuth, withTenant, withErrorHandler, withRole } from "@/route-helpers";
 import { createApiResponse } from "@/lib/response/apiResponse";
+import { HomeworkService } from "@/services/homework.service";
+import { HomeworkRepository } from "@/repositories/homework.repository";
 import type { TenantContext } from "@/types/api";
 
 export const GET = withErrorHandler(
   withAuth(
     withTenant(async (req: Request, { tenantId }: TenantContext) => {
-      const snapshot = await adminDb
-        .collection("homework")
-        .where("tenantId", "==", tenantId)
-        .orderBy("createdAt", "desc")
-        .limit(20)
-        .get();
-      const data = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-      return createApiResponse(200, data);
+      const service = new HomeworkService(new HomeworkRepository());
+      const list = await service.listHomework(tenantId);
+      return createApiResponse(200, list);
     })
   )
 );
@@ -22,18 +19,10 @@ export const POST = withErrorHandler(
   withAuth(
     withTenant(
       withRole(["admin", "teacher"])(async (req: Request, { tenantId, user }: TenantContext) => {
-        const { title, description } = await req.json();
-        if (!title || !description) {
-          return createApiResponse(400, null, "Title and description are required");
-        }
-        const ref = await adminDb.collection("homework").add({
-          title,
-          description,
-          createdBy: user.uid,
-          tenantId,
-          createdAt: new Date(),
-        });
-        return createApiResponse(201, { id: ref.id });
+        const body = await req.json();
+        const service = new HomeworkService(new HomeworkRepository());
+        const homework = await service.createHomework(body, tenantId, user.uid);
+        return createApiResponse(201, homework, "Homework posted successfully");
       })
     )
   )
