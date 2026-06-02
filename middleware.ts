@@ -1,33 +1,37 @@
+import createMiddleware from "next-intl/middleware";
 import { NextRequest, NextResponse } from "next/server";
 
+// next‑intl مڈل ویئر تیار کریں
+const intlMiddleware = createMiddleware({
+  locales: ["en", "ur", "ar", "hi", "es", "fr", "zh"],
+  defaultLocale: "en",
+});
+
 export default async function middleware(req: NextRequest) {
-  // سیکیورٹی چیک (Session Check)
   const session = req.cookies.get("session")?.value;
   const { pathname } = req.nextUrl;
 
-  // عوامی راستے (بغیر لاگ ان)
+  // عوامی راستے
   const isPublicPath =
-    pathname === "/login" ||
-    pathname === "/signup" ||
     pathname === "/" ||
-    pathname === "/callback" ||
     pathname.startsWith("/login") ||
-    pathname.startsWith("/signup");
+    pathname.startsWith("/signup") ||
+    pathname.startsWith("/callback");
 
-  // API راستوں کو نظر انداز کریں
+  // API راستے – ان پر سیشن چیک نہ کریں
   const isApiRoute = pathname.startsWith("/api");
 
-  // اگر سیشن نہیں ہے تو لاگ ان پر بھیجیں
+  // اگر سیشن نہیں ہے اور راستہ نہ عوامی ہے نہ API، تو لاگ ان پر بھیجیں
   if (!session && !isPublicPath && !isApiRoute) {
     const loginUrl = new URL("/login", req.url);
-    loginUrl.searchParams.set("redirect", req.nextUrl.pathname);
+    loginUrl.searchParams.set("redirect", pathname);
     return NextResponse.redirect(loginUrl);
   }
 
-  // نارمل طریقے سے پیج کو لوڈ ہونے دیں (i18n کُکیز سے خود ہینڈل کر لے گا)
-  return NextResponse.next();
+  // next‑intl مڈل ویئر کو چلائیں (یہ لوکیل، ترجمے وغیرہ سنبھالے گا)
+  return intlMiddleware(req);
 }
 
 export const config = {
-  matcher: ["/((?!_next|api|favicon.ico|sw.js|icons|images|assets|manifest.json).*)"],
+  matcher: ["/((?!api|_next|.*\\..*).*)"],
 };
