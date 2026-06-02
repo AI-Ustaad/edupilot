@@ -1,4 +1,3 @@
-// lib/validation/homework.schema.ts
 import { z } from "zod";
 
 export const createHomeworkSchema = z.object({
