@@ -1,6 +1,16 @@
+import type { Metadata } from "next";
+import { Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
-import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages } from "next-intl/server";
+import { NextIntlClientProvider } from "next-intl";
+import { BrandingProvider } from "@/context/BrandingContext";
+
+const font = Plus_Jakarta_Sans({ subsets: ["latin"] });
+
+export const metadata: Metadata = {
+  title: "EduPilot | AI-Powered School Management System",
+  description: "All-in-one AI platform for modern educational institutions.",
+};
 
 export default async function RootLayout({
   children,
@@ -12,12 +22,11 @@ export default async function RootLayout({
 
   return (
     <html lang={locale}>
-      <body>
-        <NextIntlClientProvider
-          locale={locale}
-          messages={messages}
-        >
-          {children}
+      <body className={font.className}>
+        <NextIntlClientProvider locale={locale} messages={messages}>
+          <BrandingProvider>
+            {children}
+          </BrandingProvider>
         </NextIntlClientProvider>
       </body>
     </html>
