@@ -1,12 +1,27 @@
-import createMiddleware from "next-intl/middleware";
+import { NextRequest, NextResponse } from "next/server";
 
-export default createMiddleware({
-  locales: ["en", "ur", "ar", "hi", "es", "fr", "zh"],
-  defaultLocale: "en",
-  localePrefix: "as-needed",
-  localeDetection: false,
-});
+// Public routes that do NOT require a session
+const PUBLIC_PATHS = ["/login", "/signup", "/callback", "/"];
+
+export default function middleware(req: NextRequest) {
+  const { pathname } = req.nextUrl;
+
+  // Allow public routes without session
+  if (PUBLIC_PATHS.includes(pathname) || pathname.startsWith("/api")) {
+    return NextResponse.next();
+  }
+
+  // Protected routes: require session cookie
+  const session = req.cookies.get("session")?.value;
+  if (!session) {
+    const loginUrl = new URL("/login", req.url);
+    loginUrl.searchParams.set("redirect", pathname);
+    return NextResponse.redirect(loginUrl);
+  }
+
+  return NextResponse.next();
+}
 
 export const config = {
-  matcher: ["/((?!api|_next|.*\\..*).*)"],
+  matcher: ["/((?!_next|.*\\..*).*)"],
 };
