@@ -10,7 +10,7 @@ import {
   Wallet, Clock, Settings, Menu, X, ShieldCheck, LogOut,
   GraduationCap, DollarSign, Calendar, FileText, Heart,
   ChevronDown, ChevronRight, CreditCard, Sparkles, Bus, CalendarDays, Bot,
-  Film, Send, Star, PlusCircle, Loader2,
+  TrendingUp, Film, Send, Star, PlusCircle, Loader2,
 } from "lucide-react";
 import MobileBottomNav from "./MobileBottomNav";
 import { useTranslations } from "next-intl";
@@ -40,6 +40,7 @@ const iconMap: Record<string, React.ComponentType<any>> = {
   Bus,
   CalendarDays,
   Bot,
+  TrendingUp,
   Film,
   Send,
   Star,
@@ -72,7 +73,7 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
     setOpenGroups((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
-  // تمام آئیکن string میں ہیں
+  // Menu groups – all icons are strings now
   const menuGroups = [
     {
       title: t("commandCenter"),
@@ -101,6 +102,7 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
       icon: "DollarSign",
       items: [
         { name: t("fees"), icon: "Wallet", path: "/fees", allowed: ["admin", "accountant"] },
+        { name: t("ledger"), icon: "ClipboardCheck", path: "/ledger", allowed: ["admin", "accountant"] },
       ],
       allowed: ["admin", "accountant"],
       key: "finance",
@@ -111,7 +113,6 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
       items: [
         { name: t("attendance"), icon: "ClipboardCheck", path: "/attendance", allowed: ["admin", "teacher"] },
         { name: t("timetable"), icon: "Clock", path: "/timetable", allowed: ["admin", "teacher"] },
-        // AI Timetable operations سے ہٹا دیا گیا
         { name: t("buses"), icon: "Bus", path: "/admin/buses", allowed: ["admin"] },
       ],
       allowed: ["admin", "teacher"],
@@ -154,19 +155,18 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
     {
       title: t("aiTools") || "AI Tools",
       icon: "Sparkles",
-      key: "aiTools",
-      allowed: ["admin", "teacher"],
-      children: [
+      items: [
         { name: t("aiAssistant") || "AI Assistant", icon: "Bot", path: "/ai-chatbot", allowed: ["admin", "teacher"] },
         { name: t("examQuestions") || "AI Exams", icon: "FileText", path: "/ai-exam-questions", allowed: ["admin", "teacher"] },
         { name: "AI Timetable", icon: "Sparkles", path: "/ai-timetable", allowed: ["admin", "teacher"] },
-        { name: "AI Report Comments", icon: "FileText", path: "/ai/report-comments", allowed: ["admin", "teacher"] },
-        { name: "AI Smart Book Center", icon: "BookOpen", path: "/ai/smart-book-center", allowed: ["admin", "teacher"] },
       ],
+      allowed: ["admin", "teacher"],
+      key: "aiTools",
     },
   ];
 
-  const visibleGroups = menuGroups.filter((g) => g.allowed.includes(role));
+  // 🔒 Defence – visibleGroups is always an array
+  const visibleGroups = (menuGroups || []).filter((g) => g.allowed.includes(role));
 
   const handleLogout = async () => {
     await signOut(auth);
@@ -176,7 +176,7 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
 
   return (
     <div className="flex h-screen bg-white">
-      {/* Mobile Menu Button */}
+      {/* Mobile menu button */}
       <button
         className="md:hidden fixed top-4 right-4 z-50 p-2 bg-white rounded-lg shadow"
         onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
@@ -190,7 +190,7 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
           isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"
         } bg-white border-r border-gray-200`}
       >
-        {/* Logo / School Name */}
+        {/* Logo */}
         <div
           className="h-20 px-6 border-b border-gray-200 flex items-center gap-2 cursor-pointer shrink-0"
           onClick={() => router.push("/dashboard")}
@@ -200,9 +200,7 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
           ) : (
             <ShieldCheck className="text-blue-600 w-8 h-8" />
           )}
-          <span className="text-xl font-black text-gray-900">
-            {branding.schoolName || "EduPilot"}
-          </span>
+          <span className="text-xl font-black text-gray-900">{branding.schoolName || "EduPilot"}</span>
         </div>
 
         {/* Language Switcher */}
@@ -210,14 +208,14 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
           <LanguageSwitcher />
         </div>
 
-        {/* Navigation – دفاعی چیک کے ساتھ */}
+        {/* Navigation */}
         <div className="flex-1 overflow-y-auto py-2 px-4 custom-scrollbar">
           {loading ? (
             <div className="flex flex-col items-center justify-center h-full text-slate-400 gap-2">
               <Loader2 className="animate-spin" size={24} />
               <span className="text-sm">Loading Menu...</span>
             </div>
-          ) : visibleGroups && visibleGroups.length > 0 ? (
+          ) : visibleGroups.length > 0 ? (
             visibleGroups.map((group) => {
               const GroupIcon = iconMap[group.icon as string] || BookOpen;
               return (
@@ -247,14 +245,9 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
                               onClick={() => setIsMobileMenuOpen(false)}
                               className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all ${
                                 isActive
-                                  ? "text-white shadow-sm"
+                                  ? "bg-blue-600 text-white shadow-sm"
                                   : "text-gray-600 hover:bg-gray-100"
                               }`}
-                              style={
-                                isActive
-                                  ? { backgroundColor: branding.primaryColor || "#3b82f6" }
-                                  : {}
-                              }
                             >
                               <ItemIcon size={18} />
                               <span>{item.name}</span>
