@@ -72,7 +72,7 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
     setOpenGroups((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
-  // 👇 تمام آئیکن string میں ہیں
+  // تمام آئیکن string میں ہیں
   const menuGroups = [
     {
       title: t("commandCenter"),
@@ -111,7 +111,7 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
       items: [
         { name: t("attendance"), icon: "ClipboardCheck", path: "/attendance", allowed: ["admin", "teacher"] },
         { name: t("timetable"), icon: "Clock", path: "/timetable", allowed: ["admin", "teacher"] },
-        // 👈 AI Timetable operations سے ہٹا دیا گیا
+        // AI Timetable operations سے ہٹا دیا گیا
         { name: t("buses"), icon: "Bus", path: "/admin/buses", allowed: ["admin"] },
       ],
       allowed: ["admin", "teacher"],
@@ -210,14 +210,14 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
           <LanguageSwitcher />
         </div>
 
-        {/* Navigation */}
+        {/* Navigation – دفاعی چیک کے ساتھ */}
         <div className="flex-1 overflow-y-auto py-2 px-4 custom-scrollbar">
           {loading ? (
             <div className="flex flex-col items-center justify-center h-full text-slate-400 gap-2">
               <Loader2 className="animate-spin" size={24} />
               <span className="text-sm">Loading Menu...</span>
             </div>
-          ) : (
+          ) : visibleGroups && visibleGroups.length > 0 ? (
             visibleGroups.map((group) => {
               const GroupIcon = iconMap[group.icon as string] || BookOpen;
               return (
@@ -266,6 +266,8 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
                 </div>
               );
             })
+          ) : (
+            <div className="text-center text-sm text-gray-400 py-8">No menu items</div>
           )}
         </div>
 
