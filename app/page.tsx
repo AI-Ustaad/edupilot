@@ -16,7 +16,7 @@ import { detectCurrency, formatPrice } from "@/lib/currency";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { useTranslations, useLocale } from "next-intl";
 
-// Animation variants (unchanged)
+// Animation variants
 const fadeUp = {
   hidden: { opacity: 0, y: 60 },
   visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: "easeOut" } }
@@ -31,17 +31,7 @@ const cardHover = {
   hover: { scale: 1.05, y: -10, transition: { duration: 0.2 } }
 };
 
-const floating = {
-  initial: { y: 0 },
-  animate: { y: [0, -15, 0], transition: { duration: 4, repeat: Infinity, ease: "easeInOut" } }
-};
-
-const floatingDelay = {
-  initial: { y: 0 },
-  animate: { y: [0, 15, 0], transition: { duration: 5, repeat: Infinity, ease: "easeInOut", delay: 1 } }
-};
-
-// ========== COMPONENTS ==========
+// Components
 const Navbar = () => {
   const t = useTranslations("Landing.nav");
   const [isOpen, setIsOpen] = useState(false);
@@ -389,7 +379,7 @@ const PricingSection = () => {
   const plans = [
     { name: t("starter"), usdPrice: 0, target: t("starterTarget"), features: ["Up to 100 students", "Basic attendance", "Student profiles", "Email support"], popular: false },
     { name: t("professional"), usdPrice: 2000, target: t("professionalTarget"), features: ["Up to 500 students", "All features", "Parent portal", "Priority support", "Analytics"], popular: true },
-    { name: t("enterprise"), usdPrice: 5000, target: t("enterpriseTarget"), features: ["Unlimited students", "White-label", "SMS notifications", "Dedicated manager", "API access"], popular: false, isCustom: false },
+    { name: t("enterprise"), usdPrice: 5000, target: t("enterpriseTarget"), features: ["Unlimited students", "White-label", "SMS notifications", "Dedicated manager", "API access"], popular: false },
   ];
 
   if (!mounted) return <section id="pricing" className="py-24"><div className="text-center text-gray-500">Loading...</div></section>;
