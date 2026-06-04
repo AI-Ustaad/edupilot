@@ -1,86 +1,79 @@
+// app/api/settings/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { getFirestore, FieldValue } from 'firebase-admin/firestore';
-import { initAdmin } from '@/lib/firebase-admin';
-import { getTenantIdFromRequest } from '@/lib/tenant-utils';
-import { z } from 'zod';
-
-initAdmin();
-const db = getFirestore();
-
-const settingsSchema = z.object({
-  classes: z.array(z.string()),
-  sections: z.array(z.object({
-    classGrade: z.string(),
-    sectionName: z.string(),
-    incharge: z.string().optional()
-  })),
-  subjects: z.array(z.string()),
-  periods: z.array(z.object({
-    name: z.string(),
-    startTime: z.string(),
-    endTime: z.string()
-  }))
-});
+import { adminDb } from '@/lib/firebase-admin';
+import { getSessionUser } from '@/lib/auth/auth-server';
 
 export async function GET(req: NextRequest) {
   try {
-    const tenantId = await getTenantIdFromRequest(req);
-    if (!tenantId) {
+    const user = await getSessionUser();
+    if (!user || !user.tenantId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const settingsDoc = await db.collection('tenants').doc(tenantId).collection('settings').doc('config').get();
-    if (!settingsDoc.exists) {
-      return NextResponse.json({ classes: [], sections: [], subjects: [], periods: [] });
+    const doc = await adminDb.collection('tenants').doc(user.tenantId).collection('settings').doc('config').get();
+
+    if (!doc.exists) {
+      return NextResponse.json({ success: true, data: { classes: [], subjects: [] } });
     }
-    return NextResponse.json(settingsDoc.data());
+
+    return NextResponse.json({ success: true, data: doc.data() });
   } catch (error) {
     console.error('Settings GET error:', error);
     return NextResponse.json({ error: 'Failed to fetch settings' }, { status: 500 });
   }
 }
 
-export async function POST(req: NextRequest) {
+export async function PUT(req: NextRequest) {
   try {
-    const tenantId = await getTenantIdFromRequest(req);
-    if (!tenantId) {
+    const user = await getSessionUser();
+    if (!user || !user.tenantId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const body = await req.json();
-    const validated = settingsSchema.parse(body);
+    const { classes, subjects } = body;
 
-    // 1. مرکزی سیٹنگز محفوظ کریں
-    await db.collection('tenants').doc(tenantId).collection('settings').doc('config').set(validated, { merge: true });
+    // 1. Settings کے پیج کے لیے اصل ڈیٹا محفوظ کریں
+    await adminDb.collection('tenants').doc(user.tenantId).collection('settings').doc('config').set({
+      classes: classes || [],
+      subjects: subjects || [],
+      updatedAt: new Date().toISOString()
+    }, { merge: true });
 
-    // 2. 📌 sections کلیکشن کو سینک کریں (تاکہ پرانے صفحات چل سکیں)
-    const sectionsRef = db.collection('sections');
-    
-    // پہلے اس tenant کی تمام پرانی سیکشنز ڈیلیٹ کریں
-    const oldSections = await sectionsRef.where('tenantId', '==', tenantId).get();
-    const batch = db.batch();
-    oldSections.docs.forEach(doc => batch.delete(doc.ref));
-
-    // نئی سیکشنز شامل کریں
-    for (const sec of validated.sections) {
-      const docRef = sectionsRef.doc();
-      batch.set(docRef, {
-        tenantId,
-        classGrade: sec.classGrade,
-        sectionName: sec.sectionName,
-        incharge: sec.incharge || '',
-        createdAt: FieldValue.serverTimestamp()
+    // 2. 🔥 سب سے اہم فکس: sections کلیکشن کو خودکار اپ ڈیٹ کریں 🔥
+    if (classes && Array.isArray(classes)) {
+      const sectionsRef = adminDb.collection('sections');
+      
+      // پرانے سیکشنز ڈیلیٹ کریں تاکہ ڈپلیکیٹ نہ بنیں
+      const oldSections = await sectionsRef.where('tenantId', '==', user.tenantId).get();
+      const batch = adminDb.batch();
+      
+      oldSections.docs.forEach(doc => {
+        batch.delete(doc.ref);
       });
-    }
 
-    await batch.commit();
+      // نئے سیکشنز شامل کریں جو پوری ایپ (Fees, Classes) میں نظر آئیں گے
+      classes.forEach((cls: any) => {
+        if (cls.name && cls.sections && Array.isArray(cls.sections)) {
+          cls.sections.forEach((secName: string) => {
+            const docRef = sectionsRef.doc();
+            batch.set(docRef, {
+              tenantId: user.tenantId,
+              classGrade: cls.name,
+              sectionName: secName,
+              incharge: '',
+              createdAt: new Date().toISOString()
+            });
+          });
+        }
+      });
+
+      await batch.commit();
+    }
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: error.errors }, { status: 400 });
-    }
-    console.error('Settings POST error:', error);
+    console.error('Settings PUT error:', error);
     return NextResponse.json({ error: 'Failed to save settings' }, { status: 500 });
   }
 }
