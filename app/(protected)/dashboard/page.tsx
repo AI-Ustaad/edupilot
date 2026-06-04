@@ -1,12 +1,13 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React from "react";
 import { motion } from "framer-motion";
 import { useAuth } from "@/context/AuthContext";
-import { useBranding } from "@/context/BrandingContext"; // 👈 وائٹ لیبل
+import { useBranding } from "@/context/BrandingContext";
+import { useQuery } from "@tanstack/react-query";
 import {
   Users, Briefcase, DollarSign, Activity, CalendarDays,
-  CreditCard, Clock, AlertTriangle,
+  CreditCard, Clock, AlertTriangle, Loader2
 } from "lucide-react";
 import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer,
@@ -47,53 +48,58 @@ interface DashboardData {
 export default function DashboardPage() {
   const t = useTranslations("Dashboard");
   const { user, loading: authLoading } = useAuth();
-  const branding = useBranding();                        // 👈 برانڈنگ حاصل کریں
+  const branding = useBranding();
   const primaryColor = branding.primaryColor || "#3b82f6";
 
-  const [data, setData] = useState<DashboardData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [riskStudents, setRiskStudents] = useState<any[]>([]);
+  // 1. React Query for Dashboard Main Data
+  const { data, isLoading: dataLoading, isError, error } = useQuery<DashboardData>({
+    queryKey: ["dashboardData", user?.tenantId],
+    queryFn: async () => {
+      const res = await fetch("/api/dashboard");
+      if (!res.ok) throw new Error("Failed to fetch dashboard data");
+      const json = await res.json();
+      if (!json.success) throw new Error(json.message || "Failed to load analytics");
+      return json.data;
+    },
+    enabled: !!user?.tenantId && !authLoading, // ٹیننٹ آئی ڈی آنے تک کیوری نہیں چلے گی
+  });
 
-  useEffect(() => {
-    if (authLoading) return;
+  // 2. React Query for Risk Students Data
+  const { data: riskStudents = [] } = useQuery<any[]>({
+    queryKey: ["riskStudents", user?.tenantId],
+    queryFn: async () => {
+      const res = await fetch("/api/students/risk");
+      if (!res.ok) throw new Error("Failed to fetch risk students");
+      const json = await res.json();
+      return json.success ? json.data || [] : [];
+    },
+    enabled: !!user?.tenantId && !authLoading,
+  });
 
-    if (!user?.tenantId) {
-      setLoading(false);
-      return;
-    }
+  const isLoading = authLoading || (dataLoading && !!user?.tenantId);
 
-    (async () => {
-      try {
-        const res = await fetch("/api/dashboard");
-        const json = await res.json();
-        if (json.success) {
-          setData(json.data);
-        } else {
-          console.error("Dashboard API error:", json.message);
-        }
-      } catch (err) {
-        console.error("Dashboard fetch error:", err);
-      } finally {
-        setLoading(false);
-      }
-    })();
-
-    fetch("/api/students/risk")
-      .then((res) => res.json())
-      .then((json) => {
-        if (json.success) setRiskStudents(json.data || []);
-      });
-  }, [user, authLoading]);
-
-  if (loading) {
+  // Loading State
+  if (isLoading) {
     return (
-      <div className="flex h-96 items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-blue-600" />
+      <div className="flex h-96 flex-col items-center justify-center gap-4">
+        <Loader2 className="animate-spin w-12 h-12" style={{ color: primaryColor }} />
+        <p className="text-gray-500 font-medium animate-pulse">Loading Your Dashboard...</p>
       </div>
     );
   }
 
-  if (!data) return null;
+  // Error State
+  if (isError || !data) {
+    return (
+      <div className="flex flex-col items-center justify-center h-96 text-center">
+        <AlertTriangle className="text-red-500 w-16 h-16 mb-4" />
+        <h2 className="text-2xl font-bold text-gray-800">No Analytics Data Found</h2>
+        <p className="text-gray-500 mt-2">
+          {error?.message || "We couldn't load the dashboard analytics. Please ensure your database has data."}
+        </p>
+      </div>
+    );
+  }
 
   const attendancePercent =
     data.todayAttendance.present + data.todayAttendance.absent > 0
@@ -107,7 +113,7 @@ export default function DashboardPage() {
       variants={staggerContainer}
       className="space-y-8"
     >
-      {/* Header – اب اسکول کا نام دکھاتا ہے */}
+      {/* Header */}
       <motion.div variants={fadeInUp}>
         <h1 className="text-3xl font-black text-gray-900">
           {branding.schoolName || t("title")}
@@ -115,7 +121,7 @@ export default function DashboardPage() {
         <p className="text-gray-500 mt-1">{t("subtitle")}</p>
       </motion.div>
 
-      {/* KPI Cards – پرائمری رنگ میں آئیکن */}
+      {/* KPI Cards */}
       <motion.div
         variants={staggerContainer}
         className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6"
@@ -143,7 +149,7 @@ export default function DashboardPage() {
         />
       </motion.div>
 
-      {/* At Risk Students */}
+      {/* At Risk Students Section */}
       {riskStudents.length > 0 && (
         <motion.div
           variants={fadeInUp}
@@ -214,7 +220,7 @@ export default function DashboardPage() {
           <h4 className="font-semibold mb-2 text-gray-900">Class‑wise collection</h4>
           <div className="space-y-2">
             {data.classFeeSummary.map((c, idx) => (
-              <div key={c.class}>
+              <div key={c.class || idx}>
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-700">{c.class}</span>
                   <span className="text-gray-500">Rs {c.collected.toLocaleString()}</span>
@@ -234,7 +240,7 @@ export default function DashboardPage() {
           <h3 className="text-lg font-semibold mb-4 flex items-center gap-2 text-gray-900">
             <Users size={20} style={{ color: primaryColor }} /> {t("studentDistribution")}
           </h3>
-          {data.classDistribution.length === 0 ? (
+          {!data.classDistribution || data.classDistribution.length === 0 ? (
             <div className="h-64 flex items-center justify-center text-gray-400">{t("noData")}</div>
           ) : (
             <div className="flex flex-col md:flex-row items-center gap-8">
@@ -262,7 +268,7 @@ export default function DashboardPage() {
 
         <motion.div variants={fadeInUp} className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
           <h3 className="text-lg font-semibold mb-4 flex items-center gap-2 text-gray-900">
-            <Clock size={20} style={{ color: primaryColor }} /> {t("recentPayments")}
+            <Clock size={20} className="text-orange-500" /> {t("recentPayments")}
           </h3>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -275,15 +281,17 @@ export default function DashboardPage() {
                 </tr>
               </thead>
               <tbody>
-                {data.recentPayments.map((p) => (
+                {(data.recentPayments || []).map((p) => (
                   <tr key={p.id} className="border-b border-gray-100">
                     <td className="p-3 text-gray-900 font-medium">{p.studentName}</td>
                     <td className="p-3 text-gray-600">{p.date}</td>
                     <td className="p-3 text-green-600 font-bold">Rs {p.amount.toLocaleString()}</td>
-                    <td className="p-3 text-gray-500">{new Date(p.timestamp).toLocaleDateString()}</td>
+                    <td className="p-3 text-gray-500">
+                      {p.timestamp ? new Date(p.timestamp).toLocaleDateString() : "-"}
+                    </td>
                   </tr>
                 ))}
-                {data.recentPayments.length === 0 && (
+                {(!data.recentPayments || data.recentPayments.length === 0) && (
                   <tr>
                     <td colSpan={4} className="p-6 text-center text-gray-400">{t("noData")}</td>
                   </tr>
