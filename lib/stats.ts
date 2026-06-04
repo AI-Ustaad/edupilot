@@ -1,23 +1,41 @@
 // lib/stats.ts
 import { adminDb } from "@/lib/firebase-admin";
-import { FieldValue } from "firebase-admin/firestore";
 
-// یہ فنکشن Vercel API کے اندر ہی کلاؤڈ فنکشن والا کام کرے گا
 export async function updateTenantStats(
   tenantId: string, 
   type: 'students' | 'staff' | 'revenue', 
   amount: number
 ) {
+  const statsRef = adminDb.collection("tenants").doc(tenantId).collection("dashboard").doc("stats");
+  
   try {
-    const statsRef = adminDb.collection("tenants").doc(tenantId).collection("dashboard").doc("stats");
+    // Race Conditions سے بچنے کے لیے Transaction کا استعمال
+    await adminDb.runTransaction(async (transaction) => {
+      const doc = await transaction.get(statsRef);
+      
+      if (!doc.exists) {
+        // اگر ڈاکومنٹ موجود نہیں تو نیا بنائیں
+        transaction.set(statsRef, {
+          students: type === 'students' ? amount : 0,
+          staff: type === 'staff' ? amount : 0,
+          revenue: type === 'revenue' ? amount : 0,
+          updatedAt: new Date().toISOString()
+        });
+      } else {
+        // محفوظ طریقے سے موجودہ ویلیو میں اضافہ یا کمی کریں
+        const currentData = doc.data() || {};
+        const currentValue = currentData[type] || 0;
+        
+        transaction.update(statsRef, {
+          [type]: currentValue + amount,
+          updatedAt: new Date().toISOString()
+        });
+      }
+    });
     
-    await statsRef.set({
-      [type]: FieldValue.increment(amount), // خودکار +1 یا -1 کرے گا
-      updatedAt: FieldValue.serverTimestamp()
-    }, { merge: true });
-    
-    console.log(`Successfully updated ${type} by ${amount} for tenant ${tenantId}`);
+    console.log(`Transaction successful: ${type} updated by ${amount} for tenant ${tenantId}`);
   } catch (error) {
-    console.error("Failed to update tenant stats:", error);
+    console.error("Transaction failed:", error);
+    throw error; // تاکہ کال کرنے والی API کو بھی ایرر کا پتہ چل سکے
   }
 }
