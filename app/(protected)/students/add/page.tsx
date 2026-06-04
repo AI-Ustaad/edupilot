@@ -1,248 +1,228 @@
 "use client";
-
-import { useState, useEffect } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { Loader2, Upload, Save, X, CheckCircle2, AlertCircle } from "lucide-react";
+import React, { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/context/AuthContext";
+import { Loader2, Save, UserPlus, Camera } from "lucide-react";
 
 export default function AddStudentPage() {
+  const { user } = useAuth();
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const [loading, setLoading] = useState(false);
-  const [ocrLoading, setOcrLoading] = useState(false);
-  const [success, setSuccess] = useState(false);
-  const [error, setError] = useState("");
-  
+
+  // 🔥 proper typing and loading
   const [classes, setClasses] = useState<string[]>([]);
   const [sections, setSections] = useState<string[]>([]);
-  
-  const [formData, setFormData] = useState({
+  const [subjects, setSubjects] = useState<string[]>([]);
+  const [allClassesData, setAllClassesData] = useState<any[]>([]);  // full objects for section extraction
+  const [loadingSettings, setLoadingSettings] = useState(true);
+
+  const [form, setForm] = useState({
     fullName: "",
     fatherName: "",
-    cnic: "",
-    dob: "",
-    gender: "Male",
-    religion: "Islam",
-    phone: "",
-    email: "",
-    address: "",
     classGrade: "",
     section: "",
     rollNumber: "",
-    studentIdNumber: "",
-    medicalHistory: "",
+    gender: "Male",
+    dateOfBirth: "",
+    phone: "",
+    address: "",
     photoBase64: "",
   });
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
 
-  // Fetch classes and sections
+  // 1. Fetch settings (classes, sections, subjects)
   useEffect(() => {
-    const fetchSettings = async () => {
-      try {
-        const res = await fetch("/api/settings");
-        const data = await res.json();
-        setClasses(data.classes || []);
-        setSections((data.sections || []).map((s: any) => s.sectionName));
-      } catch (err) {
-        console.error("Failed to load settings");
-      }
-    };
-    fetchSettings();
-  }, []);
+    if (!user?.tenantId) return;
+    fetch("/api/settings")
+      .then((res) => res.json())
+      .then((data) => {
+        const rawClasses = data.classes || data.data?.classes || [];
+        const rawSubjects = data.subjects || data.data?.subjects || [];
 
-  // Load OCR data from sessionStorage if coming from OCR upload
+        // Extract class names whether they are strings or objects
+        const classNames = rawClasses.map((c: any) =>
+          typeof c === "string" ? c : c.name || c.classGrade || c
+        );
+        setClasses(classNames);
+        setAllClassesData(rawClasses);  // keep full objects for sections
+        setSubjects(Array.isArray(rawSubjects) ? rawSubjects : []);
+        setLoadingSettings(false);
+      })
+      .catch(() => setLoadingSettings(false));
+  }, [user?.tenantId]);
+
+  // 2. Update sections when class changes
   useEffect(() => {
-    const isOcrFlow = searchParams.get("ocr") === "true";
-    if (isOcrFlow) {
-      const ocrData = sessionStorage.getItem("ocrStudentData");
-      if (ocrData) {
-        try {
-          const data = JSON.parse(ocrData);
-          setFormData(prev => ({
-            ...prev,
-            fullName: data.fullName || prev.fullName,
-            fatherName: data.fatherName || prev.fatherName,
-            cnic: data.cnic || prev.cnic,
-            dob: data.dob || prev.dob,
-            phone: data.phone || prev.phone,
-            email: data.email || prev.email,
-            address: data.address || prev.address,
-            classGrade: data.classGrade || prev.classGrade,
-            rollNumber: data.rollNumber || prev.rollNumber,
-            gender: data.gender || prev.gender,
-            religion: data.religion || prev.religion,
-            photoBase64: data.photoBase64 || prev.photoBase64,
-          }));
-          sessionStorage.removeItem("ocrStudentData");
-        } catch (err) {
-          console.error("Failed to parse OCR data");
-        }
-      }
+    if (!form.classGrade) {
+      setSections([]);
+      return;
     }
-  }, [searchParams]);
+    const selected = allClassesData.find(
+      (c: any) => (c.name || c.classGrade || c) === form.classGrade
+    );
+    if (selected && Array.isArray(selected.sections)) {
+      setSections(selected.sections);
+    } else {
+      setSections([]);
+    }
+    // reset section when class changes
+    setForm((prev) => ({ ...prev, section: "" }));
+  }, [form.classGrade, allClassesData]);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setForm((prev) => ({ ...prev, [name]: value }));
+  };
 
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
-    reader.onloadend = () => setFormData({ ...formData, photoBase64: reader.result as string });
+    reader.onloadend = () => {
+      setForm((prev) => ({ ...prev, photoBase64: reader.result as string }));
+    };
     reader.readAsDataURL(file);
-  };
-
-  const handleOCRUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    
-    setOcrLoading(true);
-    setError("");
-    
-    const fd = new FormData();
-    fd.append("file", file);
-    
-    try {
-      const res = await fetch("/api/students/ocr-admission", {
-        method: "POST",
-        body: fd,
-      });
-      const result = await res.json();
-      
-      if (result.success && result.data) {
-        setFormData(prev => ({
-          ...prev,
-          fullName: result.data.fullName || prev.fullName,
-          fatherName: result.data.fatherName || prev.fatherName,
-          cnic: result.data.cnic || prev.cnic,
-          dob: result.data.dob || prev.dob,
-          phone: result.data.phone || prev.phone,
-          email: result.data.email || prev.email,
-          address: result.data.address || prev.address,
-          classGrade: result.data.classGrade || prev.classGrade,
-          rollNumber: result.data.rollNumber || prev.rollNumber,
-          gender: result.data.gender || prev.gender,
-          religion: result.data.religion || prev.religion,
-          photoBase64: result.data.photoBase64 || prev.photoBase64,
-        }));
-        alert("Document processed! Form fields have been auto-filled.");
-      } else {
-        setError(result.error || "Failed to extract data");
-      }
-    } catch (err) {
-      setError("OCR processing failed. Please try again.");
-    } finally {
-      setOcrLoading(false);
-    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.fullName || !formData.classGrade || !formData.rollNumber) {
-      setError("Full Name, Class, and Roll Number are required.");
+    if (!form.fullName || !form.classGrade) {
+      setError("Full Name and Class are required.");
       return;
     }
-    
-    setLoading(true);
+    setSubmitting(true);
     setError("");
-    
     try {
       const res = await fetch("/api/students", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...formData, rollNumber: Number(formData.rollNumber) }),
+        body: JSON.stringify({
+          ...form,
+          tenantId: user?.tenantId,
+          section: form.section || "Unassigned",
+        }),
       });
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || "Failed to add student");
+      if (res.ok) {
+        router.push("/students");   // back to student list
+      } else {
+        const data = await res.json();
+        setError(data.message || "Failed to add student");
       }
-      setSuccess(true);
-      setTimeout(() => router.push("/students"), 1500);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err) {
+      setError("Network error. Please try again.");
     } finally {
-      setLoading(false);
+      setSubmitting(false);
     }
   };
 
+  if (loadingSettings) {
+    return (
+      <div className="flex h-96 items-center justify-center">
+        <Loader2 className="animate-spin text-blue-600" size={40} />
+      </div>
+    );
+  }
+
   return (
-    <div className="max-w-4xl mx-auto p-6">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-black">Add New Student</h1>
-        <button onClick={() => router.push("/students")} className="text-slate-500 hover:text-slate-700">
-          <X size={24} />
-        </button>
-      </div>
+    <div className="max-w-4xl mx-auto p-4 md:p-8 space-y-6">
+      <h1 className="text-2xl font-black text-gray-900 flex items-center gap-2">
+        <UserPlus className="text-blue-600" /> Add New Student
+      </h1>
 
-      {/* OCR Upload Section */}
-      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 rounded-2xl p-6 mb-8 border border-blue-100 dark:border-blue-800">
-        <div className="flex items-center gap-3 mb-3">
-          <Upload size={24} className="text-blue-600" />
-          <h2 className="text-xl font-bold">Quick Import via Document</h2>
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-xl">
+          {error}
         </div>
-        <p className="text-sm text-slate-600 dark:text-slate-300 mb-4">
-          Upload admission form (Image, PDF, or Word document) – We'll auto-fill the form fields!
-        </p>
-        <div className="flex items-center gap-4 flex-wrap">
-          <label className="cursor-pointer bg-blue-600 hover:bg-blue-700 text-gray-900 px-6 py-3 rounded-xl font-bold flex items-center gap-2 transition">
-            {ocrLoading ? <Loader2 size={20} className="animate-spin" /> : <Upload size={20} />}
-            {ocrLoading ? "Processing..." : "Upload Document"}
-            <input type="file" accept="image/*,application/pdf,.docx" onChange={handleOCRUpload} className="hidden" />
-          </label>
-          {ocrLoading && <span className="text-sm text-slate-500">Extracting data... This may take a few seconds.</span>}
+      )}
+
+      <form onSubmit={handleSubmit} className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm space-y-6">
+        {/* Photo */}
+        <div className="flex items-center gap-6">
+          <div className="relative">
+            {form.photoBase64 ? (
+              <img src={form.photoBase64} alt="Preview" className="w-24 h-24 rounded-full object-cover border-2 border-gray-200" />
+            ) : (
+              <div className="w-24 h-24 rounded-full bg-gray-100 flex items-center justify-center">
+                <Camera className="text-gray-400" size={32} />
+              </div>
+            )}
+            <label className="absolute bottom-0 right-0 bg-blue-600 text-white p-1.5 rounded-full cursor-pointer">
+              <Camera size={16} />
+              <input type="file" accept="image/*" onChange={handlePhotoUpload} className="hidden" />
+            </label>
+          </div>
+          <div className="text-sm text-gray-500">Upload student photo (optional)</div>
         </div>
-        {error && (
-          <div className="mt-4 p-3 bg-red-50 text-red-600 rounded-xl flex items-center gap-2">
-            <AlertCircle size={18} /> {error}
-          </div>
-        )}
-      </div>
 
-      {/* Student Form */}
-      <form onSubmit={handleSubmit} className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border p-6 space-y-4">
-        {success && (
-          <div className="bg-green-50 text-green-700 p-3 rounded-xl flex items-center gap-2">
-            <CheckCircle2 size={18} /> Student added successfully! Redirecting...
-          </div>
-        )}
-
+        {/* Two‑column grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <input name="fullName" placeholder="Full Name *" value={formData.fullName} onChange={e => setFormData({ ...formData, fullName: e.target.value })} className="border rounded-xl p-3 bg-slate-50 dark:bg-slate-700" required />
-          <input name="fatherName" placeholder="Father's Name" value={formData.fatherName} onChange={e => setFormData({ ...formData, fatherName: e.target.value })} className="border rounded-xl p-3 bg-slate-50 dark:bg-slate-700" />
-          <input name="cnic" placeholder="CNIC / B-Form" value={formData.cnic} onChange={e => setFormData({ ...formData, cnic: e.target.value })} className="border rounded-xl p-3 bg-slate-50 dark:bg-slate-700" />
-          <input name="dob" type="date" value={formData.dob} onChange={e => setFormData({ ...formData, dob: e.target.value })} className="border rounded-xl p-3 bg-slate-50 dark:bg-slate-700" />
-          
-          <select name="gender" value={formData.gender} onChange={e => setFormData({ ...formData, gender: e.target.value })} className="border rounded-xl p-3 bg-slate-50 dark:bg-slate-700">
-            <option>Male</option><option>Female</option><option>Other</option>
-          </select>
-          <input name="religion" placeholder="Religion" value={formData.religion} onChange={e => setFormData({ ...formData, religion: e.target.value })} className="border rounded-xl p-3 bg-slate-50 dark:bg-slate-700" />
-          <input name="phone" placeholder="Phone" value={formData.phone} onChange={e => setFormData({ ...formData, phone: e.target.value })} className="border rounded-xl p-3 bg-slate-50 dark:bg-slate-700" />
-          <input name="email" placeholder="Email" value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} className="border rounded-xl p-3 bg-slate-50 dark:bg-slate-700" />
-          
-          <textarea name="address" placeholder="Address" value={formData.address} onChange={e => setFormData({ ...formData, address: e.target.value })} rows={2} className="col-span-2 border rounded-xl p-3 bg-slate-50 dark:bg-slate-700" />
-          
-          <select name="classGrade" value={formData.classGrade} onChange={e => setFormData({ ...formData, classGrade: e.target.value })} required className="border rounded-xl p-3 bg-slate-50 dark:bg-slate-700">
-            <option value="">Select Class</option>
-            {classes.map(c => <option key={c}>{c}</option>)}
-          </select>
-          <select name="section" value={formData.section} onChange={e => setFormData({ ...formData, section: e.target.value })} className="border rounded-xl p-3 bg-slate-50 dark:bg-slate-700">
-            <option value="">Select Section</option>
-            {sections.map(s => <option key={s}>{s}</option>)}
-          </select>
-          
-          <input name="rollNumber" type="number" placeholder="Roll Number *" value={formData.rollNumber} onChange={e => setFormData({ ...formData, rollNumber: e.target.value })} required className="border rounded-xl p-3 bg-slate-50 dark:bg-slate-700" />
-          <input name="studentIdNumber" placeholder="Student ID (optional)" value={formData.studentIdNumber} onChange={e => setFormData({ ...formData, studentIdNumber: e.target.value })} className="border rounded-xl p-3 bg-slate-50 dark:bg-slate-700" />
-          
-          <textarea name="medicalHistory" placeholder="Medical History (allergies, conditions)" value={formData.medicalHistory} onChange={e => setFormData({ ...formData, medicalHistory: e.target.value })} rows={2} className="col-span-2 border rounded-xl p-3 bg-slate-50 dark:bg-slate-700" />
-          
-          <div className="col-span-2">
-            <label className="block text-sm font-bold mb-1">Student Photo</label>
-            <input type="file" accept="image/*" onChange={handlePhotoUpload} className="border rounded-xl p-2 w-full" />
-            {formData.photoBase64 && <img src={formData.photoBase64} className="mt-2 w-24 h-24 object-cover rounded-lg" />}
+          <div>
+            <label className="block text-sm font-bold text-gray-700">Full Name *</label>
+            <input type="text" name="fullName" value={form.fullName} onChange={handleChange} className="w-full border border-gray-300 rounded-xl px-4 py-2 mt-1" required />
+          </div>
+          <div>
+            <label className="block text-sm font-bold text-gray-700">Father's Name</label>
+            <input type="text" name="fatherName" value={form.fatherName} onChange={handleChange} className="w-full border border-gray-300 rounded-xl px-4 py-2 mt-1" />
+          </div>
+
+          <div>
+            <label className="block text-sm font-bold text-gray-700">Class *</label>
+            <select name="classGrade" value={form.classGrade} onChange={handleChange} className="w-full border border-gray-300 rounded-xl px-4 py-2 mt-1" required>
+              <option value="">Select Class</option>
+              {classes.map((c) => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-bold text-gray-700">Section</label>
+            <select name="section" value={form.section} onChange={handleChange} className="w-full border border-gray-300 rounded-xl px-4 py-2 mt-1" disabled={!form.classGrade}>
+              <option value="">Select Section</option>
+              {sections.map((sec) => (
+                <option key={sec} value={sec}>{sec}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-bold text-gray-700">Roll Number</label>
+            <input type="text" name="rollNumber" value={form.rollNumber} onChange={handleChange} className="w-full border border-gray-300 rounded-xl px-4 py-2 mt-1" />
+          </div>
+
+          <div>
+            <label className="block text-sm font-bold text-gray-700">Gender</label>
+            <select name="gender" value={form.gender} onChange={handleChange} className="w-full border border-gray-300 rounded-xl px-4 py-2 mt-1">
+              <option>Male</option>
+              <option>Female</option>
+              <option>Other</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-bold text-gray-700">Date of Birth</label>
+            <input type="date" name="dateOfBirth" value={form.dateOfBirth} onChange={handleChange} className="w-full border border-gray-300 rounded-xl px-4 py-2 mt-1" />
+          </div>
+
+          <div>
+            <label className="block text-sm font-bold text-gray-700">Phone</label>
+            <input type="tel" name="phone" value={form.phone} onChange={handleChange} className="w-full border border-gray-300 rounded-xl px-4 py-2 mt-1" />
+          </div>
+
+          <div className="md:col-span-2">
+            <label className="block text-sm font-bold text-gray-700">Address</label>
+            <textarea name="address" rows={2} value={form.address} onChange={handleChange} className="w-full border border-gray-300 rounded-xl px-4 py-2 mt-1" />
           </div>
         </div>
 
-        <div className="flex justify-end gap-3 pt-4">
-          <button type="button" onClick={() => router.push("/students")} className="px-6 py-2 border rounded-xl">Cancel</button>
-          <button type="submit" disabled={loading} className="bg-blue-600 text-gray-900 px-6 py-2 rounded-xl flex items-center gap-2">
-            {loading ? <Loader2 className="animate-spin" /> : <Save size={18} />} Save Student
-          </button>
-        </div>
+        <button
+          type="submit"
+          disabled={submitting}
+          className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-bold flex items-center gap-2 disabled:opacity-50"
+        >
+          {submitting ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />}
+          {submitting ? "Saving..." : "Save Student"}
+        </button>
       </form>
     </div>
   );
