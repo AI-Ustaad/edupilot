@@ -1,7 +1,7 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
-import { Loader2, TrendingUp, BookOpen, CheckCircle, AlertTriangle } from "lucide-react";
+import { Loader2, TrendingUp, BookOpen, CheckCircle, AlertTriangle, Sparkles } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 import { useQuery } from "@tanstack/react-query";
 
