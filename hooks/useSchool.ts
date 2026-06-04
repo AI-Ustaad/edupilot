@@ -1,3 +1,4 @@
+// hooks/useSchool.ts
 "use client";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
@@ -5,13 +6,12 @@ import { useAuth } from "@/context/AuthContext";
 interface Section {
   classGrade: string;
   sectionName: string;
-  incharge?: string;
 }
 
 interface Student {
   id: string;
-  fullName?: string;
   name?: string;
+  fullName?: string;
   rollNumber: number;
   classGrade: string;
   section: string;
@@ -19,14 +19,9 @@ interface Student {
 
 export function useSchool() {
   const { user } = useAuth();
-  if (!user) {
-    throw new Error("User not loaded");
-  }
+  const schoolId = user?.tenantId;
+  const role = user?.role;
 
-  const schoolId = user.tenantId;
-  const role = user.role;
-
-  // Cascading data state
   const [classes, setClasses] = useState<string[]>([]);
   const [allSections, setAllSections] = useState<Section[]>([]);
   const [filteredSections, setFilteredSections] = useState<Section[]>([]);
@@ -36,42 +31,49 @@ export function useSchool() {
   const [loadingSettings, setLoadingSettings] = useState(true);
   const [loadingStudents, setLoadingStudents] = useState(false);
 
-  // Step 1: Fetch settings once
   useEffect(() => {
     fetch("/api/settings")
       .then((res) => res.json())
-      .then((data) => {
-        setClasses(data.classes || []);
-        setAllSections(data.sections || []);
+      .then((json) => {
+        const rawClasses = json.data?.classes || json.classes || [];
+        
+        // صرف کلاسز کے نام نکالیں
+        const flatClasses = rawClasses.map((c: any) => typeof c === 'string' ? c : c.name);
+        setClasses(flatClasses);
+
+        // سیکشنز کو الگ کر کے ترتیب دیں
+        const flatSections: Section[] = [];
+        rawClasses.forEach((c: any) => {
+          if (c.name && c.sections && Array.isArray(c.sections)) {
+            c.sections.forEach((sec: string) => {
+              flatSections.push({ classGrade: c.name, sectionName: sec });
+            });
+          }
+        });
+        setAllSections(flatSections);
       })
       .catch(console.error)
       .finally(() => setLoadingSettings(false));
   }, []);
 
-  // Step 2: Filter sections when class changes
   useEffect(() => {
     if (!selectedClass) {
       setFilteredSections([]);
       setSelectedSection("");
-      setStudents([]);
       return;
     }
     const filtered = allSections.filter((s) => s.classGrade === selectedClass);
     setFilteredSections(filtered);
-    setSelectedSection(""); // reset section
-    setStudents([]);
+    setSelectedSection("");
   }, [selectedClass, allSections]);
 
-  // Step 3: Fetch students when class & section are selected
   useEffect(() => {
     if (!selectedClass || !selectedSection) {
       setStudents([]);
       return;
     }
     setLoadingStudents(true);
-    fetch(
-      `/api/students?classGrade=${encodeURIComponent(selectedClass)}&section=${encodeURIComponent(selectedSection)}`
-    )
+    fetch(`/api/students?classGrade=${encodeURIComponent(selectedClass)}&section=${encodeURIComponent(selectedSection)}`)
       .then((res) => res.json())
       .then((data) => {
         const list = Array.isArray(data) ? data : data.data || [];
@@ -82,21 +84,8 @@ export function useSchool() {
   }, [selectedClass, selectedSection]);
 
   return {
-    schoolId,
-    role,
-    classes,
-    sections: filteredSections,        // only sections of selected class
-    students,
-    selectedClass,
-    setSelectedClass,
-    selectedSection,
-    setSelectedSection,
-    loadingSettings,
-    loadingStudents,
-    resetSelections: () => {
-      setSelectedClass("");
-      setSelectedSection("");
-      setStudents([]);
-    },
+    schoolId, role, classes, sections: filteredSections, students,
+    selectedClass, setSelectedClass, selectedSection, setSelectedSection,
+    loadingSettings, loadingStudents,
   };
 }
