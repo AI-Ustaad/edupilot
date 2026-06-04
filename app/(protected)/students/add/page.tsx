@@ -1,228 +1,144 @@
+// app/(protected)/students/add/page.tsx
 "use client";
-import React, { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@/context/AuthContext";
-import { Loader2, Save, UserPlus, Camera } from "lucide-react";
+import { useSchool } from "@/hooks/useSchool";
+import { Loader2, Save, User, Users, BookOpen, HeartPulse, CheckCircle } from "lucide-react";
 
 export default function AddStudentPage() {
-  const { user } = useAuth();
   const router = useRouter();
-
-  // 🔥 proper typing and loading
-  const [classes, setClasses] = useState<string[]>([]);
-  const [sections, setSections] = useState<string[]>([]);
-  const [subjects, setSubjects] = useState<string[]>([]);
-  const [allClassesData, setAllClassesData] = useState<any[]>([]);  // full objects for section extraction
-  const [loadingSettings, setLoadingSettings] = useState(true);
+  const { classes, sections, selectedClass, setSelectedClass, selectedSection, setSelectedSection, loadingSettings } = useSchool();
+  const [activeTab, setActiveTab] = useState("personal");
+  const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState(false);
 
   const [form, setForm] = useState({
-    fullName: "",
-    fatherName: "",
-    classGrade: "",
-    section: "",
-    rollNumber: "",
-    gender: "Male",
-    dateOfBirth: "",
-    phone: "",
-    address: "",
-    photoBase64: "",
+    fullName: "", fatherName: "", dob: "", gender: "Male",
+    phone: "", address: "", religion: "", nationality: "Pakistani",
+    rollNumber: "", admissionNumber: "", previousSchool: "",
+    guardianName: "", guardianPhone: "", guardianRelation: "",
+    bloodGroup: "", medicalConditions: ""
   });
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState("");
 
-  // 1. Fetch settings (classes, sections, subjects)
-  useEffect(() => {
-    if (!user?.tenantId) return;
-    fetch("/api/settings")
-      .then((res) => res.json())
-      .then((data) => {
-        const rawClasses = data.classes || data.data?.classes || [];
-        const rawSubjects = data.subjects || data.data?.subjects || [];
-
-        // Extract class names whether they are strings or objects
-        const classNames = rawClasses.map((c: any) =>
-          typeof c === "string" ? c : c.name || c.classGrade || c
-        );
-        setClasses(classNames);
-        setAllClassesData(rawClasses);  // keep full objects for sections
-        setSubjects(Array.isArray(rawSubjects) ? rawSubjects : []);
-        setLoadingSettings(false);
-      })
-      .catch(() => setLoadingSettings(false));
-  }, [user?.tenantId]);
-
-  // 2. Update sections when class changes
-  useEffect(() => {
-    if (!form.classGrade) {
-      setSections([]);
-      return;
-    }
-    const selected = allClassesData.find(
-      (c: any) => (c.name || c.classGrade || c) === form.classGrade
-    );
-    if (selected && Array.isArray(selected.sections)) {
-      setSections(selected.sections);
-    } else {
-      setSections([]);
-    }
-    // reset section when class changes
-    setForm((prev) => ({ ...prev, section: "" }));
-  }, [form.classGrade, allClassesData]);
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setForm((prev) => ({ ...prev, photoBase64: reader.result as string }));
-    };
-    reader.readAsDataURL(file);
-  };
+  const handleChange = (e: any) => setForm({ ...form, [e.target.name]: e.target.value });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.fullName || !form.classGrade) {
-      setError("Full Name and Class are required.");
-      return;
-    }
-    setSubmitting(true);
-    setError("");
+    if (!selectedClass || !selectedSection) return alert("Please select Class and Section.");
+    
+    setLoading(true);
     try {
       const res = await fetch("/api/students", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...form,
-          tenantId: user?.tenantId,
-          section: form.section || "Unassigned",
-        }),
+        body: JSON.stringify({ ...form, classGrade: selectedClass, section: selectedSection })
       });
+
       if (res.ok) {
-        router.push("/students");   // back to student list
+        setSuccess(true);
+        setTimeout(() => {
+          setSuccess(false);
+          router.push("/students");
+        }, 2000);
       } else {
-        const data = await res.json();
-        setError(data.message || "Failed to add student");
+        alert("Failed to add student.");
       }
-    } catch (err) {
-      setError("Network error. Please try again.");
+    } catch (error) {
+      alert("Network Error!");
     } finally {
-      setSubmitting(false);
+      setLoading(false);
     }
   };
 
-  if (loadingSettings) {
-    return (
-      <div className="flex h-96 items-center justify-center">
-        <Loader2 className="animate-spin text-blue-600" size={40} />
-      </div>
-    );
-  }
+  const TabButton = ({ id, icon: Icon, label }: any) => (
+    <button type="button" onClick={() => setActiveTab(id)}
+      className={`flex items-center gap-2 px-4 py-3 font-bold text-sm transition-all border-b-2 ${activeTab === id ? "border-blue-600 text-blue-600" : "border-transparent text-gray-500 hover:text-gray-700"}`}>
+      <Icon size={18} /> {label}
+    </button>
+  );
 
   return (
-    <div className="max-w-4xl mx-auto p-4 md:p-8 space-y-6">
-      <h1 className="text-2xl font-black text-gray-900 flex items-center gap-2">
-        <UserPlus className="text-blue-600" /> Add New Student
-      </h1>
+    <div className="max-w-5xl mx-auto p-6 space-y-6">
+      <h1 className="text-2xl font-black text-gray-900">Add New Student Profile</h1>
 
-      {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-xl">
-          {error}
+      {success && (
+        <div className="bg-green-50 text-green-700 p-4 rounded-xl flex items-center gap-3 font-bold border border-green-200">
+          <CheckCircle size={20} /> Student successfully enrolled!
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm space-y-6">
-        {/* Photo */}
-        <div className="flex items-center gap-6">
-          <div className="relative">
-            {form.photoBase64 ? (
-              <img src={form.photoBase64} alt="Preview" className="w-24 h-24 rounded-full object-cover border-2 border-gray-200" />
-            ) : (
-              <div className="w-24 h-24 rounded-full bg-gray-100 flex items-center justify-center">
-                <Camera className="text-gray-400" size={32} />
+      <form onSubmit={handleSubmit} className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
+        {/* Tabs Header */}
+        <div className="flex border-b border-gray-100 bg-gray-50 px-2 overflow-x-auto">
+          <TabButton id="personal" icon={User} label="Personal Details" />
+          <TabButton id="academic" icon={BookOpen} label="Academic Info" />
+          <TabButton id="parents" icon={Users} label="Parents/Guardian" />
+          <TabButton id="medical" icon={HeartPulse} label="Medical & Health" />
+        </div>
+
+        {/* Tab Content */}
+        <div className="p-6">
+          {activeTab === "personal" && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-fade-in-up">
+              <div><label className="text-xs font-bold text-gray-500">Full Name *</label><input required name="fullName" value={form.fullName} onChange={handleChange} className="w-full border p-3 rounded-xl mt-1" /></div>
+              <div><label className="text-xs font-bold text-gray-500">Father's Name *</label><input required name="fatherName" value={form.fatherName} onChange={handleChange} className="w-full border p-3 rounded-xl mt-1" /></div>
+              <div><label className="text-xs font-bold text-gray-500">Date of Birth</label><input type="date" name="dob" value={form.dob} onChange={handleChange} className="w-full border p-3 rounded-xl mt-1" /></div>
+              <div><label className="text-xs font-bold text-gray-500">Gender</label><select name="gender" value={form.gender} onChange={handleChange} className="w-full border p-3 rounded-xl mt-1"><option>Male</option><option>Female</option></select></div>
+              <div><label className="text-xs font-bold text-gray-500">Religion</label><input name="religion" value={form.religion} onChange={handleChange} className="w-full border p-3 rounded-xl mt-1" /></div>
+              <div><label className="text-xs font-bold text-gray-500">Nationality</label><input name="nationality" value={form.nationality} onChange={handleChange} className="w-full border p-3 rounded-xl mt-1" /></div>
+              <div><label className="text-xs font-bold text-gray-500">Contact Phone</label><input name="phone" value={form.phone} onChange={handleChange} className="w-full border p-3 rounded-xl mt-1" /></div>
+              <div className="md:col-span-2"><label className="text-xs font-bold text-gray-500">Home Address</label><input name="address" value={form.address} onChange={handleChange} className="w-full border p-3 rounded-xl mt-1" /></div>
+            </div>
+          )}
+
+          {activeTab === "academic" && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-fade-in-up">
+              <div>
+                <label className="text-xs font-bold text-gray-500">Class *</label>
+                <select required value={selectedClass} onChange={(e) => setSelectedClass(e.target.value)} className="w-full border p-3 rounded-xl mt-1 bg-gray-50">
+                  <option value="">Select Class</option>
+                  {classes.map(c => <option key={c}>{c}</option>)}
+                </select>
               </div>
-            )}
-            <label className="absolute bottom-0 right-0 bg-blue-600 text-white p-1.5 rounded-full cursor-pointer">
-              <Camera size={16} />
-              <input type="file" accept="image/*" onChange={handlePhotoUpload} className="hidden" />
-            </label>
-          </div>
-          <div className="text-sm text-gray-500">Upload student photo (optional)</div>
+              <div>
+                <label className="text-xs font-bold text-gray-500">Section *</label>
+                <select required disabled={!selectedClass} value={selectedSection} onChange={(e) => setSelectedSection(e.target.value)} className="w-full border p-3 rounded-xl mt-1 bg-gray-50 disabled:opacity-50">
+                  <option value="">Select Section</option>
+                  {sections.map(s => <option key={s.sectionName}>{s.sectionName}</option>)}
+                </select>
+              </div>
+              <div><label className="text-xs font-bold text-gray-500">Roll Number *</label><input required type="number" name="rollNumber" value={form.rollNumber} onChange={handleChange} className="w-full border p-3 rounded-xl mt-1" /></div>
+              <div><label className="text-xs font-bold text-gray-500">Admission Number</label><input name="admissionNumber" value={form.admissionNumber} onChange={handleChange} className="w-full border p-3 rounded-xl mt-1" /></div>
+              <div className="md:col-span-2"><label className="text-xs font-bold text-gray-500">Previous School Attended</label><input name="previousSchool" value={form.previousSchool} onChange={handleChange} className="w-full border p-3 rounded-xl mt-1" /></div>
+            </div>
+          )}
+
+          {activeTab === "parents" && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-fade-in-up">
+              <div><label className="text-xs font-bold text-gray-500">Guardian Name *</label><input required name="guardianName" value={form.guardianName} onChange={handleChange} className="w-full border p-3 rounded-xl mt-1" /></div>
+              <div><label className="text-xs font-bold text-gray-500">Guardian Relation</label><input placeholder="e.g. Father, Uncle" name="guardianRelation" value={form.guardianRelation} onChange={handleChange} className="w-full border p-3 rounded-xl mt-1" /></div>
+              <div className="md:col-span-2"><label className="text-xs font-bold text-gray-500">Guardian Emergency Phone *</label><input required name="guardianPhone" value={form.guardianPhone} onChange={handleChange} className="w-full border p-3 rounded-xl mt-1" /></div>
+            </div>
+          )}
+
+          {activeTab === "medical" && (
+            <div className="grid grid-cols-1 gap-4 animate-fade-in-up">
+              <div>
+                <label className="text-xs font-bold text-gray-500">Blood Group</label>
+                <select name="bloodGroup" value={form.bloodGroup} onChange={handleChange} className="w-full border p-3 rounded-xl mt-1 md:w-1/2">
+                  <option value="">Select</option><option>A+</option><option>A-</option><option>B+</option><option>B-</option><option>O+</option><option>O-</option><option>AB+</option><option>AB-</option>
+                </select>
+              </div>
+              <div><label className="text-xs font-bold text-gray-500">Allergies / Medical Conditions</label><textarea rows={3} placeholder="Any known allergies or medical history..." name="medicalConditions" value={form.medicalConditions} onChange={handleChange} className="w-full border p-3 rounded-xl mt-1" /></div>
+            </div>
+          )}
         </div>
 
-        {/* Two‑column grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-bold text-gray-700">Full Name *</label>
-            <input type="text" name="fullName" value={form.fullName} onChange={handleChange} className="w-full border border-gray-300 rounded-xl px-4 py-2 mt-1" required />
-          </div>
-          <div>
-            <label className="block text-sm font-bold text-gray-700">Father's Name</label>
-            <input type="text" name="fatherName" value={form.fatherName} onChange={handleChange} className="w-full border border-gray-300 rounded-xl px-4 py-2 mt-1" />
-          </div>
-
-          <div>
-            <label className="block text-sm font-bold text-gray-700">Class *</label>
-            <select name="classGrade" value={form.classGrade} onChange={handleChange} className="w-full border border-gray-300 rounded-xl px-4 py-2 mt-1" required>
-              <option value="">Select Class</option>
-              {classes.map((c) => (
-                <option key={c} value={c}>{c}</option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-bold text-gray-700">Section</label>
-            <select name="section" value={form.section} onChange={handleChange} className="w-full border border-gray-300 rounded-xl px-4 py-2 mt-1" disabled={!form.classGrade}>
-              <option value="">Select Section</option>
-              {sections.map((sec) => (
-                <option key={sec} value={sec}>{sec}</option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-bold text-gray-700">Roll Number</label>
-            <input type="text" name="rollNumber" value={form.rollNumber} onChange={handleChange} className="w-full border border-gray-300 rounded-xl px-4 py-2 mt-1" />
-          </div>
-
-          <div>
-            <label className="block text-sm font-bold text-gray-700">Gender</label>
-            <select name="gender" value={form.gender} onChange={handleChange} className="w-full border border-gray-300 rounded-xl px-4 py-2 mt-1">
-              <option>Male</option>
-              <option>Female</option>
-              <option>Other</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-bold text-gray-700">Date of Birth</label>
-            <input type="date" name="dateOfBirth" value={form.dateOfBirth} onChange={handleChange} className="w-full border border-gray-300 rounded-xl px-4 py-2 mt-1" />
-          </div>
-
-          <div>
-            <label className="block text-sm font-bold text-gray-700">Phone</label>
-            <input type="tel" name="phone" value={form.phone} onChange={handleChange} className="w-full border border-gray-300 rounded-xl px-4 py-2 mt-1" />
-          </div>
-
-          <div className="md:col-span-2">
-            <label className="block text-sm font-bold text-gray-700">Address</label>
-            <textarea name="address" rows={2} value={form.address} onChange={handleChange} className="w-full border border-gray-300 rounded-xl px-4 py-2 mt-1" />
-          </div>
+        <div className="bg-gray-50 p-4 border-t border-gray-100 flex justify-end">
+          <button type="submit" disabled={loading} className="bg-blue-600 text-white px-8 py-3 rounded-xl font-bold flex items-center gap-2 hover:shadow-lg transition-all disabled:opacity-50">
+            {loading ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />} Enroll Student
+          </button>
         </div>
-
-        <button
-          type="submit"
-          disabled={submitting}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-bold flex items-center gap-2 disabled:opacity-50"
-        >
-          {submitting ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />}
-          {submitting ? "Saving..." : "Save Student"}
-        </button>
       </form>
     </div>
   );
