@@ -50,20 +50,20 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const validated = settingsSchema.parse(body);
 
-    // 1. سیٹنگز کو مرکزی ڈاکیومنٹ میں محفوظ کریں (پہلے کی طرح)
+    // 1. مرکزی سیٹنگز محفوظ کریں
     await db.collection('tenants').doc(tenantId).collection('settings').doc('config').set(validated, { merge: true });
 
     // 2. 📌 sections کلیکشن کو سینک کریں (تاکہ پرانے صفحات چل سکیں)
     const sectionsRef = db.collection('sections');
     
-    // پہلے اس tenant کی تمام پرانی سیکشنز ڈیلیٹ کریں (تاکہ اپ ڈیٹ شدہ حالت رہے)
+    // پہلے اس tenant کی تمام پرانی سیکشنز ڈیلیٹ کریں
     const oldSections = await sectionsRef.where('tenantId', '==', tenantId).get();
     const batch = db.batch();
     oldSections.docs.forEach(doc => batch.delete(doc.ref));
 
-    // اب نئی سیکشنز شامل کریں
+    // نئی سیکشنز شامل کریں
     for (const sec of validated.sections) {
-      const docRef = sectionsRef.doc();  // خودکار ID
+      const docRef = sectionsRef.doc();
       batch.set(docRef, {
         tenantId,
         classGrade: sec.classGrade,
