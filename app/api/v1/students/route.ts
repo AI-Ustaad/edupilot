@@ -23,7 +23,7 @@ export const GET = withErrorHandler(
         const url = new URL(req.url);
         const page = parseInt(url.searchParams.get("page") || "1");
         const limit = parseInt(url.searchParams.get("limit") || "20");
-        const service = new StudentService(new StudentRepository(adminDb));
+        const service = new StudentService(new StudentRepository());
         const result = await service.listStudents(tenantId, page, limit);
         return createApiResponse(200, result.data, undefined, {
           page,
@@ -43,7 +43,7 @@ export const POST = withErrorHandler(
           return createApiResponse(403, null, "Forbidden");
         }
         const body = await req.json();
-        const service = new StudentService(new StudentRepository(adminDb));
+        const service = new StudentService(new StudentRepository());
         
         // 1. نیا طالب علم بنائیں
         const student = await service.createStudent(body, tenantId);

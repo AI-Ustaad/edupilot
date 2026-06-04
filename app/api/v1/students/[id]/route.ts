@@ -27,7 +27,7 @@ export const GET = withErrorHandler(
   withAuth(
     withTenant(async (req: Request, { tenantId }: WithTenantContext) => {
       const id = getIdFromUrl(req);
-      const service = new StudentService(new StudentRepository(adminDb));
+      const service = new StudentService(new StudentRepository());
       const student = await service.getStudentById(id, tenantId);
       if (!student) {
         return createApiResponse(404, null, "Student not found");
@@ -45,7 +45,7 @@ export const PUT = withErrorHandler(
       }
       const id = getIdFromUrl(req);
       const body = await req.json();
-      const service = new StudentService(new StudentRepository(adminDb));
+      const service = new StudentService(new StudentRepository());
       await service.updateStudent(id, body, tenantId);
       return createApiResponse(200, null, "Student updated successfully");
     })
@@ -59,7 +59,7 @@ export const DELETE = withErrorHandler(
         return createApiResponse(403, null, "Forbidden");
       }
       const id = getIdFromUrl(req);
-      const service = new StudentService(new StudentRepository(adminDb));
+      const service = new StudentService(new StudentRepository());
       const student = await service.getStudentById(id, tenantId);
       
       if (!student) {
