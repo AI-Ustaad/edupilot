@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getFirestore } from 'firebase-admin/firestore';
+import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { initAdmin } from '@/lib/firebase-admin';
 import { getTenantIdFromRequest } from '@/lib/tenant-utils';
 import { z } from 'zod';
@@ -50,7 +50,31 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const validated = settingsSchema.parse(body);
 
+    // 1. سیٹنگز کو مرکزی ڈاکیومنٹ میں محفوظ کریں (پہلے کی طرح)
     await db.collection('tenants').doc(tenantId).collection('settings').doc('config').set(validated, { merge: true });
+
+    // 2. 📌 sections کلیکشن کو سینک کریں (تاکہ پرانے صفحات چل سکیں)
+    const sectionsRef = db.collection('sections');
+    
+    // پہلے اس tenant کی تمام پرانی سیکشنز ڈیلیٹ کریں (تاکہ اپ ڈیٹ شدہ حالت رہے)
+    const oldSections = await sectionsRef.where('tenantId', '==', tenantId).get();
+    const batch = db.batch();
+    oldSections.docs.forEach(doc => batch.delete(doc.ref));
+
+    // اب نئی سیکشنز شامل کریں
+    for (const sec of validated.sections) {
+      const docRef = sectionsRef.doc();  // خودکار ID
+      batch.set(docRef, {
+        tenantId,
+        classGrade: sec.classGrade,
+        sectionName: sec.sectionName,
+        incharge: sec.incharge || '',
+        createdAt: FieldValue.serverTimestamp()
+      });
+    }
+
+    await batch.commit();
+
     return NextResponse.json({ success: true });
   } catch (error) {
     if (error instanceof z.ZodError) {
