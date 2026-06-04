@@ -6,3 +6,6 @@ build
 .env.production
 .DS_Store
 *.log
+
+# Sentry Config File
+.env.sentry-build-plugin
