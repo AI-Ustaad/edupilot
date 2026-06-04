@@ -1,44 +1,45 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { withErrorHandler, withLogging, withRateLimit } from "@/route-helpers";
 import { adminAuth } from "@/lib/firebase-admin";
 import { authRateLimit } from "@/lib/ratelimit";
-import { withRateLimit } from "@/route-helpers";
+import { NextResponse } from "next/server"; // یہ امپورٹ شامل کریں
 
-async function loginHandler(req: NextRequest) {
-  try {
-    const { idToken } = await req.json();
+export const POST = withErrorHandler(
+  withLogging(
+    withRateLimit(authRateLimit)(
+      async (req: Request) => {
+        const { idToken } = await req.json();
 
-    if (!idToken) {
-      return NextResponse.json({ error: 'ID Token required' }, { status: 400 });
-    }
+        if (!idToken) {
+          throw new Error("ID Token required");
+        }
 
-    // Verify the token from the client (Google / email‑password)
-    const decodedToken = await adminAuth.verifyIdToken(idToken);
+        // Verify the token from the client
+        const decodedToken = await adminAuth.verifyIdToken(idToken);
 
-    // Create a Firebase session cookie (5 days)
-    const expiresIn = 60 * 60 * 24 * 5 * 1000; // milliseconds
-    const sessionCookie = await adminAuth.createSessionCookie(idToken, { expiresIn });
+        // Create a Firebase session cookie (5 days)
+        const expiresIn = 60 * 60 * 24 * 5 * 1000;
+        const sessionCookie = await adminAuth.createSessionCookie(idToken, { expiresIn });
 
-    const response = NextResponse.json({
-      success: true,
-      user: {
-        uid: decodedToken.uid,
-        email: decodedToken.email,
-      },
-    });
+        // یہاں ہم نے createApiResponse کی جگہ NextResponse.json استعمال کیا ہے
+        const response = NextResponse.json({
+          success: true,
+          user: {
+            uid: decodedToken.uid,
+            email: decodedToken.email,
+          },
+        }, { status: 200 });
 
-    response.cookies.set('session', sessionCookie, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      path: '/',
-      maxAge: 60 * 60 * 24 * 5, // seconds
-    });
+        // اب .cookies پراپرٹی یہاں کام کرے گی
+        response.cookies.set('session', sessionCookie, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'lax',
+          path: '/',
+          maxAge: 60 * 60 * 24 * 5,
+        });
 
-    return response;
-  } catch (error: any) {
-    console.error('Login error:', error);
-    return NextResponse.json({ error: error.message || 'Invalid token' }, { status: 401 });
-  }
-}
-
-export const POST = withRateLimit(authRateLimit)(loginHandler);
+        return response;
+      }
+    )
+  )
+);
