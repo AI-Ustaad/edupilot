@@ -15,7 +15,6 @@ interface Student {
   rollNumber: number;
   classGrade: string;
   section: string;
-  // ... other fields
 }
 
 export function useSchool() {
@@ -94,7 +93,6 @@ export function useSchool() {
     setSelectedSection,
     loadingSettings,
     loadingStudents,
-    // convenience function to reset
     resetSelections: () => {
       setSelectedClass("");
       setSelectedSection("");
