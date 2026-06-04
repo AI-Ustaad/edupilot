@@ -1,7 +1,7 @@
 import { withErrorHandler, withLogging, withRateLimit } from "@/route-helpers";
 import { adminAuth } from "@/lib/firebase-admin";
 import { authRateLimit } from "@/lib/ratelimit";
-import { createApiResponse } from "@/lib/response/apiResponse";
+import { NextResponse } from "next/server"; // یہ امپورٹ شامل کریں
 
 export const POST = withErrorHandler(
   withLogging(
@@ -10,7 +10,7 @@ export const POST = withErrorHandler(
         const { idToken } = await req.json();
 
         if (!idToken) {
-          throw new Error("ID Token required"); // یہ خودکار طور پر withErrorHandler میں جائے گا
+          throw new Error("ID Token required");
         }
 
         // Verify the token from the client
@@ -20,16 +20,16 @@ export const POST = withErrorHandler(
         const expiresIn = 60 * 60 * 24 * 5 * 1000;
         const sessionCookie = await adminAuth.createSessionCookie(idToken, { expiresIn });
 
-        // Standardized API response
-        const response = createApiResponse(200, {
+        // یہاں ہم نے createApiResponse کی جگہ NextResponse.json استعمال کیا ہے
+        const response = NextResponse.json({
           success: true,
           user: {
             uid: decodedToken.uid,
             email: decodedToken.email,
           },
-        });
+        }, { status: 200 });
 
-        // Set Cookie on the standardized response
+        // اب .cookies پراپرٹی یہاں کام کرے گی
         response.cookies.set('session', sessionCookie, {
           httpOnly: true,
           secure: process.env.NODE_ENV === 'production',
