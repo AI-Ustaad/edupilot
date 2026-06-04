@@ -1,49 +1,58 @@
-import { invalidateCache } from "@/lib/cache";
-import { withAuth, withTenant, withErrorHandler } from "@/route-helpers";
+// app/api/students/route.ts
+import { adminDb, dbTimestamp } from "@/lib/firebase-admin";
+import { withAuth, withTenant, withErrorHandler, withLogging } from "@/route-helpers";
 import { createApiResponse } from "@/lib/response/apiResponse";
 import { StudentService } from "@/services/student.service";
 import { StudentRepository } from "@/repositories/student.repository";
-import { getPlanLimits } from "@/lib/subscription";
-import type { TenantContext } from "@/types/api";
-import { withPermission } from "@/lib/auth/rbac";
-import { PERMISSIONS } from "@/lib/auth/permissions";
-import { standardRateLimit } from "@/lib/ratelimit";
-import { withRateLimit } from "@/route-helpers";
+import { updateTenantStats } from "@/lib/stats"; // <-- نیا اضافہ
+
+interface WithTenantContext {
+  tenantId: string;
+  user: {
+    uid: string;
+    email: string;
+    role: string;
+    tenantId: string;
+  };
+}
 
 export const GET = withErrorHandler(
-  withAuth(
-    withTenant(
-      withPermission(PERMISSIONS.students.view)(async (req: Request, { tenantId }: TenantContext) => {
+  withLogging(
+    withAuth(
+      withTenant(async (req: Request, { tenantId }: WithTenantContext) => {
         const url = new URL(req.url);
-        const page = parseInt(url.searchParams.get('page') || '1');
-        const limit = parseInt(url.searchParams.get('limit') || '20');
-        const service = new StudentService(new StudentRepository());
+        const page = parseInt(url.searchParams.get("page") || "1");
+        const limit = parseInt(url.searchParams.get("limit") || "20");
+        const service = new StudentService(new StudentRepository(adminDb));
         const result = await service.listStudents(tenantId, page, limit);
-    await invalidateCache(`dashboard:${tenantId}`);
-        return createApiResponse(200, result);
+        return createApiResponse(200, result.data, undefined, {
+          page,
+          limit,
+          total: result.total,
+        });
       })
     )
   )
 );
 
-export const POST = withRateLimit(standardRateLimit)(
-  withErrorHandler(
+export const POST = withErrorHandler(
+  withLogging(
     withAuth(
-      withTenant(
-        withPermission(PERMISSIONS.students.create)(async (req: Request, { tenantId, user }: TenantContext) => {
-          const limits = await getPlanLimits(tenantId);
-          const service = new StudentService(new StudentRepository());
-          const currentCount = await service.countStudents(tenantId);
-          if (currentCount >= limits.students) {
-    await invalidateCache(`dashboard:${tenantId}`);
-            return createApiResponse(403, null, `Student limit reached (${limits.students}). Please upgrade your plan.`);
-          }
-          const body = await req.json();
-          const student = await service.createStudent(body, tenantId);
-    await invalidateCache(`dashboard:${tenantId}`);
-          return createApiResponse(201, student, "Student added successfully");
-        })
-      )
+      withTenant(async (req: Request, { tenantId, user }: WithTenantContext) => {
+        if (user.role !== "admin") {
+          return createApiResponse(403, null, "Forbidden");
+        }
+        const body = await req.json();
+        const service = new StudentService(new StudentRepository(adminDb));
+        
+        // 1. نیا طالب علم بنائیں
+        const student = await service.createStudent(body, tenantId);
+
+        // 2. 🔥 جادو: فائر بیس کا کوٹہ بچانے کے لیے اسٹوڈنٹ کاؤنٹ میں +1 کریں
+        await updateTenantStats(tenantId, 'students', 1);
+
+        return createApiResponse(201, student, "Student created successfully");
+      })
     )
   )
 );
