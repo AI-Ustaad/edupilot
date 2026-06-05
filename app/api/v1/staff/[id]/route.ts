@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 import { invalidateCache } from "@/lib/cache";
 // app/api/staff/[id]/route.ts
 import { withAuth, withTenant, withErrorHandler } from "@/route-helpers";

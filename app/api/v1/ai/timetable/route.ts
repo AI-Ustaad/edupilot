@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 import { withAuth, withTenant, withErrorHandler, withRateLimit } from "@/route-helpers";
 import { aiRateLimit } from "@/lib/ratelimit";
 import { TimetableService } from "@/services/ai/timetable.service";

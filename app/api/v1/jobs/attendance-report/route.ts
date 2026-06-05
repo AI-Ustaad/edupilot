@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 // app/api/jobs/attendance-report/route.ts
 import { NextResponse } from 'next/server';
 import { AttendanceService } from '@/services/attendance.service';

@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 // app/api/jobs/fee-reminder/route.ts
 import { NextResponse } from 'next/server';
 import { FeesService } from '@/services/fees.service';

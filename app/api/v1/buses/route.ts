@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 import { withAuth, withTenant, withErrorHandler, withRole } from "@/route-helpers";
 import { createApiResponse } from "@/lib/response/apiResponse";
 import { BusService } from "@/services/bus.service";

@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 // app/api/admin/users/role/route.ts
 import { adminAuth, adminDb } from "@/lib/firebase-admin";
 import { withAuth, withTenant, withErrorHandler } from "@/route-helpers";

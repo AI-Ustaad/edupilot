@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 import { adminDb } from "@/lib/firebase-admin";
 import { PLANS } from "@/lib/stripe";
 import { withAuth, withTenant, withErrorHandler, withRole } from "@/route-helpers";

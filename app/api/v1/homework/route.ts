@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 // app/api/v1/homework/route.ts
 import { withAuth, withTenant, withErrorHandler, withRole } from "@/route-helpers";
 import { createApiResponse } from "@/lib/response/apiResponse";

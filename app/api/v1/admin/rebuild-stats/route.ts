@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 // app/api/admin/rebuild-stats/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';

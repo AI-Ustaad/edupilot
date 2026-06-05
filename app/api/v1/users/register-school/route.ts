@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 import { adminAuth, adminDb } from "@/lib/firebase-admin";
 import { cookies } from "next/headers";
 import { curriculumMap } from "@/lib/curriculum-data";

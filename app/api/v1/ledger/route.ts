@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 // app/api/ledger/route.ts
 import { adminDb } from "@/lib/firebase-admin";
 import { withAuth, withTenant, withErrorHandler } from "@/route-helpers";

@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 import { createWorker } from "tesseract.js";
 import { withAuth, withTenant, withErrorHandler, withRole } from "@/route-helpers";
 import { createApiResponse } from "@/lib/response/apiResponse";

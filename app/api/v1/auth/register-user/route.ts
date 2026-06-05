@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 import { NextResponse } from "next/server";
 import { withErrorHandler, withRateLimit } from "@/route-helpers";
 import { authRateLimit } from "@/lib/ratelimit";

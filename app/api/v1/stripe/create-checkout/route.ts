@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 import { getSessionUser } from "@/lib/auth/auth-server";
 import { stripe, PLANS } from "@/lib/stripe";
 import { withErrorHandler } from "@/route-helpers";

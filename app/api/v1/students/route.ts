@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 // app/api/students/route.ts
 import { adminDb, dbTimestamp } from "@/lib/firebase-admin";
 import { withAuth, withTenant, withErrorHandler, withLogging } from "@/route-helpers";

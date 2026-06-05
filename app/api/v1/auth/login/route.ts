@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 import { withErrorHandler, withLogging, withRateLimit } from "@/route-helpers";
 import { adminAuth } from "@/lib/firebase-admin";
 import { authRateLimit } from "@/lib/ratelimit";
