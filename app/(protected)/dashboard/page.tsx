@@ -1,56 +1,23 @@
-"use client";
-
-import React from "react";
-import { motion } from "framer-motion";
-import { useAuth } from "@/context/AuthContext";
-import { useBranding } from "@/context/BrandingContext";
-import { useQuery } from "@tanstack/react-query";
-import {
-  Users, Briefcase, DollarSign, Activity, CalendarDays,
-  CreditCard, Clock, AlertTriangle, Loader2
-} from "lucide-react";
-import {
-  LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell,
-} from "recharts";
-import { useTranslations } from "next-intl";
-
-// ... (animations remain same) ...
-
-export default function DashboardPage() {
-  const t = useTranslations("Dashboard");
-  const { user, loading: authLoading } = useAuth();
-  const branding = useBranding();
-  const primaryColor = branding.primaryColor || "#3b82f6";
-
-  // React Query: ڈیٹا کو کیش کر رہا ہے
+// React Query: Data Fetching with Defensive JSON Parsing
   const { data, isLoading, isError } = useQuery({
     queryKey: ["dashboardData", user?.tenantId],
     queryFn: async () => {
       const res = await fetch("/api/dashboard");
-      if (!res.ok) throw new Error("Failed to fetch dashboard data");
-      const json = await res.json();
-      return json.data;
+      
+      // اگر رسپانس 500 یا کوئی اور ایرر ہے تو یہیں روک لیں
+      if (!res.ok) {
+        throw new Error(`Dashboard API Error: ${res.status}`);
+      }
+      
+      const text = await res.text();
+      if (!text) return null; // خالی رسپانس کا علاج
+      
+      try {
+        const json = JSON.parse(text);
+        return json.data || json; // اگر API 'data' key میں ریٹرن کر رہی ہے تو وہ، ورنہ پورا ابجیکٹ
+      } catch (err) {
+        throw new Error("Invalid JSON from API");
+      }
     },
     enabled: !!user?.tenantId && !authLoading,
   });
-
-  if (isLoading || authLoading) {
-    return (
-      <div className="flex h-96 flex-col items-center justify-center gap-4">
-        <Loader2 className="animate-spin text-blue-600 w-12 h-12" />
-      </div>
-    );
-  }
-
-  if (isError || !data) {
-    return <div className="text-center p-10">Error loading dashboard.</div>;
-  }
-
-  return (
-    <motion.div className="space-y-8">
-      {/* KPI Cards section (use data object as before) */}
-      {/* ... (باقی UI وہی رہے گا، بس ڈیٹا `data` ویری ایبل سے آئے گا) ... */}
-    </motion.div>
-  );
-}
