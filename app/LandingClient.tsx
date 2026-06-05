@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { motion, useScroll, useTransform, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import dynamic from 'next/dynamic';
@@ -10,7 +10,6 @@ import {
   Menu, X, Moon, Sun, CheckCircle, ArrowRight, Eye,
   Sparkles, Rocket, Heart, Star
 } from "lucide-react";
-import { loginWithGoogle } from "@/lib/auth/auth-client";
 import { detectCurrency, formatPrice } from "@/lib/currency";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { useTranslations, useLocale } from "next-intl";
@@ -18,6 +17,45 @@ import { useTranslations, useLocale } from "next-intl";
 // Safely import client-only components
 const Typewriter = dynamic(() => import('react-simple-typewriter').then(mod => mod.Typewriter), { ssr: false });
 const ParticleBackground = dynamic(() => import('@/components/ParticleBackground'), { ssr: false });
+
+// 🚨 THE CTO ERROR BOUNDARY (CATCHES SILENT CRASHES)
+class ErrorBoundary extends React.Component<any, any> {
+  constructor(props: any) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+  static getDerivedStateFromError(error: any) {
+    return { hasError: true, error };
+  }
+  componentDidCatch(error: any, errorInfo: any) {
+    console.error("🚨 UI Crash Detected:", error, errorInfo);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="flex flex-col items-center justify-center min-h-screen bg-slate-900 p-8 text-center font-mono z-[9999] relative">
+          <h1 className="text-3xl font-bold text-red-500 mb-4">EduPilot React Crash!</h1>
+          <p className="text-slate-300 mb-6">The White Screen is bypassed. Please take a screenshot of this box:</p>
+          <div className="bg-black text-green-400 p-6 rounded-lg text-left overflow-auto max-w-4xl w-full border border-red-500 shadow-2xl">
+            <p className="text-red-400 font-black text-lg">{this.state.error?.toString()}</p>
+            <p className="mt-4 text-gray-500 whitespace-pre-wrap">{this.state.error?.stack}</p>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+// Lazy Load Auth to prevent Firebase initialization crash on page load
+const handleAuthClick = async () => {
+  try {
+    const { loginWithGoogle } = await import("@/lib/auth/auth-client");
+    await loginWithGoogle();
+  } catch (err: any) {
+    alert("Authentication Error (Check Vercel .env variables): " + err.message);
+  }
+};
 
 // Animation variants
 const fadeUp = {
@@ -47,10 +85,12 @@ const Navbar = () => {
   }, []);
 
   useEffect(() => {
-    const isDark = localStorage.getItem("theme") === "dark" || (!localStorage.getItem("theme") && window.matchMedia("(prefers-color-scheme: dark)").matches);
-    setDarkMode(isDark);
-    if (isDark) document.documentElement.classList.add("dark");
-    else document.documentElement.classList.remove("dark");
+    try {
+      const isDark = localStorage.getItem("theme") === "dark" || (!localStorage.getItem("theme") && typeof window !== 'undefined' && window.matchMedia("(prefers-color-scheme: dark)").matches);
+      setDarkMode(isDark);
+      if (isDark) document.documentElement.classList.add("dark");
+      else document.documentElement.classList.remove("dark");
+    } catch (e) {}
   }, []);
 
   const toggleDarkMode = () => {
@@ -58,7 +98,7 @@ const Navbar = () => {
     setDarkMode(newDark);
     if (newDark) document.documentElement.classList.add("dark");
     else document.documentElement.classList.remove("dark");
-    localStorage.setItem("theme", newDark ? "dark" : "light");
+    try { localStorage.setItem("theme", newDark ? "dark" : "light"); } catch(e) {}
   };
 
   const navItems = [
@@ -88,7 +128,7 @@ const Navbar = () => {
               {darkMode ? <Sun size={18} /> : <Moon size={18} />}
             </button>
             <Link href="/login" className="text-sm font-medium text-slate-700 hover:text-primary">{t("login")}</Link>
-            <button onClick={loginWithGoogle} className="btn-primary flex items-center gap-2">
+            <button onClick={handleAuthClick} className="btn-primary flex items-center gap-2">
               {t("startFree")}
             </button>
           </div>
@@ -108,7 +148,7 @@ const Navbar = () => {
                 <a key={item.path} href={`#${item.path}`} className="block py-2 text-slate-600 font-medium" onClick={() => setIsOpen(false)}>{item.name}</a>
               ))}
               <Link href="/login" className="block py-2 text-slate-600 font-medium" onClick={() => setIsOpen(false)}>{t("login")}</Link>
-              <button onClick={loginWithGoogle} className="btn-primary w-full text-center">{t("startFree")}</button>
+              <button onClick={handleAuthClick} className="btn-primary w-full text-center">{t("startFree")}</button>
             </div>
           </motion.div>
         )}
@@ -411,7 +451,7 @@ const PricingSection = () => {
                   <li key={i} className="flex items-center gap-2 text-sm text-gray-600"><CheckCircle size={16} className="text-green-500" />{feature}</li>
                 ))}
               </ul>
-              <button onClick={loginWithGoogle} className="mt-8 block w-full text-center bg-gradient-to-r from-pink-400 to-orange-300 text-white py-3 rounded-xl font-bold hover:shadow-lg transition">{t("getStarted")}</button>
+              <button onClick={handleAuthClick} className="mt-8 block w-full text-center bg-gradient-to-r from-pink-400 to-orange-300 text-white py-3 rounded-xl font-bold hover:shadow-lg transition">{t("getStarted")}</button>
             </motion.div>
           ))}
         </div>
@@ -427,7 +467,7 @@ const FinalCTA = () => {
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative z-10">
         <motion.h2 initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }} className="text-4xl sm:text-5xl font-black mb-6">{t("heading")}</motion.h2>
         <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.2 }}>
-          <button onClick={loginWithGoogle} className="inline-flex items-center gap-2 bg-white text-primary px-8 py-4 rounded-xl font-bold text-lg hover:shadow-xl transition-all group">
+          <button onClick={handleAuthClick} className="inline-flex items-center gap-2 bg-white text-primary px-8 py-4 rounded-xl font-bold text-lg hover:shadow-xl transition-all group">
             {t("button")} <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
           </button>
         </motion.div>
@@ -463,17 +503,7 @@ const Footer = () => {
   );
 };
 
-export default function LandingClient() {
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  if (!mounted) {
-    return null; // Return nothing on the server
-  }
-
+function LandingUI() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#e0f0ff] via-[#f0e6ff] to-[#ffe6f0]">
       <Navbar />
@@ -485,5 +515,21 @@ export default function LandingClient() {
       <FinalCTA />
       <Footer />
     </div>
+  );
+}
+
+export default function LandingClient() {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) return null;
+
+  return (
+    <ErrorBoundary>
+      <LandingUI />
+    </ErrorBoundary>
   );
 }
