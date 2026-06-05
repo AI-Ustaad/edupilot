@@ -5,6 +5,8 @@ import { useParams } from "next/navigation";
 import StudentHeader from "@/features/students360/components/StudentHeader";
 import AttendanceCard from "@/features/students360/components/AttendanceCard";
 import FeeSummaryCard from "@/features/students360/components/FeeSummaryCard";
+import AcademicCard from "@/features/students360/components/AcademicCard";
+import ParentSnapshot from "@/features/students360/components/ParentSnapshot";
 import { StudentProfile } from "@/features/students360/types/student360.types";
 
 const MOCK_STUDENT: StudentProfile = {
@@ -25,10 +27,8 @@ export default function Student360Page() {
 
   return (
     <div className="p-4 md:p-8 max-w-7xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500">
-      {/* 1. Master Profile Header */}
       <StudentHeader student={MOCK_STUDENT} healthScore={healthScore} />
 
-      {/* 2. Intelligence Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
         {/* Left Column (Span 2) */}
@@ -37,12 +37,12 @@ export default function Student360Page() {
             <AttendanceCard />
           </div>
           
-          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm h-64 flex items-center justify-center text-slate-400 font-medium">
-            [Academic Intelligence Component Coming Next]
+          <div className="h-64">
+            <AcademicCard />
           </div>
           
           <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm h-48 flex items-center justify-center text-slate-400 font-medium">
-            [Student Timeline Component Coming Next]
+            [Student Timeline Component Coming Soon]
           </div>
         </div>
 
@@ -52,8 +52,8 @@ export default function Student360Page() {
             <FeeSummaryCard />
           </div>
           
-          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm h-48 flex items-center justify-center text-slate-400 font-medium">
-            [Parent Snapshot Component Coming Next]
+          <div className="h-64">
+            <ParentSnapshot />
           </div>
         </div>
 
