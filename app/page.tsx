@@ -1,6 +1,6 @@
-import dynamic from 'next/dynamic';
+import nextDynamic from 'next/dynamic';
 
-const LandingClient = dynamic(() => import('./LandingClient'), { 
+const LandingClient = nextDynamic(() => import('./LandingClient'), { 
   ssr: false 
 });
 
