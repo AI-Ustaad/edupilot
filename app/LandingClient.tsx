@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { motion, useScroll, useTransform, AnimatePresence } from "framer-motion";
 import Link from "next/link";
-import { Typewriter } from "react-simple-typewriter";
+import dynamic from 'next/dynamic';
 import {
   Users, Calendar, Wallet, BarChart, Smartphone, Brain,
   ShieldCheck, BookOpen, GraduationCap, Award,
@@ -11,10 +11,13 @@ import {
   Sparkles, Rocket, Heart, Star
 } from "lucide-react";
 import { loginWithGoogle } from "@/lib/auth/auth-client";
-import ParticleBackground from "@/components/ParticleBackground";
 import { detectCurrency, formatPrice } from "@/lib/currency";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { useTranslations, useLocale } from "next-intl";
+
+// Safely import client-only components
+const Typewriter = dynamic(() => import('react-simple-typewriter').then(mod => mod.Typewriter), { ssr: false });
+const ParticleBackground = dynamic(() => import('@/components/ParticleBackground'), { ssr: false });
 
 // Animation variants
 const fadeUp = {
@@ -31,7 +34,6 @@ const cardHover = {
   hover: { scale: 1.05, y: -10, transition: { duration: 0.2 } }
 };
 
-// Components
 const Navbar = () => {
   const t = useTranslations("Landing.nav");
   const [isOpen, setIsOpen] = useState(false);
@@ -147,8 +149,8 @@ const HeroSection = () => {
         >
           <span className="text-slate-800">{t("titleStart")}</span>
           <br />
-          <span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-            <Typewriter words={typewriterWords} loop={0} cursor cursorStyle="|" typeSpeed={70} deleteSpeed={50} delaySpeed={2000} />
+          <span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent min-h-[1.5em] block">
+             <Typewriter words={typewriterWords} loop={0} cursor cursorStyle="|" typeSpeed={70} deleteSpeed={50} delaySpeed={2000} />
           </span>
           <br />
           <span className="text-slate-800">{t("titleEnd")}</span>
@@ -461,7 +463,17 @@ const Footer = () => {
   );
 };
 
-export default function LandingPage() {
+export default function LandingClient() {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) {
+    return null; // Return nothing on the server
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#e0f0ff] via-[#f0e6ff] to-[#ffe6f0]">
       <Navbar />
