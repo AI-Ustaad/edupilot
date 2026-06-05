@@ -1,5 +1,5 @@
-export const dynamic = 'force-dynamic';
 "use client";
+export const dynamic = 'force-dynamic';
 
 import { useSearchParams } from "next/navigation";
 import { Loader2, TrendingUp, BookOpen, CheckCircle, AlertTriangle, Sparkles } from "lucide-react";

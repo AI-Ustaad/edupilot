@@ -1,5 +1,5 @@
-export const dynamic = 'force-dynamic';
 "use client";
+export const dynamic = 'force-dynamic';
 import { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { BookOpen, CalendarCheck, FileText, Upload, HelpCircle } from "lucide-react";
