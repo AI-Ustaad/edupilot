@@ -1,5 +1,4 @@
 "use client";
-export const dynamic = 'force-dynamic';
 import { useEffect, useState } from "react";
 import { Search, FileText, Video, Image as ImageIcon, ExternalLink, Loader2 } from "lucide-react";
 

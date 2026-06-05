@@ -1,5 +1,4 @@
 "use client";
-export const dynamic = 'force-dynamic';
 
 import * as Sentry from "@sentry/nextjs";
 import NextError from "next/error";

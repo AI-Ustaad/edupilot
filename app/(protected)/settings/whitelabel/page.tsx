@@ -1,5 +1,4 @@
 "use client";
-export const dynamic = 'force-dynamic';
 import { useState, useEffect } from "react";
 
 const convertToBase64 = (file: File): Promise<string> => {

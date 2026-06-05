@@ -1,5 +1,4 @@
 "use client";
-export const dynamic = 'force-dynamic';
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ShieldCheck, Building2, Phone, Loader2, ArrowRight } from "lucide-react";
