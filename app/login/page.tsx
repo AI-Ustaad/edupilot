@@ -1,6 +1,7 @@
 "use client";
 export const dynamic = 'force-dynamic';
 import { useState } from "react";
+import { useRouter } from 'next/navigation';
 import { motion } from "framer-motion";
 import { Loader2, Chrome } from "lucide-react";
 import { useTranslations } from "next-intl";
