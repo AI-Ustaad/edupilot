@@ -1,8 +1,10 @@
-import type { Metadata } from 'next';
-import * as Sentry from '@sentry/nextjs';
-import "./globals.css"; // اگر آپ کی سی ایس ایس فائل کا نام کچھ اور ہے تو اسے یہاں اپ ڈیٹ کریں
+import type { Metadata } from "next";
+import * as Sentry from "@sentry/nextjs";
+import "./globals.css";
 
-// Sentry Tracing کے لیے Metadata
+import Providers from "./providers";
+import enMessages from "../messages/en.json";
+
 export function generateMetadata(): Metadata {
   return {
     title: "EduPilot | School Management System",
@@ -21,7 +23,12 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        {children}
+        <Providers
+          locale="en"
+          messages={enMessages}
+        >
+          {children}
+        </Providers>
       </body>
     </html>
   );
