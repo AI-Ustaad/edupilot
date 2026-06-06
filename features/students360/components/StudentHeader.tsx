@@ -22,15 +22,16 @@ export default function StudentHeader({ student, healthScore }: StudentHeaderPro
       <div className="flex flex-col md:flex-row gap-6 items-start md:items-center">
         <div className="relative">
           <div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-blue-100 to-indigo-100 flex items-center justify-center border border-blue-200 shadow-sm overflow-hidden">
-            {student.profileImage ? (
-              <img src={student.profileImage} alt={student.firstName} className="w-full h-full object-cover" />
+            {/* 🚀 Changed profileImage to photoBase64 */}
+            {student.photoBase64 ? (
+              <img src={student.photoBase64} alt={student.fullName || "Student"} className="w-full h-full object-cover" />
             ) : (
               <User size={40} className="text-blue-500" />
             )}
           </div>
           <div className={`absolute -bottom-2 -right-2 px-2.5 py-0.5 rounded-full text-xs font-bold border flex items-center gap-1 shadow-sm ${student.status === 'Active' ? 'bg-white text-emerald-600 border-emerald-200' : 'bg-white text-red-600 border-red-200'}`}>
             {student.status === 'Active' ? <CheckCircle2 size={12} /> : <AlertCircle size={12} />}
-            {student.status}
+            {student.status || 'Active'}
           </div>
         </div>
 
@@ -38,15 +39,17 @@ export default function StudentHeader({ student, healthScore }: StudentHeaderPro
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
               <h1 className="text-2xl font-bold text-slate-800 flex items-center gap-3">
-                {student.firstName} {student.lastName}
+                {/* 🚀 Changed firstName/lastName to fullName */}
+                {student.fullName}
                 <span className="text-sm font-medium bg-slate-100 text-slate-600 px-2.5 py-1 rounded-lg border border-slate-200">
-                  {student.registrationNo}
+                  {student.rollNumber}
                 </span>
               </h1>
               <p className="text-slate-500 mt-1 flex items-center gap-2 font-medium">
-                <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded border border-blue-100">Class {student.class} - {student.section}</span>
+                {/* 🚀 Changed class to classGrade */}
+                <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded border border-blue-100">Class {student.classGrade} {student.section ? `- ${student.section}` : ''}</span>
                 <span className="text-slate-300">•</span>
-                <span>Admitted: {student.admissionDate}</span>
+                <span>Admitted: {student.admissionDate || "N/A"}</span>
               </p>
             </div>
 
