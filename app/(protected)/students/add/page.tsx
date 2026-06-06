@@ -135,7 +135,15 @@ export default function AddStudentPage() {
                 <label className="text-xs font-bold text-gray-500">Section *</label>
                 <select required disabled={!selectedClass} value={selectedSection} onChange={(e) => setSelectedSection(e.target.value)} className="w-full border p-3 rounded-xl mt-1 bg-gray-50 disabled:opacity-50">
                   <option value="">Select Section</option>
-                  {sections.map(s => <option key={s.sectionName || s}>{s.sectionName || s}</option>)}
+                  {/* 🚀 TypeScript Bug Fixed Here */}
+                  {sections.map((s: any, index: number) => {
+                    const sectionName = typeof s === 'string' ? s : s.sectionName;
+                    return (
+                      <option key={sectionName || index} value={sectionName}>
+                        {sectionName}
+                      </option>
+                    );
+                  })}
                 </select>
               </div>
               <div><label className="text-xs font-bold text-gray-500">Roll Number *</label><input required type="number" name="rollNumber" value={form.rollNumber} onChange={handleChange} className="w-full border p-3 rounded-xl mt-1" /></div>
