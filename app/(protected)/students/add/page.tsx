@@ -1,26 +1,50 @@
-// app/(protected)/students/add/page.tsx
 "use client";
-import { useState } from "react";
+
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useSchool } from "@/hooks/useSchool";
 import { Loader2, Save, User, Users, BookOpen, HeartPulse, CheckCircle } from "lucide-react";
 
 export default function AddStudentPage() {
   const router = useRouter();
+  // Using your custom hook for classes and sections
   const { classes, sections, selectedClass, setSelectedClass, selectedSection, setSelectedSection, loadingSettings } = useSchool();
+  
   const [activeTab, setActiveTab] = useState("personal");
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
 
   const [form, setForm] = useState({
-    fullName: "", fatherName: "", dob: "", gender: "Male",
+    fullName: "", fatherName: "", dob: "", gender: "Male", cnic: "", photoBase64: "",
     phone: "", address: "", religion: "", nationality: "Pakistani",
     rollNumber: "", admissionNumber: "", previousSchool: "",
     guardianName: "", guardianPhone: "", guardianRelation: "",
     bloodGroup: "", medicalConditions: ""
   });
 
+  // 🚀 Restore OCR Data if it was passed via sessionStorage
+  useEffect(() => {
+    const ocrData = sessionStorage.getItem("ocrStudentData");
+    if (ocrData) {
+      try {
+        const parsed = JSON.parse(ocrData);
+        setForm(prev => ({ ...prev, ...parsed }));
+        sessionStorage.removeItem("ocrStudentData"); // Clean up
+      } catch (e) {
+        console.error("Failed to parse OCR data");
+      }
+    }
+  }, []);
+
   const handleChange = (e: any) => setForm({ ...form, [e.target.name]: e.target.value });
+
+  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onloadend = () => setForm({ ...form, photoBase64: reader.result as string });
+    reader.readAsDataURL(file);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,10 +52,11 @@ export default function AddStudentPage() {
     
     setLoading(true);
     try {
-      const res = await fetch("/api/students", {
+      // 🚀 Pointing strictly to /api/v1/students
+      const res = await fetch("/api/v1/students", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...form, classGrade: selectedClass, section: selectedSection })
+        body: JSON.stringify({ ...form, classGrade: selectedClass, section: selectedSection, rollNumber: Number(form.rollNumber) })
       });
 
       if (res.ok) {
@@ -82,12 +107,18 @@ export default function AddStudentPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-fade-in-up">
               <div><label className="text-xs font-bold text-gray-500">Full Name *</label><input required name="fullName" value={form.fullName} onChange={handleChange} className="w-full border p-3 rounded-xl mt-1" /></div>
               <div><label className="text-xs font-bold text-gray-500">Father's Name *</label><input required name="fatherName" value={form.fatherName} onChange={handleChange} className="w-full border p-3 rounded-xl mt-1" /></div>
+              <div><label className="text-xs font-bold text-gray-500">CNIC / B-Form</label><input name="cnic" value={form.cnic} onChange={handleChange} className="w-full border p-3 rounded-xl mt-1" /></div>
               <div><label className="text-xs font-bold text-gray-500">Date of Birth</label><input type="date" name="dob" value={form.dob} onChange={handleChange} className="w-full border p-3 rounded-xl mt-1" /></div>
               <div><label className="text-xs font-bold text-gray-500">Gender</label><select name="gender" value={form.gender} onChange={handleChange} className="w-full border p-3 rounded-xl mt-1"><option>Male</option><option>Female</option></select></div>
               <div><label className="text-xs font-bold text-gray-500">Religion</label><input name="religion" value={form.religion} onChange={handleChange} className="w-full border p-3 rounded-xl mt-1" /></div>
-              <div><label className="text-xs font-bold text-gray-500">Nationality</label><input name="nationality" value={form.nationality} onChange={handleChange} className="w-full border p-3 rounded-xl mt-1" /></div>
               <div><label className="text-xs font-bold text-gray-500">Contact Phone</label><input name="phone" value={form.phone} onChange={handleChange} className="w-full border p-3 rounded-xl mt-1" /></div>
+              <div><label className="text-xs font-bold text-gray-500">Nationality</label><input name="nationality" value={form.nationality} onChange={handleChange} className="w-full border p-3 rounded-xl mt-1" /></div>
               <div className="md:col-span-2"><label className="text-xs font-bold text-gray-500">Home Address</label><input name="address" value={form.address} onChange={handleChange} className="w-full border p-3 rounded-xl mt-1" /></div>
+              <div className="md:col-span-2">
+                <label className="text-xs font-bold text-gray-500">Profile Photo</label>
+                <input type="file" accept="image/*" onChange={handlePhotoUpload} className="w-full border p-3 rounded-xl mt-1" />
+                {form.photoBase64 && <img src={form.photoBase64} alt="Preview" className="mt-3 w-20 h-20 object-cover rounded-xl border" />}
+              </div>
             </div>
           )}
 
@@ -104,7 +135,7 @@ export default function AddStudentPage() {
                 <label className="text-xs font-bold text-gray-500">Section *</label>
                 <select required disabled={!selectedClass} value={selectedSection} onChange={(e) => setSelectedSection(e.target.value)} className="w-full border p-3 rounded-xl mt-1 bg-gray-50 disabled:opacity-50">
                   <option value="">Select Section</option>
-                  {sections.map(s => <option key={s.sectionName}>{s.sectionName}</option>)}
+                  {sections.map(s => <option key={s.sectionName || s}>{s.sectionName || s}</option>)}
                 </select>
               </div>
               <div><label className="text-xs font-bold text-gray-500">Roll Number *</label><input required type="number" name="rollNumber" value={form.rollNumber} onChange={handleChange} className="w-full border p-3 rounded-xl mt-1" /></div>
