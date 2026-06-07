@@ -7,8 +7,6 @@ Sentry.init({
   replaysSessionSampleRate: 0.1,
   replaysOnErrorSampleRate: 1.0,
   sendDefaultPii: false, // 🛡️ GDPR Compliance
-  // ✅ Removed replayIntegration and captureRouterTransitionStart to fix import errors
 });
 
-// ✅ Safe fallback if the export doesn't exist
-export const onRouterTransitionStart = (Sentry as any).captureRouterTransitionStart || (() => {});
+// 🛑 Removed captureRouterTransitionStart completely to fix the import warning
