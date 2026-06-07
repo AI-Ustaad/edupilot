@@ -4,15 +4,15 @@ import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/context/AuthContext";
 import { Loader2, AlertTriangle } from "lucide-react";
 
-// ⚠️ CTO NOTE: Adjust these paths based on your `find` command output.
-// If they are in `@/components/`, change them back. 
-import StudentHeader from "@/features/students360/components/StudentHeader"; 
+// ✅ Correct Import Paths based on your `find` output
+import StudentHeader from "@/features/students360/components/StudentHeader";
 import AttendanceCard from "@/features/students360/components/AttendanceCard";
 import AcademicCard from "@/features/students360/components/AcademicCard";
 import FeeSummaryCard from "@/features/students360/components/FeeSummaryCard";
 import ParentSnapshot from "@/features/students360/components/ParentSnapshot";
 
 export default function Student360Page() {
+  // ✅ SAFE PATTERN: useParams instead of React 19 'use'
   const params = useParams();
   const studentId = params?.id as string;
   const { user } = useAuth();
@@ -20,7 +20,10 @@ export default function Student360Page() {
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ["student360", studentId, user?.tenantId],
     queryFn: async () => {
-      const res = await fetch(`/api/v1/students/${studentId}`);
+      // 🚨 CTO FIX: Fetching from /api/students/... (NOT /api/v1/...) 
+      // Because next.config.js rewrite already adds /v1/ automatically. 
+      // Fetching /api/v1/... would cause a double-rewrite 404 error.
+      const res = await fetch(`/api/students/${studentId}`);
       if (!res.ok) throw new Error("Failed to fetch student 360 data");
       const json = await res.json();
       if (!json.success) throw new Error(json.message || "API Error");
@@ -50,45 +53,45 @@ export default function Student360Page() {
 
   const { student, attendance, marks, fees, risk } = data;
 
-  // 🛡️ DEFENSIVE MAPPING: Map new 'risk' data to old 'healthScore' prop if needed
-  // If healthScore is 0-100 (where 100 is good), and risk.score is 0-100 (where 0 is good):
+  // 🛡️ Map new 'risk' data to old 'healthScore' prop (0-100 where 100 is good)
   const healthScore = Math.max(0, 100 - (risk?.score || 0));
+
+  // 🛡️ Map attendance array to AttendanceCard 'stats' prop
+  const present = attendance?.filter((a: any) => a.status === "Present").length || 0;
+  const absent = attendance?.filter((a: any) => a.status === "Absent").length || 0;
+  const late = attendance?.filter((a: any) => a.status === "Late").length || 0;
+  
+  const attendanceStats = {
+    percentage: risk?.breakdown?.attendance || 0,
+    present,
+    absent,
+    late,
+    trend: "stable" as "up" | "down" | "stable"
+  };
 
   return (
     <div className="space-y-6 p-6 max-w-7xl mx-auto">
-      {/* ✅ CONNECT: Pass both old and new props to prevent Type Errors */}
+      
+      {/* ✅ FIX 1 APPLIED: Removed 'risk={risk}' to match StudentHeaderProps interface */}
       <StudentHeader 
         student={student} 
         healthScore={healthScore} 
-        risk={risk} // Passed additionally in case the component was updated
       />
       
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* ✅ CONNECT: Pass data, but component will ignore if it doesn't accept props */}
-        {/* If AttendanceCard is hardcoded with mock data, you MUST update the component to accept `data={attendance}` */}
-        <AttendanceCard data={attendance} riskBreakdown={risk?.breakdown} />
+        {/* ✅ CONNECT: Pass exact 'stats' prop expected by AttendanceCard */}
+        <AttendanceCard stats={attendanceStats} />
+        
+        {/* ✅ CONNECT: Pass data to AcademicCard & FeeSummaryCard 
+           Note: If these components strictly expect 'marks' or 'fees' instead of 'data', 
+           simply change 'data={marks}' to 'marks={marks}' */}
         <AcademicCard data={marks} />
-        <FeeSummaryCard data={fees} riskBreakdown={risk?.breakdown} />
+        <FeeSummaryCard data={fees} />
       </div>
 
-      {/* ✅ CONNECT: Pass studentId, fallback to no props if component doesn't support it */}
-      <ParentSnapshot studentId={studentId} />
+      {/* ✅ CONNECT: ParentSnapshot takes NO props currently, so we call it empty */}
+      <ParentSnapshot />
       
-      {/* 
-        ⚠️ FALLBACK UI (Optional): 
-        If the above components are strictly hardcoded with mock data and you cannot edit them, 
-        uncomment the block below to render the data directly.
-      */}
-      {/*
-      {attendance.length === 0 && marks.length === 0 && fees.length === 0 && (
-        <div className="bg-yellow-50 border border-yellow-200 rounded-2xl p-6 text-center">
-          <p className="text-yellow-800 font-bold">
-            Note: Child components are currently using mock data. 
-            Please update `AttendanceCard`, `AcademicCard`, and `FeeSummaryCard` to accept `data` props.
-          </p>
-        </div>
-      )}
-      */}
     </div>
   );
 }
