@@ -4,15 +4,16 @@ import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/context/AuthContext";
 import { Loader2, AlertTriangle } from "lucide-react";
 
-// ✅ Correct Import Paths
+// ✅ Correct Import Paths based on verified contracts
 import StudentHeader from "@/features/students360/components/StudentHeader";
 import AttendanceCard from "@/features/students360/components/AttendanceCard";
 import AcademicCard from "@/features/students360/components/AcademicCard";
 import FeeSummaryCard from "@/features/students360/components/FeeSummaryCard";
 import ParentSnapshot from "@/features/students360/components/ParentSnapshot";
+import ActivityTimeline from "@/features/students360/components/ActivityTimeline"; // 🆕 Added
 
 export default function Student360Page() {
-  // ✅ SAFE PATTERN: useParams
+  // ✅ SAFE PATTERN: useParams instead of React 19 'use'
   const params = useParams();
   const studentId = params?.id as string;
   const { user } = useAuth();
@@ -92,6 +93,9 @@ export default function Student360Page() {
 
       {/* ✅ CONNECT: ParentSnapshot takes NO props currently */}
       <ParentSnapshot />
+
+      {/* 🆕 NEW: Activity Timeline showing real audit logs */}
+      <ActivityTimeline studentId={studentId} />
       
     </div>
   );
