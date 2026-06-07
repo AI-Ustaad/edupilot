@@ -12,14 +12,16 @@ import FeeSummaryCard from "@/features/students360/components/FeeSummaryCard";
 import ParentSnapshot from "@/features/students360/components/ParentSnapshot";
 
 export default function Student360Page() {
+  // ✅ SAFE PATTERN: useParams
   const params = useParams();
   const studentId = params?.id as string;
   const { user } = useAuth();
 
+  // 🚀 Fetch data via secure API route (React Query)
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ["student360", studentId, user?.tenantId],
     queryFn: async () => {
-      // 🚀 Pointing to /api/students/... (next.config.js rewrite will handle /v1/)
+      // Note: Using /api/students/... because next.config.js rewrites it to /api/v1/...
       const res = await fetch(`/api/students/${studentId}`);
       if (!res.ok) throw new Error("Failed to fetch student 360 data");
       const json = await res.json();
@@ -29,6 +31,7 @@ export default function Student360Page() {
     enabled: !!user?.tenantId && !!studentId,
   });
 
+  // Loading State
   if (isLoading) {
     return (
       <div className="flex h-96 flex-col items-center justify-center gap-4">
@@ -38,6 +41,7 @@ export default function Student360Page() {
     );
   }
 
+  // Error State
   if (isError || !data) {
     return (
       <div className="flex flex-col items-center justify-center h-96 text-center p-6 bg-red-50 rounded-2xl border border-red-200">
@@ -48,9 +52,9 @@ export default function Student360Page() {
     );
   }
 
-  const { student, attendance, marks, fees, risk } = data;
+  const { student, attendance, risk } = data;
 
-  // 🛡️ Map new 'risk' data to old 'healthScore' prop
+  // 🛡️ Map 'risk' data to 'healthScore' (0-100 where 100 is good)
   const healthScore = Math.max(0, 100 - (risk?.score || 0));
 
   // 🛡️ Map attendance array to AttendanceCard 'stats' prop
@@ -79,7 +83,9 @@ export default function Student360Page() {
         {/* ✅ CONNECT: Pass exact 'stats' prop expected by AttendanceCard */}
         <AttendanceCard stats={attendanceStats} />
         
-        {/* ✅ FIX APPLIED: Removed 'data' props because these components currently take NO props (using mock data internally) */}
+        {/* 🛑 CTO FIX: These components currently use internal Mock Data and do NOT accept props. 
+           We render them empty to prevent Type Errors and Build Failures. 
+           They will be upgraded to Props-Driven Components in Phase 2 of the Roadmap. */}
         <AcademicCard />
         <FeeSummaryCard />
       </div>
