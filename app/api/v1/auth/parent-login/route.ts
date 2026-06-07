@@ -1,12 +1,14 @@
 import { NextResponse } from "next/server";
 import { adminAuth, adminDb } from "@/lib/firebase-admin";
-import { checkAuthRateLimit } from "@/lib/rate-limit"; // 🆕 Rate Limiting Import
+import { checkAuthRateLimit } from "@/lib/ratelimit"; // ✅ Correct path (no hyphen)
 
 export const runtime = 'nodejs';
 
 export async function POST(req: Request) {
   try {
-    // 🛡️ 1. CHECK RATE LIMIT FIRST
+    // ==========================================
+    // 🛡️ 1. CHECK RATE LIMIT FIRST (10 req/min per IP)
+    // ==========================================
     const { success, reset } = await checkAuthRateLimit();
     
     if (!success) {
@@ -17,13 +19,15 @@ export async function POST(req: Request) {
           error: `Too many login attempts. Please try again at ${resetTime}.` 
         },
         { 
-          status: 429, 
+          status: 429, // Too Many Requests
           headers: { "Retry-After": "60" }
         }
       );
     }
 
-    // 2. Proceed with parent login logic
+    // ==========================================
+    // 2. Parse & Validate Request Body
+    // ==========================================
     const { email, password } = await req.json();
 
     if (!email || !password) {
@@ -33,7 +37,9 @@ export async function POST(req: Request) {
       );
     }
 
-    // Verify the user exists in Firebase Auth
+    // ==========================================
+    // 3. Verify User Exists & Has Parent Role
+    // ==========================================
     const userRecord = await adminAuth.getUserByEmail(email);
     
     // Check if user has parent role and tenantId in Firestore
@@ -47,7 +53,9 @@ export async function POST(req: Request) {
       );
     }
 
-    // Create custom token with secure claims
+    // ==========================================
+    // 4. Create Custom Token with Secure Claims
+    // ==========================================
     const customToken = await adminAuth.createCustomToken(userRecord.uid, {
       role: "parent",
       tenantId: userData.tenantId,
@@ -62,6 +70,7 @@ export async function POST(req: Request) {
   } catch (error: any) {
     console.error("Parent Login API Error:", error);
     
+    // Handle specific Firebase Auth errors gracefully
     if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-email') {
       return NextResponse.json(
         { success: false, error: "Invalid email or password" }, 
@@ -69,9 +78,10 @@ export async function POST(req: Request) {
       );
     }
 
+    // Generic error for all other cases
     return NextResponse.json(
       { success: false, error: "Internal server error" }, 
       { status: 500 }
     );
-    }
+  }
 }
