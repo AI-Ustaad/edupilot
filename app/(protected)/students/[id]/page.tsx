@@ -1,126 +1,108 @@
 "use client";
-
-import React from "react";
-import { useParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { Loader2 } from "lucide-react";
-import StudentHeader from "@/features/students360/components/StudentHeader";
-import AttendanceCard from "@/features/students360/components/AttendanceCard";
-import FeeSummaryCard from "@/features/students360/components/FeeSummaryCard";
-import AcademicCard from "@/features/students360/components/AcademicCard";
-import ParentSnapshot from "@/features/students360/components/ParentSnapshot";
+import { useAuth } from "@/context/AuthContext";
+import { Loader2, AlertTriangle, TrendingUp, DollarSign, BookOpen } from "lucide-react";
+import { use } from "react";
 
-export default function Student360Page() {
-  const params = useParams();
-  const studentId = params.id as string;
+export default function Student360Page({ params }: { params: Promise<{ id: string }> }) {
+  const resolvedParams = use(params);
+  const { user } = useAuth();
 
-  // React Query Fetching logic
-  const { data, isLoading, isError } = useQuery({
-    queryKey: ["student360", studentId],
+  const { data, isLoading, isError, error } = useQuery({
+    queryKey: ["student360", resolvedParams.id, user?.tenantId],
     queryFn: async () => {
-      const res = await fetch(`/api/v1/students/360?id=${studentId}`);
-
-      if (!res.ok) {
-        throw new Error("Failed to load student");
-      }
-
+      const res = await fetch(`/api/v1/students/${resolvedParams.id}`);
+      if (!res.ok) throw new Error("Failed to fetch student 360 data");
       const json = await res.json();
-      return json.data || json; 
+      if (!json.success) throw new Error(json.message || "API Error");
+      return json.data; // Returns { student, attendance, marks, fees, risk }
     },
-    enabled: !!studentId,
+    enabled: !!user?.tenantId && !!resolvedParams.id,
   });
 
-  // Loading State
   if (isLoading) {
     return (
-      <div className="flex h-[70vh] items-center justify-center">
-        <Loader2 className="h-10 w-10 animate-spin text-blue-600" />
+      <div className="flex h-96 flex-col items-center justify-center gap-4">
+        <Loader2 className="animate-spin w-12 h-12 text-blue-600" />
+        <p className="text-gray-500 font-medium">Loading 360° Student Profile...</p>
       </div>
     );
   }
 
-  // Error State
   if (isError || !data) {
     return (
-      <div className="p-8 text-center text-slate-500 font-bold">
-        Student profile could not be loaded.
+      <div className="flex flex-col items-center justify-center h-96 text-center p-6 bg-red-50 rounded-2xl border border-red-200">
+        <AlertTriangle className="text-red-500 w-12 h-12 mb-4" />
+        <h2 className="text-xl font-bold text-gray-900">Failed to Load Profile</h2>
+        <p className="text-gray-600 mt-2">{error?.message || "Student not found or you lack permissions."}</p>
       </div>
     );
   }
 
-  // ==========================================
-  // DATA MAPPING & CALCULATIONS
-  // ==========================================
-
-  // 1. Attendance Metrics
-  const attendancePercent =
-    data?.attendanceTrend?.length
-      ? data.attendanceTrend[data.attendanceTrend.length - 1].percentage
-      : 0;
-
-  // 2. Marks Metrics
-  const marksPercent =
-    data?.marksTrend?.length
-      ? data.marksTrend[data.marksTrend.length - 1].percentage
-      : 0;
-
-  // 3. Fee Metrics (Placeholder until API supports it)
-  const feePercent = 100;
-
-  // 4. Health Score Formula
-  const healthScore = Math.round(
-    attendancePercent * 0.4 +
-    marksPercent * 0.4 +
-    feePercent * 0.2
-  );
-
-  // 🚀 Safe Data Mapping for Attendance Card
-  const attendanceData = {
-    percentage: attendancePercent,
-    present: data?.todayAttendance?.present || 0, // Fallback if API lacks this
-    absent: data?.todayAttendance?.absent || 0,   // Fallback if API lacks this
-    late: 0,
-    trend: "stable" as const
-  };
+  const { student, attendance, marks, fees, risk } = data;
 
   return (
-    <div className="p-4 md:p-8 max-w-7xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500">
-      
-      {/* Dynamic Master Profile Header */}
-      <StudentHeader student={data.student} healthScore={healthScore} />
+    <div className="space-y-6 p-6 max-w-7xl mx-auto">
+      {/* 1. Student Header */}
+      <div className="bg-white border border-gray-200 rounded-2xl p-6 flex flex-col md:flex-row items-start md:items-center gap-6 shadow-sm">
+        <div className="w-20 h-20 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-black text-2xl">
+          {student.fullName?.charAt(0) || student.name?.charAt(0) || "S"}
+        </div>
+        <div className="flex-1">
+          <h1 className="text-3xl font-black text-gray-900">{student.fullName || student.name || "Unknown Student"}</h1>
+          <p className="text-gray-500 mt-1">
+            Class: {student.classGrade} {student.section ? `- Section ${student.section}` : ""} | Roll No: {student.rollNumber || "N/A"}
+          </p>
+        </div>
+        {risk.level === "High" && (
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-2 rounded-xl flex items-center gap-2 font-bold">
+            <AlertTriangle size={18} /> At Risk: {risk.reason}
+          </div>
+        )}
+      </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
-        {/* Left Column (Span 2) */}
-        <div className="lg:col-span-2 space-y-6">
-          <div className="h-64">
-            {/* 🚀 Connected to Live Data */}
-            <AttendanceCard stats={attendanceData} />
+      {/* 2. Intelligence Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* Attendance Intelligence */}
+        <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
+          <div className="flex items-center gap-2 mb-4 text-blue-600">
+            <TrendingUp size={20} /> <h3 className="font-bold text-gray-900">Attendance</h3>
           </div>
-          
-          <div className="h-64">
-            {/* Untouched (Waiting for API mapping) */}
-            <AcademicCard />
-          </div>
-          
-          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm h-48 flex items-center justify-center text-slate-400 font-medium">
-            [Student Timeline Component Coming Soon]
-          </div>
+          <p className="text-4xl font-black text-gray-900">{risk.breakdown.attendance}%</p>
+          <p className="text-sm text-gray-500 mt-1">Recent 30 days average</p>
         </div>
 
-        {/* Right Column (Span 1) */}
-        <div className="space-y-6">
-          <div className="h-64">
-            {/* Untouched (Waiting for API mapping) */}
-            <FeeSummaryCard />
+        {/* Academic Intelligence */}
+        <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
+          <div className="flex items-center gap-2 mb-4 text-purple-600">
+            <BookOpen size={20} /> <h3 className="font-bold text-gray-900">Recent Marks</h3>
           </div>
-          
-          <div className="h-64">
-            {/* Untouched (Waiting for API mapping) */}
-            <ParentSnapshot />
-          </div>
+          {marks.length > 0 ? (
+            <div>
+              <p className="text-2xl font-black text-gray-900">{marks[0].subject}</p>
+              <p className="text-sm text-gray-500 mt-1">
+                {marks[0].marksObtained} / {marks[0].totalMarks} ({marks[0].grade})
+              </p>
+            </div>
+          ) : (
+            <p className="text-gray-400 text-sm">No marks recorded yet.</p>
+          )}
         </div>
 
+        {/* Fee Intelligence */}
+        <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
+          <div className="flex items-center gap-2 mb-4 text-green-600">
+            <DollarSign size={20} /> <h3 className="font-bold text-gray-900">Fee Status</h3>
+          </div>
+          {fees.length > 0 ? (
+            <div>
+              <p className="text-2xl font-black text-gray-900">Rs {(fees[0].amountPaid || 0).toLocaleString()}</p>
+              <p className="text-sm text-gray-500 mt-1">Last paid: {fees[0].feeMonth || "N/A"} ({risk.breakdown.fees})</p>
+            </div>
+          ) : (
+            <p className="text-gray-400 text-sm">No fee records found.</p>
+          )}
+        </div>
       </div>
     </div>
   );
