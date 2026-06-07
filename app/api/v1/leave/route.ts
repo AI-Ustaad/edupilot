@@ -1,20 +1,42 @@
-export const dynamic = 'force-dynamic';
+import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebase-admin";
-import { withAuth, withTenant, withErrorHandler } from "@/route-helpers";
-import { createApiResponse } from "@/lib/response/apiResponse";
+import { withErrorHandler, withAuth, withTenant } from "@/route-helpers";
+import { withPermission } from "@/lib/auth/rbac";
+import { PERMISSIONS } from "@/lib/auth/permissions";
 import type { TenantContext } from "@/types/api";
 
-export const POST = withErrorHandler(
+// 🛡️ SECURE GET: Fetches ONLY pending leaves for the current tenant
+export const GET = withErrorHandler(
   withAuth(
-    withTenant(async (req: Request, { tenantId }: TenantContext) => {
-      const { teacherId, startDate, endDate, reason } = await req.json();
-      const docRef = await adminDb.collection("leave_requests").add({
-        teacherId, startDate, endDate, reason,
-        tenantId,
-        status: "pending",
-        createdAt: new Date(),
-      });
-      return createApiResponse(201, { id: docRef.id });
-    })
+    withTenant(
+      withPermission(PERMISSIONS.staff.view)(async (req: Request, { tenantId }: TenantContext) => {
+        // 1. Fetch pending leave requests for THIS tenant only
+        const leavesSnap = await adminDb.collection("leave_requests")
+          .where("tenantId", "==", tenantId)
+          .where("status", "==", "pending")
+          .get();
+
+        const leaves = leavesSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+        // 2. Fetch staff for THIS tenant only (to map teacher names)
+        const staffSnap = await adminDb.collection("staff")
+          .where("tenantId", "==", tenantId)
+          .get();
+
+        const staffMap: Record<string, string> = {};
+        staffSnap.docs.forEach(d => {
+          const data = d.data();
+          staffMap[d.id] = data.personal?.fullName || data.fullName || "Unknown";
+        });
+
+        // 3. Merge data safely
+        const enrichedLeaves = leaves.map(leave => ({
+          ...leave,
+          teacherName: staffMap[leave.teacherId] || "Unknown Teacher"
+        }));
+
+        return NextResponse.json({ success: true, data: enrichedLeaves });
+      })
+    )
   )
 );
