@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/context/AuthContext";
 import { Loader2, AlertTriangle } from "lucide-react";
 
-// ✅ Correct Import Paths based on your `find` output
+// ✅ Correct Import Paths
 import StudentHeader from "@/features/students360/components/StudentHeader";
 import AttendanceCard from "@/features/students360/components/AttendanceCard";
 import AcademicCard from "@/features/students360/components/AcademicCard";
@@ -12,7 +12,6 @@ import FeeSummaryCard from "@/features/students360/components/FeeSummaryCard";
 import ParentSnapshot from "@/features/students360/components/ParentSnapshot";
 
 export default function Student360Page() {
-  // ✅ SAFE PATTERN: useParams instead of React 19 'use'
   const params = useParams();
   const studentId = params?.id as string;
   const { user } = useAuth();
@@ -20,9 +19,7 @@ export default function Student360Page() {
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ["student360", studentId, user?.tenantId],
     queryFn: async () => {
-      // 🚨 CTO FIX: Fetching from /api/students/... (NOT /api/v1/...) 
-      // Because next.config.js rewrite already adds /v1/ automatically. 
-      // Fetching /api/v1/... would cause a double-rewrite 404 error.
+      // 🚀 Pointing to /api/students/... (next.config.js rewrite will handle /v1/)
       const res = await fetch(`/api/students/${studentId}`);
       if (!res.ok) throw new Error("Failed to fetch student 360 data");
       const json = await res.json();
@@ -53,7 +50,7 @@ export default function Student360Page() {
 
   const { student, attendance, marks, fees, risk } = data;
 
-  // 🛡️ Map new 'risk' data to old 'healthScore' prop (0-100 where 100 is good)
+  // 🛡️ Map new 'risk' data to old 'healthScore' prop
   const healthScore = Math.max(0, 100 - (risk?.score || 0));
 
   // 🛡️ Map attendance array to AttendanceCard 'stats' prop
@@ -72,7 +69,7 @@ export default function Student360Page() {
   return (
     <div className="space-y-6 p-6 max-w-7xl mx-auto">
       
-      {/* ✅ FIX 1 APPLIED: Removed 'risk={risk}' to match StudentHeaderProps interface */}
+      {/* ✅ CONNECT: Pass exact props expected by StudentHeader */}
       <StudentHeader 
         student={student} 
         healthScore={healthScore} 
@@ -82,14 +79,12 @@ export default function Student360Page() {
         {/* ✅ CONNECT: Pass exact 'stats' prop expected by AttendanceCard */}
         <AttendanceCard stats={attendanceStats} />
         
-        {/* ✅ CONNECT: Pass data to AcademicCard & FeeSummaryCard 
-           Note: If these components strictly expect 'marks' or 'fees' instead of 'data', 
-           simply change 'data={marks}' to 'marks={marks}' */}
-        <AcademicCard data={marks} />
-        <FeeSummaryCard data={fees} />
+        {/* ✅ FIX APPLIED: Removed 'data' props because these components currently take NO props (using mock data internally) */}
+        <AcademicCard />
+        <FeeSummaryCard />
       </div>
 
-      {/* ✅ CONNECT: ParentSnapshot takes NO props currently, so we call it empty */}
+      {/* ✅ CONNECT: ParentSnapshot takes NO props currently */}
       <ParentSnapshot />
       
     </div>
