@@ -1,22 +1,23 @@
+// middleware.ts
 import { NextRequest, NextResponse } from "next/server";
 import { getSessionUser } from "@/lib/auth/auth-server";
 
-const PUBLIC_PATHS = ["/login", "/signup", "/callback", "/", "/api/auth/login", "/api/auth/register-user"];
+const PUBLIC_PATHS = ["/login", "/signup", "/callback", "/", "/api/auth/login", "/api/auth/register-user", "/api/auth/parent-login"];
 
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
-  // 1. Allow public routes and static assets
+  // 1. Public routes اور static files کو اجازت دیں
   if (
     PUBLIC_PATHS.includes(pathname) ||
     pathname.startsWith("/_next") ||
     pathname.startsWith("/api/auth") ||
-    pathname.includes(".") // static files
+    pathname.includes(".")
   ) {
     return NextResponse.next();
   }
 
-  // 2. Verify Session for all protected routes
+  // 2. Session Verify کریں
   const user = await getSessionUser();
   if (!user) {
     const loginUrl = new URL("/login", req.url);
@@ -24,16 +25,7 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  // 3. Inject Tenant ID and Role into request headers for downstream API use
-  const requestHeaders = new Headers(req.headers);
-  requestHeaders.set("x-tenant-id", user.tenantId || "");
-  requestHeaders.set("x-user-role", user.role || "");
-
-  return NextResponse.next({
-    request: {
-      headers: requestHeaders,
-    },
-  });
+  return NextResponse.next();
 }
 
 export const config = {
