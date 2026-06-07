@@ -7,8 +7,7 @@ import {
   Award, Search, Printer, AlertCircle, CheckCircle2,
   X, GraduationCap, Eye, ShieldAlert, Sparkles, BookOpen
 } from "lucide-react";
-
-// ✅ html2canvas and jsPDF imports have been REMOVED
+// ❌ NO html2canvas or jsPDF imports!
 
 const EXAM_TERMS = ["1st Term", "2nd Term", "Final Exams", "Monthly Test", "Mock Exams", "SBA"];
 const norm = (str?: string) => (str || "").trim().toLowerCase();
@@ -56,12 +55,10 @@ export default function ResultsPage() {
   const [aiComment, setAiComment] = useState("");
   const [generatingComment, setGeneratingComment] = useState(false);
 
-  // 🚀 NEW: Vector PDF Download Handler (Replaces html2canvas)
+  // 🚀 NEW: Vector PDF Download Handler
   const handleDownloadVectorPDF = async () => {
     if (!selectedStudentForCard) return;
     try {
-      // 🚨 CTO WARNING: We use /api/reports/generate (WITHOUT /v1/) 
-      // because next.config.js automatically rewrites /api/* to /api/v1/*
       const res = await fetch(`/api/reports/generate?studentId=${selectedStudentForCard.id}&term=${encodeURIComponent(selectedTerm)}`);
       if (!res.ok) throw new Error("Failed to generate PDF");
       
@@ -83,18 +80,9 @@ export default function ResultsPage() {
   useEffect(() => {
     setIsMounted(true);
     if (!user?.tenantId) return;
-    const unsubStudents = onSnapshot(
-      query(collection(db, "students"), where("tenantId", "==", user.tenantId)),
-      (snap) => setStudentsData(snap.docs.map(d => ({ id: d.id, ...d.data() })))
-    );
-    const unsubMarks = onSnapshot(
-      query(collection(db, "marks"), where("tenantId", "==", user.tenantId)),
-      (snap) => setMarksData(snap.docs.map(d => ({ id: d.id, ...d.data() })))
-    );
-    const unsubSections = onSnapshot(
-      query(collection(db, "sections"), where("tenantId", "==", user.tenantId)),
-      (snap) => setSectionsData(snap.docs.map(d => ({ id: d.id, ...d.data() })))
-    );
+    const unsubStudents = onSnapshot(query(collection(db, "students"), where("tenantId", "==", user.tenantId)), (snap) => setStudentsData(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
+    const unsubMarks = onSnapshot(query(collection(db, "marks"), where("tenantId", "==", user.tenantId)), (snap) => setMarksData(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
+    const unsubSections = onSnapshot(query(collection(db, "sections"), where("tenantId", "==", user.tenantId)), (snap) => setSectionsData(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
     return () => { unsubStudents(); unsubMarks(); unsubSections(); };
   }, [user?.tenantId]);
 
@@ -103,11 +91,8 @@ export default function ResultsPage() {
       fetch(`/api/marks/skills?studentId=${selectedStudentForCard.id}&term=${encodeURIComponent(selectedTerm)}`)
         .then(res => res.json())
         .then(data => {
-          if (data.success && data.data && data.data.length > 0) {
-            setStudentSkills(data.data[0]);
-          } else {
-            setStudentSkills(null);
-          }
+          if (data.success && data.data && data.data.length > 0) setStudentSkills(data.data[0]);
+          else setStudentSkills(null);
         })
         .catch(() => setStudentSkills(null));
     }
@@ -151,25 +136,19 @@ export default function ResultsPage() {
         @media print {
           body * { visibility: hidden; }
           #printable-result-card, #printable-result-card * { visibility: visible; }
-          #printable-result-card { 
-            position: absolute; left: 0; top: 0; 
-            width: 100%; height: auto; 
-            box-shadow: none !important; border: 2px solid #1e293b;
-            border-radius: 0 !important; margin: 0 !important; padding: 20px !important;
-            background: white !important; color: black !important;
-          }
+          #printable-result-card { position: absolute; left: 0; top: 0; width: 100%; height: auto; box-shadow: none !important; border: 2px solid #1e293b; border-radius: 0 !important; margin: 0 !important; padding: 20px !important; background: white !important; color: black !important; }
           .print-hide { display: none !important; }
           * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
         }
       `}</style>
+      
       <div className="flex justify-between items-end print-hide">
         <div>
-          <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight flex items-center gap-3">
-            <Award className="text-blue-600"/> Exams & Grading
-          </h1>
+          <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight flex items-center gap-3"><Award className="text-blue-600"/> Exams & Grading</h1>
           <p className="text-sm text-gray-500 mt-1">Smart Results Generation & Printing Engine.</p>
         </div>
       </div>
+
       <div className="bg-white border border-gray-200 rounded-xl p-6 print-hide">
         <h3 className="text-xs font-bold text-blue-600 uppercase tracking-widest mb-4">CONFIGURE RESULT BOARD</h3>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -190,6 +169,7 @@ export default function ResultsPage() {
           </div>
         </div>
       </div>
+
       <div className="bg-white border border-gray-200 rounded-xl overflow-hidden min-h-[400px] print-hide">
         <div className="px-6 py-4 bg-gray-900 text-white flex items-center justify-between">
            <div><h2 className="text-lg font-black uppercase">{selectedClass || "Select a Class"} - {selectedSection || "Section"}</h2><p className="text-xs text-gray-300 font-medium">Generating results for: <span className="font-bold text-blue-400 uppercase">{selectedTerm}</span></p></div>
@@ -225,58 +205,4 @@ export default function ResultsPage() {
                   <div className="col-span-4 flex items-center gap-3"><div className="w-10 h-10 rounded-full bg-gray-200 border overflow-hidden shrink-0">{student.photoBase64 ? <img src={student.photoBase64} className="w-full h-full object-cover"/> : <div className="w-full h-full flex items-center justify-center text-gray-400"><GraduationCap size={14}/></div>}</div><div><p className="font-bold text-gray-900 text-sm">{student.name}</p><p className="text-[10px] text-gray-500 uppercase">{student.classGrade} - {student.section}</p></div></div>
                   <div className="col-span-3 flex justify-center"><span className={`text-[10px] font-bold px-3 py-1 rounded-full flex items-center gap-1 ${statusColor}`}>{missingPrereqs ? <ShieldAlert size={12}/> : (isReady ? <CheckCircle2 size={12}/> : <AlertCircle size={12}/>)}{status}</span></div>
                   <div className="col-span-2 flex justify-center items-center gap-2"><span className="text-xs font-bold text-gray-600">{scoreStr}</span>{gradeStr !== "-" && <span className={`w-8 text-center py-1 rounded-md text-[10px] font-black ${gradeStr === "U" ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-700'}`}>{gradeStr}</span>}</div>
-                  <div className="col-span-2 flex justify-end"><button onClick={() => setSelectedStudentForCard(student)} disabled={termMarks.length === 0 && !missingPrereqs} className="text-xs font-bold px-4 py-2 rounded-xl flex items-center gap-2 transition-colors disabled:opacity-30 disabled:bg-gray-100 disabled:text-gray-400 bg-blue-100 text-blue-700 hover:bg-blue-200"><Eye size={14} /> View Card</button></div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
-      {selectedStudentForCard && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/60 backdrop-blur-sm p-4 print:p-0 print:bg-white overflow-y-auto">
-           <div id="printable-result-card" className="bg-white w-full max-w-4xl rounded-3xl shadow-2xl overflow-hidden print:shadow-none print:max-w-full my-auto relative">
-              <div className="absolute top-4 right-4 flex gap-2 print-hide z-50">
-                 <button onClick={() => window.print()} className="bg-gray-700 hover:bg-gray-800 text-white px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-2 shadow-md"><Printer size={14}/> Print Card</button>
-                 
-                 {/* 🚀 UPDATED VECTOR PDF BUTTON */}
-                 <button onClick={handleDownloadVectorPDF} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-2 shadow-md">
-                   <Printer size={14}/> Download Vector PDF
-                 </button>
-
-                 <button onClick={() => setSelectedStudentForCard(null)} className="bg-white hover:bg-red-50 hover:text-red-500 text-gray-600 p-2 rounded-lg shadow-md"><X size={16}/></button>
-              </div>
-              <div className="p-8 sm:p-12 bg-white">
-                 <div className="text-center mb-8 border-b-[3px] border-gray-800 pb-6"><div className="flex items-center justify-center gap-4 mb-4"><div className="w-16 h-16 bg-gray-900 text-white rounded-2xl flex items-center justify-center shadow-lg transform -rotate-3"><BookOpen size={36} /></div><h1 className="text-4xl sm:text-5xl font-serif font-black text-gray-900 tracking-tighter">EduPilot <span className="text-blue-600">Academy</span></h1></div><p className="text-sm font-bold text-gray-500 uppercase tracking-[0.3em]">{selectedTerm} Academic Report</p></div>
-                 <div className="flex justify-between items-center mb-8 bg-gray-50 p-6 rounded-2xl border border-gray-200"><div className="flex items-center gap-5"><div className="w-20 h-20 bg-white border-2 border-blue-600 rounded-xl overflow-hidden p-1">{selectedStudentForCard.photoBase64 ? <img src={selectedStudentForCard.photoBase64} className="w-full h-full object-cover  rounded-lg"/> : <GraduationCap className="w-full h-full p-2 text-gray-300"/>}</div><div><h2 className="text-2xl font-black text-gray-900 leading-none">{selectedStudentForCard.name}</h2><p className="text-xs font-bold text-gray-500 uppercase mt-1.5">S/O: {selectedStudentForCard.fatherName}</p></div></div><div className="text-right"><p className="font-black text-xl text-gray-900 uppercase">{selectedStudentForCard.classGrade} - {selectedStudentForCard.section}</p><div className="inline-block bg-gray-900 text-white px-4 py-1 rounded-lg mt-2"><p className="font-black text-lg">{selectedStudentForCard.rollNumber || "N/A"}</p></div></div></div>
-                 {/* Marks Table */}
-                 <table className="w-full text-left border-collapse border border-gray-300 rounded-xl overflow-hidden"><thead><tr className="bg-gray-900 text-white text-xs uppercase tracking-widest"><th className="p-4 font-bold border-r border-gray-700">Subject</th><th className="p-4 font-bold border-r border-gray-700 text-center">Total Marks</th><th className="p-4 font-bold border-r border-gray-700 text-center">Obtained</th><th className="p-4 font-bold border-r border-gray-700 text-center">%</th><th className="p-4 font-bold text-center">Grade</th></tr></thead><tbody className="bg-white">{(() => { const studentMarks = marksData.filter(m => m.studentId === selectedStudentForCard.id); const termMarks = studentMarks.filter(m => norm(m.term) === norm(selectedTerm)); let grandTotalMax = 0; let grandTotalObt = 0; return (<>{termMarks.length === 0 ? (<tr><td colSpan={5} className="p-8 text-center text-gray-400 font-bold">No subjects graded yet.</td></tr>) : (termMarks.map((m, idx) => { grandTotalMax += Number(m.totalMarks); grandTotalObt += Number(m.marksObtained); return (<tr key={idx} className="border-b border-gray-200"><td className="p-4 font-black text-gray-700 uppercase border-r border-gray-200">{m.subject}</td><td className="p-4 font-bold text-gray-500 text-center border-r border-gray-200">{m.totalMarks}</td><td className="p-4 font-black text-gray-900 text-center border-r border-gray-200">{m.marksObtained}</td><td className="p-4 font-bold text-gray-500 text-center border-r border-gray-200">{m.percentage}%</td><td className="p-4 font-black text-center">{m.grade}</td></tr>); }))}{termMarks.length > 0 && (<tr className="bg-green-50 border-t-2 border-blue-600"><td className="p-4 font-black text-gray-900 uppercase text-right border-r border-green-200">Grand Total:</td><td className="p-4 font-black text-gray-900 text-center border-r border-green-200">{grandTotalMax}</td><td className="p-4 font-black text-blue-600 text-center text-xl border-r border-green-200">{grandTotalObt}</td><td className="p-4 font-black text-gray-900 text-center border-r border-green-200">{grandTotalMax > 0 ?  ((grandTotalObt/grandTotalMax)*100).toFixed(1) : 0}%</td><td className="p-4 font-black text-white text-center bg-blue-600">{calculateGrade(grandTotalObt, grandTotalMax)}</td></tr>)}</>) })()}</tbody></table>
-                 {/* AI Analysis & Comments */}
-                 <div className="mt-8 space-y-4">
-                   {(() => { const studentMarks = marksData.filter(m => m.studentId === selectedStudentForCard.id); const termMarks = studentMarks.filter(m => norm(m.term) === norm(selectedTerm)); if (termMarks.length > 0) { const guidelines = generateAIGuidelines(termMarks); return (<div className="bg-blue-50/50 border border-blue-100 rounded-2xl p-6 relative overflow-hidden"><div className="absolute top-0 right-0 bg-blue-100 px-4 py-1 rounded-bl-xl text-[10px] font-black text-blue-600 uppercase tracking-widest flex items-center gap-1"><Sparkles size={12}/> AI Analysis</div><h3 className="text-sm font-black text-gray-900 uppercase tracking-widest mb-3">Academic Guidelines & Progress</h3><ul className="space-y-2">{guidelines.map((guide, i) => (<li key={i} className="text-sm font-bold text-gray-700 flex items-start gap-2"><span className="text-blue-500 mt-0.5">•</span> {guide}</li>))}</ul></div>); } return null; })()}
-                   <div className="bg-purple-50/50 border border-purple-100 rounded-2xl p-6">
-                     <div className="flex items-center justify-between mb-3"><h3 className="text-sm font-black text-gray-900 uppercase tracking-widest flex items-center gap-2"><Sparkles size={14} className="text-purple-600" /> AI Teacher's Comment</h3><button onClick={handleGenerateComment} disabled={generatingComment} className="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-2 disabled:opacity-50">{generatingComment ? "Generating..." : "Generate Comment"}</button></div>
-                     {aiComment ? <p className="text-sm text-gray-800">{aiComment}</p> : <p className="text-sm text-gray-400">Click the button to generate an AI-powered personalized comment.</p>}
-                   </div>
-                 </div>
-                 {/*  🆕  Skills Assessment */}
-                 {studentSkills && (
-                   <div className="mt-6 bg-gray-50 border border-gray-200 rounded-2xl p-6">
-                     <h3 className="text-sm font-black text-gray-900 uppercase tracking-widest mb-3">Skills Assessment</h3>
-                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                       {Object.entries(studentSkills).map(([skill, rating]: any) => (
-                         <div key={skill} className="bg-white rounded-xl p-3 text-center">
-                           <p className="text-xs font-bold text-gray-500">{skill}</p>
-                           <p className="text-lg font-black text-gray-900">{rating}/5</p>
-                         </div>
-                       ))}
-                     </div>
-                   </div>
-                 )}
-                 <div className="flex justify-between items-end mt-20 pt-8 px-8"><div className="text-center w-48"><div className="border-b-2 border-gray-800 pb-2 mb-2"></div><p className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Class Incharge</p></div><div className="text-center w-48"><div className="border-b-2 border-gray-800 pb-2 mb-2"></div><p className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Principal / Headmaster</p></div></div>
-              </div>
-           </div>
-        </div>
-      )}
-    </div>
-  );
-}
+                  <div className="col-span-2 flex justify-end"><button onClick={() => setSelectedStudentForCard(student)} disabled={termMarks.length === 0 && !missingPrereqs} className="text-xs font-bold px-4 py-2 rounded-xl flex items-center gap-2 transition-colors disabled:opacity-3
