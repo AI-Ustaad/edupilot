@@ -9,7 +9,6 @@ import AttendanceCard from "@/features/students360/components/AttendanceCard";
 import FeeSummaryCard from "@/features/students360/components/FeeSummaryCard";
 import AcademicCard from "@/features/students360/components/AcademicCard";
 import ParentSnapshot from "@/features/students360/components/ParentSnapshot";
-import { StudentProfile } from "@/features/students360/types/student360.types";
 
 export default function Student360Page() {
   const params = useParams();
@@ -26,7 +25,7 @@ export default function Student360Page() {
       }
 
       const json = await res.json();
-      return json.data || json; // Handle cases where data might be nested or direct
+      return json.data || json; 
     },
     enabled: !!studentId,
   });
@@ -49,24 +48,40 @@ export default function Student360Page() {
     );
   }
 
-  // Health Score Calculation based on API Data
+  // ==========================================
+  // DATA MAPPING & CALCULATIONS
+  // ==========================================
+
+  // 1. Attendance Metrics
   const attendancePercent =
     data?.attendanceTrend?.length
       ? data.attendanceTrend[data.attendanceTrend.length - 1].percentage
       : 0;
 
+  // 2. Marks Metrics
   const marksPercent =
     data?.marksTrend?.length
       ? data.marksTrend[data.marksTrend.length - 1].percentage
       : 0;
 
+  // 3. Fee Metrics (Placeholder until API supports it)
   const feePercent = 100;
 
+  // 4. Health Score Formula
   const healthScore = Math.round(
     attendancePercent * 0.4 +
     marksPercent * 0.4 +
     feePercent * 0.2
   );
+
+  // 🚀 Safe Data Mapping for Attendance Card
+  const attendanceData = {
+    percentage: attendancePercent,
+    present: data?.todayAttendance?.present || 0, // Fallback if API lacks this
+    absent: data?.todayAttendance?.absent || 0,   // Fallback if API lacks this
+    late: 0,
+    trend: "stable" as const
+  };
 
   return (
     <div className="p-4 md:p-8 max-w-7xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -79,12 +94,12 @@ export default function Student360Page() {
         {/* Left Column (Span 2) */}
         <div className="lg:col-span-2 space-y-6">
           <div className="h-64">
-            {/* Keeping it untouched as ordered */}
-            <AttendanceCard />
+            {/* 🚀 Connected to Live Data */}
+            <AttendanceCard stats={attendanceData} />
           </div>
           
           <div className="h-64">
-            {/* Keeping it untouched as ordered */}
+            {/* Untouched (Waiting for API mapping) */}
             <AcademicCard />
           </div>
           
@@ -96,12 +111,12 @@ export default function Student360Page() {
         {/* Right Column (Span 1) */}
         <div className="space-y-6">
           <div className="h-64">
-            {/* Keeping it untouched as ordered */}
+            {/* Untouched (Waiting for API mapping) */}
             <FeeSummaryCard />
           </div>
           
           <div className="h-64">
-            {/* Keeping it untouched as ordered */}
+            {/* Untouched (Waiting for API mapping) */}
             <ParentSnapshot />
           </div>
         </div>
