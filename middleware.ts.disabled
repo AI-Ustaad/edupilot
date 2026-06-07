@@ -1,27 +1,41 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getSessionUser } from "@/lib/auth/auth-server";
 
-// Public routes that do NOT require a session
-const PUBLIC_PATHS = ["/login", "/signup", "/callback", "/"];
+const PUBLIC_PATHS = ["/login", "/signup", "/callback", "/", "/api/auth/login", "/api/auth/register-user"];
 
-export default function middleware(req: NextRequest) {
+export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
-  // Allow public routes without session
-  if (PUBLIC_PATHS.includes(pathname) || pathname.startsWith("/api")) {
+  // 1. Allow public routes and static assets
+  if (
+    PUBLIC_PATHS.includes(pathname) ||
+    pathname.startsWith("/_next") ||
+    pathname.startsWith("/api/auth") ||
+    pathname.includes(".") // static files
+  ) {
     return NextResponse.next();
   }
 
-  // Protected routes: require session cookie
-  const session = req.cookies.get("session")?.value;
-  if (!session) {
+  // 2. Verify Session for all protected routes
+  const user = await getSessionUser();
+  if (!user) {
     const loginUrl = new URL("/login", req.url);
     loginUrl.searchParams.set("redirect", pathname);
     return NextResponse.redirect(loginUrl);
   }
 
-  return NextResponse.next();
+  // 3. Inject Tenant ID and Role into request headers for downstream API use
+  const requestHeaders = new Headers(req.headers);
+  requestHeaders.set("x-tenant-id", user.tenantId || "");
+  requestHeaders.set("x-user-role", user.role || "");
+
+  return NextResponse.next({
+    request: {
+      headers: requestHeaders,
+    },
+  });
 }
 
 export const config = {
-  matcher: ["/((?!_next|.*\\..*).*)"],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\..*).*)"],
 };
