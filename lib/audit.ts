@@ -1,6 +1,6 @@
 // lib/audit.ts
-
 import { adminDb } from "@/lib/firebase-admin";
+import { serverTimestamp } from "firebase-admin/firestore"; // ✅ Import serverTimestamp
 
 export async function logAction({
   action,
@@ -25,9 +25,10 @@ export async function logAction({
       entityId: entityId || null,
       entityType: entityType || null,
       metadata,
-      createdAt: new Date(),
+      createdAt: serverTimestamp(), // ✅ Changed from new Date()
     });
   } catch (err) {
+    // Fail silently so it doesn't break the main user action (e.g., saving a mark)
     console.error("Audit log failed:", err);
   }
 }
