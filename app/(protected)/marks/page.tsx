@@ -1,8 +1,7 @@
 "use client";
 import React, { useState, useEffect } from "react";
-import { collection, onSnapshot, query, setDoc, doc, serverTimestamp, deleteDoc, where } from "firebase/firestore";
-import { db } from "@/lib/firebase";
 import { useAuth } from "@/context/AuthContext";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { 
   PenTool, Search, Save, CheckCircle2, AlertCircle, 
   Users, BookOpen, Trash2, Database, Loader2 
@@ -11,68 +10,120 @@ import {
 const EXAM_TERMS = ["1st Term", "2nd Term", "Final Exams", "Monthly Test", "Mock Exams", "SBA"];
 const norm = (str?: string) => (str || "").trim().toLowerCase();
 
+// --- API Helper Functions ---
+const fetchStudents = async () => {
+  const res = await fetch("/api/students");
+  if (!res.ok) throw new Error("Failed to fetch students");
+  const json = await res.json();
+  return json.success ? json.data : json;
+};
+
+const fetchSections = async () => {
+  const res = await fetch("/api/classes"); // Adjust if your sections API is named differently
+  if (!res.ok) throw new Error("Failed to fetch sections");
+  const json = await res.json();
+  return json.success ? json.data : json;
+};
+
+const fetchMarks = async ({ classGrade, section, term, subject }: any) => {
+  const params = new URLSearchParams();
+  if (classGrade) params.append("classGrade", classGrade);
+  if (section) params.append("section", section);
+  if (term) params.append("term", term);
+  if (subject) params.append("subject", subject);
+  
+  const res = await fetch(`/api/marks?${params.toString()}`);
+  if (!res.ok) throw new Error("Failed to fetch marks");
+  const json = await res.json();
+  return json.success ? json.data : [];
+};
+
+const saveMarkApi = async (markData: any) => {
+  const res = await fetch("/api/marks", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(markData),
+  });
+  if (!res.ok) throw new Error("Failed to save mark");
+  return res.json();
+};
+
+const deleteMarkApi = async (markId: string) => {
+  const res = await fetch(`/api/marks?id=${markId}`, { method: "DELETE" });
+  if (!res.ok) throw new Error("Failed to delete mark");
+  return res.json();
+};
+
 export default function ExamsAndMarksPage() {
   const { user } = useAuth();
-  const [isMounted, setIsMounted] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [savingRow, setSavingRow] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
-  const [errorMsg, setErrorMsg] = useState("");
-
-  const [sectionsData, setSectionsData] = useState<any[]>([]);
-  const [studentsData, setStudentsData] = useState<any[]>([]);
-  const [allMarks, setAllMarks] = useState<any[]>([]);
+  const queryClient = useQueryClient();
   
   const [selectedTerm, setSelectedTerm] = useState(EXAM_TERMS[0]);
   const [selectedClass, setSelectedClass] = useState("");
   const [selectedSection, setSelectedSection] = useState("");
   const [selectedSubject, setSelectedSubject] = useState("");
-
-  const [marksEntry, setMarksEntry] = useState<Record<string, { obtained: string, total: string }>>({});
   const [globalTotalMarks, setGlobalTotalMarks] = useState("100");
+  const [marksEntry, setMarksEntry] = useState<Record<string, { obtained: string, total: string }>>({});
+  const [savingRow, setSavingRow] = useState<string | null>(null);
+  const [errorMsg, setErrorMsg] = useState("");
+  const [success, setSuccess] = useState(false);
 
+  // 1. Fetch Students via React Query
+  const { data: studentsData = [], isLoading: loadingStudents } = useQuery({
+    queryKey: ["students", user?.tenantId],
+    queryFn: fetchStudents,
+    enabled: !!user?.tenantId,
+  });
+
+  // 2. Fetch Sections/Classes via React Query
+  const { data: sectionsData = [], isLoading: loadingSections } = useQuery({
+    queryKey: ["sections", user?.tenantId],
+    queryFn: fetchSections,
+    enabled: !!user?.tenantId,
+  });
+
+  // 3. Fetch Marks (only when filters are selected)
+  const { data: allMarks = [], isLoading: loadingMarks } = useQuery({
+    queryKey: ["marks", user?.tenantId, selectedClass, selectedSection, selectedTerm, selectedSubject],
+    queryFn: () => fetchMarks({ classGrade: selectedClass, section: selectedSection, term: selectedTerm, subject: selectedSubject }),
+    enabled: !!user?.tenantId && !!selectedClass && !!selectedSection && !!selectedSubject,
+  });
+
+  // Reset local marks entry when filters change
   useEffect(() => {
     setMarksEntry({});
   }, [selectedTerm, selectedClass, selectedSection, selectedSubject]);
 
-  useEffect(() => {
-    setIsMounted(true);
-    if (!user?.tenantId) return;
+  // Mutations for Saving and Deleting
+  const saveMarkMutation = useMutation({
+    mutationFn: saveMarkApi,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["marks", user?.tenantId, selectedClass, selectedSection, selectedTerm, selectedSubject] });
+      setSuccess(true);
+      setTimeout(() => setSuccess(false), 3000);
+    },
+    onError: () => {
+      setErrorMsg("Failed to save mark.");
+    }
+  });
 
-    const unsubSections = onSnapshot(
-      query(collection(db, "sections"), where("tenantId", "==", user.tenantId)),
-      (snapshot) => setSectionsData(snapshot.docs.map(d => ({ id: d.id, ...d.data() })))
-    );
+  const deleteMarkMutation = useMutation({
+    mutationFn: deleteMarkApi,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["marks", user?.tenantId, selectedClass, selectedSection, selectedTerm, selectedSubject] });
+    },
+    onError: () => {
+      setErrorMsg("Failed to delete mark.");
+    }
+  });
 
-    const unsubStudents = onSnapshot(
-      query(collection(db, "students"), where("tenantId", "==", user.tenantId)),
-      (snapshot) => setStudentsData(snapshot.docs.map(d => ({ id: d.id, ...d.data() })))
-    );
-
-    const unsubMarks = onSnapshot(
-      query(collection(db, "marks"), where("tenantId", "==", user.tenantId)),
-      (snapshot) => setAllMarks(snapshot.docs.map(d => ({ id: d.id, ...d.data() })))
-    );
-
-    return () => {
-      unsubSections();
-      unsubStudents();
-      unsubMarks();
-    };
-  }, [user?.tenantId]);
-
-  const availableClasses = Array.from(new Set(sectionsData.map(s => s.classGrade)));
-  const availableSections = sectionsData.filter(s => norm(s.classGrade) === norm(selectedClass));
-  const activeSectionData = sectionsData.find(s => norm(s.classGrade) === norm(selectedClass) && norm(s.sectionName) === norm(selectedSection));
+  const availableClasses = Array.from(new Set(sectionsData.map((s: any) => s.classGrade || s.name)));
+  const availableSections = sectionsData.filter((s: any) => norm(s.classGrade || s.name) === norm(selectedClass));
+  const activeSectionData = sectionsData.find((s: any) => norm(s.classGrade || s.name) === norm(selectedClass) && norm(s.sectionName || s.section) === norm(selectedSection));
   const availableSubjects = activeSectionData?.subjects ? [...(activeSectionData.subjects.core || []), ...(activeSectionData.subjects.electives || [])] : [];
-
-  const filteredStudents = studentsData.filter(s => norm(s.classGrade) === norm(selectedClass) && norm(s.section) === norm(selectedSection));
-
-  const savedMarksLedger = allMarks.filter(m => 
-    norm(m.classGrade) === norm(selectedClass) && 
-    norm(m.section) === norm(selectedSection) && 
-    norm(m.term) === norm(selectedTerm) &&
-    studentsData.some(student => student.id === m.studentId)
+  
+  const filteredStudents = studentsData.filter((s: any) => 
+    norm(s.classGrade) === norm(selectedClass) && norm(s.section) === norm(selectedSection)
   );
 
   const calculateGrade = (obtained: number, total: number) => {
@@ -102,51 +153,79 @@ export default function ExamsAndMarksPage() {
     if (marksEntry[studentId] && marksEntry[studentId][field] !== undefined) {
       return marksEntry[studentId][field];
     }
-    const existing = allMarks.find(m => m.studentId === studentId && norm(m.term) === norm(selectedTerm) && norm(m.subject) === norm(selectedSubject));
+    const existing = allMarks.find((m: any) => m.studentId === studentId && norm(m.term) === norm(selectedTerm) && norm(m.subject) === norm(selectedSubject));
     if (existing) {
       return field === 'obtained' ? existing.marksObtained.toString() : existing.totalMarks.toString();
     }
     return field === 'obtained' ? "" : globalTotalMarks;
   };
 
-  const saveSingleRecord = async (student: any) => {
-    setSavingRow(student.id); setErrorMsg("");
+  const handleSaveSingleRecord = async (student: any) => {
+    setSavingRow(student.id);
+    setErrorMsg("");
     try {
       const obtainedNum = Number(getInputValue(student.id, "obtained"));
       const totalNum = Number(getInputValue(student.id, "total"));
       const percentage = totalNum > 0 ? ((obtainedNum / totalNum) * 100).toFixed(1) : "0";
       const grade = calculateGrade(obtainedNum, totalNum);
-      const markDocId = `${student.id}_${selectedTerm.replace(/\s+/g, '')}_${selectedSubject.replace(/\s+/g, '')}`;
       
-      await setDoc(doc(db, "marks", markDocId), {
-        studentId: student.id, studentName: student.name, classGrade: selectedClass, section: selectedSection,
-        term: selectedTerm, subject: selectedSubject, marksObtained: obtainedNum, totalMarks: totalNum,
-        percentage: Number(percentage), grade: grade, tenantId: user?.tenantId, updatedAt: serverTimestamp()
-      }, { merge: true });
-    } catch (err) {
-      setErrorMsg("Failed to save mark.");
+      await saveMarkMutation.mutateAsync({
+        studentId: student.id,
+        studentName: student.name || student.fullName,
+        classGrade: selectedClass,
+        section: selectedSection,
+        term: selectedTerm,
+        subject: selectedSubject,
+        marksObtained: obtainedNum,
+        totalMarks: totalNum,
+        percentage: Number(percentage),
+        grade: grade,
+      });
     } finally {
       setSavingRow(null);
     }
   };
 
   const handleBulkSave = async () => {
-    if (!selectedClass || !selectedSection || !selectedSubject) return setErrorMsg("Select Class, Section, and Subject.");
-    setLoading(true); setErrorMsg(""); setSuccess(false);
+    if (!selectedClass || !selectedSection || !selectedSubject) {
+      return setErrorMsg("Select Class, Section, and Subject.");
+    }
+    setErrorMsg("");
     try {
-      const promises = filteredStudents.map(student => saveSingleRecord(student));
+      const promises = filteredStudents.map((student: any) => {
+        const obtainedNum = Number(getInputValue(student.id, "obtained"));
+        const totalNum = Number(getInputValue(student.id, "total"));
+        const percentage = totalNum > 0 ? ((obtainedNum / totalNum) * 100).toFixed(1) : "0";
+        const grade = calculateGrade(obtainedNum, totalNum);
+        
+        return saveMarkMutation.mutateAsync({
+          studentId: student.id,
+          studentName: student.name || student.fullName,
+          classGrade: selectedClass,
+          section: selectedSection,
+          term: selectedTerm,
+          subject: selectedSubject,
+          marksObtained: obtainedNum,
+          totalMarks: totalNum,
+          percentage: Number(percentage),
+          grade: grade,
+        });
+      });
       await Promise.all(promises);
-      setSuccess(true); setTimeout(() => setSuccess(false), 3000);
-    } catch (err) { setErrorMsg("Failed to bulk save marks."); } finally { setLoading(false); }
-  };
-
-  const handleDeleteMark = async (markId: string) => {
-    if(confirm("Are you sure you want to delete this record?")) {
-      try { await deleteDoc(doc(db, "marks", markId)); } catch (e) { alert("Failed to delete."); }
+      setSuccess(true);
+      setTimeout(() => setSuccess(false), 3000);
+    } catch (err) {
+      setErrorMsg("Failed to bulk save marks.");
     }
   };
 
-  if (!isMounted) return null;
+  const handleDeleteMark = async (markId: string) => {
+    if (confirm("Are you sure you want to delete this record?")) {
+      deleteMarkMutation.mutate(markId);
+    }
+  };
+
+  const isLoading = loadingStudents || loadingSections || (loadingMarks && !!selectedClass);
 
   return (
     <div className="animate-fade-in space-y-6 pb-20">
@@ -158,9 +237,13 @@ export default function ExamsAndMarksPage() {
           </h1>
           <p className="text-sm text-slate-500 mt-1">Smart Assessment Engine linked directly to Results Module.</p>
         </div>
-        <button onClick={handleBulkSave} disabled={loading || filteredStudents.length === 0 || !selectedSubject} className="bg-[#0F172A] text-gray-900 px-6 py-2.5 rounded-xl font-bold flex items-center gap-2 shadow-md hover:bg-slate-800 transition-all disabled:opacity-50">
-          {loading ? <Loader2 className="animate-spin" size={18}/> : <Save size={18}/>} 
-          {loading ? "Publishing..." : "Publish All Results"}
+        <button 
+          onClick={handleBulkSave} 
+          disabled={isLoading || filteredStudents.length === 0 || !selectedSubject || saveMarkMutation.isPending} 
+          className="bg-[#0F172A] text-gray-900 px-6 py-2.5 rounded-xl font-bold flex items-center gap-2 shadow-md hover:bg-slate-800 transition-all disabled:opacity-50"
+        >
+          {saveMarkMutation.isPending ? <Loader2 className="animate-spin" size={18}/> : <Save size={18}/>} 
+          {saveMarkMutation.isPending ? "Publishing..." : "Publish All Results"}
         </button>
       </div>
 
@@ -179,21 +262,21 @@ export default function ExamsAndMarksPage() {
           <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Select Class</label>
           <select value={selectedClass} onChange={e => { setSelectedClass(e.target.value); setSelectedSection(""); setSelectedSubject(""); }} className="w-full bg-slate-50 outline-none rounded-xl px-4 py-3 text-sm border font-bold text-[#0F172A]">
             <option value="">-- Choose --</option>
-            {availableClasses.map(cls => <option key={cls as string} value={cls as string}>{cls as string}</option>)}
+            {availableClasses.map((cls: any) => <option key={cls} value={cls}>{cls}</option>)}
           </select>
         </div>
         <div className="w-full lg:w-1/5 space-y-2">
           <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Select Section</label>
           <select value={selectedSection} onChange={e => { setSelectedSection(e.target.value); setSelectedSubject(""); }} disabled={!selectedClass} className="w-full bg-slate-50 outline-none rounded-xl px-4 py-3 text-sm border font-bold text-[#0F172A] disabled:opacity-50">
             <option value="">-- Choose --</option>
-            {availableSections.map(sec => <option key={sec.id} value={sec.sectionName}>{sec.sectionName}</option>)}
+            {availableSections.map((sec: any) => <option key={sec.id} value={sec.sectionName || sec.section}>{sec.sectionName || sec.section}</option>)}
           </select>
         </div>
         <div className="w-full lg:w-1/5 space-y-2">
           <label className="text-[10px] font-bold text-[#3ac47d] uppercase tracking-widest">Select Subject</label>
           <select value={selectedSubject} onChange={e => setSelectedSubject(e.target.value)} disabled={!selectedSection} className="w-full bg-[#f0fdf4] outline-none rounded-xl px-4 py-3 text-sm border border-green-200 font-bold text-green-700 disabled:opacity-50 disabled:bg-slate-50 disabled:border-slate-200 disabled:text-slate-400">
             <option value="">-- Choose --</option>
-            {availableSubjects.map(sub => <option key={sub} value={sub}>{sub}</option>)}
+            {availableSubjects.map((sub: any) => <option key={sub} value={sub}>{sub}</option>)}
           </select>
         </div>
         <div className="w-full lg:w-1/5 space-y-2">
@@ -204,7 +287,12 @@ export default function ExamsAndMarksPage() {
 
       {/* --- DATA ENTRY GRID --- */}
       <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden min-h-[300px]">
-        {(!selectedClass || !selectedSection || !selectedSubject) ? (
+        {isLoading ? (
+          <div className="h-[300px] flex flex-col items-center justify-center opacity-40">
+             <Loader2 size={40} className="mb-4 text-slate-400 animate-spin" />
+             <h3 className="text-xl font-black text-slate-600">Loading Data...</h3>
+          </div>
+        ) : (!selectedClass || !selectedSection || !selectedSubject) ? (
           <div className="h-[300px] flex flex-col items-center justify-center opacity-40">
              <BookOpen size={60} className="mb-4 text-slate-400" />
              <h3 className="text-xl font-black text-slate-600">Select Criteria to Load Entry Grid</h3>
@@ -229,46 +317,39 @@ export default function ExamsAndMarksPage() {
               <div className="col-span-2 text-center">Obtained</div>
               <div className="col-span-3 text-right">Result & Action</div>
             </div>
-
-            {filteredStudents.sort((a,b) => (a.rollNumber||0) - (b.rollNumber||0)).map((student) => {
+            {filteredStudents.sort((a: any, b: any) => (a.rollNumber||0) - (b.rollNumber||0)).map((student: any) => {
               const obtainedStr = getInputValue(student.id, "obtained");
               const totalStr = getInputValue(student.id, "total");
               const percent = totalStr && obtainedStr ? ((Number(obtainedStr) / Number(totalStr)) * 100).toFixed(1) : "0.0";
               const grade = calculateGrade(Number(obtainedStr), Number(totalStr));
               const isFail = grade === "U";
+              const isSavedInDB = allMarks.some((m: any) => m.studentId === student.id && norm(m.term) === norm(selectedTerm) && norm(m.subject) === norm(selectedSubject));
               
-              const isSavedInDB = allMarks.some(m => m.studentId === student.id && norm(m.term) === norm(selectedTerm) && norm(m.subject) === norm(selectedSubject));
-
               return (
                 <div key={student.id} className={`px-6 py-3 grid grid-cols-12 gap-4 items-center transition-colors group ${isSavedInDB ? 'bg-blue-50/30' : 'bg-white hover:bg-slate-50'}`}>
                   <div className="col-span-1 font-black text-slate-400 text-lg">{student.rollNumber || "-"}</div>
-                  
                   <div className="col-span-4 flex items-center gap-3">
                     <div className="w-10 h-10 rounded-full bg-slate-100 border overflow-hidden shrink-0">
                       {student.photoBase64 ? <img src={student.photoBase64} className="w-full h-full object-cover"/> : <div className="w-full h-full flex items-center justify-center text-slate-400"><Users size={14}/></div>}
                     </div>
                     <div>
                       <p className="font-bold text-slate-800 text-sm flex items-center gap-2">
-                        {student.name}
+                        {student.name || student.fullName}
                         {isSavedInDB && <span className="bg-blue-100 text-blue-600 text-[8px] px-2 py-0.5 rounded-full uppercase tracking-wider">Saved</span>}
                       </p>
                       <p className="text-[10px] text-slate-400 uppercase">{student.fatherName}</p>
                     </div>
                   </div>
-
                   <div className="col-span-2 flex justify-center">
                     <input type="number" value={totalStr} onChange={(e) => handleMarkChange(student.id, "total", e.target.value)} className="w-16 bg-slate-100 text-center rounded-lg py-2 text-sm font-bold border border-transparent focus:border-blue-400 outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
                   </div>
-
                   <div className="col-span-2 flex justify-center">
                     <input type="number" placeholder="0" value={obtainedStr} onChange={(e) => handleMarkChange(student.id, "obtained", e.target.value)} className="w-20 bg-white text-center rounded-lg py-2 text-sm font-black border-2 border-slate-200 focus:border-[#3ac47d] focus:bg-[#f0fdf4] outline-none shadow-inner transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
                   </div>
-
                   <div className="col-span-3 flex justify-end items-center gap-3">
                      <span className="text-xs font-bold text-slate-500">{percent}%</span>
                      <span className={`w-8 text-center py-1 rounded-md text-xs font-black ${isFail ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-700'}`}>{grade}</span>
-                     
-                     <button onClick={() => saveSingleRecord(student)} disabled={savingRow === student.id} className="bg-slate-200 hover:bg-[#3ac47d] hover:text-gray-900 text-slate-600 p-2 rounded-lg transition-colors" title="Save this record">
+                     <button onClick={() => handleSaveSingleRecord(student)} disabled={savingRow === student.id || saveMarkMutation.isPending} className="bg-slate-200 hover:bg-[#3ac47d] hover:text-gray-900 text-slate-600 p-2 rounded-lg transition-colors" title="Save this record">
                         {savingRow === student.id ? <Loader2 size={16} className="animate-spin"/> : <Save size={16} />}
                      </button>
                   </div>
@@ -291,9 +372,8 @@ export default function ExamsAndMarksPage() {
                  Showing all saved marks for <span className="text-blue-600 uppercase">{selectedClass} - {selectedSection} ({selectedTerm})</span>
               </p>
            </div>
-           
            <div className="p-6">
-              {savedMarksLedger.length === 0 ? (
+              {allMarks.length === 0 ? (
                  <p className="text-center text-slate-400 font-bold py-10">No marks have been saved for this class and term yet.</p>
               ) : (
                  <div className="overflow-x-auto">
@@ -309,7 +389,7 @@ export default function ExamsAndMarksPage() {
                           </tr>
                        </thead>
                        <tbody className="divide-y divide-slate-100">
-                          {savedMarksLedger.map(mark => (
+                          {allMarks.map((mark: any) => (
                              <tr key={mark.id} className="hover:bg-slate-50 transition-colors">
                                 <td className="py-3 font-bold text-slate-800">{mark.studentName}</td>
                                 <td className="py-3 font-bold text-[#3ac47d] uppercase">{mark.subject}</td>
@@ -317,8 +397,8 @@ export default function ExamsAndMarksPage() {
                                 <td className="py-3 font-bold text-slate-500">{mark.percentage}%</td>
                                 <td className="py-3 font-black">{mark.grade}</td>
                                 <td className="py-3 text-right">
-                                   <button onClick={() => handleDeleteMark(mark.id)} className="text-red-400 hover:text-red-600 bg-red-50 p-1.5 rounded-md transition-colors" title="Delete Record">
-                                      <Trash2 size={14}/>
+                                   <button onClick={() => handleDeleteMark(mark.id)} disabled={deleteMarkMutation.isPending} className="text-red-400 hover:text-red-600 bg-red-50 p-1.5 rounded-md transition-colors disabled:opacity-50" title="Delete Record">
+                                      {deleteMarkMutation.isPending ? <Loader2 size={14} className="animate-spin"/> : <Trash2 size={14}/>}
                                    </button>
                                 </td>
                              </tr>
@@ -330,7 +410,6 @@ export default function ExamsAndMarksPage() {
            </div>
         </div>
       )}
-
     </div>
   );
 }
