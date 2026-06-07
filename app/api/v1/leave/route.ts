@@ -16,7 +16,8 @@ export const GET = withErrorHandler(
           .where("status", "==", "pending")
           .get();
 
-        const leaves = leavesSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        // ✅ FIX: Explicitly type as any[] because Firestore data has no strict schema
+        const leaves: any[] = leavesSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
         // 2. Fetch staff for THIS tenant only (to map teacher names)
         const staffSnap = await adminDb.collection("staff")
