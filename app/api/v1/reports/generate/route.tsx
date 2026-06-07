@@ -6,6 +6,7 @@ import { PERMISSIONS } from "@/lib/auth/permissions";
 import type { TenantContext } from "@/types/api";
 import { renderToBuffer } from "@react-pdf/renderer";
 import { ReportCardTemplate } from "@/lib/pdf/ReportCardTemplate";
+import React from "react";
 
 // Force Node.js runtime because @react-pdf/renderer uses Node streams
 export const runtime = 'nodejs'; 
@@ -36,13 +37,22 @@ export const GET = withErrorHandler(
           .where("term", "==", term)
           .get();
 
-        const marks = marksSnap.docs.map(d => d.data());
+        // 🛡️ FIX: Explicitly map Firestore DocumentData to the exact shape expected by ReportCardTemplate
+        const marks = marksSnap.docs.map(d => {
+          const data = d.data();
+          return {
+            subject: data.subject || "Unknown Subject",
+            totalMarks: Number(data.totalMarks) || 0,
+            marksObtained: Number(data.marksObtained) || 0,
+            grade: data.grade || "-",
+          };
+        });
 
         // 3. Fetch School Branding for the Header
         const settingsSnap = await adminDb.collection("settings").doc(tenantId).get();
         const schoolName = settingsSnap.exists ? settingsSnap.data()?.schoolName || "EduPilot Academy" : "EduPilot Academy";
 
-        // 4. Generate PDF Buffer
+        // 4. Prepare Data for PDF
         const pdfData = {
           schoolName,
           term,
@@ -53,13 +63,14 @@ export const GET = withErrorHandler(
             section: student?.section || "N/A",
             rollNumber: student?.rollNumber || "N/A",
           },
-          marks,
-          aiComment: "An excellent term! Keep up the hard work and maintain focus on mathematics." // Placeholder for AI API
+          marks, // ✅ Now this perfectly matches the strict type!
+          aiComment: "An excellent term! Keep up the hard work and maintain focus on continuous improvement."
         };
 
+        // 5. Generate PDF Buffer
         const buffer = await renderToBuffer(<ReportCardTemplate data={pdfData} />);
 
-        // 5. Return PDF as a downloadable file
+        // 6. Return PDF as a downloadable file
         return new NextResponse(buffer, {
           headers: {
             'Content-Type': 'application/pdf',
