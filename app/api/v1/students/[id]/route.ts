@@ -9,6 +9,7 @@ export const GET = withErrorHandler(
   withAuth(
     withTenant(
       withPermission(PERMISSIONS.students.view)(async (req: Request, { tenantId }: TenantContext) => {
+        // Extract [id] from dynamic route
         const url = new URL(req.url);
         const studentId = url.pathname.split("/").pop();
 
@@ -17,19 +18,19 @@ export const GET = withErrorHandler(
         }
 
         try {
-          const studentRef = adminDb.collection("students")
-            .where("tenantId", "==", tenantId)
-            .where("__name__", "==", studentId);
-          
+          // ✅ OPTIMIZED: Direct Document Lookup (1 Read, Cheaper, Faster)
+          const studentRef = adminDb.collection("students").doc(studentId);
           const studentSnap = await studentRef.get();
 
-          if (studentSnap.empty) {
+          // ✅ SECURITY: Verify document exists AND belongs to this tenant
+          if (!studentSnap.exists || studentSnap.data()?.tenantId !== tenantId) {
             return NextResponse.json({ success: false, message: "Student not found or access denied" }, { status: 404 });
           }
 
-          const studentData = studentSnap.docs[0].data();
-          const studentDocId = studentSnap.docs[0].id;
+          const studentData = studentSnap.data();
+          const studentDocId = studentSnap.id;
 
+          // 🚀 Parallel Fetching for Maximum Performance
           const [attendanceSnap, marksSnap, feesSnap] = await Promise.all([
             adminDb.collection("attendance").where("tenantId", "==", tenantId).where("studentId", "==", studentDocId).orderBy("date", "desc").limit(30).get(),
             adminDb.collection("marks").where("tenantId", "==", tenantId).where("studentId", "==", studentDocId).orderBy("createdAt", "desc").limit(10).get(),
@@ -40,6 +41,7 @@ export const GET = withErrorHandler(
           const marks = marksSnap.docs.map(d => d.data());
           const fees = feesSnap.docs.map(d => d.data());
 
+          // 🧠 Advanced 40/40/20 Risk Engine
           const presentCount = attendance.filter((a: any) => a.status === "Present").length;
           const attPercent = attendance.length > 0 ? (presentCount / attendance.length) * 100 : 100;
           const attRisk = attPercent < 75 ? 40 : 0;
