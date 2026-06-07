@@ -1,6 +1,6 @@
 // lib/audit.ts
 import { adminDb } from "@/lib/firebase-admin";
-import { serverTimestamp } from "firebase-admin/firestore"; // ✅ Import serverTimestamp
+import { FieldValue } from "firebase-admin/firestore"; // ✅ Correct import for newer firebase-admin versions
 
 export async function logAction({
   action,
@@ -25,10 +25,10 @@ export async function logAction({
       entityId: entityId || null,
       entityType: entityType || null,
       metadata,
-      createdAt: serverTimestamp(), // ✅ Changed from new Date()
+      createdAt: FieldValue.serverTimestamp(), // ✅ Correct usage
     });
   } catch (err) {
-    // Fail silently so it doesn't break the main user action (e.g., saving a mark)
+    // Fail silently so it doesn't break the main user action
     console.error("Audit log failed:", err);
   }
 }
