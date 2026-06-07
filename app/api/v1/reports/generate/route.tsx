@@ -37,7 +37,7 @@ export const GET = withErrorHandler(
           .where("term", "==", term)
           .get();
 
-        // 🛡️ FIX: Explicitly map Firestore DocumentData to the exact shape expected by ReportCardTemplate
+        // 🛡️ Explicitly map Firestore DocumentData to strict types
         const marks = marksSnap.docs.map(d => {
           const data = d.data();
           return {
@@ -48,7 +48,7 @@ export const GET = withErrorHandler(
           };
         });
 
-        // 3. Fetch School Branding for the Header
+        // 3. Fetch School Branding
         const settingsSnap = await adminDb.collection("settings").doc(tenantId).get();
         const schoolName = settingsSnap.exists ? settingsSnap.data()?.schoolName || "EduPilot Academy" : "EduPilot Academy";
 
@@ -63,15 +63,15 @@ export const GET = withErrorHandler(
             section: student?.section || "N/A",
             rollNumber: student?.rollNumber || "N/A",
           },
-          marks, // ✅ Now this perfectly matches the strict type!
+          marks,
           aiComment: "An excellent term! Keep up the hard work and maintain focus on continuous improvement."
         };
 
         // 5. Generate PDF Buffer
         const buffer = await renderToBuffer(<ReportCardTemplate data={pdfData} />);
 
-        // 6. Return PDF as a downloadable file
-        return new NextResponse(buffer, {
+        // 6. Return PDF as a downloadable file (Buffer converted to Uint8Array)
+        return new NextResponse(new Uint8Array(buffer), {
           headers: {
             'Content-Type': 'application/pdf',
             'Content-Disposition': `attachment; filename="Report_${student?.fullName || studentId}_${term}.pdf"`,
