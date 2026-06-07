@@ -1,12 +1,5 @@
 import React from 'react';
-import { Document, Page, Text, View, StyleSheet, Font } from '@react-pdf/renderer';
-
-// Register a robust font for international support (Urdu/English)
-// For now, we use the default Helvetica, but you can register Roboto or Noto Nastaliq here later.
-Font.register({
-  family: 'Roboto',
-  src: 'https://cdnjs.cloudflare.com/ajax/libs/ink/3.1.10/fonts/Roboto/roboto-medium-webfont.ttf'
-});
+import { Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer';
 
 const styles = StyleSheet.create({
   page: { padding: 30, fontSize: 11, fontFamily: 'Helvetica', color: '#1E293B' },
@@ -42,40 +35,25 @@ interface ReportData {
 }
 
 export const ReportCardTemplate: React.FC<{ data: ReportData }> = ({ data }) => {
-  const totalMax = data.marks.reduce((sum, m) => sum + m.totalMarks, 0);
-  const totalObt = data.marks.reduce((sum, m) => sum + m.marksObtained, 0);
+  const totalMax = data.marks.reduce((sum, m) => sum + (m.totalMarks || 0), 0);
+  const totalObt = data.marks.reduce((sum, m) => sum + (m.marksObtained || 0), 0);
   const percentage = totalMax > 0 ? ((totalObt / totalMax) * 100).toFixed(1) : '0.0';
 
   return (
     <Document>
       <Page size="A4" style={styles.page}>
-        {/* Header */}
         <View style={styles.header}>
           <Text style={styles.schoolName}>{data.schoolName || 'EduPilot Academy'}</Text>
           <Text style={styles.reportTitle}>{data.term} Report</Text>
         </View>
 
-        {/* Student Info */}
         <View style={styles.studentInfo}>
-          <View style={styles.infoCol}>
-            <Text style={styles.infoLabel}>Student Name</Text>
-            <Text style={styles.infoValue}>{data.student.name}</Text>
-          </View>
-          <View style={styles.infoCol}>
-            <Text style={styles.infoLabel}>Father's Name</Text>
-            <Text style={styles.infoValue}>{data.student.fatherName}</Text>
-          </View>
-          <View style={styles.infoCol}>
-            <Text style={styles.infoLabel}>Class & Section</Text>
-            <Text style={styles.infoValue}>{data.student.classGrade} - {data.student.section}</Text>
-          </View>
-          <View style={styles.infoCol}>
-            <Text style={styles.infoLabel}>Roll No</Text>
-            <Text style={styles.infoValue}>{data.student.rollNumber}</Text>
-          </View>
+          <View style={styles.infoCol}><Text style={styles.infoLabel}>Student Name</Text><Text style={styles.infoValue}>{data.student.name}</Text></View>
+          <View style={styles.infoCol}><Text style={styles.infoLabel}>Father's Name</Text><Text style={styles.infoValue}>{data.student.fatherName}</Text></View>
+          <View style={styles.infoCol}><Text style={styles.infoLabel}>Class & Section</Text><Text style={styles.infoValue}>{data.student.classGrade} - {data.student.section}</Text></View>
+          <View style={styles.infoCol}><Text style={styles.infoLabel}>Roll No</Text><Text style={styles.infoValue}>{data.student.rollNumber}</Text></View>
         </View>
 
-        {/* Marks Table Header */}
         <View style={styles.tableHeader}>
           <Text style={styles.colSubject}>Subject</Text>
           <Text style={styles.colMarks}>Total</Text>
@@ -84,18 +62,16 @@ export const ReportCardTemplate: React.FC<{ data: ReportData }> = ({ data }) => 
           <Text style={styles.colGrade}>Grade</Text>
         </View>
 
-        {/* Marks Table Rows */}
         {data.marks.map((m, idx) => (
           <View key={idx} style={styles.tableRow}>
             <Text style={styles.colSubject}>{m.subject}</Text>
             <Text style={styles.colMarks}>{m.totalMarks}</Text>
             <Text style={styles.colMarks}>{m.marksObtained}</Text>
-            <Text style={styles.colMarks}>{((m.marksObtained / m.totalMarks) * 100).toFixed(0)}%</Text>
+            <Text style={styles.colMarks}>{m.totalMarks > 0 ? ((m.marksObtained / m.totalMarks) * 100).toFixed(0) : 0}%</Text>
             <Text style={styles.colGrade}>{m.grade}</Text>
           </View>
         ))}
 
-        {/* Grand Total Row */}
         <View style={[styles.tableRow, { backgroundColor: '#F1F5F9', fontWeight: 'bold' }]}>
           <Text style={[styles.colSubject, { fontWeight: 'bold' }]}>GRAND TOTAL</Text>
           <Text style={styles.colMarks}>{totalMax}</Text>
@@ -104,7 +80,6 @@ export const ReportCardTemplate: React.FC<{ data: ReportData }> = ({ data }) => 
           <Text style={styles.colGrade}>-</Text>
         </View>
 
-        {/* AI Comment Section */}
         {data.aiComment && (
           <View style={styles.aiSection}>
             <Text style={styles.aiTitle}>Teacher's AI Comment</Text>
@@ -112,14 +87,9 @@ export const ReportCardTemplate: React.FC<{ data: ReportData }> = ({ data }) => 
           </View>
         )}
 
-        {/* Signatures */}
         <View style={styles.footer}>
-          <View style={styles.signatureLine}>
-            <Text>Class Teacher</Text>
-          </View>
-          <View style={styles.signatureLine}>
-            <Text>Principal</Text>
-          </View>
+          <View style={styles.signatureLine}><Text>Class Teacher</Text></View>
+          <View style={styles.signatureLine}><Text>Principal</Text></View>
         </View>
       </Page>
     </Document>
