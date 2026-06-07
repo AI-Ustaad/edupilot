@@ -20,8 +20,8 @@ export const GET = withErrorHandler(
           .where("tenantId", "==", tenantId)
           .get();
         
-        // 🛡️ Filter out soft-deleted sections
-        const sections = snap.docs
+        // ✅ FIX: Explicitly type as any[] because Firestore data has no strict schema
+        const sections: any[] = snap.docs
           .map(d => ({ id: d.id, ...d.data() }))
           .filter(s => !s.deleted);
 
