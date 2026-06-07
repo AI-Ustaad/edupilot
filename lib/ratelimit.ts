@@ -1,32 +1,22 @@
-// lib/ratelimit.ts
 import { Ratelimit } from "@upstash/ratelimit";
 import { Redis } from "@upstash/redis";
+import { headers } from "next/headers";
 
-const redis = new Redis({
-  url: process.env.UPSTASH_REDIS_REST_URL || "",
-  token: process.env.UPSTASH_REDIS_REST_TOKEN || "",
-});
+// Initialize Upstash Redis from Environment Variables
+const redis = Redis.fromEnv();
 
-// سخت لمٹ – لاگ ان، رجسٹریشن (15 منٹ میں 10 کوششیں)
+// 🛡️ Configure: 10 requests per 1 minute (Sliding Window)
 export const authRateLimit = new Ratelimit({
   redis,
-  limiter: Ratelimit.slidingWindow(10, "15 m"),
-  analytics: true,
-  prefix: "ratelimit:auth",
+  limiter: Ratelimit.slidingWindow(10, "1 m"),
 });
 
-// AI خصوصیات کے لیے – (1 منٹ میں 5 درخواستیں)
-export const aiRateLimit = new Ratelimit({
-  redis,
-  limiter: Ratelimit.slidingWindow(5, "1 m"),
-  analytics: true,
-  prefix: "ratelimit:ai",
-});
-
-// عام APIs کے لیے – (1 منٹ میں 30 درخواستیں)
-export const standardRateLimit = new Ratelimit({
-  redis,
-  limiter: Ratelimit.slidingWindow(30, "1 m"),
-  analytics: true,
-  prefix: "ratelimit:standard",
-});
+export async function checkAuthRateLimit() {
+  const headersList = headers();
+  // Get IP address (handles Vercel/Cloudflare proxies)
+  const ip = headersList.get("x-forwarded-for") || "127.0.0.1";
+  
+  const { success, limit, reset, remaining } = await authRateLimit.limit(`auth_${ip}`);
+  
+  return { success, limit, reset, remaining };
+}
