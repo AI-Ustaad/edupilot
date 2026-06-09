@@ -1,6 +1,9 @@
 const withNextIntl = require("next-intl/plugin")("./i18n/request.ts");
 
 const nextConfig = {
+  // ✅ FIX: Mark exceljs as server-only package (prevents webpack bundling errors)
+  serverExternalPackages: ['exceljs'],
+
   async rewrites() {
     return [
       { source: "/api/:path*", destination: "/api/v1/:path*" },
@@ -40,7 +43,7 @@ module.exports = withSentryConfig(module.exports, {
   webpack: {
     // Enables automatic instrumentation of Vercel Cron Monitors. (Does not yet work with App Router route handlers.)
     // See the following for more information:
-    // https://docs.sentry.io/product/crons/
+    // https://docs.sentry.com/product/crons/
     // https://vercel.com/docs/cron-jobs
     automaticVercelMonitors: true,
 
