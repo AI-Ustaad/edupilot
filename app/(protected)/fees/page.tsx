@@ -1,275 +1,338 @@
 "use client";
-import React, { useState, useEffect } from "react";
-import { Wallet, CheckCircle2, AlertCircle, Search, Loader2, Receipt, CreditCard } from "lucide-react";
+import React, { useState } from "react";
+import { useAuth } from "@/context/AuthContext";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { 
+  Wallet, Search, Save, CheckCircle2, AlertCircle, 
+  Users, Loader2, Trash2, Plus, Calendar, DollarSign,
+  TrendingUp, TrendingDown, Receipt
+} from "lucide-react";
 
-export default function FeesPage() {
-  const [isMounted, setIsMounted] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState(false);
-  const [errorMsg, setErrorMsg] = useState("");
-  const [onlinePaymentLoading, setOnlinePaymentLoading] = useState<string | null>(null);
+const MONTHS = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December"
+];
 
-  const [students, setStudents] = useState<any[]>([]);
-  const [transactions, setTransactions] = useState<any[]>([]);
-  const [searchTerm, setSearchTerm] = useState("");
+// --- API Helpers ---
+const fetchFees = async (params: Record<string, string>) => {
+  const q = new URLSearchParams(params);
+  const res = await fetch(`/api/fees?${q}`);
+  if (!res.ok) throw new Error("Failed to fetch fees");
+  const json = await res.json();
+  return json.data || [];
+};
 
-  const [formData, setFormData] = useState({
-    studentId: "",
-    studentName: "",
-    rollNumber: "",
-    classGrade: "",
-    feeMonth: new Date().toLocaleString('default', { month: 'long', year: 'numeric' }),
-    amountPaid: "",
-    paymentMethod: "Cash",
-    remarks: ""
+const saveFeeApi = async (data: any) => {
+  const res = await fetch("/api/fees", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error("Failed to save fee");
+  return res.json();
+};
+
+const deleteFeeApi = async (id: string) => {
+  const res = await fetch(`/api/fees?id=${id}`, { method: "DELETE" });
+  if (!res.ok) throw new Error("Failed to delete fee");
+  return res.json();
+};
+
+export default function FeesManagementPage() {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  
+  const [selectedMonth, setSelectedMonth] = useState(new Date().toLocaleString('default', { month: 'long' }));
+  const [selectedClass, setSelectedClass] = useState("");
+  const [selectedSection, setSelectedSection] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [showForm, setShowForm] = useState(false);
+  const [formData, setFormData] = useState<any>({
+    studentId: "", studentName: "", classGrade: "", section: "",
+    month: selectedMonth, amount: "", discount: "0", status: "pending",
+    paymentMethod: "Cash", notes: ""
   });
 
-  useEffect(() => {
-    setIsMounted(true);
-    fetchData();
-  }, []);
+  // 🚀 Fetch Fees via React Query
+  const { data: fees = [], isLoading } = useQuery({
+    queryKey: ["fees", user?.tenantId, selectedMonth, selectedClass, selectedSection],
+    queryFn: () => fetchFees({ 
+      month: selectedMonth,
+      classGrade: selectedClass,
+      section: selectedSection,
+    }),
+    enabled: !!user?.tenantId,
+  });
 
-  const fetchData = async () => {
-    try {
-      const stuRes = await fetch("/api/students", { credentials: "include" });
-      if (stuRes.ok) {
-        const stuData = await stuRes.json();
-        setStudents(Array.isArray(stuData) ? stuData : []);
-      }
-
-      const feeRes = await fetch("/api/fees", { credentials: "include" });
-      if (feeRes.ok) {
-        const result = await feeRes.json();
-        // result can be array directly or { success: true, data: [...] }
-        const txData = result?.success ? result.data : result;
-        setTransactions(Array.isArray(txData) ? txData : []);
-      } else {
-        console.error("Fees API failed:", feeRes.status);
-        setTransactions([]);
-      }
-    } catch (error) {
-      console.error("Data Fetch Error:", error);
-      setTransactions([]);
-    }
-  };
-
-  const handleStudentSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const student = students.find(s => s.id === e.target.value);
-    if (student) {
+  // Mutations
+  const saveMutation = useMutation({
+    mutationFn: saveFeeApi,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["fees"] });
+      setShowForm(false);
       setFormData({
-        ...formData,
-        studentId: student.id,
-        studentName: student.name || student.fullName || "",
-        rollNumber: student.rollNumber || "",
-        classGrade: `${student.classGrade || ""} ${student.section ? `- ${student.section}` : ""}`
+        studentId: "", studentName: "", classGrade: "", section: "",
+        month: selectedMonth, amount: "", discount: "0", status: "pending",
+        paymentMethod: "Cash", notes: ""
       });
-    } else {
-      setFormData({ ...formData, studentId: "", studentName: "", rollNumber: "", classGrade: "" });
-    }
-  };
+    },
+  });
 
-  const handleSavePayment = async (e: React.FormEvent) => {
+  const deleteMutation = useMutation({
+    mutationFn: deleteFeeApi,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["fees"] });
+    },
+  });
+
+  // Filter fees by search
+  const filteredFees = fees.filter((f: any) => {
+    const matchSearch = !searchQuery || 
+      f.studentName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      f.studentId?.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchSearch;
+  });
+
+  // Analytics
+  const totalCollected = fees.filter((f: any) => f.status === "paid").reduce((sum: number, f: any) => sum + (f.netAmount || 0), 0);
+  const totalPending = fees.filter((f: any) => f.status === "pending").reduce((sum: number, f: any) => sum + (f.netAmount || 0), 0);
+  const totalDiscount = fees.reduce((sum: number, f: any) => sum + (f.discount || 0), 0);
+
+  const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.studentId) return setErrorMsg("Please select a student first.");
-
-    setLoading(true);
-    setErrorMsg("");
-    setSuccess(false);
-
-    try {
-      const res = await fetch("/api/fees", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
-        credentials: "include"
-      });
-
-      if (!res.ok) throw new Error("Failed to save transaction.");
-
-      setSuccess(true);
-      setFormData(prev => ({ ...prev, amountPaid: "", remarks: "" }));
-      fetchData();
-      setTimeout(() => setSuccess(false), 3000);
-    } catch (error) {
-      setErrorMsg("Error processing payment. Please check your connection.");
-    } finally {
-      setLoading(false);
+    if (!formData.studentId || !formData.amount) {
+      alert("Student ID and amount are required");
+      return;
     }
+    saveMutation.mutate(formData);
   };
 
-  const handleOnlinePayment = async (transaction: any) => {
-    setOnlinePaymentLoading(transaction.id);
-    try {
-      const res = await fetch("/api/create-checkout-session", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          amount: transaction.amountPaid,
-          studentId: transaction.studentId,
-          month: transaction.feeMonth,
-          transactionId: transaction.id
-        }),
-        credentials: "include"
-      });
-      const data = await res.json();
-      if (data.url) {
-        window.location.href = data.url;
-      } else {
-        alert("Payment gateway not configured yet (demo mode).");
-      }
-    } catch (err) {
-      alert("Online payment failed.");
-    } finally {
-      setOnlinePaymentLoading(null);
+  const handleDelete = (id: string) => {
+    if (confirm("Are you sure? This will archive the fee record.")) {
+      deleteMutation.mutate(id);
     }
   };
-
-  // Safe date conversion helper
-  const formatTransactionDate = (t: any) => {
-    try {
-      if (t.createdAt?.toDate) return t.createdAt.toDate().toLocaleString();
-      if (t.timestamp) return new Date(t.timestamp).toLocaleString();
-      return new Date().toLocaleString();
-    } catch {
-      return "N/A";
-    }
-  };
-
-  if (!isMounted) return null;
-
-  const filteredTransactions = transactions.filter(t =>
-    t.studentName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    t.rollNumber?.toString().includes(searchTerm)
-  );
-
-  const totalCollected = transactions.reduce((sum, t) => sum + (Number(t.amountPaid) || 0), 0);
 
   return (
-    <div className="animate-fade-in space-y-6 pb-20 w-full max-w-[1400px] mx-auto">
-
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 glass-card p-6 md:p-8">
+    <div className="p-6 max-w-7xl mx-auto space-y-6 animate-fade-in">
+      {/* HEADER */}
+      <div className="flex justify-between items-end">
         <div>
-          <h1 className="text-2xl font-extrabold text-slate-800 tracking-tight uppercase flex items-center gap-2">
-            <Wallet className="text-warning" size={28} /> Fee Management
+          <h1 className="text-2xl font-black text-gray-900 flex items-center gap-3">
+            <Wallet className="text-green-600"/> Fee Management
           </h1>
-          <p className="text-sm text-slate-500 mt-1 uppercase tracking-widest font-bold">Process payments & generate receipts</p>
+          <p className="text-sm text-gray-500 mt-1">Track and manage student fee collection securely.</p>
         </div>
-        <div className="bg-warning/20 text-warning px-4 py-2 rounded-xl font-black uppercase text-sm">
-          Total Collected: Rs {totalCollected.toLocaleString()}
+        <button 
+          onClick={() => setShowForm(!showForm)}
+          className="bg-green-600 hover:bg-green-700 text-white px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 shadow-md"
+        >
+          <Plus size={18}/> Add Fee Record
+        </button>
+      </div>
+
+      {/* ANALYTICS CARDS */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="bg-white rounded-2xl p-5 border border-gray-200 shadow-sm">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs font-bold text-gray-500 uppercase">Collected</p>
+              <p className="text-2xl font-black text-green-600 mt-1">Rs. {totalCollected.toLocaleString()}</p>
+            </div>
+            <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
+              <TrendingUp className="text-green-600" size={24}/>
+            </div>
+          </div>
+        </div>
+        <div className="bg-white rounded-2xl p-5 border border-gray-200 shadow-sm">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs font-bold text-gray-500 uppercase">Pending</p>
+              <p className="text-2xl font-black text-orange-600 mt-1">Rs. {totalPending.toLocaleString()}</p>
+            </div>
+            <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center">
+              <TrendingDown className="text-orange-600" size={24}/>
+            </div>
+          </div>
+        </div>
+        <div className="bg-white rounded-2xl p-5 border border-gray-200 shadow-sm">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs font-bold text-gray-500 uppercase">Discounts Given</p>
+              <p className="text-2xl font-black text-blue-600 mt-1">Rs. {totalDiscount.toLocaleString()}</p>
+            </div>
+            <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
+              <Receipt className="text-blue-600" size={24}/>
+            </div>
+          </div>
         </div>
       </div>
 
-      {success && (
-        <div className="bg-success/20 text-success p-4 rounded-xl flex items-center gap-3 font-bold uppercase animate-fade-in-down w-full">
-          <CheckCircle2 size={20} /> Payment processed successfully!
-        </div>
-      )}
-
-      {errorMsg && (
-        <div className="bg-red-50 text-red-600 p-4 rounded-xl flex items-center gap-3 font-bold uppercase animate-fade-in-down w-full">
-          <AlertCircle size={20} /> {errorMsg}
-        </div>
-      )}
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-
-        {/* New Payment Form */}
-        <div className="lg:col-span-1 glass-card p-6 h-fit">
-          <div className="flex items-center gap-2 mb-6 border-b border-white/20 pb-4">
-            <CreditCard className="text-slate-400" size={20} />
-            <h2 className="text-lg font-black text-slate-800 uppercase">New Payment</h2>
-          </div>
-
-          <form onSubmit={handleSavePayment} className="space-y-5">
-            <div className="space-y-1">
-              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Select Student</label>
-              <select required value={formData.studentId} onChange={handleStudentSelect} className="w-full bg-white/60 backdrop-blur-sm outline-none rounded-xl px-4 py-3 text-sm font-bold border border-white/25 focus:border-warning uppercase">
-                <option value="" disabled>-- Choose Student --</option>
-                {students.map(s => (
-                  <option key={s.id} value={s.id}>{s.name || s.fullName} (Roll: {s.rollNumber}) - {s.classGrade}</option>
-                ))}
-              </select>
+      {/* ADD FEE FORM */}
+      {showForm && (
+        <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm animate-fade-in">
+          <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+            <Plus size={20} className="text-green-500"/> New Fee Record
+          </h3>
+          <form onSubmit={handleSave} className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <input 
+              type="text" placeholder="Student ID" required
+              value={formData.studentId}
+              onChange={e => setFormData({...formData, studentId: e.target.value})}
+              className="border border-gray-300 rounded-xl px-4 py-3 font-medium"
+            />
+            <input 
+              type="text" placeholder="Student Name" required
+              value={formData.studentName}
+              onChange={e => setFormData({...formData, studentName: e.target.value})}
+              className="border border-gray-300 rounded-xl px-4 py-3 font-medium"
+            />
+            <select 
+              value={formData.month}
+              onChange={e => setFormData({...formData, month: e.target.value})}
+              className="border border-gray-300 rounded-xl px-4 py-3 font-medium"
+            >
+              {MONTHS.map(m => <option key={m} value={m}>{m}</option>)}
+            </select>
+            <input 
+              type="number" placeholder="Amount (Rs.)" required
+              value={formData.amount}
+              onChange={e => setFormData({...formData, amount: e.target.value})}
+              className="border border-gray-300 rounded-xl px-4 py-3 font-medium"
+            />
+            <input 
+              type="number" placeholder="Discount (Rs.)"
+              value={formData.discount}
+              onChange={e => setFormData({...formData, discount: e.target.value})}
+              className="border border-gray-300 rounded-xl px-4 py-3 font-medium"
+            />
+            <select 
+              value={formData.status}
+              onChange={e => setFormData({...formData, status: e.target.value})}
+              className="border border-gray-300 rounded-xl px-4 py-3 font-medium"
+            >
+              <option value="pending">Pending</option>
+              <option value="paid">Paid</option>
+              <option value="partial">Partial</option>
+              <option value="waived">Waived</option>
+            </select>
+            <input 
+              type="text" placeholder="Class"
+              value={formData.classGrade}
+              onChange={e => setFormData({...formData, classGrade: e.target.value})}
+              className="border border-gray-300 rounded-xl px-4 py-3 font-medium"
+            />
+            <input 
+              type="text" placeholder="Section"
+              value={formData.section}
+              onChange={e => setFormData({...formData, section: e.target.value})}
+              className="border border-gray-300 rounded-xl px-4 py-3 font-medium"
+            />
+            <select 
+              value={formData.paymentMethod}
+              onChange={e => setFormData({...formData, paymentMethod: e.target.value})}
+              className="border border-gray-300 rounded-xl px-4 py-3 font-medium"
+            >
+              <option>Cash</option>
+              <option>Bank Transfer</option>
+              <option>Cheque</option>
+              <option>Online</option>
+            </select>
+            <div className="md:col-span-3 flex gap-3">
+              <button 
+                type="submit" 
+                disabled={saveMutation.isPending}
+                className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-xl font-bold flex items-center gap-2 disabled:opacity-50"
+              >
+                {saveMutation.isPending ? <Loader2 className="animate-spin"/> : <Save size={18}/>} 
+                Save Record
+              </button>
+              <button 
+                type="button"
+                onClick={() => setShowForm(false)}
+                className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-6 py-3 rounded-xl font-bold"
+              >
+                Cancel
+              </button>
             </div>
-
-            {formData.studentId && (
-              <div className="bg-white/40 p-4 rounded-xl border border-white/20 text-sm font-bold uppercase text-slate-600">
-                <p>Class: <span className="text-slate-800">{formData.classGrade}</span></p>
-                <p>Roll No: <span className="text-slate-800">{formData.rollNumber}</span></p>
-              </div>
-            )}
-
-            <div className="space-y-1">
-              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Fee Month</label>
-              <input required type="text" value={formData.feeMonth} onChange={e => setFormData({ ...formData, feeMonth: e.target.value })} placeholder="e.g. April 2026" className="w-full bg-white/60 backdrop-blur-sm outline-none rounded-xl px-4 py-3 text-sm font-bold border border-white/25 focus:border-warning uppercase" />
-            </div>
-
-            <div className="space-y-1">
-              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Amount Paid (Rs)</label>
-              <input required type="number" min="0" value={formData.amountPaid} onChange={e => setFormData({ ...formData, amountPaid: e.target.value })} placeholder="0.00" className="w-full bg-white/60 backdrop-blur-sm outline-none rounded-xl px-4 py-3 text-lg font-black border border-white/25 focus:border-warning text-slate-800" />
-            </div>
-
-            <div className="space-y-1">
-              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Payment Method</label>
-              <select required value={formData.paymentMethod} onChange={e => setFormData({ ...formData, paymentMethod: e.target.value })} className="w-full bg-white/60 backdrop-blur-sm outline-none rounded-xl px-4 py-3 text-sm font-bold border border-white/25 focus:border-warning uppercase">
-                <option>Cash</option>
-                <option>Bank Transfer</option>
-                <option>Online / JazzCash</option>
-              </select>
-            </div>
-
-            <button disabled={loading} type="submit" className="w-full btn-primary py-4 rounded-xl font-black text-sm flex items-center justify-center gap-2 mt-4 uppercase tracking-widest">
-              {loading ? <><Loader2 size={18} className="animate-spin" /> Processing...</> : <><Receipt size={18} /> Process Payment</>}
-            </button>
           </form>
         </div>
+      )}
 
-        {/* Ledger */}
-        <div className="lg:col-span-2 glass-card p-6 flex flex-col h-[800px]">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 border-b border-white/20 pb-4">
-            <h2 className="text-lg font-black text-slate-800 uppercase">Transaction Ledger</h2>
-            <div className="bg-white/40 rounded-xl px-4 py-2 flex items-center gap-3 border border-white/25 w-full sm:w-auto">
-              <Search size={16} className="text-slate-400" />
-              <input type="text" placeholder="Search roll no or name..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="bg-transparent outline-none text-sm font-bold uppercase w-full" />
-            </div>
-          </div>
+      {/* FILTERS */}
+      <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm flex flex-wrap gap-4">
+        <select value={selectedMonth} onChange={e => setSelectedMonth(e.target.value)} className="border border-gray-300 rounded-lg px-3 py-2 font-medium">
+          {MONTHS.map(m => <option key={m} value={m}>{m}</option>)}
+        </select>
+        <input 
+          type="text" placeholder="Search student..."
+          value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
+          className="border border-gray-300 rounded-lg px-3 py-2 font-medium flex-1 min-w-[200px]"
+        />
+      </div>
 
-          <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 space-y-3">
-            {transactions.length === 0 ? (
-              <div className="h-full flex flex-col items-center justify-center text-slate-400 font-bold text-sm uppercase">
-                <Receipt size={48} className="opacity-20 mb-4" />
-                No transactions recorded yet.
-              </div>
-            ) : (
-              filteredTransactions.map((t, idx) => (
-                <div key={t.id || idx} className="flex flex-col sm:flex-row justify-between items-start sm:items-center bg-white/40 border border-white/20 p-4 rounded-2xl hover:border-warning/40 transition-colors gap-4">
-                  <div className="flex-1">
-                    <p className="font-black text-slate-800 uppercase text-sm">{t.studentName || "Unknown"} <span className="text-xs text-slate-500 ml-2">Roll: {t.rollNumber || "-"}</span></p>
-                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">{t.classGrade || ""} • {t.feeMonth || ""}</p>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase mt-1">{formatTransactionDate(t)}</p>
-                  </div>
-                  <div className="flex items-center gap-4 w-full sm:w-auto justify-between sm:justify-end">
-                    <span className="bg-white/60 text-slate-700 px-3 py-1 rounded-lg text-xs font-black uppercase border border-white/20">
-                      {t.paymentMethod || "Cash"}
-                    </span>
-                    <span className="text-lg font-black text-success">
-                      Rs {(Number(t.amountPaid) || 0).toLocaleString()}
-                    </span>
-                    <button
-                      onClick={() => handleOnlinePayment(t)}
-                      disabled={onlinePaymentLoading === t.id}
-                      className="bg-accent hover:bg-accent/80 disabled:opacity-50 text-gray-900 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 transition-all"
-                    >
-                      {onlinePaymentLoading === t.id ? <Loader2 size={14} className="animate-spin" /> : <CreditCard size={14} />}
-                      {onlinePaymentLoading === t.id ? "..." : "Pay Online"}
-                    </button>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
+      {/* FEES TABLE */}
+      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+        <div className="px-6 py-4 bg-gray-50 border-b border-gray-200 font-bold text-gray-700 flex items-center gap-2">
+          <Receipt size={18}/> Fee Records ({filteredFees.length})
         </div>
-
+        
+        {isLoading ? (
+          <div className="p-12 flex justify-center"><Loader2 className="animate-spin text-green-500" size={32}/></div>
+        ) : filteredFees.length === 0 ? (
+          <div className="p-12 text-center text-gray-400 font-bold">No fee records found for this month.</div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm">
+              <thead className="bg-gray-50 text-xs text-gray-500 uppercase tracking-wider">
+                <tr>
+                  <th className="px-6 py-3 font-bold">Student</th>
+                  <th className="px-6 py-3 font-bold">Class</th>
+                  <th className="px-6 py-3 font-bold">Month</th>
+                  <th className="px-6 py-3 font-bold text-right">Amount</th>
+                  <th className="px-6 py-3 font-bold text-right">Discount</th>
+                  <th className="px-6 py-3 font-bold text-right">Net</th>
+                  <th className="px-6 py-3 font-bold text-center">Status</th>
+                  <th className="px-6 py-3 font-bold text-right">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {filteredFees.map((fee: any) => (
+                  <tr key={fee.id} className="hover:bg-gray-50 transition">
+                    <td className="px-6 py-4">
+                      <p className="font-bold text-gray-900">{fee.studentName || "Unknown"}</p>
+                      <p className="text-xs text-gray-400">ID: {fee.studentId}</p>
+                    </td>
+                    <td className="px-6 py-4 font-medium text-gray-600">{fee.classGrade} - {fee.section}</td>
+                    <td className="px-6 py-4 font-medium text-gray-600">{fee.month}</td>
+                    <td className="px-6 py-4 text-right font-bold">Rs. {(fee.amount || 0).toLocaleString()}</td>
+                    <td className="px-6 py-4 text-right text-blue-600 font-bold">Rs. {(fee.discount || 0).toLocaleString()}</td>
+                    <td className="px-6 py-4 text-right font-black text-gray-900">Rs. {(fee.netAmount || 0).toLocaleString()}</td>
+                    <td className="px-6 py-4 text-center">
+                      <span className={`px-3 py-1 rounded-full text-xs font-bold ${
+                        fee.status === 'paid' ? 'bg-green-100 text-green-700' :
+                        fee.status === 'pending' ? 'bg-orange-100 text-orange-700' :
+                        fee.status === 'partial' ? 'bg-blue-100 text-blue-700' :
+                        'bg-gray-100 text-gray-700'
+                      }`}>
+                        {fee.status?.toUpperCase()}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <button 
+                        onClick={() => handleDelete(fee.id)}
+                        disabled={deleteMutation.isPending}
+                        className="text-red-400 hover:text-red-600 p-2 rounded-lg hover:bg-red-50 transition disabled:opacity-50"
+                      >
+                        <Trash2 size={16}/>
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   );
