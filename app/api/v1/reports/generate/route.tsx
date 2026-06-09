@@ -1,3 +1,6 @@
+// 🆕 Force dynamic rendering because this route uses cookies (session auth)
+export const dynamic = 'force-dynamic';
+
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebase-admin";
 import { withErrorHandler, withAuth, withTenant } from "@/route-helpers";
