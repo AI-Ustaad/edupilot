@@ -1,21 +1,43 @@
-// 🛡️ AI Input Sanitization & Prompt Injection Protection
+// lib/ai/sanitize.ts
+// 🛡️ Prompt Injection Protection for AI Routes
 
-// Dangerous patterns that could manipulate AI behavior
-const DANGEROUS_PATTERNS = [
+export interface SanitizedInput {
+  content: string;
+  isValid: boolean;
+  reason?: string;
+}
+
+// ==========================================
+// 1. DANGEROUS PATTERNS (Prompt Injection Attempts)
+// ==========================================
+const INJECTION_PATTERNS = [
   /ignore previous instructions/i,
+  /forget everything/i,
   /you are now/i,
-  /act as if/i,
   /system prompt/i,
-  /reveal.*password/i,
-  /show.*database/i,
-  /dump.*data/i,
-  /forget.*instructions/i,
-  /new instructions/i,
-  /override/i,
-  /jailbreak/i,
+  /reveal your (instructions|prompt|rules)/i,
+  /act as (if|a)/i,
+  /pretend (you are|to be)/i,
+  /new (instructions|rules)/i,
+  /override (previous|your)/i,
+  /disregard (all|previous)/i,
+  /show me (all|every) (students|data|records)/i,
+  /list (all|every) (students|users|schools)/i,
+  /export (all|everything)/i,
+  /give me access to/i,
+  /bypass (security|auth|permission)/i,
+  /what (are|were) your (original|initial) instructions/i,
+  /repeat your (system|initial) prompt/i,
+  /translate the above/i,
   /DAN mode/i,
+  /developer mode/i,
 ];
 
-// Special tokens that shouldn't be in user input
+// ==========================================
+// 2. SPECIAL TOKENS (Attack Vectors)
+// ✅ FIXED: Properly escaped strings
+// ==========================================
 const SPECIAL_TOKENS = [
-  '<|', '|>', '
+  '<|',
+  '|>',
+  '
