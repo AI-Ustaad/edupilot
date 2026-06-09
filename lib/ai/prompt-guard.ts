@@ -10,7 +10,7 @@ export interface SanitizedInput {
 // ==========================================
 // 1. DANGEROUS PATTERNS (Prompt Injection Attempts)
 // ==========================================
-const INJECTION_PATTERNS = [
+const INJECTION_PATTERNS: RegExp[] = [
   /ignore previous instructions/i,
   /forget everything/i,
   /you are now/i,
@@ -35,9 +35,12 @@ const INJECTION_PATTERNS = [
 
 // ==========================================
 // 2. SPECIAL TOKENS (Attack Vectors)
-// ✅ FIXED: Using template literals (backticks) for multi-line strings
+// ✅ SAFE: Using String.raw to avoid any parsing issues
 // ==========================================
-const SPECIAL_TOKENS = [
-  '<|',
-  '|>',
-  `
+const SPECIAL_TOKENS: string[] = [
+  String.raw`<|`,
+  String.raw`|>`,
+  String.raw`<think>`,
+  String.raw`</think>`,
+  String.raw`,
+  String.raw`
