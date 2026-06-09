@@ -1,6 +1,5 @@
 // lib/ai/prompt-guard.ts
 // 🛡️ Prompt Injection Protection for AI Routes
-// Phase 2, Task: Prompt injection protection on AI routes
 
 export interface SanitizedInput {
   content: string;
@@ -29,15 +28,18 @@ const INJECTION_PATTERNS = [
   /bypass (security|auth|permission)/i,
   /what (are|were) your (original|initial) instructions/i,
   /repeat your (system|initial) prompt/i,
-  /translate the above/i, // Common jailbreak technique
-  /DAN mode/i, // "Do Anything Now" jailbreak
+  /translate the above/i,
+  /DAN mode/i,
   /developer mode/i,
 ];
 
 // ==========================================
 // 2. SPECIAL TOKENS (Attack Vectors)
+// ✅ FIXED: All strings properly escaped
 // ==========================================
 const SPECIAL_TOKENS = [
+  '<|',
+  '|>',
   '
 </think>
 
