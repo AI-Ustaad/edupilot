@@ -1,6 +1,3 @@
-// 🆕 Force dynamic rendering because this route uses cookies (session auth)
-export const dynamic = 'force-dynamic';
-
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebase-admin";
 import { withErrorHandler, withAuth, withTenant } from "@/route-helpers";
@@ -12,7 +9,8 @@ import { ReportCardTemplate } from "@/lib/pdf/ReportCardTemplate";
 import React from "react";
 
 // Force Node.js runtime because @react-pdf/renderer uses Node streams
-export const runtime = 'nodejs'; 
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 export const GET = withErrorHandler(
   withAuth(
@@ -40,7 +38,6 @@ export const GET = withErrorHandler(
           .where("term", "==", term)
           .get();
 
-        // 🛡️ Explicitly map Firestore DocumentData to strict types
         const marks = marksSnap.docs.map(d => {
           const data = d.data();
           return {
@@ -51,7 +48,7 @@ export const GET = withErrorHandler(
           };
         });
 
-        // 3. Fetch School Branding
+        // 3. Fetch School Branding for the Header
         const settingsSnap = await adminDb.collection("settings").doc(tenantId).get();
         const schoolName = settingsSnap.exists ? settingsSnap.data()?.schoolName || "EduPilot Academy" : "EduPilot Academy";
 
@@ -73,8 +70,11 @@ export const GET = withErrorHandler(
         // 5. Generate PDF Buffer
         const buffer = await renderToBuffer(<ReportCardTemplate data={pdfData} />);
 
-        // 6. Return PDF as a downloadable file (Buffer converted to Uint8Array)
-        return new NextResponse(new Uint8Array(buffer), {
+        // ✅ FIX: Convert Buffer to Uint8Array for NextResponse compatibility
+        const pdfBytes = new Uint8Array(buffer);
+
+        // 6. Return PDF as a downloadable file
+        return new NextResponse(pdfBytes, {
           headers: {
             'Content-Type': 'application/pdf',
             'Content-Disposition': `attachment; filename="Report_${student?.fullName || studentId}_${term}.pdf"`,
