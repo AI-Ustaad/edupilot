@@ -1,3 +1,6 @@
+// 🆕 Force dynamic rendering because this route uses cookies (session auth)
+export const dynamic = 'force-dynamic';
+
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebase-admin";
 import { withErrorHandler, withAuth, withTenant } from "@/route-helpers";
@@ -5,7 +8,9 @@ import { withPermission } from "@/lib/auth/rbac";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 import type { TenantContext } from "@/types/api";
 
+// ==========================================
 // 🛡️ SECURE GET: Fetches ONLY pending leaves for the current tenant
+// ==========================================
 export const GET = withErrorHandler(
   withAuth(
     withTenant(
@@ -16,7 +21,7 @@ export const GET = withErrorHandler(
           .where("status", "==", "pending")
           .get();
 
-        // ✅ FIX: Explicitly type as any[] because Firestore data has no strict schema
+        // ✅ Explicitly type as any[] because Firestore data has no strict schema
         const leaves: any[] = leavesSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
         // 2. Fetch staff for THIS tenant only (to map teacher names)
