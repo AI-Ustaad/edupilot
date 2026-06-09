@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Loader2, Camera, Upload, Plus, Trash2, Calculator, FileSpreadsheet, FileText } from "lucide-react";
+import ExcelJS from "exceljs"; // ✅ NEW: Secure Excel library
 
 // -------------------- Main Component --------------------
 export default function AddStaffPage() {
@@ -288,7 +289,7 @@ export default function AddStaffPage() {
           {/* PROFESSIONAL */}
           {activeTab === 1 && (
             <Section title="Professional Information">
-              <Input label="Personnel No *" value={form.professional.personnelNo} onChange={e => handleChange("professional", "personnelNo", e.target.value)} required />
+              <Input label="Personnel No *" value={form.professional.personnelNo} onChange={e => handleChange("professional", "personnelNo", e.target.value)}required />
               <Input label="Employee ID" value={form.professional.employeeId} onChange={e => handleChange("professional", "employeeId", e.target.value)} />
               <Input label="Designation *" value={form.professional.designation} onChange={e => handleChange("professional", "designation", e.target.value)} required />
               <Input label="Department" value={form.professional.department} onChange={e => handleChange("professional", "department", e.target.value)} />
@@ -355,7 +356,7 @@ export default function AddStaffPage() {
                       placeholder="Amount"
                       type="number"
                       value={allow.amount}
-                      onChange={e => { const arr = [...form.payroll.allowances]; arr[idx].amount = parseFloat(e.target.value) || 0; setForm((prev: any) => ({ ...prev, payroll: { ...prev.payroll, allowances: arr } })); }}
+                      onChange={e => { const arr = [...form.payroll.allowances]; arr[idx].amount = parseFloat(e.target.value) || 0; setForm((prev: any) => ({...prev, payroll: { ...prev.payroll, allowances: arr } })); }}
                       className="w-24 p-2 border rounded-xl"
                     />
                     <button type="button" onClick={() => { const arr = form.payroll.allowances.filter((_: any, i: number) => i !== idx); setForm((prev: any) => ({ ...prev, payroll: { ...prev.payroll, allowances: arr } })); }} className="text-red-500"><Trash2 size={16} /></button>
@@ -379,7 +380,7 @@ export default function AddStaffPage() {
                       placeholder="Amount"
                       type="number"
                       value={ded.amount}
-                      onChange={e => { const arr = [...form.payroll.deductions]; arr[idx].amount = parseFloat(e.target.value) || 0; setForm((prev: any) => ({ ...prev, payroll: { ...prev.payroll, deductions: arr } })); }}
+                      onChange={e => { const arr = [...form.payroll.deductions]; arr[idx].amount = parseFloat(e.target.value) || 0; setForm((prev: any) => ({...prev, payroll: { ...prev.payroll, deductions: arr } })); }}
                       className="w-24 p-2 border rounded-xl"
                     />
                     <button type="button" onClick={() => { const arr = form.payroll.deductions.filter((_: any, i: number) => i !== idx); setForm((prev: any) => ({ ...prev, payroll: { ...prev.payroll, deductions: arr } })); }} className="text-red-500"><Trash2 size={16} /></button>
@@ -457,7 +458,7 @@ export default function AddStaffPage() {
         )}
       </div>
 
-      {/* Bulk Import Modal (reuse from list page if needed) */}
+      {/* Bulk Import Modal */}
       {showBulkModal && (
         <BulkImportModal onClose={() => setShowBulkModal(false)} onSuccess={() => {
           // refresh directory
@@ -502,51 +503,125 @@ function Select({ label, options, ...props }: { label: string; options: string[]
 }
 
 function BulkImportModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
-  // You can copy the bulk import logic from the staff list page
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState("");
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploading(true);
+    setUploadError("");
+
+    try {
+      // ✅ SECURE: Use ExcelJS instead of xlsx
+      const buffer = await file.arrayBuffer();
+      const workbook = new ExcelJS.Workbook();
+      await workbook.xlsx.load(buffer);
+
+      const worksheet = workbook.getWorksheet(1);
+      if (!worksheet) {
+        throw new Error("No worksheet found in Excel file");
+      }
+
+      const staffMembers: any[] = [];
+      const errors: string[] = [];
+
+      // Parse rows (skip header row 1)
+      worksheet.eachRow((row, rowNumber) => {
+        if (rowNumber === 1) return; // Skip header
+
+        const fullName = row.getCell(1).value?.toString().trim();
+        const email = row.getCell(2).value?.toString().trim();
+        const phone = row.getCell(3).value?.toString().trim();
+        const designation = row.getCell(4).value?.toString().trim();
+        const personnelNo = row.getCell(5).value?.toString().trim();
+
+        if (!fullName) {
+          errors.push(`Row ${rowNumber}: Full Name is required`);
+          return;
+        }
+
+        staffMembers.push({
+          personal: { fullName, email: email || "", phone: phone || "" },
+          professional: { designation: designation || "Teacher", personnelNo: personnelNo || "" },
+        });
+      });
+
+      if (errors.length > 0) {
+        setUploadError(errors.join(", "));
+        setUploading(false);
+        return;
+      }
+
+      if (staffMembers.length === 0) {
+        setUploadError("No valid staff records found in Excel file");
+        setUploading(false);
+        return;
+      }
+
+      // Post to bulk API
+      const res = await fetch("/api/staff/bulk", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ staffMembers }),
+      });
+
+      if (res.ok) {
+        alert(`Successfully imported ${staffMembers.length} staff members`);
+        onSuccess();
+      } else {
+        const err = await res.json();
+        setUploadError(err.message || "Import failed");
+      }
+    } catch (err: any) {
+      console.error("Excel parsing error:", err);
+      setUploadError(err.message || "Error processing Excel file");
+    } finally {
+      setUploading(false);
+    }
+  };
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-2xl p-6 w-full max-w-md">
         <h2 className="text-xl font-bold mb-4">Bulk Import Staff</h2>
         <p className="text-sm text-gray-500 mb-4">
-          Upload an Excel file (.xlsx, .xls) with columns: Full Name, Email, Phone, Designation, Personnel No.
+          Upload an Excel file (.xlsx) with columns:<br />
+          <span className="font-mono text-xs bg-gray-100 px-2 py-1 rounded">
+            1. Full Name<br />
+            2. Email<br />
+            3. Phone<br />
+            4. Designation<br />
+            5. Personnel No
+          </span>
         </p>
+        
+        {uploadError && (
+          <div className="bg-red-50 text-red-700 p-3 rounded-lg mb-4 text-sm font-bold">
+            {uploadError}
+          </div>
+        )}
+
         <input
           type="file"
           accept=".xlsx,.xls"
-          className="mb-4"
-          onChange={async (e) => {
-            const file = e.target.files?.[0];
-            if (!file) return;
-            const XLSX = await import("xlsx");
-            const data = await file.arrayBuffer();
-            const workbook = XLSX.read(data, { type: "array" });
-            const sheet = workbook.Sheets[workbook.SheetNames[0]];
-            const rows = XLSX.utils.sheet_to_json(sheet);
-            // map to staff members and post to /api/staff/bulk
-            try {
-              const staffMembers = rows.map((row: any) => ({
-                personal: { fullName: row["Full Name"] || row.fullName, email: row.Email || row.email, phone: row.Phone || row.phone },
-                professional: { designation: row.Designation || row.designation, personnelNo: row["Personnel No"] || row.personnelNo },
-              }));
-              const res = await fetch("/api/staff/bulk", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ staffMembers }),
-              });
-              if (res.ok) {
-                alert("Import successful");
-                onSuccess();
-              } else {
-                const err = await res.json();
-                alert(err.message || "Import failed");
-              }
-            } catch (err) {
-              alert("Error processing file");
-            }
-          }}
+          className="mb-4 w-full"
+          onChange={handleFileUpload}
+          disabled={uploading}
         />
+
+        {uploading && (
+          <div className="flex items-center justify-center gap-2 text-blue-600 font-bold mb-4">
+            <Loader2 className="animate-spin" size={18} />
+            Processing Excel file...
+          </div>
+        )}
+
         <div className="flex justify-end gap-2">
-          <button onClick={onClose} className="px-4 py-2 border rounded-lg">Cancel</button>
+          <button onClick={onClose} className="px-4 py-2 border rounded-lg font-bold" disabled={uploading}>
+            Cancel
+          </button>
         </div>
       </div>
     </div>
