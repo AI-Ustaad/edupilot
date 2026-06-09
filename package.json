@@ -22,6 +22,7 @@
     "@upstash/qstash": "^2.11.0",
     "@upstash/ratelimit": "^2.0.8",
     "@upstash/redis": "^1.38.0",
+    "exceljs": "^4.4.0",
     "firebase": "^10.8.1",
     "firebase-admin": "^13.10.0",
     "framer-motion": "^10.16.4",
@@ -44,7 +45,6 @@
     "tailwindcss-rtl": "^0.9.0",
     "tesseract.js": "^5.0.5",
     "twilio": "^4.19.0",
-    "xlsx": "^0.18.5",
     "zod": "^3.22.4"
   },
   "devDependencies": {
@@ -54,6 +54,7 @@
     "@testing-library/jest-dom": "^6.4.2",
     "@testing-library/react": "^14.2.0",
     "@testing-library/user-event": "^14.5.2",
+    "@types/exceljs": "^0.5.3",
     "@types/jest": "^29.5.14",
     "@types/node": "^20.11.24",
     "@types/pdf-parse": "^1.1.4",
