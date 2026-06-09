@@ -35,13 +35,9 @@ const INJECTION_PATTERNS = [
 
 // ==========================================
 // 2. SPECIAL TOKENS (Attack Vectors)
-// ✅ FIXED: All strings properly escaped
+// ✅ FIXED: Using template literals (backticks) for multi-line strings
 // ==========================================
 const SPECIAL_TOKENS = [
   '<|',
   '|>',
-  '
-</think>
-
-',
-  '
+  `
