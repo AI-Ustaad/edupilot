@@ -1,10 +1,13 @@
 const withNextIntl = require("next-intl/plugin")("./i18n/request.ts");
 
 const nextConfig = {
-  // ✅ FIX: Next.js 14.2.3 کے لیے experimental option
+  // ✅ Next.js 14.2.3 compatible config
   experimental: {
-    serverComponentsExternalPackages: ['exceljs'],
+    serverComponentsExternalPackages: ['exceljs', '@react-pdf/renderer'],
   },
+
+  // Server-side runtime
+  serverRuntimeConfig: {},
 
   async rewrites() {
     return [
@@ -15,9 +18,7 @@ const nextConfig = {
 
 module.exports = withNextIntl(nextConfig);
 
-
-// Injected content via Sentry wizard below
-
+// Sentry wizard config
 const { withSentryConfig } = require("@sentry/nextjs");
 
 module.exports = withSentryConfig(module.exports, {
@@ -30,6 +31,12 @@ module.exports = withSentryConfig(module.exports, {
     automaticVercelMonitors: true,
     treeshake: {
       removeDebugLogging: true,
+    },
+    // ✅ Force exceljs to be treated as external
+    externals: (config) => {
+      config.externals = config.externals || [];
+      config.externals.push('exceljs');
+      return config;
     },
   },
 });
