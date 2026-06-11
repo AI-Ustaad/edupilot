@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Loader2, Camera, Upload, Plus, Trash2, Calculator, FileSpreadsheet, FileText } from "lucide-react";
+import { Loader2, Camera, Upload, Plus, Trash2, FileSpreadsheet, FileText } from "lucide-react";
 
 // -------------------- Main Component --------------------
 export default function AddStaffPage() {
@@ -17,11 +17,9 @@ export default function AddStaffPage() {
   const [success, setSuccess] = useState("");
   const [showBulkModal, setShowBulkModal] = useState(false);
 
-  // Staff directory (right sidebar)
   const [staffList, setStaffList] = useState<any[]>([]);
   const [directoryLoading, setDirectoryLoading] = useState(true);
 
-  // Form state
   const [form, setForm] = useState<any>({
     personal: {
       fullName: "", fatherName: "", cnic: "", dob: "",
@@ -73,7 +71,6 @@ export default function AddStaffPage() {
 
   const [createLogin, setCreateLogin] = useState(false);
 
-  // Fetch existing staff for edit
   useEffect(() => {
     if (editId) {
       fetch(`/api/staff/${editId}`)
@@ -88,7 +85,6 @@ export default function AddStaffPage() {
     }
   }, [editId]);
 
-  // Fetch staff directory
   useEffect(() => {
     fetch("/api/staff")
       .then(res => res.json())
@@ -100,7 +96,6 @@ export default function AddStaffPage() {
       .finally(() => setDirectoryLoading(false));
   }, []);
 
-  // Handlers
   const handleChange = (section: string, field: string, value: any) => {
     setForm((prev: any) => ({
       ...prev,
@@ -108,34 +103,9 @@ export default function AddStaffPage() {
     }));
   };
 
-  const handleNestedChange = (section: string, parent: string, field: string, value: any) => {
-    setForm((prev: any) => ({
-      ...prev,
-      [section]: {
-        ...prev[section],
-        [parent]: { ...prev[section][parent], [field]: value },
-      },
-    }));
-  };
-
   const handleArrayChange = (section: string, field: string, index: number, value: any) => {
     const newArr = [...form[section][field]];
     newArr[index] = value;
-    setForm((prev: any) => ({
-      ...prev,
-      [section]: { ...prev[section], [field]: newArr },
-    }));
-  };
-
-  const handleAddArray = (section: string, field: string, defaultValue: any = "") => {
-    setForm((prev: any) => ({
-      ...prev,
-      [section]: { ...prev[section], [field]: [...prev[section][field], defaultValue] },
-    }));
-  };
-
-  const handleRemoveArray = (section: string, field: string, index: number) => {
-    const newArr = form[section][field].filter((_: any, i: number) => i !== index);
     setForm((prev: any) => ({
       ...prev,
       [section]: { ...prev[section], [field]: newArr },
@@ -153,7 +123,6 @@ export default function AddStaffPage() {
     }
   };
 
-  // Live Net Pay Calculation
   const calcNetPay = () => {
     const basic = form.payroll.basicSalary || 0;
     const allowances = form.payroll.allowances.reduce((sum: number, a: any) => sum + (a.amount || 0), 0);
@@ -161,7 +130,6 @@ export default function AddStaffPage() {
     return basic + allowances - deductions;
   };
 
-  // Auto-login Account Creation
   const createUserAccount = async (staff: any) => {
     if (!createLogin) return;
     try {
@@ -177,7 +145,6 @@ export default function AddStaffPage() {
     }
   };
 
-  // Submit
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
@@ -225,7 +192,6 @@ export default function AddStaffPage() {
 
   return (
     <div className="flex h-full">
-      {/* Main Form */}
       <div className="flex-1 p-6 overflow-y-auto">
         <h1 className="text-2xl font-black text-gray-900 mb-4">
           {isEdit ? "Update Staff" : "Staff Onboarding"}
@@ -234,7 +200,6 @@ export default function AddStaffPage() {
         {error && <div className="bg-red-50 text-red-700 p-3 rounded-xl font-bold mb-4">{error}</div>}
         {success && <div className="bg-green-50 text-green-700 p-3 rounded-xl font-bold mb-4">{success}</div>}
 
-        {/* Tabs */}
         <div className="flex mb-6 gap-1">
           {tabs.map((tab, idx) => (
             <button
@@ -249,9 +214,7 @@ export default function AddStaffPage() {
           ))}
         </div>
 
-        {/* Tab Content */}
         <form onSubmit={handleSubmit}>
-          {/* BASIC INFO */}
           {activeTab === 0 && (
             <Section title="Personal Information">
               <div className="col-span-2 flex items-center gap-4">
@@ -273,8 +236,8 @@ export default function AddStaffPage() {
                 </div>
               </div>
               <Input label="Father / Husband Name" value={form.personal.fatherName} onChange={e => handleChange("personal", "fatherName", e.target.value)} />
-              <Input label="CNIC (12345-1234567-1)" value={form.personal.cnic} onChange={e => handleChange("personal", "cnic", e.target.value)} />
-              <Input label="Date of Birth (YYYY-MM-DD)" value={form.personal.dob} onChange={e => handleChange("personal", "dob", e.target.value)} />
+              <Input label="CNIC" value={form.personal.cnic} onChange={e => handleChange("personal", "cnic", e.target.value)} />
+              <Input label="Date of Birth" value={form.personal.dob} onChange={e => handleChange("personal", "dob", e.target.value)} />
               <Select label="Gender" value={form.personal.gender} onChange={e => handleChange("personal", "gender", e.target.value)} options={["Male", "Female", "Other"]} />
               <Input label="Blood Group" value={form.personal.bloodGroup} onChange={e => handleChange("personal", "bloodGroup", e.target.value)} />
               <Input label="Nationality" value={form.personal.nationality} onChange={e => handleChange("personal", "nationality", e.target.value)} />
@@ -283,7 +246,6 @@ export default function AddStaffPage() {
             </Section>
           )}
 
-          {/* PROFESSIONAL */}
           {activeTab === 1 && (
             <Section title="Professional Information">
               <Input label="Personnel No *" value={form.professional.personnelNo} onChange={e => handleChange("professional", "personnelNo", e.target.value)} required />
@@ -292,14 +254,13 @@ export default function AddStaffPage() {
               <Input label="Department" value={form.professional.department} onChange={e => handleChange("professional", "department", e.target.value)} />
               <Input label="Role" value={form.professional.role} onChange={e => handleChange("professional", "role", e.target.value)} />
               <Input label="Employment Type" value={form.professional.employmentType} onChange={e => handleChange("professional", "employmentType", e.target.value)} />
-              <Input label="Joining Date (YYYY-MM-DD)" value={form.professional.joiningDate} onChange={e => handleChange("professional", "joiningDate", e.target.value)} />
+              <Input label="Joining Date" value={form.professional.joiningDate} onChange={e => handleChange("professional", "joiningDate", e.target.value)} />
               <Input label="Confirmation Date" value={form.professional.confirmationDate} onChange={e => handleChange("professional", "confirmationDate", e.target.value)} />
               <Input label="Experience (years)" value={form.professional.experience} onChange={e => handleChange("professional", "experience", e.target.value)} />
               <Input label="Qualification" value={form.professional.qualification} onChange={e => handleChange("professional", "qualification", e.target.value)} />
             </Section>
           )}
 
-          {/* EDUCATION */}
           {activeTab === 2 && (
             <Section title="Education History">
               {form.education.map((edu: any, idx: number) => (
@@ -316,17 +277,16 @@ export default function AddStaffPage() {
                     <Trash2 size={16} />
                   </button>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <Input label="Level (e.g. Matric, BS)" value={edu.level} onChange={e => { const arr = [...form.education]; arr[idx].level = e.target.value; setForm((prev: any) => ({ ...prev, education: arr })); }} />
+                    <Input label="Level" value={edu.level} onChange={e => { const arr = [...form.education]; arr[idx].level = e.target.value; setForm((prev: any) => ({ ...prev, education: arr })); }} />
                     <Input label="Institute" value={edu.institute} onChange={e => { const arr = [...form.education]; arr[idx].institute = e.target.value; setForm((prev: any) => ({ ...prev, education: arr })); }} />
                     <Input label="Passing Year" value={edu.passingYear} onChange={e => { const arr = [...form.education]; arr[idx].passingYear = e.target.value; setForm((prev: any) => ({ ...prev, education: arr })); }} />
                     <Input label="Subjects" value={edu.subjects} onChange={e => { const arr = [...form.education]; arr[idx].subjects = e.target.value; setForm((prev: any) => ({ ...prev, education: arr })); }} />
-                    <Input label="Document URL (optional)" value={edu.document || ""} onChange={e => { const arr = [...form.education]; arr[idx].document = e.target.value; setForm((prev: any) => ({ ...prev, education: arr })); }} />
                   </div>
                 </div>
               ))}
               <button
                 type="button"
-                onClick={() => setForm((prev: any) => ({ ...prev, education: [...prev.education, { level: "", institute: "", passingYear: "", subjects: "", document: "" }] }))}
+                onClick={() => setForm((prev: any) => ({ ...prev, education: [...prev.education, { level: "", institute: "", passingYear: "", subjects: "" }] }))}
                 className="col-span-2 text-blue-600 font-bold flex items-center gap-1"
               >
                 <Plus size={16} /> Add Education
@@ -334,12 +294,10 @@ export default function AddStaffPage() {
             </Section>
           )}
 
-          {/* FINANCIAL */}
           {activeTab === 3 && (
             <Section title="Payroll & Financial">
               <Input label="Basic Salary" type="number" value={form.payroll.basicSalary} onChange={e => handleChange("payroll", "basicSalary", parseFloat(e.target.value) || 0)} />
               
-              {/* Allowances */}
               <div className="col-span-2">
                 <label className="block text-sm font-medium text-gray-700 mb-1">Allowances</label>
                 {form.payroll.allowances.map((allow: any, idx: number) => (
@@ -363,7 +321,6 @@ export default function AddStaffPage() {
                 <button type="button" onClick={() => setForm((prev: any) => ({ ...prev, payroll: { ...prev.payroll, allowances: [...prev.payroll.allowances, { name: "", amount: 0 }] } }))} className="text-blue-600 font-bold text-sm">+ Add Allowance</button>
               </div>
 
-              {/* Deductions */}
               <div className="col-span-2">
                 <label className="block text-sm font-medium text-gray-700 mb-1">Deductions</label>
                 {form.payroll.deductions.map((ded: any, idx: number) => (
@@ -398,11 +355,10 @@ export default function AddStaffPage() {
             </Section>
           )}
 
-          {/* Common bottom buttons */}
           <div className="flex flex-wrap items-center gap-3 mt-6">
             <label className="flex items-center gap-2 font-bold text-sm">
               <input type="checkbox" checked={createLogin} onChange={e => setCreateLogin(e.target.checked)} />
-              Auto‑create Login Account (email = personnelNo@school, password = CNIC)
+              Auto‑create Login Account
             </label>
             <button type="submit" disabled={submitting} className="ml-auto bg-blue-600 text-white px-6 py-2 rounded-xl font-bold disabled:opacity-50 flex items-center gap-2">
               {submitting && <Loader2 className="animate-spin" size={18} />}
@@ -423,7 +379,6 @@ export default function AddStaffPage() {
         </form>
       </div>
 
-      {/* Live Staff Directory (Right Sidebar) */}
       <div className="hidden lg:block w-72 border-l border-gray-200 bg-white overflow-y-auto p-4">
         <h2 className="font-black text-gray-900 text-lg mb-4">Staff Directory</h2>
         {directoryLoading ? (
@@ -456,7 +411,6 @@ export default function AddStaffPage() {
         )}
       </div>
 
-      {/* Bulk Import Modal */}
       {showBulkModal && (
         <BulkImportModal onClose={() => setShowBulkModal(false)} onSuccess={() => {
           fetch("/api/staff")
@@ -499,7 +453,7 @@ function Select({ label, options, ...props }: { label: string; options: string[]
   );
 }
 
-// ✅ NO exceljs import here - file is sent to server
+// ✅ NO exceljs/xlsx import here - file sent to server
 function BulkImportModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState("");
@@ -516,7 +470,7 @@ function BulkImportModal({ onClose, onSuccess }: { onClose: () => void; onSucces
       const formData = new FormData();
       formData.append('file', file);
 
-      const res = await fetch('/api/v1/staff/bulk-upload', {
+      const res = await fetch('/api/v1/staff/bulk', {
         method: 'POST',
         body: formData,
       });
@@ -583,7 +537,6 @@ function BulkImportModal({ onClose, onSuccess }: { onClose: () => void; onSucces
   );
 }
 
-// Simple deep merge (for edit mode)
 function deepMerge(target: any, source: any): any {
   const output = { ...target };
   for (const key of Object.keys(source)) {
