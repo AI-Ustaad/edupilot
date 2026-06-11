@@ -1,24 +1,45 @@
 const withNextIntl = require("next-intl/plugin")("./i18n/request.ts");
 
+/** @type {import('next').NextConfig} */
 const nextConfig = {
-  // ✅ Next.js 14.2.3 compatible - exceljs کو server-side external رکھیں
-  experimental: {
-    serverComponentsExternalPackages: ['exceljs', '@react-pdf/renderer'],
-  },
-
   async rewrites() {
     return [
       { source: "/api/:path*", destination: "/api/v1/:path*" },
     ];
   },
+
+  // ✅ CRITICAL: Mark xlsx as server-only external package
+  webpack: (config, { isServer }) => {
+    if (isServer) {
+      // xlsx کو server-side external رکھیں تاکہ webpack bundle نہ کرے
+      config.externals = config.externals || [];
+      if (typeof config.externals === 'function') {
+        const originalExternals = config.externals;
+        config.externals = async (ctx) => {
+          const result = await originalExternals(ctx);
+          if (ctx.request === 'xlsx') return 'commonjs xlsx';
+          return result;
+        };
+      } else if (Array.isArray(config.externals)) {
+        config.externals.push(function({ request }, callback) {
+          if (request === 'xlsx') {
+            return callback(null, 'commonjs xlsx');
+          }
+          callback();
+        });
+      }
+    }
+    return config;
+  },
 };
 
-module.exports = withNextIntl(nextConfig);
+// Apply next-intl plugin
+const configWithIntl = withNextIntl(nextConfig);
 
 // Injected content via Sentry wizard below
 const { withSentryConfig } = require("@sentry/nextjs");
 
-module.exports = withSentryConfig(module.exports, {
+module.exports = withSentryConfig(configWithIntl, {
   org: "ai-ustaad",
   project: "javascript-nextjs",
   silent: !process.env.CI,
