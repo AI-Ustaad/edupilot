@@ -1,6 +1,3 @@
-// Force server-side rendering
-import 'server-only';
-
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
@@ -12,9 +9,7 @@ import { withPermission } from "@/lib/auth/rbac";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 import { logAction } from "@/lib/audit";
 import type { TenantContext } from "@/types/api";
-
-// ✅ Use require for server-only packages
-const ExcelJS = require('exceljs');
+import * as XLSX from 'xlsx';
 
 export const POST = withErrorHandler(
   withAuth(
@@ -33,30 +28,25 @@ export const POST = withErrorHandler(
           const arrayBuffer = await file.arrayBuffer();
           const buffer = Buffer.from(arrayBuffer);
 
-          // 3. Parse Excel file
-          const workbook = new ExcelJS.Workbook();
-          await workbook.xlsx.load(buffer);
-
-          const worksheet = workbook.getWorksheet(1);
-          if (!worksheet) {
-            return NextResponse.json({ success: false, message: "Invalid Excel file: No worksheet found" }, { status: 400 });
-          }
+          // 3. Parse Excel with xlsx (server-side only)
+          const workbook = XLSX.read(buffer, { type: 'buffer' });
+          const sheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[sheetName];
+          const jsonData = XLSX.utils.sheet_to_json(worksheet);
 
           const staffMembers: any[] = [];
           const errors: string[] = [];
 
-          // 4. Parse rows (skip header)
-          worksheet.eachRow((row: any, rowNumber: number) => {
-            if (rowNumber === 1) return; // Skip header row
-
-            const fullName = row.getCell(1).value?.toString().trim();
-            const email = row.getCell(2).value?.toString().trim();
-            const phone = row.getCell(3).value?.toString().trim();
-            const designation = row.getCell(4).value?.toString().trim();
-            const personnelNo = row.getCell(5).value?.toString().trim();
+          // 4. Parse rows
+          jsonData.forEach((row: any, index: number) => {
+            const fullName = row['Full Name'] || row['fullName'] || row['Name'];
+            const email = row['Email'] || row['email'];
+            const phone = row['Phone'] || row['phone'];
+            const designation = row['Designation'] || row['designation'];
+            const personnelNo = row['Personnel No'] || row['personnelNo'];
 
             if (!fullName) {
-              errors.push(`Row ${rowNumber}: Full Name is required`);
+              errors.push(`Row ${index + 2}: Full Name is required`);
               return;
             }
 
