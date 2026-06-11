@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Loader2, Camera, Upload, Plus, Trash2, Calculator, FileSpreadsheet, FileText } from "lucide-react";
-import ExcelJS from "exceljs"; // ✅ NEW: Secure Excel library
 
 // -------------------- Main Component --------------------
 export default function AddStaffPage() {
@@ -22,7 +21,7 @@ export default function AddStaffPage() {
   const [staffList, setStaffList] = useState<any[]>([]);
   const [directoryLoading, setDirectoryLoading] = useState(true);
 
-  // Form state – same structure as Zod schema expects
+  // Form state
   const [form, setForm] = useState<any>({
     personal: {
       fullName: "", fatherName: "", cnic: "", dob: "",
@@ -74,7 +73,7 @@ export default function AddStaffPage() {
 
   const [createLogin, setCreateLogin] = useState(false);
 
-  // -------------------- Fetch existing staff for edit --------------------
+  // Fetch existing staff for edit
   useEffect(() => {
     if (editId) {
       fetch(`/api/staff/${editId}`)
@@ -82,7 +81,6 @@ export default function AddStaffPage() {
         .then(json => {
           const data = json.data || json;
           if (data) {
-            // Merge with default values so missing fields are filled
             setForm((prev: any) => deepMerge(prev, data));
           }
         })
@@ -90,7 +88,7 @@ export default function AddStaffPage() {
     }
   }, [editId]);
 
-  // -------------------- Fetch staff directory --------------------
+  // Fetch staff directory
   useEffect(() => {
     fetch("/api/staff")
       .then(res => res.json())
@@ -102,7 +100,7 @@ export default function AddStaffPage() {
       .finally(() => setDirectoryLoading(false));
   }, []);
 
-  // -------------------- Handlers --------------------
+  // Handlers
   const handleChange = (section: string, field: string, value: any) => {
     setForm((prev: any) => ({
       ...prev,
@@ -163,12 +161,12 @@ export default function AddStaffPage() {
     return basic + allowances - deductions;
   };
 
-  // -------------------- Auto‑login Account Creation --------------------
+  // Auto-login Account Creation
   const createUserAccount = async (staff: any) => {
     if (!createLogin) return;
     try {
       const email = staff.personal?.email || `${staff.professional?.personnelNo}@school`;
-      const password = staff.personal?.cnic || "12345678"; // default
+      const password = staff.personal?.cnic || "12345678";
       await fetch("/api/auth/register-user", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -179,7 +177,7 @@ export default function AddStaffPage() {
     }
   };
 
-  // -------------------- Submit --------------------
+  // Submit
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
@@ -187,7 +185,7 @@ export default function AddStaffPage() {
     setSuccess("");
 
     const payload = { ...form };
-    if (isEdit) payload.id = editId; // not used by POST, but PUT requires ID
+    if (isEdit) payload.id = editId;
 
     try {
       const url = isEdit ? `/api/staff/${editId}` : "/api/staff";
@@ -204,7 +202,6 @@ export default function AddStaffPage() {
         if (!isEdit) {
           await createUserAccount(json.data || payload);
         }
-        // Refresh directory
         const dirRes = await fetch("/api/staff");
         const dirJson = await dirRes.json();
         const dirData = dirJson.data?.data || dirJson.data || dirJson;
@@ -228,7 +225,7 @@ export default function AddStaffPage() {
 
   return (
     <div className="flex h-full">
-      {/* ---------- Main Form ---------- */}
+      {/* Main Form */}
       <div className="flex-1 p-6 overflow-y-auto">
         <h1 className="text-2xl font-black text-gray-900 mb-4">
           {isEdit ? "Update Staff" : "Staff Onboarding"}
@@ -289,7 +286,7 @@ export default function AddStaffPage() {
           {/* PROFESSIONAL */}
           {activeTab === 1 && (
             <Section title="Professional Information">
-              <Input label="Personnel No *" value={form.professional.personnelNo} onChange={e => handleChange("professional", "personnelNo", e.target.value)}required />
+              <Input label="Personnel No *" value={form.professional.personnelNo} onChange={e => handleChange("professional", "personnelNo", e.target.value)} required />
               <Input label="Employee ID" value={form.professional.employeeId} onChange={e => handleChange("professional", "employeeId", e.target.value)} />
               <Input label="Designation *" value={form.professional.designation} onChange={e => handleChange("professional", "designation", e.target.value)} required />
               <Input label="Department" value={form.professional.department} onChange={e => handleChange("professional", "department", e.target.value)} />
@@ -341,6 +338,7 @@ export default function AddStaffPage() {
           {activeTab === 3 && (
             <Section title="Payroll & Financial">
               <Input label="Basic Salary" type="number" value={form.payroll.basicSalary} onChange={e => handleChange("payroll", "basicSalary", parseFloat(e.target.value) || 0)} />
+              
               {/* Allowances */}
               <div className="col-span-2">
                 <label className="block text-sm font-medium text-gray-700 mb-1">Allowances</label>
@@ -425,7 +423,7 @@ export default function AddStaffPage() {
         </form>
       </div>
 
-      {/* ---------- Live Staff Directory (Right Sidebar) ---------- */}
+      {/* Live Staff Directory (Right Sidebar) */}
       <div className="hidden lg:block w-72 border-l border-gray-200 bg-white overflow-y-auto p-4">
         <h2 className="font-black text-gray-900 text-lg mb-4">Staff Directory</h2>
         {directoryLoading ? (
@@ -461,7 +459,6 @@ export default function AddStaffPage() {
       {/* Bulk Import Modal */}
       {showBulkModal && (
         <BulkImportModal onClose={() => setShowBulkModal(false)} onSuccess={() => {
-          // refresh directory
           fetch("/api/staff")
             .then(res => res.json())
             .then(json => setStaffList(json.data?.data || json.data || []));
@@ -502,6 +499,7 @@ function Select({ label, options, ...props }: { label: string; options: string[]
   );
 }
 
+// ✅ NO exceljs import here - file is sent to server
 function BulkImportModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState("");
@@ -514,69 +512,26 @@ function BulkImportModal({ onClose, onSuccess }: { onClose: () => void; onSucces
     setUploadError("");
 
     try {
-      // ✅ SECURE: Use ExcelJS instead of xlsx
-      const buffer = await file.arrayBuffer();
-      const workbook = new ExcelJS.Workbook();
-      await workbook.xlsx.load(buffer);
+      // ✅ Send file to server - NO client-side parsing
+      const formData = new FormData();
+      formData.append('file', file);
 
-      const worksheet = workbook.getWorksheet(1);
-      if (!worksheet) {
-        throw new Error("No worksheet found in Excel file");
-      }
-
-      const staffMembers: any[] = [];
-      const errors: string[] = [];
-
-      // Parse rows (skip header row 1)
-      worksheet.eachRow((row, rowNumber) => {
-        if (rowNumber === 1) return; // Skip header
-
-        const fullName = row.getCell(1).value?.toString().trim();
-        const email = row.getCell(2).value?.toString().trim();
-        const phone = row.getCell(3).value?.toString().trim();
-        const designation = row.getCell(4).value?.toString().trim();
-        const personnelNo = row.getCell(5).value?.toString().trim();
-
-        if (!fullName) {
-          errors.push(`Row ${rowNumber}: Full Name is required`);
-          return;
-        }
-
-        staffMembers.push({
-          personal: { fullName, email: email || "", phone: phone || "" },
-          professional: { designation: designation || "Teacher", personnelNo: personnelNo || "" },
-        });
+      const res = await fetch('/api/v1/staff/bulk-upload', {
+        method: 'POST',
+        body: formData,
       });
 
-      if (errors.length > 0) {
-        setUploadError(errors.join(", "));
-        setUploading(false);
-        return;
-      }
-
-      if (staffMembers.length === 0) {
-        setUploadError("No valid staff records found in Excel file");
-        setUploading(false);
-        return;
-      }
-
-      // Post to bulk API
-      const res = await fetch("/api/staff/bulk", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ staffMembers }),
-      });
+      const result = await res.json();
 
       if (res.ok) {
-        alert(`Successfully imported ${staffMembers.length} staff members`);
+        alert(`Successfully imported ${result.count} staff members`);
         onSuccess();
       } else {
-        const err = await res.json();
-        setUploadError(err.message || "Import failed");
+        setUploadError(result.message || "Import failed");
       }
     } catch (err: any) {
-      console.error("Excel parsing error:", err);
-      setUploadError(err.message || "Error processing Excel file");
+      console.error("Upload error:", err);
+      setUploadError(err.message || "Error uploading file");
     } finally {
       setUploading(false);
     }
@@ -614,7 +569,7 @@ function BulkImportModal({ onClose, onSuccess }: { onClose: () => void; onSucces
         {uploading && (
           <div className="flex items-center justify-center gap-2 text-blue-600 font-bold mb-4">
             <Loader2 className="animate-spin" size={18} />
-            Processing Excel file...
+            Uploading and processing...
           </div>
         )}
 
