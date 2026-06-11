@@ -11,7 +11,7 @@ import {
 export default function DashboardPage() {
   const { user } = useAuth();
   
-  // ✅ React Query Hook استعمال کریں (useEffect کی جگہ)
+  // ✅ React Query Hook
   const { data, isLoading, error } = useDashboardMetrics();
 
   // Loading State
@@ -26,7 +26,7 @@ export default function DashboardPage() {
     );
   }
 
-  // Error State
+  // ✅ Error State - FIXED
   if (error) {
     return (
       <div className="p-6">
@@ -36,7 +36,7 @@ export default function DashboardPage() {
             <p className="font-bold">Failed to load dashboard</p>
             <p className="text-sm">Please check your connection and try again.</p>
           </div>
-        </<div>
+        </div>
       </div>
     );
   }
@@ -54,7 +54,12 @@ export default function DashboardPage() {
         </div>
         <div className="flex items-center gap-2 bg-blue-50 text-blue-700 px-4 py-2 rounded-lg font-bold text-sm">
           <Calendar size={16} />
-          {new Date().toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
+          {new Date().toLocaleDateString("en-US", { 
+            weekday: "long", 
+            year: "numeric", 
+            month: "long", 
+            day: "numeric" 
+          })}
         </div>
       </div>
 
