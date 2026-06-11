@@ -1,5 +1,8 @@
-// Force dynamic rendering
+// Force server-side rendering
+import 'server-only';
+
 export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebase-admin";
@@ -9,16 +12,16 @@ import { withPermission } from "@/lib/auth/rbac";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 import { logAction } from "@/lib/audit";
 import type { TenantContext } from "@/types/api";
-import ExcelJS from "exceljs"; // ✅ NEW: Secure Excel Parser
 
-export const runtime = 'nodejs';
+// ✅ Use require for server-only packages
+const ExcelJS = require('exceljs');
 
 export const POST = withErrorHandler(
   withAuth(
     withTenant(
       withPermission(PERMISSIONS.students.update)(async (req: Request, { tenantId, user }: TenantContext) => {
         try {
-          // 1. Get the file buffer from the request
+          // 1. Get file from FormData
           const formData = await req.formData();
           const file = formData.get("file") as File;
 
@@ -30,11 +33,11 @@ export const POST = withErrorHandler(
           const arrayBuffer = await file.arrayBuffer();
           const buffer = Buffer.from(arrayBuffer);
 
-          // 3. ✅ SECURE: Parse with ExcelJS instead of xlsx
+          // 3. Parse Excel file
           const workbook = new ExcelJS.Workbook();
           await workbook.xlsx.load(buffer);
-          
-          const worksheet = workbook.getWorksheet(1); // Get first sheet
+
+          const worksheet = workbook.getWorksheet(1);
           if (!worksheet) {
             return NextResponse.json({ success: false, message: "Invalid Excel file: No worksheet found" }, { status: 400 });
           }
@@ -42,8 +45,8 @@ export const POST = withErrorHandler(
           const studentsToAdd: any[] = [];
           const errors: string[] = [];
 
-          // 4. Iterate through rows (Skip row 1 if it's headers)
-          worksheet.eachRow((row, rowNumber) => {
+          // 4. Parse rows (skip header)
+          worksheet.eachRow((row: any, rowNumber: number) => {
             if (rowNumber === 1) return; // Skip header row
 
             const name = row.getCell(1).value?.toString().trim();
@@ -74,7 +77,11 @@ export const POST = withErrorHandler(
             return NextResponse.json({ success: false, message: "Validation errors", errors }, { status: 400 });
           }
 
-          // 5. Batch Write to Firestore (Max 500 per batch)
+          if (studentsToAdd.length === 0) {
+            return NextResponse.json({ success: false, message: "No valid student records found" }, { status: 400 });
+          }
+
+          // 5. Batch write to Firestore
           const batch = adminDb.batch();
           let count = 0;
 
@@ -82,18 +89,18 @@ export const POST = withErrorHandler(
             const docRef = adminDb.collection("students").doc();
             batch.set(docRef, student);
             count++;
-            
-            // 🛡️ Audit Log for bulk creation
-            await logAction({
-              action: "students.bulk_create",
-              userId: user.uid,
-              tenantId,
-              entityType: "student",
-              metadata: { count: studentsToAdd.length, fileName: file.name },
-            });
           }
 
           await batch.commit();
+
+          // 6. Audit log
+          await logAction({
+            action: "students.bulk_create",
+            userId: user.uid,
+            tenantId,
+            entityType: "student",
+            metadata: { count, fileName: file.name },
+          });
 
           return NextResponse.json({ 
             success: true, 
