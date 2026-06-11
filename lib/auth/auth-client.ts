@@ -7,7 +7,7 @@ export const loginWithGoogle = async () => {
     const result = await signInWithPopup(auth, provider);
     const idToken = await result.user.getIdToken();
 
-    const res = await fetch("/api/auth/login", {
+    const res = await fetch("/api/v1/auth/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ idToken }),
