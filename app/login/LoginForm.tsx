@@ -15,6 +15,7 @@ export default function LoginPage() {
     setLoading(true);
     setError("");
     try {
+      // ✅ FIXED: Correct API endpoint
       const res = await fetch("/api/v1/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
