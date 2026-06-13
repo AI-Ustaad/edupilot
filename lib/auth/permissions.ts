@@ -427,11 +427,15 @@ export const PERMISSIONS = {
 // TYPE DEFINITIONS
 // ==========================================
 
-// Extract all permission strings as a union type
-export type Permission = typeof PERMISSIONS[keyof typeof PERMISSIONS][keyof typeof PERMISSIONS[keyof typeof PERMISSIONS]];
+type PermissionsConfig = typeof PERMISSIONS;
+
+// 2026 Strict Type-Safe extraction (No 'never' collapse)
+export type Permission = {
+  [Category in keyof PermissionsConfig]: PermissionsConfig[Category][keyof PermissionsConfig[Category]]
+}[keyof PermissionsConfig];
 
 // Permission categories
-export type PermissionCategory = keyof typeof PERMISSIONS;
+export type PermissionCategory = keyof PermissionsConfig;
 
 // ==========================================
 // HELPER FUNCTIONS
