@@ -42,7 +42,7 @@ export const GET = withErrorHandler(
 export const PUT = withErrorHandler(
   withAuth(
     withTenant(
-      withPermission(PERMISSIONS.settings.manage)(async (req: Request, { tenantId }: WithTenantContext) => {
+     withPermission(PERMISSIONS.buses.update)(async (req: Request, { tenantId }: WithTenantContext) => {
         const id = getIdFromUrl(req);
         const body = await req.json();
         const service = new BusService(new BusRepository());
