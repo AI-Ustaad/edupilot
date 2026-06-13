@@ -1,6 +1,6 @@
 // lib/auth/rbac.ts
 // ==========================================
-// 🛡️ RBAC MIDDLEWARE HELPERS (Curried Version)
+// 🛡️ RBAC MIDDLEWARE HELPERS (Simplified)
 // ==========================================
 
 import { NextResponse } from "next/server";
@@ -17,14 +17,13 @@ export interface RBACContext extends TenantContext {
 }
 
 /**
- * ✅ CURRIED withPermission HOC
- * Usage: withPermission(PERMISSIONS.students.view)(handler)
+ * ✅ SIMPLIFIED withPermission - No generic confusion
  */
 export function withPermission(requiredPermission: Permission | Permission[]) {
-  return function <T extends any[]>(
-    handler: (req: Request, ctx: RBACContext, ...args: T) => Promise<NextResponse>
+  return function(
+    handler: (req: Request, ctx: RBACContext) => Promise<NextResponse>
   ) {
-    return async (req: Request, ctx: TenantContext, ...args: T): Promise<NextResponse> => {
+    return async (req: Request, ctx: TenantContext): Promise<NextResponse> => {
       const userRole = (ctx.user as any)?.role as Role | undefined;
       
       // If no role, deny access
@@ -42,7 +41,7 @@ export function withPermission(requiredPermission: Permission | Permission[]) {
           userRole,
           userPermissions: ROLE_PERMISSIONS[ROLES.SUPER_ADMIN],
         };
-        return handler(req, rbacCtx, ...args);
+        return handler(req, rbacCtx);
       }
 
       // Check permissions
@@ -73,20 +72,19 @@ export function withPermission(requiredPermission: Permission | Permission[]) {
         userPermissions,
       };
 
-      return handler(req, rbacCtx, ...args);
+      return handler(req, rbacCtx);
     };
   };
 }
 
 /**
- * ✅ CURRIED withAnyPermission
- * Usage: withAnyPermission([perm1, perm2])(handler)
+ * ✅ SIMPLIFIED withAnyPermission
  */
 export function withAnyPermission(requiredPermissions: Permission[]) {
-  return function <T extends any[]>(
-    handler: (req: Request, ctx: RBACContext, ...args: T) => Promise<NextResponse>
+  return function(
+    handler: (req: Request, ctx: RBACContext) => Promise<NextResponse>
   ) {
-    return async (req: Request, ctx: TenantContext, ...args: T): Promise<NextResponse> => {
+    return async (req: Request, ctx: TenantContext): Promise<NextResponse> => {
       const userRole = (ctx.user as any)?.role as Role | undefined;
       
       if (!userRole) {
@@ -102,7 +100,7 @@ export function withAnyPermission(requiredPermissions: Permission[]) {
           userRole,
           userPermissions: ROLE_PERMISSIONS[ROLES.SUPER_ADMIN],
         };
-        return handler(req, rbacCtx, ...args);
+        return handler(req, rbacCtx);
       }
 
       const userPermissions = ROLE_PERMISSIONS[userRole] || [];
@@ -128,20 +126,19 @@ export function withAnyPermission(requiredPermissions: Permission[]) {
         userPermissions,
       };
 
-      return handler(req, rbacCtx, ...args);
+      return handler(req, rbacCtx);
     };
   };
 }
 
 /**
- * ✅ CURRIED withMinRole
- * Usage: withMinRole(ROLES.PRINCIPAL)(handler)
+ * ✅ SIMPLIFIED withMinRole
  */
 export function withMinRole(minRole: Role) {
-  return function <T extends any[]>(
-    handler: (req: Request, ctx: RBACContext, ...args: T) => Promise<NextResponse>
+  return function(
+    handler: (req: Request, ctx: RBACContext) => Promise<NextResponse>
   ) {
-    return async (req: Request, ctx: TenantContext, ...args: T): Promise<NextResponse> => {
+    return async (req: Request, ctx: TenantContext): Promise<NextResponse> => {
       const userRole = (ctx.user as any)?.role as Role | undefined;
       
       if (!userRole) {
@@ -171,7 +168,7 @@ export function withMinRole(minRole: Role) {
         userPermissions: ROLE_PERMISSIONS[userRole] || [],
       };
 
-      return handler(req, rbacCtx, ...args);
+      return handler(req, rbacCtx);
     };
   };
 }
@@ -180,31 +177,19 @@ export function withMinRole(minRole: Role) {
 // UTILITY FUNCTIONS
 // ==========================================
 
-/**
- * Get user's permissions
- */
 export function getUserPermissions(role: Role): Permission[] {
   return ROLE_PERMISSIONS[role] || [];
 }
 
-/**
- * Check if user can perform action
- */
 export function canUser(role: Role, permission: Permission): boolean {
   if (role === ROLES.SUPER_ADMIN) return true;
   return ROLE_PERMISSIONS[role]?.includes(permission) ?? false;
 }
 
-/**
- * Get all available roles
- */
 export function getAvailableRoles() {
   return Object.values(ROLES);
 }
 
-/**
- * Get role hierarchy
- */
 export function getRoleHierarchy() {
   return ROLE_HIERARCHY;
 }
