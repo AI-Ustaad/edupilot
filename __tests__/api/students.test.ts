@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { GET } from "@/app/api/students/route";
+import { GET } from "@/app/api/v1/students/route";
 import { getSessionUser } from "@/lib/auth/auth-server";
 
 // Mock dependencies
