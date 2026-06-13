@@ -17,28 +17,48 @@ export const GET = withErrorHandler(
         const studentId = searchParams.get("id");
 
         if (!studentId) {
-          return NextResponse.json({ success: false, error: "Student ID required" }, { status: 400 });
+          return NextResponse.json(
+            { success: false, error: "Student ID required" },
+            { status: 400 }
+          );
         }
 
+        // 🔒 CRITICAL: Tenant isolation check
         const docRef = adminDb.collection("students").doc(studentId);
         const snap = await docRef.get();
 
         if (!snap.exists) {
-          return NextResponse.json({ success: false, error: "Student not found" }, { status: 404 });
+          return NextResponse.json(
+            { success: false, error: "Student not found" },
+            { status: 404 }
+          );
         }
 
         const data = snap.data();
 
-        // 🔒 CRITICAL: Tenant isolation check
+        // 🔒 Verify this student belongs to current tenant
         if (data?.tenantId !== tenantId) {
-          return NextResponse.json({ success: false, error: "Access denied" }, { status: 403 });
+          return NextResponse.json(
+            { success: false, error: "Access denied" },
+            { status: 403 }
+          );
         }
 
+        // 🔒 Filter out soft-deleted
         if (data?.deleted) {
-          return NextResponse.json({ success: false, error: "Student not found" }, { status: 404 });
+          return NextResponse.json(
+            { success: false, error: "Student not found" },
+            { status: 404 }
+          );
         }
 
-        return NextResponse.json({ success: true, data: { id: snap.id, ...data } });
+        return NextResponse.json({
+          success: true,
+          data: {
+            id: snap.id,
+            ...data,
+          },
+        });
       })
     )
   )
