@@ -85,9 +85,24 @@ export const GET = withErrorHandler(
           success: true,
           data: {
             student,
-            academic: { marks, totalMarks, maxMarks, percentage },
-            attendance: { records: attendance, presentDays, totalDays: attendance.length, rate: attendanceRate },
-            financial: { records: fees, totalAmount: totalFees, paidAmount: paidFees, pendingAmount: totalFees - paidFees },
+            academic: {
+              marks,
+              totalMarks,
+              maxMarks,
+              percentage,
+            },
+            attendance: {
+              records: attendance,
+              presentDays,
+              totalDays: attendance.length,
+              rate: attendanceRate,
+            },
+            financial: {
+              records: fees,
+              totalAmount: totalFees,
+              paidAmount: paidFees,
+              pendingAmount: totalFees - paidFees,
+            },
             behavior,
           },
         });
