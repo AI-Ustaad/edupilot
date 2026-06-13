@@ -1,56 +1,69 @@
+// app/api/v1/students/get/route.ts
 export const dynamic = 'force-dynamic';
+
 import { NextResponse } from "next/server";
-import { adminDb, adminAuth } from "@/lib/firebase-admin";
-import { cookies } from "next/headers";
+import { adminDb } from "@/lib/firebase-admin";
+import { withErrorHandler, withAuth, withTenant } from "@/route-helpers";
+import { withPermission } from "@/lib/auth/rbac";
+import { PERMISSIONS } from "@/lib/auth/permissions";
+import { standardRateLimit } from "@/lib/ratelimit";
+import type { TenantContext } from "@/types/api";
 
-export async function GET() {
-  try {
-    const session = cookies().get("session")?.value;
-    if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+export const runtime = 'nodejs';
 
-    const decoded = await adminAuth.verifySessionCookie(session, true);
-    const { tenantId } = decoded as any;
+export const GET = withErrorHandler(
+  standardRateLimit(
+    withAuth(
+      withTenant(
+        withPermission(PERMISSIONS.students.view)(async (req: Request, { tenantId }: TenantContext) => {
+          const { searchParams } = new URL(req.url);
+          const studentId = searchParams.get("id");
 
-    const snapshot = await adminDb
-      .collection("students")
-      .where("tenantId", "==", tenantId)
-      .get();
+          if (!studentId) {
+            return NextResponse.json(
+              { success: false, error: "Student ID required" },
+              { status: 400 }
+            );
+          }
 
-    const students = snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data(),
-    }));
+          // 🔒 CRITICAL: Tenant isolation check
+          const docRef = adminDb.collection("students").doc(studentId);
+          const snap = await docRef.get();
 
-    return NextResponse.json(students);
+          if (!snap.exists) {
+            return NextResponse.json(
+              { success: false, error: "Student not found" },
+              { status: 404 }
+            );
+          }
 
-  } catch (error) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-}
+          const data = snap.data();
 
-export async function POST(req: Request) {
-  try {
-    const session = cookies().get("session")?.value;
-    if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+          // 🔒 Verify this student belongs to current tenant
+          if (data?.tenantId !== tenantId) {
+            return NextResponse.json(
+              { success: false, error: "Access denied" },
+              { status: 403 }
+            );
+          }
 
-    const decoded = await adminAuth.verifySessionCookie(session, true);
-    const { tenantId, role } = decoded as any;
+          // 🔒 Filter out soft-deleted
+          if (data?.deleted) {
+            return NextResponse.json(
+              { success: false, error: "Student not found" },
+              { status: 404 }
+            );
+          }
 
-    if (role !== "admin") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-
-    const body = await req.json();
-
-    const docRef = await adminDb.collection("students").add({
-      ...body,
-      tenantId,
-      createdAt: new Date(),
-    });
-
-    return NextResponse.json({ id: docRef.id });
-
-  } catch (error) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-}
+          return NextResponse.json({
+            success: true,
+            data: {
+              id: snap.id,
+              ...data,
+            },
+          });
+        })
+      )
+    )
+  )
+);
