@@ -3,7 +3,8 @@
 // 👥 ROLE DEFINITIONS & PERMISSION MAPPINGS
 // ==========================================
 
-import { PERMISSIONS, type Permission } from "./permissions";
+import type { Permission } from "./permissions";
+import { PERMISSIONS } from "./permissions";
 
 /**
  * Available Roles in EduPilot
@@ -309,171 +310,91 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   // PRINCIPAL - Academic Oversight
   // ==========================================
   [ROLES.PRINCIPAL]: [
-    // View all academic data
     PERMISSIONS.students.view,
     PERMISSIONS.students.view360,
     PERMISSIONS.students.viewRisk,
     PERMISSIONS.students.export,
-
     PERMISSIONS.staff.view,
     PERMISSIONS.parents.view,
-
     PERMISSIONS.marks.view,
     PERMISSIONS.marks.publish,
     PERMISSIONS.marks.export,
-
     PERMISSIONS.attendance.view,
     PERMISSIONS.attendance.export,
-
     PERMISSIONS.fees.view,
     PERMISSIONS.fees.export,
-
     PERMISSIONS.ledger.view,
-
-    // Academic management
     PERMISSIONS.syllabus.view,
     PERMISSIONS.syllabus.create,
     PERMISSIONS.syllabus.update,
     PERMISSIONS.syllabus.publish,
-
     PERMISSIONS.curriculum.view,
     PERMISSIONS.curriculum.create,
     PERMISSIONS.curriculum.update,
-
     PERMISSIONS.books.view,
     PERMISSIONS.books.manage,
-
     PERMISSIONS.lessonPlans.view,
     PERMISSIONS.lessonPlans.create,
     PERMISSIONS.lessonPlans.update,
     PERMISSIONS.lessonPlans.publish,
-
     PERMISSIONS.assignments.view,
     PERMISSIONS.assignments.create,
     PERMISSIONS.assignments.update,
     PERMISSIONS.assignments.delete,
     PERMISSIONS.assignments.grade,
-
     PERMISSIONS.homework.view,
     PERMISSIONS.homework.create,
     PERMISSIONS.homework.update,
     PERMISSIONS.homework.delete,
-
     PERMISSIONS.quizzes.view,
     PERMISSIONS.quizzes.create,
     PERMISSIONS.quizzes.update,
     PERMISSIONS.quizzes.publish,
     PERMISSIONS.quizzes.grade,
-
     PERMISSIONS.admitCards.view,
     PERMISSIONS.admitCards.create,
     PERMISSIONS.admitCards.bulk,
-
     PERMISSIONS.timetable.view,
     PERMISSIONS.timetable.create,
     PERMISSIONS.timetable.update,
     PERMISSIONS.timetable.generateAI,
-
     PERMISSIONS.classes.view,
     PERMISSIONS.sections.view,
     PERMISSIONS.academicYear.view,
-
     PERMISSIONS.behavior.view,
     PERMISSIONS.behavior.create,
     PERMISSIONS.behavior.update,
-
     PERMISSIONS.leave.view,
     PERMISSIONS.leave.approve,
     PERMISSIONS.leave.reject,
-
     PERMISSIONS.admissions.view,
     PERMISSIONS.admissions.approve,
     PERMISSIONS.admissions.reject,
-
-    // Reports
     PERMISSIONS.reports.view,
     PERMISSIONS.reports.create,
     PERMISSIONS.reports.generate,
     PERMISSIONS.reports.export,
-
     PERMISSIONS.analytics.view,
     PERMISSIONS.analytics.viewAdvanced,
     PERMISSIONS.analytics.export,
-
     PERMISSIONS.audit.view,
-
-    // AI
     PERMISSIONS.ai.chatbot,
     PERMISSIONS.ai.examQuestions,
     PERMISSIONS.ai.examPaper,
     PERMISSIONS.ai.reportComments,
     PERMISSIONS.ai.timetable,
     PERMISSIONS.ai.smartBookCenter,
-
     PERMISSIONS.ocr.use,
-
-    // Communication
     PERMISSIONS.chat.view,
     PERMISSIONS.chat.send,
     PERMISSIONS.notifications.view,
     PERMISSIONS.notifications.send,
-
-    // Settings (read-only mostly)
     PERMISSIONS.settings.view,
     PERMISSIONS.menu.view,
     PERMISSIONS.featureFlags.view,
-
     PERMISSIONS.certificates.view,
     PERMISSIONS.certificates.create,
     PERMISSIONS.certificates.issue,
-
-    PERMISSIONS.upload.use,
-  ],
-
-  // ==========================================
-  // VICE PRINCIPAL - Similar to Principal
-  // ==========================================
-  [ROLES.VICE_PRINCIPAL]: [
-    ...Object.values(PERMISSIONS.students).filter(p => 
-      !p.includes("delete") && !p.includes("promote")
-    ),
-    PERMISSIONS.staff.view,
-    PERMISSIONS.parents.view,
-    ...Object.values(PERMISSIONS.marks).filter(p => !p.includes("delete")),
-    ...Object.values(PERMISSIONS.attendance).filter(p => !p.includes("delete")),
-    PERMISSIONS.fees.view,
-    PERMISSIONS.ledger.view,
-    ...Object.values(PERMISSIONS.syllabus),
-    ...Object.values(PERMISSIONS.curriculum),
-    ...Object.values(PERMISSIONS.books),
-    ...Object.values(PERMISSIONS.lessonPlans),
-    ...Object.values(PERMISSIONS.assignments),
-    ...Object.values(PERMISSIONS.homework),
-    ...Object.values(PERMISSIONS.quizzes),
-    PERMISSIONS.admitCards.view,
-    PERMISSIONS.admitCards.create,
-    PERMISSIONS.admitCards.bulk,
-    ...Object.values(PERMISSIONS.timetable),
-    PERMISSIONS.classes.view,
-    PERMISSIONS.sections.view,
-    PERMISSIONS.academicYear.view,
-    ...Object.values(PERMISSIONS.behavior),
-    ...Object.values(PERMISSIONS.leave),
-    ...Object.values(PERMISSIONS.admissions),
-    ...Object.values(PERMISSIONS.reports),
-    PERMISSIONS.analytics.view,
-    PERMISSIONS.audit.view,
-    ...Object.values(PERMISSIONS.ai),
-    PERMISSIONS.ocr.use,
-    PERMISSIONS.chat.view,
-    PERMISSIONS.chat.send,
-    PERMISSIONS.notifications.view,
-    PERMISSIONS.notifications.send,
-    PERMISSIONS.settings.view,
-    PERMISSIONS.menu.view,
-    PERMISSIONS.featureFlags.view,
-    PERMISSIONS.certificates.view,
-    PERMISSIONS.certificates.create,
     PERMISSIONS.upload.use,
   ],
 
@@ -481,80 +402,55 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   // TEACHER - Classroom Management
   // ==========================================
   [ROLES.TEACHER]: [
-    // Students - View only (assigned classes)
     PERMISSIONS.students.view,
     PERMISSIONS.students.view360,
-
-    // Marks - Full for assigned classes
     PERMISSIONS.marks.view,
     PERMISSIONS.marks.create,
     PERMISSIONS.marks.update,
     PERMISSIONS.marks.export,
     PERMISSIONS.marks.manageSkills,
-
-    // Attendance - Full for assigned classes
     PERMISSIONS.attendance.view,
     PERMISSIONS.attendance.create,
     PERMISSIONS.attendance.update,
-
-    // Academic Resources
     PERMISSIONS.syllabus.view,
     PERMISSIONS.curriculum.view,
     PERMISSIONS.books.view,
-
     PERMISSIONS.lessonPlans.view,
     PERMISSIONS.lessonPlans.create,
     PERMISSIONS.lessonPlans.update,
-
     PERMISSIONS.assignments.view,
     PERMISSIONS.assignments.create,
     PERMISSIONS.assignments.update,
     PERMISSIONS.assignments.grade,
-
     PERMISSIONS.homework.view,
     PERMISSIONS.homework.create,
     PERMISSIONS.homework.update,
-
     PERMISSIONS.quizzes.view,
     PERMISSIONS.quizzes.create,
     PERMISSIONS.quizzes.update,
     PERMISSIONS.quizzes.grade,
-
     PERMISSIONS.admitCards.view,
-
     PERMISSIONS.timetable.view,
-
     PERMISSIONS.classes.view,
     PERMISSIONS.sections.view,
-
     PERMISSIONS.behavior.view,
     PERMISSIONS.behavior.create,
     PERMISSIONS.behavior.update,
-
     PERMISSIONS.leave.view,
     PERMISSIONS.leave.apply,
-
-    // Reports
     PERMISSIONS.reports.view,
     PERMISSIONS.reports.generate,
-
     PERMISSIONS.analytics.view,
-
-    // AI
     PERMISSIONS.ai.chatbot,
     PERMISSIONS.ai.examQuestions,
     PERMISSIONS.ai.examPaper,
     PERMISSIONS.ai.reportComments,
     PERMISSIONS.ai.smartBookCenter,
-
-    // Communication
     PERMISSIONS.chat.view,
     PERMISSIONS.chat.send,
     PERMISSIONS.notifications.view,
-
     PERMISSIONS.settings.view,
     PERMISSIONS.menu.view,
-
     PERMISSIONS.certificates.view,
     PERMISSIONS.upload.use,
   ],
@@ -566,98 +462,36 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     PERMISSIONS.students.view,
     PERMISSIONS.staff.view,
     PERMISSIONS.parents.view,
-
-    // Full financial access
-    ...Object.values(PERMISSIONS.fees),
-    ...Object.values(PERMISSIONS.ledger),
-
+    PERMISSIONS.fees.view,
+    PERMISSIONS.fees.create,
+    PERMISSIONS.fees.update,
+    PERMISSIONS.fees.delete,
+    PERMISSIONS.fees.bulk,
+    PERMISSIONS.fees.export,
+    PERMISSIONS.fees.import,
+    PERMISSIONS.fees.collect,
+    PERMISSIONS.fees.waive,
+    PERMISSIONS.fees.refund,
+    PERMISSIONS.ledger.view,
+    PERMISSIONS.ledger.create,
+    PERMISSIONS.ledger.update,
+    PERMISSIONS.ledger.delete,
+    PERMISSIONS.ledger.export,
     PERMISSIONS.reports.view,
     PERMISSIONS.reports.create,
     PERMISSIONS.reports.generate,
     PERMISSIONS.reports.export,
-
     PERMISSIONS.analytics.view,
     PERMISSIONS.analytics.viewAdvanced,
     PERMISSIONS.analytics.export,
-
     PERMISSIONS.audit.view,
     PERMISSIONS.audit.export,
-
     PERMISSIONS.chat.view,
     PERMISSIONS.chat.send,
     PERMISSIONS.notifications.view,
     PERMISSIONS.notifications.send,
-
     PERMISSIONS.settings.view,
     PERMISSIONS.menu.view,
-
-    PERMISSIONS.upload.use,
-  ],
-
-  // ==========================================
-  // LIBRARIAN - Book Management
-  // ==========================================
-  [ROLES.LIBRARIAN]: [
-    PERMISSIONS.students.view,
-    PERMISSIONS.staff.view,
-
-    ...Object.values(PERMISSIONS.books),
-
-    PERMISSIONS.chat.view,
-    PERMISSIONS.chat.send,
-    PERMISSIONS.notifications.view,
-
-    PERMISSIONS.settings.view,
-    PERMISSIONS.menu.view,
-
-    PERMISSIONS.upload.use,
-  ],
-
-  // ==========================================
-  // CLERK - Administrative Support
-  // ==========================================
-  [ROLES.CLERK]: [
-    PERMISSIONS.students.view,
-    PERMISSIONS.students.create,
-    PERMISSIONS.students.update,
-    PERMISSIONS.students.export,
-    PERMISSIONS.students.import,
-
-    PERMISSIONS.staff.view,
-    PERMISSIONS.parents.view,
-    PERMISSIONS.parents.create,
-    PERMISSIONS.parents.update,
-
-    PERMISSIONS.marks.view,
-    PERMISSIONS.attendance.view,
-    PERMISSIONS.attendance.create,
-    PERMISSIONS.attendance.update,
-
-    PERMISSIONS.fees.view,
-    PERMISSIONS.fees.create,
-    PERMISSIONS.fees.collect,
-
-    PERMISSIONS.admissions.view,
-    PERMISSIONS.admissions.create,
-    PERMISSIONS.admissions.update,
-
-    PERMISSIONS.classes.view,
-    PERMISSIONS.sections.view,
-
-    PERMISSIONS.reports.view,
-    PERMISSIONS.reports.generate,
-
-    PERMISSIONS.chat.view,
-    PERMISSIONS.chat.send,
-    PERMISSIONS.notifications.view,
-    PERMISSIONS.notifications.send,
-
-    PERMISSIONS.settings.view,
-    PERMISSIONS.menu.view,
-
-    PERMISSIONS.certificates.view,
-    PERMISSIONS.certificates.create,
-
     PERMISSIONS.upload.use,
   ],
 
@@ -665,43 +499,32 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   // PARENT - Child Access Only
   // ==========================================
   [ROLES.PARENT]: [
-    PERMISSIONS.students.view, // Only own children
+    PERMISSIONS.students.view,
     PERMISSIONS.students.view360,
-
     PERMISSIONS.marks.view,
     PERMISSIONS.attendance.view,
     PERMISSIONS.fees.view,
     PERMISSIONS.ledger.view,
-
     PERMISSIONS.syllabus.view,
     PERMISSIONS.curriculum.view,
     PERMISSIONS.books.view,
     PERMISSIONS.lessonPlans.view,
-
     PERMISSIONS.assignments.view,
     PERMISSIONS.homework.view,
     PERMISSIONS.quizzes.view,
-
     PERMISSIONS.timetable.view,
-
     PERMISSIONS.behavior.view,
-
     PERMISSIONS.leave.view,
     PERMISSIONS.leave.apply,
-
     PERMISSIONS.reports.view,
     PERMISSIONS.reports.generate,
-
     PERMISSIONS.ai.chatbot,
     PERMISSIONS.ai.smartBookCenter,
-
     PERMISSIONS.chat.view,
     PERMISSIONS.chat.send,
     PERMISSIONS.notifications.view,
-
     PERMISSIONS.settings.view,
     PERMISSIONS.menu.view,
-
     PERMISSIONS.certificates.view,
   ],
 
@@ -709,32 +532,24 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   // STUDENT - Self Access Only
   // ==========================================
   [ROLES.STUDENT]: [
-    PERMISSIONS.students.view, // Own profile
+    PERMISSIONS.students.view,
     PERMISSIONS.students.view360,
-
     PERMISSIONS.marks.view,
     PERMISSIONS.attendance.view,
     PERMISSIONS.fees.view,
-
     PERMISSIONS.syllabus.view,
     PERMISSIONS.books.view,
     PERMISSIONS.lessonPlans.view,
-
     PERMISSIONS.assignments.view,
     PERMISSIONS.homework.view,
     PERMISSIONS.quizzes.view,
-
     PERMISSIONS.timetable.view,
-
     PERMISSIONS.reports.view,
-
     PERMISSIONS.ai.chatbot,
     PERMISSIONS.ai.smartBookCenter,
-
     PERMISSIONS.chat.view,
     PERMISSIONS.chat.send,
     PERMISSIONS.notifications.view,
-
     PERMISSIONS.settings.view,
     PERMISSIONS.menu.view,
   ],
@@ -743,7 +558,7 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   // GUEST - Minimal Access
   // ==========================================
   [ROLES.GUEST]: [
-    PERMISSIONS.settings.view, // Public settings only
+    PERMISSIONS.settings.view,
     PERMISSIONS.menu.view,
   ],
 };
@@ -756,9 +571,7 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
  * Check if a role has a specific permission
  */
 export function roleHasPermission(role: Role, permission: Permission): boolean {
-  // Super admin has all permissions
   if (role === ROLES.SUPER_ADMIN) return true;
-  
   return ROLE_PERMISSIONS[role]?.includes(permission) ?? false;
 }
 
@@ -804,141 +617,3 @@ export function getRoleDisplayName(role: Role): string {
 export function isValidRole(role: string): role is Role {
   return Object.values(ROLES).includes(role as Role);
 }
-// ==========================================
-// ROLE → PERMISSION MAPPING
-// ==========================================
-
-export const ROLE_PERMISSIONS: Record<string, Permission[]> = {
-  admin: [
-    ...Object.values(PERMISSIONS).flatMap(module => Object.values(module)),
-  ],
-  teacher: [
-    PERMISSIONS.students.view,
-    PERMISSIONS.students.view360,
-    PERMISSIONS.attendance.view,
-    PERMISSIONS.attendance.create,
-    PERMISSIONS.attendance.update,
-    PERMISSIONS.marks.view,
-    PERMISSIONS.marks.create,
-    PERMISSIONS.marks.update,
-    PERMISSIONS.marks.export,
-    PERMISSIONS.dashboard.view,
-    PERMISSIONS.assignments.view,
-    PERMISSIONS.assignments.create,
-    PERMISSIONS.assignments.update,
-    PERMISSIONS.assignments.grade,
-    PERMISSIONS.homework.view,
-    PERMISSIONS.homework.create,
-    PERMISSIONS.homework.update,
-    PERMISSIONS.quizzes.view,
-    PERMISSIONS.quizzes.create,
-    PERMISSIONS.quizzes.update,
-    PERMISSIONS.quizzes.grade,
-    PERMISSIONS.timetable.view,
-    PERMISSIONS.behavior.view,
-    PERMISSIONS.behavior.create,
-    PERMISSIONS.behavior.update,
-    PERMISSIONS.reports.view,
-    PERMISSIONS.reports.generate,
-    PERMISSIONS.analytics.view,
-    PERMISSIONS.ai.chatbot,
-    PERMISSIONS.ai.examQuestions,
-    PERMISSIONS.ai.examPaper,
-    PERMISSIONS.ai.reportComments,
-    PERMISSIONS.ai.smartBookCenter,
-    PERMISSIONS.chat.view,
-    PERMISSIONS.chat.send,
-    PERMISSIONS.notifications.view,
-    PERMISSIONS.settings.view,
-    PERMISSIONS.menu.view,
-    PERMISSIONS.certificates.view,
-    PERMISSIONS.upload.use,
-  ],
-  accountant: [
-    PERMISSIONS.students.view,
-    PERMISSIONS.staff.view,
-    PERMISSIONS.parents.view,
-    PERMISSIONS.fees.view,
-    PERMISSIONS.fees.create,
-    PERMISSIONS.fees.update,
-    PERMISSIONS.fees.delete,
-    PERMISSIONS.fees.bulk,
-    PERMISSIONS.fees.export,
-    PERMISSIONS.fees.import,
-    PERMISSIONS.fees.collect,
-    PERMISSIONS.fees.waive,
-    PERMISSIONS.fees.refund,
-    PERMISSIONS.ledger.view,
-    PERMISSIONS.ledger.create,
-    PERMISSIONS.ledger.update,
-    PERMISSIONS.ledger.delete,
-    PERMISSIONS.ledger.export,
-    PERMISSIONS.reports.view,
-    PERMISSIONS.reports.create,
-    PERMISSIONS.reports.generate,
-    PERMISSIONS.reports.export,
-    PERMISSIONS.analytics.view,
-    PERMISSIONS.analytics.viewAdvanced,
-    PERMISSIONS.analytics.export,
-    PERMISSIONS.audit.view,
-    PERMISSIONS.audit.export,
-    PERMISSIONS.chat.view,
-    PERMISSIONS.chat.send,
-    PERMISSIONS.notifications.view,
-    PERMISSIONS.notifications.send,
-    PERMISSIONS.settings.view,
-    PERMISSIONS.menu.view,
-    PERMISSIONS.upload.use,
-  ],
-  parent: [
-    PERMISSIONS.students.view,
-    PERMISSIONS.students.view360,
-    PERMISSIONS.marks.view,
-    PERMISSIONS.attendance.view,
-    PERMISSIONS.fees.view,
-    PERMISSIONS.ledger.view,
-    PERMISSIONS.syllabus.view,
-    PERMISSIONS.curriculum.view,
-    PERMISSIONS.books.view,
-    PERMISSIONS.lessonPlans.view,
-    PERMISSIONS.assignments.view,
-    PERMISSIONS.homework.view,
-    PERMISSIONS.quizzes.view,
-    PERMISSIONS.timetable.view,
-    PERMISSIONS.behavior.view,
-    PERMISSIONS.leave.view,
-    PERMISSIONS.leave.apply,
-    PERMISSIONS.reports.view,
-    PERMISSIONS.reports.generate,
-    PERMISSIONS.ai.chatbot,
-    PERMISSIONS.ai.smartBookCenter,
-    PERMISSIONS.chat.view,
-    PERMISSIONS.chat.send,
-    PERMISSIONS.notifications.view,
-    PERMISSIONS.settings.view,
-    PERMISSIONS.menu.view,
-    PERMISSIONS.certificates.view,
-  ],
-  student: [
-    PERMISSIONS.students.view,
-    PERMISSIONS.students.view360,
-    PERMISSIONS.marks.view,
-    PERMISSIONS.attendance.view,
-    PERMISSIONS.fees.view,
-    PERMISSIONS.syllabus.view,
-    PERMISSIONS.books.view,
-    PERMISSIONS.lessonPlans.view,
-    PERMISSIONS.assignments.view,
-    PERMISSIONS.homework.view,
-    PERMISSIONS.quizzes.view,
-    PERMISSIONS.timetable.view,
-    PERMISSIONS.reports.view,
-    PERMISSIONS.ai.chatbot,
-    PERMISSIONS.ai.smartBookCenter,
-    PERMISSIONS.chat.view,
-    PERMISSIONS.chat.send,
-    PERMISSIONS.notifications.view,
-    PERMISSIONS.settings.view,
-    PERMISSIONS.menu.view,
-  ],
-};
