@@ -1,130 +1,116 @@
+// app/api/v1/students/360/route.ts
 export const dynamic = 'force-dynamic';
+
+import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebase-admin";
-import { withAuth, withTenant, withErrorHandler } from "@/route-helpers";
-import { createApiResponse } from "@/lib/response/apiResponse";
+import { withErrorHandler, withAuth, withTenant } from "@/route-helpers";
+import { withPermission } from "@/lib/auth/rbac";
+import { PERMISSIONS } from "@/lib/auth/permissions";
+import { standardRateLimit } from "@/lib/ratelimit";
 import type { TenantContext } from "@/types/api";
 
+export const runtime = 'nodejs';
+
 export const GET = withErrorHandler(
-  withAuth(
-    withTenant(async (req: Request, { tenantId }: TenantContext) => {
-      const { searchParams } = new URL(req.url);
-      const studentId = searchParams.get("id");
-      if (!studentId) {
-        return createApiResponse(400, null, "Student ID is required");
-      }
+  standardRateLimit(
+    withAuth(
+      withTenant(
+        withPermission(PERMISSIONS.students.view)(async (req: Request, { tenantId }: TenantContext) => {
+          const { searchParams } = new URL(req.url);
+          const studentId = searchParams.get("id");
 
-      const studentDoc = await adminDb.collection("students").doc(studentId).get();
-      if (!studentDoc.exists || studentDoc.data()?.tenantId !== tenantId) {
-        return createApiResponse(404, null, "Student not found");
-      }
-      // ✅ as any تاکہ TypeScript خاموش رہے
-      const student = { id: studentDoc.id, ...studentDoc.data() } as any;
-
-      // حاضری کا رجحان (پچھلے 6 ماہ)
-      const sixMonthsAgo = new Date();
-      sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
-      const attendanceSnap = await adminDb
-        .collection("attendance")
-        .where("studentId", "==", studentId)
-        .where("tenantId", "==", tenantId)
-        .where("date", ">=", sixMonthsAgo.toISOString().slice(0, 10))
-        .orderBy("date", "asc")
-        .get();
-
-      const attendanceByMonth: Record<string, { present: number; total: number }> = {};
-      attendanceSnap.forEach(doc => {
-        const d = doc.data();
-        const month = d.date.substring(0, 7);
-        if (!attendanceByMonth[month]) attendanceByMonth[month] = { present: 0, total: 0 };
-        attendanceByMonth[month].total++;
-        if (d.status === "Present") attendanceByMonth[month].present++;
-      });
-      const attendanceTrend = Object.entries(attendanceByMonth).map(([month, data]) => ({
-        month,
-        percentage: data.total > 0 ? Math.round((data.present / data.total) * 100) : 0,
-      }));
-
-      // مارکس کا ڈیٹا
-      const marksSnap = await adminDb
-        .collection("marks")
-        .where("studentId", "==", studentId)
-        .where("tenantId", "==", tenantId)
-        .orderBy("updatedAt", "desc")
-        .get();
-
-      const marksList = marksSnap.docs.map(d => ({ id: d.id, ...d.data() })) as any[];
-
-      const marksByTerm: Record<string, { totalObt: number; totalMax: number; subjects: number }> = {};
-      marksList.forEach(m => {
-        if (!marksByTerm[m.term]) marksByTerm[m.term] = { totalObt: 0, totalMax: 0, subjects: 0 };
-        marksByTerm[m.term].totalObt += Number(m.marksObtained || 0);
-        marksByTerm[m.term].totalMax += Number(m.totalMarks || 0);
-        marksByTerm[m.term].subjects++;
-      });
-      const marksTrend = Object.entries(marksByTerm).map(([term, data]) => ({
-        term,
-        percentage: data.totalMax > 0 ? Math.round((data.totalObt / data.totalMax) * 100) : 0,
-      }));
-
-      // کوئز جمع کرانے کا ڈیٹا
-      const quizSubSnap = await adminDb
-        .collection("quiz_submissions")
-        .where("studentId", "==", studentId)
-        .where("tenantId", "==", tenantId)
-        .orderBy("createdAt", "desc")
-        .limit(10)
-        .get();
-      const quizzes = quizSubSnap.docs.map(d => ({ id: d.id, ...d.data() })) as any[];
-
-      // اسائنمنٹ جمع کرانے کا ڈیٹا
-      const submissionsSnap = await adminDb
-        .collection("submissions")
-        .where("studentId", "==", studentId)
-        .where("tenantId", "==", tenantId)
-        .orderBy("createdAt", "desc")
-        .limit(10)
-        .get();
-      const assignments = submissionsSnap.docs.map(d => ({ id: d.id, ...d.data() })) as any[];
-
-      // AI مشورے
-      let aiSuggestions = "";
-      if (marksList.length > 0 && attendanceTrend.length > 0) {
-        const latestAttendance = attendanceTrend[attendanceTrend.length - 1]?.percentage || 0;
-        const latestMarks = marksTrend[marksTrend.length - 1]?.percentage || 0;
-        const weakSubjects = marksList.filter(m => (m.marksObtained / m.totalMarks) < 0.5).map(m => m.subject);
-
-        const prompt = `Student ${student.fullName || student.name} has overall attendance ${latestAttendance}% and latest marks average ${latestMarks}%. Weak subjects: ${weakSubjects.join(", ") || "none"}. Provide 2 short, encouraging, personalized suggestions for improvement in Urdu or English. Keep it concise.`;
-
-        const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-        if (GEMINI_API_KEY) {
-          try {
-            const response = await fetch(
-              `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
-              {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  contents: [{ parts: [{ text: prompt }] }],
-                  generationConfig: { temperature: 0.7, maxOutputTokens: 100 },
-                }),
-              }
+          if (!studentId) {
+            return NextResponse.json(
+              { success: false, error: "Student ID required" },
+              { status: 400 }
             );
-            const data = await response.json();
-            aiSuggestions = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
-          } catch (err) {
-            console.error("AI suggestion error:", err);
           }
-        }
-      }
 
-      return createApiResponse(200, {
-        student,
-        attendanceTrend,
-        marksTrend,
-        recentQuizzes: quizzes,
-        recentAssignments: assignments,
-        aiSuggestions: aiSuggestions.trim(),
-      });
-    })
+          // 🔒 Verify student belongs to tenant
+          const studentSnap = await adminDb.collection("students").doc(studentId).get();
+          
+          if (!studentSnap.exists || studentSnap.data()?.tenantId !== tenantId || studentSnap.data()?.deleted) {
+            return NextResponse.json(
+              { success: false, error: "Student not found" },
+              { status: 404 }
+            );
+          }
+
+          const student = { id: studentSnap.id, ...studentSnap.data() };
+
+          // Parallel fetch all related data
+          const [marksSnap, attendanceSnap, feesSnap, behaviorSnap] = await Promise.all([
+            adminDb.collection("marks")
+              .where("tenantId", "==", tenantId)
+              .where("studentId", "==", studentId)
+              .where("deleted", "==", false)
+              .get(),
+            adminDb.collection("attendance")
+              .where("tenantId", "==", tenantId)
+              .where("studentId", "==", studentId)
+              .where("deleted", "==", false)
+              .orderBy("date", "desc")
+              .limit(30)
+              .get(),
+            adminDb.collection("fees")
+              .where("tenantId", "==", tenantId)
+              .where("studentId", "==", studentId)
+              .where("deleted", "==", false)
+              .get(),
+            adminDb.collection("behavior")
+              .where("tenantId", "==", tenantId)
+              .where("studentId", "==", studentId)
+              .where("deleted", "==", false)
+              .orderBy("date", "desc")
+              .limit(10)
+              .get(),
+          ]);
+
+          // Calculate aggregates
+          const marks = marksSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+          const totalMarks = marks.reduce((sum, m) => sum + (m.marksObtained || 0), 0);
+          const maxMarks = marks.reduce((sum, m) => sum + (m.totalMarks || 0), 0);
+          const percentage = maxMarks > 0 ? ((totalMarks / maxMarks) * 100).toFixed(2) : "0";
+
+          const attendance = attendanceSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+          const presentDays = attendance.filter(a => a.status === "present").length;
+          const attendanceRate = attendance.length > 0 
+            ? ((presentDays / attendance.length) * 100).toFixed(1) 
+            : "0";
+
+          const fees = feesSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+          const totalFees = fees.reduce((sum, f) => sum + (f.amount || 0), 0);
+          const paidFees = fees.filter(f => f.status === "paid").reduce((sum, f) => sum + (f.amount || 0), 0);
+
+          const behavior = behaviorSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+          return NextResponse.json({
+            success: true,
+            data: {
+              student,
+              academic: {
+                marks,
+                totalMarks,
+                maxMarks,
+                percentage,
+              },
+              attendance: {
+                records: attendance,
+                presentDays,
+                totalDays: attendance.length,
+                rate: attendanceRate,
+              },
+              financial: {
+                records: fees,
+                totalAmount: totalFees,
+                paidAmount: paidFees,
+                pendingAmount: totalFees - paidFees,
+              },
+              behavior,
+            },
+          });
+        })
+      )
+    )
   )
 );
