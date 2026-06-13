@@ -11,7 +11,10 @@ const PUBLIC_PATHS = [
   "/api/auth/login", 
   "/api/auth/register-user", 
   "/api/auth/parent-login",
-  "/api/stripe/webhook" // Stripe webhooks don't have user sessions
+  "/api/v1/auth/login",         // ✅ نیا - Login API
+  "/api/v1/auth/register-user", // ✅ نیا
+  "/api/v1/auth/parent-login",  // ✅ نیا
+  "/api/stripe/webhook"
 ];
 
 export function middleware(req: NextRequest) {
@@ -22,16 +25,13 @@ export function middleware(req: NextRequest) {
     PUBLIC_PATHS.includes(pathname) ||
     pathname.startsWith("/_next") ||
     pathname.startsWith("/api/auth") ||
+    pathname.startsWith("/api/v1/auth") ||  // ✅ نیا - تمام auth APIs
     pathname.includes(".") // static files like .png, .css
   ) {
     return NextResponse.next();
   }
 
   // 2. Check if the session cookie exists.
-  // ⚠️ WE DO NOT verify the cookie here! 
-  // Middleware runs on the Edge Runtime, which does NOT support Node.js modules 
-  // like `firebase-admin` (node:crypto). 
-  // The actual cryptographic verification happens safely in Server Components (layout.tsx).
   const sessionCookie = req.cookies.get("session");
   
   if (!sessionCookie?.value) {
