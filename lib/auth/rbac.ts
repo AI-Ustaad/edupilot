@@ -1,6 +1,7 @@
 // lib/auth/rbac.ts
 import { NextResponse } from "next/server";
-import { Permission, ROLE_PERMISSIONS } from "./permissions";
+import type { Permission } from "./permissions";
+import { ROLE_PERMISSIONS } from "./roles";
 import { getOrSet } from "@/lib/cache";
 
 const PERM_CACHE_TTL = 600; // 10 minutes
