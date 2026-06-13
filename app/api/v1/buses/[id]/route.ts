@@ -26,7 +26,7 @@ function getIdFromUrl(req: Request): string {
 export const GET = withErrorHandler(
   withAuth(
     withTenant(
-      withPermission(PERMISSIONS.dashboard.view)(async (req: Request, { tenantId }: WithTenantContext) => {
+      withPermission(PERMISSIONS.buses.view)(async (req: Request, { tenantId }: WithTenantContext) => {
         const id = getIdFromUrl(req);
         const service = new BusService(new BusRepository());
         const bus = await service.getById(id, tenantId);
