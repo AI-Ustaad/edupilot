@@ -23,7 +23,7 @@ export const GET = withErrorHandler(
 export const POST = withErrorHandler(
   withAuth(
     withTenant(
-      withPermission(PERMISSIONS.settings.manage)(async (req: Request, { tenantId }: TenantContext) => {
+     withPermission(PERMISSIONS.featureFlags.update)(async (req: Request, { tenantId }: TenantContext) => {
         const body = await req.json();
         const { feature, enabled } = body;
         if (typeof feature !== "string" || typeof enabled !== "boolean") {
