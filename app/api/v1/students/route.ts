@@ -11,7 +11,9 @@ import type { TenantContext } from "@/types/api";
 
 export const runtime = 'nodejs';
 
-// GET: Fetch Students
+// ==========================================
+// GET: Fetch Students (with filters)
+// ==========================================
 export const GET = withErrorHandler(
   withAuth(
     withTenant(
@@ -34,6 +36,7 @@ export const GET = withErrorHandler(
         const snap = await query.get();
         let students = snap.docs.map(d => ({ id: d.id, ...d.data() }));
 
+        // Client-side search (Firestore doesn't support text search)
         if (search) {
           const searchLower = search.toLowerCase();
           students = students.filter((s: any) => 
@@ -43,13 +46,19 @@ export const GET = withErrorHandler(
           );
         }
 
-        return NextResponse.json({ success: true, data: students, count: students.length });
+        return NextResponse.json({
+          success: true,
+          data: students,
+          count: students.length,
+        });
       })
     )
   )
 );
 
+// ==========================================
 // POST: Create New Student
+// ==========================================
 export const POST = withErrorHandler(
   withAuth(
     withTenant(
@@ -94,16 +103,26 @@ export const POST = withErrorHandler(
           tenantId,
           entityId: docRef.id,
           entityType: "student",
-          metadata: { fullName: data.fullName, classGrade: data.classGrade, section: data.section },
+          metadata: {
+            fullName: data.fullName,
+            classGrade: data.classGrade,
+            section: data.section,
+          },
         });
 
-        return NextResponse.json({ success: true, id: docRef.id, message: "Student created successfully" }, { status: 201 });
+        return NextResponse.json({
+          success: true,
+          id: docRef.id,
+          message: "Student created successfully",
+        }, { status: 201 });
       })
     )
   )
 );
 
+// ==========================================
 // PUT: Update Student
+// ==========================================
 export const PUT = withErrorHandler(
   withAuth(
     withTenant(
@@ -112,18 +131,28 @@ export const PUT = withErrorHandler(
         const studentId = data.id;
 
         if (!studentId) {
-          return NextResponse.json({ success: false, error: "Student ID required" }, { status: 400 });
+          return NextResponse.json(
+            { success: false, error: "Student ID required" },
+            { status: 400 }
+          );
         }
 
         const docRef = adminDb.collection("students").doc(studentId);
         const snap = await docRef.get();
 
         if (!snap.exists || snap.data()?.tenantId !== tenantId) {
-          return NextResponse.json({ success: false, error: "Student not found" }, { status: 404 });
+          return NextResponse.json(
+            { success: false, error: "Student not found" },
+            { status: 404 }
+          );
         }
 
         const { id, ...updateData } = data;
-        await docRef.update({ ...updateData, updatedAt: FieldValue.serverTimestamp(), updatedBy: user.uid });
+        await docRef.update({
+          ...updateData,
+          updatedAt: FieldValue.serverTimestamp(),
+          updatedBy: user.uid,
+        });
 
         await logAction({
           action: "students.update",
@@ -134,13 +163,18 @@ export const PUT = withErrorHandler(
           metadata: { updatedFields: Object.keys(updateData) },
         });
 
-        return NextResponse.json({ success: true, message: "Student updated successfully" });
+        return NextResponse.json({
+          success: true,
+          message: "Student updated successfully",
+        });
       })
     )
   )
 );
 
-// DELETE: Soft Delete
+// ==========================================
+// DELETE: Soft Delete Student
+// ==========================================
 export const DELETE = withErrorHandler(
   withAuth(
     withTenant(
@@ -149,14 +183,20 @@ export const DELETE = withErrorHandler(
         const studentId = searchParams.get("id");
 
         if (!studentId) {
-          return NextResponse.json({ success: false, error: "Student ID required" }, { status: 400 });
+          return NextResponse.json(
+            { success: false, error: "Student ID required" },
+            { status: 400 }
+          );
         }
 
         const docRef = adminDb.collection("students").doc(studentId);
         const snap = await docRef.get();
 
         if (!snap.exists || snap.data()?.tenantId !== tenantId) {
-          return NextResponse.json({ success: false, error: "Student not found" }, { status: 404 });
+          return NextResponse.json(
+            { success: false, error: "Student not found" },
+            { status: 404 }
+          );
         }
 
         await docRef.update({
@@ -171,10 +211,16 @@ export const DELETE = withErrorHandler(
           tenantId,
           entityId: studentId,
           entityType: "student",
-          metadata: { fullName: snap.data()?.fullName, classGrade: snap.data()?.classGrade },
+          metadata: {
+            fullName: snap.data()?.fullName,
+            classGrade: snap.data()?.classGrade,
+          },
         });
 
-        return NextResponse.json({ success: true, message: "Student archived successfully" });
+        return NextResponse.json({
+          success: true,
+          message: "Student archived successfully",
+        });
       })
     )
   )
