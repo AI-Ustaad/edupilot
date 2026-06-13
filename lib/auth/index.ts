@@ -4,8 +4,12 @@
 // ==========================================
 
 // Permissions (from permissions.ts)
-export { PERMISSIONS, ROLE_PERMISSIONS } from "./permissions";
+export { PERMISSIONS } from "./permissions";
 export type { Permission } from "./permissions";
+
+// Roles (from roles.ts)
+export { ROLE_PERMISSIONS } from "./roles";
+export type { Role } from "./roles";
 
 // RBAC Middleware (from rbac.ts)
 export { withPermission } from "./rbac";
