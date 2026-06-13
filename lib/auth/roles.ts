@@ -51,7 +51,6 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   // SUPER ADMIN - Full System Access
   // ==========================================
   [ROLES.SUPER_ADMIN]: [
-    // All permissions
     ...Object.values(PERMISSIONS).flatMap(category => Object.values(category)),
   ],
 
@@ -59,7 +58,6 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   // ADMIN - School Level Full Access
   // ==========================================
   [ROLES.ADMIN]: [
-    // Students - Full
     PERMISSIONS.students.view,
     PERMISSIONS.students.create,
     PERMISSIONS.students.update,
@@ -71,8 +69,6 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     PERMISSIONS.students.view360,
     PERMISSIONS.students.viewRisk,
     PERMISSIONS.students.ocrAdmission,
-
-    // Staff - Full
     PERMISSIONS.staff.view,
     PERMISSIONS.staff.create,
     PERMISSIONS.staff.update,
@@ -81,16 +77,12 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     PERMISSIONS.staff.import,
     PERMISSIONS.staff.bulk,
     PERMISSIONS.staff.managePayroll,
-
-    // Parents - Full
     PERMISSIONS.parents.view,
     PERMISSIONS.parents.create,
     PERMISSIONS.parents.update,
     PERMISSIONS.parents.delete,
     PERMISSIONS.parents.export,
     PERMISSIONS.parents.import,
-
-    // Academic - Full
     PERMISSIONS.marks.view,
     PERMISSIONS.marks.create,
     PERMISSIONS.marks.update,
@@ -100,7 +92,6 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     PERMISSIONS.marks.export,
     PERMISSIONS.marks.import,
     PERMISSIONS.marks.manageSkills,
-
     PERMISSIONS.attendance.view,
     PERMISSIONS.attendance.create,
     PERMISSIONS.attendance.update,
@@ -108,8 +99,6 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     PERMISSIONS.attendance.bulk,
     PERMISSIONS.attendance.export,
     PERMISSIONS.attendance.import,
-
-    // Financial - Full
     PERMISSIONS.fees.view,
     PERMISSIONS.fees.create,
     PERMISSIONS.fees.update,
@@ -120,189 +109,137 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     PERMISSIONS.fees.collect,
     PERMISSIONS.fees.waive,
     PERMISSIONS.fees.refund,
-
     PERMISSIONS.ledger.view,
     PERMISSIONS.ledger.create,
     PERMISSIONS.ledger.update,
     PERMISSIONS.ledger.delete,
     PERMISSIONS.ledger.export,
-
-    // Academic Resources - Full
     PERMISSIONS.syllabus.view,
     PERMISSIONS.syllabus.create,
     PERMISSIONS.syllabus.update,
     PERMISSIONS.syllabus.delete,
     PERMISSIONS.syllabus.publish,
-
     PERMISSIONS.curriculum.view,
     PERMISSIONS.curriculum.create,
     PERMISSIONS.curriculum.update,
     PERMISSIONS.curriculum.delete,
     PERMISSIONS.curriculum.load,
     PERMISSIONS.curriculum.preview,
-
     PERMISSIONS.books.view,
     PERMISSIONS.books.create,
     PERMISSIONS.books.update,
     PERMISSIONS.books.delete,
     PERMISSIONS.books.manage,
-
     PERMISSIONS.lessonPlans.view,
     PERMISSIONS.lessonPlans.create,
     PERMISSIONS.lessonPlans.update,
     PERMISSIONS.lessonPlans.delete,
     PERMISSIONS.lessonPlans.publish,
-
-    // Assignments & Homework
     PERMISSIONS.assignments.view,
     PERMISSIONS.assignments.create,
     PERMISSIONS.assignments.update,
     PERMISSIONS.assignments.delete,
     PERMISSIONS.assignments.grade,
-
     PERMISSIONS.homework.view,
     PERMISSIONS.homework.create,
     PERMISSIONS.homework.update,
     PERMISSIONS.homework.delete,
-
-    // Quizzes & Exams
     PERMISSIONS.quizzes.view,
     PERMISSIONS.quizzes.create,
     PERMISSIONS.quizzes.update,
     PERMISSIONS.quizzes.delete,
     PERMISSIONS.quizzes.publish,
     PERMISSIONS.quizzes.grade,
-
     PERMISSIONS.admitCards.view,
     PERMISSIONS.admitCards.create,
     PERMISSIONS.admitCards.bulk,
     PERMISSIONS.admitCards.export,
-
-    // Timetable
     PERMISSIONS.timetable.view,
     PERMISSIONS.timetable.create,
     PERMISSIONS.timetable.update,
     PERMISSIONS.timetable.delete,
     PERMISSIONS.timetable.generateAI,
-
-    // Transport
     PERMISSIONS.buses.view,
     PERMISSIONS.buses.create,
     PERMISSIONS.buses.update,
     PERMISSIONS.buses.delete,
-
-    // School Management
     PERMISSIONS.classes.view,
     PERMISSIONS.classes.create,
     PERMISSIONS.classes.update,
     PERMISSIONS.classes.delete,
-
     PERMISSIONS.sections.view,
     PERMISSIONS.sections.create,
     PERMISSIONS.sections.update,
     PERMISSIONS.sections.delete,
-
     PERMISSIONS.academicYear.view,
     PERMISSIONS.academicYear.create,
     PERMISSIONS.academicYear.update,
     PERMISSIONS.academicYear.delete,
     PERMISSIONS.academicYear.activate,
-
-    // Behavior & Leave
     PERMISSIONS.behavior.view,
     PERMISSIONS.behavior.create,
     PERMISSIONS.behavior.update,
     PERMISSIONS.behavior.delete,
-
     PERMISSIONS.leave.view,
     PERMISSIONS.leave.apply,
     PERMISSIONS.leave.approve,
     PERMISSIONS.leave.reject,
     PERMISSIONS.leave.manage,
-
-    // Admissions
     PERMISSIONS.admissions.view,
     PERMISSIONS.admissions.create,
     PERMISSIONS.admissions.update,
     PERMISSIONS.admissions.approve,
     PERMISSIONS.admissions.reject,
-
-    // Reports & Analytics
     PERMISSIONS.reports.view,
     PERMISSIONS.reports.create,
     PERMISSIONS.reports.generate,
     PERMISSIONS.reports.export,
-
     PERMISSIONS.analytics.view,
     PERMISSIONS.analytics.viewAdvanced,
     PERMISSIONS.analytics.export,
-
     PERMISSIONS.audit.view,
     PERMISSIONS.audit.export,
-
-    // AI Features
     PERMISSIONS.ai.chatbot,
     PERMISSIONS.ai.examQuestions,
     PERMISSIONS.ai.examPaper,
     PERMISSIONS.ai.reportComments,
     PERMISSIONS.ai.timetable,
     PERMISSIONS.ai.smartBookCenter,
-
-    // OCR
     PERMISSIONS.ocr.use,
     PERMISSIONS.ocr.extract,
-
-    // Chat & Notifications
     PERMISSIONS.chat.view,
     PERMISSIONS.chat.send,
     PERMISSIONS.chat.manage,
-
     PERMISSIONS.notifications.view,
     PERMISSIONS.notifications.send,
     PERMISSIONS.notifications.manage,
-
-    // Settings
     PERMISSIONS.settings.view,
     PERMISSIONS.settings.update,
     PERMISSIONS.settings.manageWhitelabel,
     PERMISSIONS.settings.manageAddons,
     PERMISSIONS.settings.manageBilling,
-
     PERMISSIONS.menu.view,
     PERMISSIONS.menu.update,
     PERMISSIONS.featureFlags.view,
     PERMISSIONS.featureFlags.update,
-
-    // Users
     PERMISSIONS.users.view,
     PERMISSIONS.users.create,
     PERMISSIONS.users.update,
     PERMISSIONS.users.delete,
     PERMISSIONS.users.manageRoles,
-
-    // Subscriptions
     PERMISSIONS.subscriptions.view,
     PERMISSIONS.subscriptions.manage,
     PERMISSIONS.subscriptions.activate,
-
     PERMISSIONS.addons.view,
     PERMISSIONS.addons.purchase,
     PERMISSIONS.addons.manage,
-
-    // Certificates
     PERMISSIONS.certificates.view,
     PERMISSIONS.certificates.create,
     PERMISSIONS.certificates.issue,
-
-    // Upload
     PERMISSIONS.upload.use,
     PERMISSIONS.upload.manage,
-
-    // GDPR
     PERMISSIONS.gdpr.export,
     PERMISSIONS.gdpr.delete,
-
-    // Protected Data
     PERMISSIONS.protectedData.access,
   ],
 
