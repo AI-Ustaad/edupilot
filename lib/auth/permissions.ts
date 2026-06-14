@@ -144,6 +144,12 @@ export const PERMISSIONS = {
     delete: "books.delete",
     manage: "books.manage",
   },
+  videoLectures: {
+    view: "videoLectures.view",
+    create: "videoLectures.create",
+    update: "videoLectures.update",
+    delete: "videoLectures.delete",
+  },
 
   lessonPlans: {
     view: "lessonPlans.view",
