@@ -64,7 +64,7 @@ export const GET = withErrorHandler(
         ]);
 
         // Calculate aggregates
-        const marks = marksSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        const marks = marksSnap.docs.map(d => ({ id: d.id, ...(d.data() as any) }));
         const totalMarks = marks.reduce((sum, m) => sum + (m.marksObtained || 0), 0);
         const maxMarks = marks.reduce((sum, m) => sum + (m.totalMarks || 0), 0);
         const percentage = maxMarks > 0 ? ((totalMarks / maxMarks) * 100).toFixed(2) : "0";
