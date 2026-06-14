@@ -41,7 +41,7 @@ export const GET = withErrorHandler(
 export const POST = withErrorHandler(
   withAuth(
     withTenant(
-      withPermission(PERMISSIONS.SETTINGS.MANAGE)(async (req: NextRequest, { tenantId, user }: TenantContext) => {
+      withPermission(PERMISSIONS.SETTINGS.UPDATE)(async (req: NextRequest, { tenantId, user }: TenantContext) => {
         try {
           const body = await req.json();
           const { feature, enabled } = body;
