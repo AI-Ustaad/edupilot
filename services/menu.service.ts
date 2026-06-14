@@ -3,8 +3,6 @@ import { MenuGroup } from "@/types/menu";
 import { Permission } from "@/lib/auth/permissions";
 import { ROLE_PERMISSIONS } from "@/lib/auth/roles";
 import type { Permission } from "@/lib/auth/permissions";
-
-
 export class MenuService {
   async getMenuForUser(
     role: string,
