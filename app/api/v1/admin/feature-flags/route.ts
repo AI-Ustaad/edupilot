@@ -15,7 +15,6 @@ export const GET = withErrorHandler(
     withTenant(
       withPermission(PERMISSIONS.SETTINGS.VIEW)(async (req: NextRequest, { tenantId }: TenantContext) => {
         try {
-          // Fetch feature flags from Firestore (Tenant Isolated)
           const docRef = adminDb
             .collection("tenants")
             .doc(tenantId)
@@ -47,7 +46,6 @@ export const POST = withErrorHandler(
           const body = await req.json();
           const { feature, enabled } = body;
 
-          // Validation
           if (!feature || typeof enabled !== 'boolean') {
             return createErrorResponse(400, "Invalid payload. 'feature' (string) and 'enabled' (boolean) are required.");
           }
@@ -58,15 +56,11 @@ export const POST = withErrorHandler(
             .collection("settings")
             .doc("feature_flags");
 
-          // Use Transaction for safe updates
           await adminDb.runTransaction(async (transaction) => {
             const docSnap = await transaction.get(docRef);
             const currentFlags = docSnap.exists ? docSnap.data() || {} : {};
             
-            // Update the specific flag
             currentFlags[feature] = enabled;
-            
-            // Optional: Add audit metadata
             currentFlags._metadata = {
               lastUpdatedBy: user.uid,
               lastUpdatedAt: new Date().toISOString()
@@ -74,9 +68,6 @@ export const POST = withErrorHandler(
 
             transaction.set(docRef, currentFlags, { merge: true });
           });
-
-          // Log Audit (Optional but recommended for settings changes)
-          // await logAudit({ action: 'SETTINGS_UPDATE', entityType: 'FeatureFlag', entityId: feature, userId: user.uid, tenantId, metadata: { enabled } });
 
           return createApiResponse(200, `Feature '${feature}' updated successfully`, { feature, enabled });
         } catch (error) {
