@@ -1,36 +1,22 @@
 import { DEFAULT_MENU } from "@/lib/config/menu.config";
 import { MenuGroup } from "@/types/menu";
-HEAD
-import { Permission } from "@/lib/auth/permissions";
-import { ROLE_PERMISSIONS } from "@/lib/auth/roles";
-import type { Permission } from "@/lib/auth/permissions";
-<<<<<<< HEAD
-=
 import type { Permission } from "@/lib/auth/permissions";
 import { ROLE_PERMISSIONS } from "@/lib/auth/roles";
 
- f72c552 (chore: complete phase 1 stabilization, fix all build and type errors)
-=======
-
-import type { Permission } from "@/lib/auth/permissions";
-import { ROLE_PERMISSIONS } from "@/lib/auth/roles";
-
-f72c552 (chore: complete phase 1 stabilization, fix all build and type errors)
->>>>>>> origin/main
 export class MenuService {
   async getMenuForUser(
     role: string,
     permissions?: Permission[],
-    disabledFeatures?: string[]  // <-- new parameter
+    disabledFeatures?: string[]
   ): Promise<MenuGroup[]> {
-    const effectivePermissions = permissions || ROLE_PERMISSIONS[role] || [];
+    const effectivePermissions = permissions || ROLE_PERMISSIONS[role as keyof typeof ROLE_PERMISSIONS] || [];
     const disabled = new Set(disabledFeatures || []);
 
     const isAuthorized = (item: {
       allowedRoles?: string[];
       permission?: Permission;
-      featureFlag?: string;   // make sure MenuItem/Group has this field
-    }) {
+      featureFlag?: string;
+    }) => {
       if (item.allowedRoles && !item.allowedRoles.includes(role)) return false;
       if (item.permission && !effectivePermissions.includes(item.permission)) return false;
       if (item.featureFlag && disabled.has(item.featureFlag)) return false;
@@ -46,3 +32,5 @@ export class MenuService {
       .filter((group) => group.children.length > 0);
   }
 }
+
+export const menuService = new MenuService();
