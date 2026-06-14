@@ -1,9 +1,7 @@
-// یہ فنکشن اس بات کا خیال رکھتا ہے کہ اگر دوسرا آرگیومنٹ سٹرنگ نہیں ہے تو اسے 'data' مان لیا جائے
 export const createApiResponse = (statusCode: number, messageOrData: any, data?: any, meta?: any) => {
   let finalMessage = "Success";
   let finalData = data;
 
-  // اگر data undefined ہے اور messageOrData سٹرنگ نہیں ہے، تو اسے ڈیٹا مان لیں
   if (finalData === undefined && typeof messageOrData !== 'string') {
     finalData = messageOrData;
   } else {
@@ -24,7 +22,7 @@ export const createApiResponse = (statusCode: number, messageOrData: any, data?:
   );
 };
 
-// نیا فنکشن جو ایرر ہینڈلنگ کے لیے درکار تھا
+// ✅ یہ فنکشن اب ایکسپورٹ ہو رہا ہے
 export const createErrorResponse = (statusCode: number, message: string, errors?: any[]) => {
   return new Response(
     JSON.stringify({ 
