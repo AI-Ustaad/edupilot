@@ -17,10 +17,11 @@ export const PERMISSIONS = {
     CREATE: 'fees.create',
     UPDATE: 'fees.update',
     DELETE: 'fees.delete',
+    APPROVE: 'fees.approve',
   },
   ATTENDANCE: {
     VIEW: 'attendance.view',
-    MARK: 'attendance.mark', // 'create' کی جگہ 'MARK'
+    MARK: 'attendance.mark',
     UPDATE: 'attendance.update',
     DELETE: 'attendance.delete',
   },
@@ -38,7 +39,7 @@ export const PERMISSIONS = {
   },
   SETTINGS: {
     VIEW: 'settings.view',
-    MANAGE: 'settings.manage',
+    MANAGE: 'settings.manage', // ✅ یہ لائن بہت اہم ہے
     UPDATE: 'settings.update',
   },
   BILLING: {
