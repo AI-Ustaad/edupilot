@@ -56,7 +56,7 @@ export const PUT = withErrorHandler(
 export const DELETE = withErrorHandler(
   withAuth(
     withTenant(
-      withPermission(PERMISSIONS.settings.manage)(async (req: Request, { tenantId, user }: WithTenantContext) => {
+      withPermission(PERMISSIONS.settings.update)(async (req: Request, { tenantId, user }: WithTenantContext) => {
         const id = getIdFromUrl(req);
         const service = new BusService(new BusRepository());
         const bus = await service.getById(id, tenantId);

@@ -11,7 +11,7 @@ import { PERMISSIONS } from "@/lib/auth/permissions";
 export const GET = withErrorHandler(
   withAuth(
     withTenant(
-      withPermission(PERMISSIONS.dashboard.view)(
+      withPermission(PERMISSIONS.analytics.view)(
         async (_req: Request, { tenantId }: TenantContext) => {
           const ffService = new FeatureFlagService();
           const subService = new SubscriptionService();

@@ -12,7 +12,7 @@ export const GET = withErrorHandler(
   withAuth(
     withRateLimit(standardRateLimit)(       // 👈 pass the limiter
       withTenant(
-        withPermission(PERMISSIONS.dashboard.view)(
+        withPermission(PERMISSIONS.analytics.view)(
           async (_req: Request, { tenantId }: TenantContext) => {
             const service = new DashboardService();
             const data = await service.getDashboardData(tenantId);

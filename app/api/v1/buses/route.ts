@@ -10,7 +10,7 @@ import { PERMISSIONS } from "@/lib/auth/permissions";
 export const GET = withErrorHandler(
   withAuth(
     withTenant(
-      withPermission(PERMISSIONS.dashboard.view)(async (req: Request, { tenantId }: TenantContext) => {
+      withPermission(PERMISSIONS.analytics.view)(async (req: Request, { tenantId }: TenantContext) => {
         const service = new BusService(new BusRepository());
         const buses = await service.getAll(tenantId);
         return createApiResponse(200, buses);

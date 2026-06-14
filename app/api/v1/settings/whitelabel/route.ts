@@ -22,7 +22,7 @@ export const GET = withErrorHandler(
 export const PUT = withErrorHandler(
   withAuth(
     withTenant(
-      withPermission(PERMISSIONS.settings.manage)(async (req: Request, { tenantId }: TenantContext) => {
+      withPermission(PERMISSIONS.settings.update)(async (req: Request, { tenantId }: TenantContext) => {
         const body = await req.json();
         const { schoolName, logo, primaryColor, customDomain } = body;
         const service = new TenantBrandingService(new TenantBrandingRepository());
