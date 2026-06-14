@@ -69,17 +69,17 @@ export const GET = withErrorHandler(
         const maxMarks = marks.reduce((sum, m) => sum + (m.totalMarks || 0), 0);
         const percentage = maxMarks > 0 ? ((totalMarks / maxMarks) * 100).toFixed(2) : "0";
 
-        const attendance = attendanceSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        const attendance = attendanceSnap.docs.map(d => ({ id: d.id, ...(d.data() as any) }));
         const presentDays = attendance.filter(a => a.status === "present").length;
         const attendanceRate = attendance.length > 0 
           ? ((presentDays / attendance.length) * 100).toFixed(1) 
           : "0";
 
-        const fees = feesSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        const fees = feesSnap.docs.map(d => ({ id: d.id, ...(d.data() as any) }));
         const totalFees = fees.reduce((sum, f) => sum + (f.amount || 0), 0);
         const paidFees = fees.filter(f => f.status === "paid").reduce((sum, f) => sum + (f.amount || 0), 0);
 
-        const behavior = behaviorSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        const behavior = behaviorSnap.docs.map(d => ({ id: d.id, ...(d.data() as any) }));
 
         return NextResponse.json({
           success: true,
