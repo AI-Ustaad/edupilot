@@ -49,7 +49,7 @@ export const ReportCardTemplate: React.FC<{ data: ReportData }> = ({ data }) => 
 
         <View style={styles.studentInfo}>
           <View style={styles.infoCol}><Text style={styles.infoLabel}>Student Name</Text><Text style={styles.infoValue}>{data.student.name}</Text></View>
-          <View style={styles.infoCol}><Text style={styles.infoLabel}>Father's Name</Text><Text style={styles.infoValue}>{data.student.fatherName}</Text></View>
+          <View style={styles.infoCol}><Text style={styles.infoLabel}>Father{"'"}s Name</Text><Text style={styles.infoValue}>{data.student.fatherName}</Text></View>
           <View style={styles.infoCol}><Text style={styles.infoLabel}>Class & Section</Text><Text style={styles.infoValue}>{data.student.classGrade} - {data.student.section}</Text></View>
           <View style={styles.infoCol}><Text style={styles.infoLabel}>Roll No</Text><Text style={styles.infoValue}>{data.student.rollNumber}</Text></View>
         </View>
@@ -82,7 +82,7 @@ export const ReportCardTemplate: React.FC<{ data: ReportData }> = ({ data }) => 
 
         {data.aiComment && (
           <View style={styles.aiSection}>
-            <Text style={styles.aiTitle}>Teacher's AI Comment</Text>
+            <Text style={styles.aiTitle}>Teacher{"'"}s AI Comment</Text>
             <Text style={styles.aiText}>{data.aiComment}</Text>
           </View>
         )}

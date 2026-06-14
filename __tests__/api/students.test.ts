@@ -22,7 +22,7 @@ describe("Students API", () => {
   it("GET returns 401 if no session", async () => {
     (getSessionUser as jest.Mock).mockResolvedValue(null);
     const req = new NextRequest("http://localhost/api/students");
-    const res = await GET(req);
+    const res = await GET(req, {} as any);
     expect(res.status).toBe(401);
   });
 
@@ -41,7 +41,7 @@ describe("Students API", () => {
     });
 
     const req = new NextRequest("http://localhost/api/students");
-    const res = await GET(req);
+    const res = await GET(req, {} as any);
     const data = await res.json();
     expect(data).toEqual(mockStudents);
   });

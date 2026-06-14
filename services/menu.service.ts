@@ -1,8 +1,14 @@
 import { DEFAULT_MENU } from "@/lib/config/menu.config";
 import { MenuGroup } from "@/types/menu";
+<<<<<<< HEAD
 import { Permission } from "@/lib/auth/permissions";
 import { ROLE_PERMISSIONS } from "@/lib/auth/roles";
 import type { Permission } from "@/lib/auth/permissions";
+=======
+import type { Permission } from "@/lib/auth/permissions";
+import { ROLE_PERMISSIONS } from "@/lib/auth/roles";
+
+>>>>>>> f72c552 (chore: complete phase 1 stabilization, fix all build and type errors)
 export class MenuService {
   async getMenuForUser(
     role: string,

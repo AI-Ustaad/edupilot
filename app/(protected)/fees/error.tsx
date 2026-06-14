@@ -23,7 +23,7 @@ export default function FeesError({
         </div>
         <h2 className="text-xl font-black text-gray-900 mb-2">Fee Management Failed</h2>
         <p className="text-gray-500 mb-6 text-sm">
-          We couldn't load the fee ledger. Please check your connection or try again.
+          We couldn&apos;t load the fee ledger. Please check your connection or try again.
         </p>
         <div className="flex gap-3 justify-center">
           <button

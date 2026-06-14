@@ -122,7 +122,7 @@ export default function ParentDashboard() {
 
   return (
     <div className="max-w-4xl mx-auto p-4 md:p-8 space-y-8">
-      <h1 className="text-2xl font-bold text-gray-900">My Child's Dashboard</h1>
+      <h1 className="text-2xl font-bold text-gray-900">My Child&apos;s Dashboard</h1>
 
       {data.children.map(child => (
         <div key={child.id} className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm space-y-6">
@@ -140,7 +140,7 @@ export default function ParentDashboard() {
             <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-center gap-3">
               <CalendarCheck className="text-blue-600 w-8 h-8" />
               <div>
-                <p className="text-sm text-gray-600">Today's Attendance</p>
+                <p className="text-sm text-gray-600">Today&apos;s Attendance</p>
                 <p className="text-xl font-bold text-gray-900">{child.todayAttendance}</p>
               </div>
             </div>

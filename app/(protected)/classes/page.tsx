@@ -99,7 +99,7 @@ export default function ClassesManagementPage() {
           <h1 className="text-2xl font-black text-gray-900 flex items-center gap-3">
             <School className="text-blue-600"/> Classes & Sections
           </h1>
-          <p className="text-sm text-gray-500 mt-1">Manage your school's academic structure.</p>
+          <p className="text-sm text-gray-500 mt-1">Manage your school&apos;s academic structure.</p>
         </div>
       </div>
 

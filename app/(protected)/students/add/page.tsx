@@ -106,7 +106,7 @@ export default function AddStudentPage() {
           {activeTab === "personal" && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-fade-in-up">
               <div><label className="text-xs font-bold text-gray-500">Full Name *</label><input required name="fullName" value={form.fullName} onChange={handleChange} className="w-full border p-3 rounded-xl mt-1" /></div>
-              <div><label className="text-xs font-bold text-gray-500">Father's Name *</label><input required name="fatherName" value={form.fatherName} onChange={handleChange} className="w-full border p-3 rounded-xl mt-1" /></div>
+              <div><label className="text-xs font-bold text-gray-500">Father&apos;s Name *</label><input required name="fatherName" value={form.fatherName} onChange={handleChange} className="w-full border p-3 rounded-xl mt-1" /></div>
               <div><label className="text-xs font-bold text-gray-500">CNIC / B-Form</label><input name="cnic" value={form.cnic} onChange={handleChange} className="w-full border p-3 rounded-xl mt-1" /></div>
               <div><label className="text-xs font-bold text-gray-500">Date of Birth</label><input type="date" name="dob" value={form.dob} onChange={handleChange} className="w-full border p-3 rounded-xl mt-1" /></div>
               <div><label className="text-xs font-bold text-gray-500">Gender</label><select name="gender" value={form.gender} onChange={handleChange} className="w-full border p-3 rounded-xl mt-1"><option>Male</option><option>Female</option></select></div>
