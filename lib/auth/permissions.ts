@@ -1,76 +1,104 @@
 export const PERMISSIONS = {
-  STUDENTS: {
-    VIEW: 'students.view',
-    CREATE: 'students.create',
-    UPDATE: 'students.update',
-    DELETE: 'students.delete',
-    EXPORT: 'students.export',
+  students: {
+    view: "students.view",
+    create: "students.create",
+    update: "students.update",
+    delete: "students.delete",
   },
-  STAFF: {
-    VIEW: 'staff.view',
-    CREATE: 'staff.create',
-    UPDATE: 'staff.update',
-    DELETE: 'staff.delete',
+
+  staff: {
+    view: "staff.view",
+    create: "staff.create",
+    update: "staff.update",
+    delete: "staff.delete",
   },
-  FEES: {
-    VIEW: 'fees.view',
-    CREATE: 'fees.create',
-    UPDATE: 'fees.update',
-    DELETE: 'fees.delete',
-    APPROVE: 'fees.approve',
+
+  fees: {
+    view: "fees.view",
+    create: "fees.create",
+    update: "fees.update",
+    delete: "fees.delete",
+    collect: "fees.collect",
   },
-  ATTENDANCE: {
-    VIEW: 'attendance.view',
-    MARK: 'attendance.mark',
-    UPDATE: 'attendance.update',
-    DELETE: 'attendance.delete',
+
+  attendance: {
+    view: "attendance.view",
+    create: "attendance.create",
+    update: "attendance.update",
+    delete: "attendance.delete",
   },
-  EXAMS: {
-    VIEW: 'exams.view',
-    CREATE: 'exams.create',
-    PUBLISH: 'exams.publish',
+
+  analytics: {
+    view: "analytics.view",
   },
-  PARENTS: {
-    VIEW: 'parents.view',
-    MANAGE: 'parents.manage',
+
+  assignments: {
+    view: "assignments.view",
+    create: "assignments.create",
+    update: "assignments.update",
+    grade: "assignments.grade",
   },
-  DASHBOARD: {
-    VIEW: 'dashboard.view',
+
+  homework: {
+    view: "homework.view",
+    create: "homework.create",
+    update: "homework.update",
   },
-  SETTINGS: {
-    VIEW: 'settings.view',
-    MANAGE: 'settings.manage', // ✅ یہ لائن بہت اہم ہے
-    UPDATE: 'settings.update',
+
+  quizzes: {
+    view: "quizzes.view",
+    create: "quizzes.create",
+    grade: "quizzes.grade",
   },
-  BILLING: {
-    VIEW: 'billing.view',
-    MANAGE: 'billing.manage',
+
+  lessonPlans: {
+    view: "lessonPlans.view",
+    create: "lessonPlans.create",
   },
-  AUDIT: {
-    VIEW: 'audit.view',
+
+  chat: {
+    view: "chat.view",
+    send: "chat.send",
+  },
+
+  parents: {
+    view: "parents.view",
+  },
+
+  settings: {
+    view: "settings.view",
+    update: "settings.update",
+  },
+
+  ledger: {
+    view: "ledger.view",
+  },
+
+  subscriptions: {
+    view: "subscriptions.view",
+  },
+
+  marks: {
+    view: "marks.view",
+  },
+
+  buses: {
+    view: "buses.view",
+    update: "buses.update",
+  },
+
+  videoLectures: {
+    view: "videoLectures.view",
+    create: "videoLectures.create",
+  },
+
+  audit: {
+    view: "audit.view",
   },
 } as const;
 
-export type Permission = typeof PERMISSIONS[keyof typeof PERMISSIONS][keyof typeof PERMISSIONS[keyof typeof PERMISSIONS]];
+type PermissionGroup =
+  (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
 
-export const ROLE_PERMISSIONS: Record<string, Permission[]> = {
-  admin: [
-    ...Object.values(PERMISSIONS).flatMap(module => Object.values(module)),
-  ],
-  teacher: [
-    PERMISSIONS.STUDENTS.VIEW,
-    PERMISSIONS.ATTENDANCE.VIEW,
-    PERMISSIONS.ATTENDANCE.MARK,
-    PERMISSIONS.DASHBOARD.VIEW,
-  ],
-  accountant: [
-    PERMISSIONS.FEES.VIEW,
-    PERMISSIONS.FEES.CREATE,
-    PERMISSIONS.FEES.UPDATE,
-    PERMISSIONS.BILLING.VIEW,
-  ],
-  parent: [
-    PERMISSIONS.PARENTS.VIEW,
-    PERMISSIONS.PARENTS.MANAGE,
-  ],
-};
+export type Permission =
+  PermissionGroup[keyof PermissionGroup];
