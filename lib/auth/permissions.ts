@@ -17,21 +17,33 @@ export const PERMISSIONS = {
     CREATE: 'fees.create',
     UPDATE: 'fees.update',
     DELETE: 'fees.delete',
-    APPROVE: 'fees.approve',
   },
   ATTENDANCE: {
     VIEW: 'attendance.view',
-    MARK: 'attendance.mark',
+    MARK: 'attendance.mark', // 'create' کی جگہ 'MARK'
     UPDATE: 'attendance.update',
+    DELETE: 'attendance.delete',
   },
   EXAMS: {
     VIEW: 'exams.view',
     CREATE: 'exams.create',
     PUBLISH: 'exams.publish',
   },
+  PARENTS: {
+    VIEW: 'parents.view',
+    MANAGE: 'parents.manage',
+  },
+  DASHBOARD: {
+    VIEW: 'dashboard.view',
+  },
   SETTINGS: {
     VIEW: 'settings.view',
+    MANAGE: 'settings.manage',
     UPDATE: 'settings.update',
+  },
+  BILLING: {
+    VIEW: 'billing.view',
+    MANAGE: 'billing.manage',
   },
   AUDIT: {
     VIEW: 'audit.view',
@@ -40,7 +52,24 @@ export const PERMISSIONS = {
 
 export type Permission = typeof PERMISSIONS[keyof typeof PERMISSIONS][keyof typeof PERMISSIONS[keyof typeof PERMISSIONS]];
 
-// Helper to get all permissions for a module (e.g., 'students.*')
-export const getModulePermissions = (module: keyof typeof PERMISSIONS): string[] => {
-  return Object.values(PERMISSIONS[module]);
+export const ROLE_PERMISSIONS: Record<string, Permission[]> = {
+  admin: [
+    ...Object.values(PERMISSIONS).flatMap(module => Object.values(module)),
+  ],
+  teacher: [
+    PERMISSIONS.STUDENTS.VIEW,
+    PERMISSIONS.ATTENDANCE.VIEW,
+    PERMISSIONS.ATTENDANCE.MARK,
+    PERMISSIONS.DASHBOARD.VIEW,
+  ],
+  accountant: [
+    PERMISSIONS.FEES.VIEW,
+    PERMISSIONS.FEES.CREATE,
+    PERMISSIONS.FEES.UPDATE,
+    PERMISSIONS.BILLING.VIEW,
+  ],
+  parent: [
+    PERMISSIONS.PARENTS.VIEW,
+    PERMISSIONS.PARENTS.MANAGE,
+  ],
 };
