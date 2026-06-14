@@ -13,7 +13,7 @@ import type { TenantContext } from "@/types/api";
 export const GET = withErrorHandler(
   withAuth(
     withTenant(
-      withPermission(PERMISSIONS.SETTINGS.VIEW)(async (req: NextRequest, { tenantId }: TenantContext) => {
+      withPermission(PERMISSIONS.settings.view)(async (req: NextRequest, { tenantId }: TenantContext) => {
         try {
           const docRef = adminDb
             .collection("tenants")
@@ -41,7 +41,7 @@ export const GET = withErrorHandler(
 export const POST = withErrorHandler(
   withAuth(
     withTenant(
-      withPermission(PERMISSIONS.SETTINGS.UPDATE)(async (req: NextRequest, { tenantId, user }: TenantContext) => {
+      withPermission(PERMISSIONS.settings.update)(async (req: NextRequest, { tenantId, user }: TenantContext) => {
         try {
           const body = await req.json();
           const { feature, enabled } = body;
