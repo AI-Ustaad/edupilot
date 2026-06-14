@@ -13,7 +13,7 @@ import type { TenantContext } from "@/types/api";
 export const GET = withErrorHandler(
   withAuth(
     withTenant(
-      withPermission(PERMISSIONS.SETTINGS.VIEW)(async (req: NextRequest, { tenantId }: TenantContext) => {
+     withPermission(PERMISSIONS.settings.view)(async (req: NextRequest, { tenantId }: TenantContext) => {
         try {
           const docRef = adminDb
             .collection("tenants")
