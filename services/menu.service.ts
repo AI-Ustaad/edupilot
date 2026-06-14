@@ -1,14 +1,14 @@
 import { DEFAULT_MENU } from "@/lib/config/menu.config";
 import { MenuGroup } from "@/types/menu";
-<<<<<<< HEAD
+HEAD
 import { Permission } from "@/lib/auth/permissions";
 import { ROLE_PERMISSIONS } from "@/lib/auth/roles";
 import type { Permission } from "@/lib/auth/permissions";
-=======
+
 import type { Permission } from "@/lib/auth/permissions";
 import { ROLE_PERMISSIONS } from "@/lib/auth/roles";
 
->>>>>>> f72c552 (chore: complete phase 1 stabilization, fix all build and type errors)
+f72c552 (chore: complete phase 1 stabilization, fix all build and type errors)
 export class MenuService {
   async getMenuForUser(
     role: string,
@@ -22,7 +22,7 @@ export class MenuService {
       allowedRoles?: string[];
       permission?: Permission;
       featureFlag?: string;   // make sure MenuItem/Group has this field
-    }) => {
+    }) {
       if (item.allowedRoles && !item.allowedRoles.includes(role)) return false;
       if (item.permission && !effectivePermissions.includes(item.permission)) return false;
       if (item.featureFlag && disabled.has(item.featureFlag)) return false;
