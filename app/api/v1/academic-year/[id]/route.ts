@@ -1,11 +1,13 @@
 export const dynamic = 'force-dynamic';
 
 import { NextResponse } from "next/server";
-// ... باقی کوڈ
-export const dynamic = 'force-dynamic';
 import { adminDb } from "@/lib/firebase-admin";
 import { withAuth, withTenant, withErrorHandler, withRole } from "@/route-helpers";
 import { createApiResponse } from "@/lib/response/apiResponse";
+
+export async function GET(req: Request, context: any) {
+  // آپ کا کوڈ یہاں رہے گا...
+}
 import type { TenantContext } from "@/types/api";
 
 function getId(req: Request): string {
