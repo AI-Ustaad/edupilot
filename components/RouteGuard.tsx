@@ -3,13 +3,12 @@
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { PERMISSIONS } from "@/lib/auth/permissions";
-import { hasAnyPermission } from "@/lib/auth/rbac";
+import { hasAnyPermission } from "@/lib/auth/client-rbac";
 import AccessDenied from "./AccessDenied";
 import { ReactNode } from "react";
 
-// 🗺️ URL اور اس کی مطلوبہ پرمیشنز کی میپنگ
 function getRequiredPermissions(pathname: string): any[] {
-  if (!pathname) return []; // Fallback for safety
+  if (!pathname) return [];
 
   // Admin & Settings
   if (pathname.startsWith("/admin/users")) return [PERMISSIONS.settings.manage];
@@ -37,16 +36,13 @@ export default function RouteGuard({ children }: { children: ReactNode }) {
   
   const role = user?.role;
 
-  // جب تک یوزر کا رول لوڈ نہ ہو جائے، ایک بلینک سکرین یا لوڈر دکھائیں تاکہ فلیش (Flash) نہ آئے
   if (!role || role === "loading") return null; 
 
   const requiredPermissions = getRequiredPermissions(pathname);
 
-  // اگر پیج کے لیے پرمیشن چاہیے، اور یوزر کے پاس وہ پرمیشن نہیں ہے، تو بلاک کر دیں!
   if (requiredPermissions.length > 0 && !hasAnyPermission(role, requiredPermissions)) {
     return <AccessDenied />;
   }
 
-  // اگر سب ٹھیک ہے، تو اصل پیج دکھا دیں
   return <>{children}</>;
 }
