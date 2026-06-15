@@ -140,6 +140,10 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
   // 🛡️ سمارٹ فلٹرنگ (آئٹمز اور گروپس کو پرمیشنز کے لحاظ سے چھپانا)
   const authorizedGroups = menuGroups.map(group => {
     const authorizedItems = group.items.filter(item => {
+     // 🛡️ سمارٹ فلٹرنگ (آئٹمز اور گروپس کو پرمیشنز کے لحاظ سے چھپانا)
+  const authorizedGroups = menuGroups.map(group => {
+    // یہاں ہم نے (item: any) کر دیا ہے تاکہ ٹائپ سکرپٹ کا ایرر ختم ہو جائے
+    const authorizedItems = group.items.filter((item: any) => {
       // اگر پرمیشنز ڈیفائنڈ ہیں، تو نیا RBAC سسٹم استعمال کریں
       if (item.permissions && item.permissions.length > 0) {
         return hasAnyPermission(role, item.permissions);
@@ -151,6 +155,8 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
       return true;
     });
 
+    return { ...group, items: authorizedItems };
+  }).filter(group => group.items.length > 0); // 🪄 جادو: اگر گروپ کے اندر کوئی آئٹم نہیں، تو پورا گروپ غائب!
     return { ...group, items: authorizedItems };
   }).filter(group => group.items.length > 0); // 🪄 جادو: اگر گروپ کے اندر کوئی آئٹم نہیں، تو پورا گروپ غائب!
 
