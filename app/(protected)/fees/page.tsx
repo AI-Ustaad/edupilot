@@ -2,10 +2,7 @@
 import React, { useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { 
-  Wallet, Plus, Trash2, Loader2, AlertCircle, CheckCircle, 
-  Save, Search, DollarSign, Calendar, Users 
-} from "lucide-react";
+import { Wallet, Loader2, AlertCircle, CheckCircle, Save, Trash2 } from "lucide-react";
 import RequirePermission from "@/components/RequirePermission";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 
@@ -34,27 +31,20 @@ const deleteFeeApi = async (id: string) => {
   return res.json();
 };
 
-const MONTHS = [
-  "January", "February", "March", "April", "May", "June",
-  "July", "August", "September", "October", "November", "December"
-];
-
 export default function FeesPage() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   
-  const [selectedMonth, setSelectedMonth] = useState(new Date().toLocaleString('default', { month: 'long' }));
-  const [selectedClass, setSelectedClass] = useState("");
-  const [selectedSection, setSelectedSection] = useState("");
+  const [selectedMonth] = useState(new Date().toLocaleString('default', { month: 'long' }));
   const [feeEntries, setFeeEntries] = useState<Record<string, { amount: string; status: string }>>({});
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState("");
   const [error, setError] = useState("");
 
   const { data: feeRecords = [], isLoading } = useQuery({
-    queryKey: ["fees", user?.tenantId, selectedMonth, selectedClass, selectedSection],
-    queryFn: () => fetchFees({ month: selectedMonth, classGrade: selectedClass, section: selectedSection }),
-    enabled: !!user?.tenantId && !!selectedMonth,
+    queryKey: ["fees", user?.tenantId, selectedMonth],
+    queryFn: () => fetchFees({ month: selectedMonth }),
+    enabled: !!user?.tenantId,
   });
 
   const saveMutation = useMutation({
@@ -72,99 +62,52 @@ export default function FeesPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["fees"] });
       setSuccess("Fee record archived.");
-      setTimeout(() => setSuccess(""), 3000);
     },
-    onError: () => setError("Failed to archive fee record."),
   });
 
-  const students = [
-    { id: "st1", name: "Ahmed Khan", class: "9", section: "A", roll: 1 },
-    { id: "st2", name: "Sara Ali", class: "9", section: "A", roll: 2 },
-    { id: "st3", name: "Omar Farooq", class: "9", section: "B", roll: 1 },
-  ];
-
-  const filteredStudents = students.filter(s => 
-    (!selectedClass || s.class === selectedClass) && 
-    (!selectedSection || s.section === selectedSection)
-  );
-
-  const handleSaveAll = async () => {
-    setSaving(true);
-    setError("");
-    try {
-      const promises = filteredStudents.map(student => {
-        const entry = feeEntries[student.id] || { amount: "0", status: "pending" };
-        return saveMutation.mutateAsync({
-          studentId: student.id,
-          studentName: student.name,
-          classGrade: student.class,
-          section: student.section,
-          month: selectedMonth,
-          amount: Number(entry.amount),
-          status: entry.status,
-        });
-      });
-      await Promise.all(promises);
-    } finally {
-      setSaving(false);
-    }
-  };
-
   const handleDelete = (id: string) => {
-    if (confirm("Are you sure you want to archive this fee record?")) {
-      deleteMutation.mutate(id);
-    }
+    if (confirm("Are you sure?")) deleteMutation.mutate(id);
   };
-
-  const totalCollected = feeRecords
-    .filter((f: any) => f.status === "paid")
-    .reduce((sum: number, f: any) => sum + (f.amount || 0), 0);
-
-  const totalPending = feeRecords
-    .filter((f: any) => f.status === "pending")
-    .reduce((sum: number, f: any) => sum + (f.amount || 0), 0);
-
-  if (!user?.tenantId) return <div className="p-8 text-center">Loading...</div>;
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6 animate-fade-in">
-      <div className="flex justify-between items-end">
-        <div>
-          <h1 className="text-2xl font-black text-gray-900 flex items-center gap-3">
-            <Wallet className="text-green-600"/> Fee Management
-          </h1>
-        </div>
+    <div className="p-6 max-w-7xl mx-auto space-y-6">
+      <div className="flex justify-between items-center">
+        <h1 className="text-2xl font-black">Fee Management</h1>
         
         {/* 🛡️ Protected Save Button */}
-        <RequirePermission permissions={[PERMISSIONS.finance.manage]}>
+        <RequirePermission permissions={[PERMISSIONS.fees.manage]}>
           <button 
-            onClick={handleSaveAll} 
-            disabled={saving || saveMutation.isPending || filteredStudents.length === 0} 
-            className="bg-green-600 hover:bg-green-700 text-white px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 shadow-md disabled:opacity-50"
+            onClick={() => {}} 
+            className="bg-green-600 text-white px-5 py-2.5 rounded-xl font-bold flex items-center gap-2"
           >
-            {saving || saveMutation.isPending ? <Loader2 className="animate-spin"/> : <Save size={18}/>} 
-            Save All Fees
+            <Save size={18}/> Save All
           </button>
         </RequirePermission>
       </div>
 
-      {success && <div className="bg-green-50 text-green-700 p-3 rounded-lg flex items-center gap-2 font-bold border border-green-100"><CheckCircle size={18}/> {success}</div>}
-      {error && <div className="bg-red-50 text-red-600 p-3 rounded-lg flex items-center gap-2 font-bold border border-red-100"><AlertCircle size={18}/> {error}</div>}
-
-      {/* Summary Cards and Filters (Code remains the same) */}
-      
-      {/* Table - Protected Delete Button */}
-      <td className="px-6 py-3 text-right">
-        <RequirePermission permissions={[PERMISSIONS.finance.manage]}>
-          <button 
-            onClick={() => handleDelete(fee.id)}
-            disabled={deleteMutation.isPending}
-            className="text-red-400 hover:text-red-600 bg-red-50 p-2 rounded-lg transition disabled:opacity-50"
-          >
-            {deleteMutation.isPending ? <Loader2 size={16} className="animate-spin"/> : <Trash2 size={16}/>}
-          </button>
-        </RequirePermission>
-      </td>
+      {/* Ledger Table - With Loop for 'fee' object */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+        <table className="w-full text-left">
+          <tbody className="divide-y">
+            {feeRecords.map((fee: any) => (
+              <tr key={fee.id}>
+                <td className="px-6 py-4 font-bold">{fee.studentName}</td>
+                <td className="px-6 py-4 text-right">
+                  {/* 🛡️ Protected Delete Button - Now 'fee' is defined! */}
+                  <RequirePermission permissions={[PERMISSIONS.fees.manage]}>
+                    <button 
+                      onClick={() => handleDelete(fee.id)}
+                      className="text-red-500 hover:bg-red-50 p-2 rounded-lg"
+                    >
+                      <Trash2 size={16}/>
+                    </button>
+                  </RequirePermission>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
