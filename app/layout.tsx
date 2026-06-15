@@ -1,28 +1,30 @@
-export const dynamic = 'force-dynamic'; // 🪄 بس یہ لائن سب سے اوپر ڈالیں
-
 import type { Metadata } from "next";
 import * as Sentry from "@sentry/nextjs";
 import "./globals.css";
-// ... آپ کا باقی سارا کوڈ
+import Providers from "./providers";
+import enMessages from "../messages/en.json";
 import dynamic from "next/dynamic";
-import SidebarLayout from "@/components/SidebarLayout";
-import { ReactNode } from "react";
 
-// Client-side only import for the RouteGuard to prevent Vercel Build Pre-render errors
-const RouteGuard = dynamic(() => import("@/components/RouteGuard"), {
-  ssr: false,
-});
+export const dynamic = 'force-dynamic';
 
-export default function ProtectedLayout({
-  children,
-}: {
-  children: ReactNode;
-}) {
+export function generateMetadata(): Metadata {
+  return {
+    title: "EduPilot | School Management System",
+    description: "Next-gen school management and administration platform.",
+    other: {
+      ...Sentry.getTraceData(),
+    },
+  };
+}
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <SidebarLayout>
-      <RouteGuard>
-        {children}
-      </RouteGuard>
-    </SidebarLayout>
+    <html lang="en">
+      <body>
+        <Providers locale="en" messages={enMessages}>
+          {children}
+        </Providers>
+      </body>
+    </html>
   );
 }
