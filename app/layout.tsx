@@ -3,6 +3,7 @@ import * as Sentry from "@sentry/nextjs";
 import "./globals.css";
 import Providers from "./providers";
 import enMessages from "../messages/en.json";
+import dynamic from "next/dynamic";
 
 export const dynamic = 'force-dynamic';
 
@@ -16,11 +17,18 @@ export function generateMetadata(): Metadata {
   };
 }
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
     <html lang="en">
       <body>
-        <Providers locale="en" messages={enMessages}>
+        <Providers
+          locale="en"
+          messages={enMessages}
+        >
           {children}
         </Providers>
       </body>
