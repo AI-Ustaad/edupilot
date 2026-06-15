@@ -17,8 +17,7 @@ import { useTranslations } from "next-intl";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { useAuth } from "@/context/AuthContext";
 
-// 🛡️ ہمارے نئے RBAC سسٹم کی امپورٹس
-// ✅ نئی لائنز (براہِ راست امپورٹ)
+// ✅ Direct imports to avoid server code leakage
 import { PERMISSIONS } from "@/lib/auth/permissions";
 import { hasAnyPermission } from "@/lib/auth/rbac";
 
@@ -29,7 +28,6 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   
   const { user } = useAuth();
-  // Role کو محفوظ طریقے سے گیٹ کریں
   const role = user?.role || "";
 
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
@@ -45,7 +43,6 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
     setOpenGroups((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
-  // 🛡️ Menu کے ہر آئٹم کو اب ہم نے Permissions کے ساتھ Map کر دیا ہے
   const menuGroups = [
     {
       title: t("commandCenter"),
@@ -56,8 +53,8 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
           name: t("commandCenter"),
           icon: LayoutDashboard,
           path: "/dashboard",
-          permissions: [], // خالی کا مطلب ہے لاگ ان ہونے والے سبھی یوزرز اسے دیکھ سکتے ہیں
-          allowed: ["superAdmin", "admin", "teacher", "accountant", "parent", "student"], // Fallback
+          permissions: [],
+          allowed: ["superAdmin", "admin", "teacher", "accountant", "parent", "student"],
         },
       ],
     },
@@ -137,18 +134,11 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
     },
   ];
 
-  // 🛡️ سمارٹ فلٹرنگ (آئٹمز اور گروپس کو پرمیشنز کے لحاظ سے چھپانا)
   const authorizedGroups = menuGroups.map(group => {
-    const authorizedItems = group.items.filter(item => {
-     // 🛡️ سمارٹ فلٹرنگ (آئٹمز اور گروپس کو پرمیشنز کے لحاظ سے چھپانا)
-  const authorizedGroups = menuGroups.map(group => {
-    // یہاں ہم نے (item: any) کر دیا ہے تاکہ ٹائپ سکرپٹ کا ایرر ختم ہو جائے
     const authorizedItems = group.items.filter((item: any) => {
-      // اگر پرمیشنز ڈیفائنڈ ہیں، تو نیا RBAC سسٹم استعمال کریں
       if (item.permissions && item.permissions.length > 0) {
         return hasAnyPermission(role, item.permissions);
       }
-      // جن کی پرمیشنز نہیں (جیسے ڈیش بورڈ)، انہیں پرانے طریقے یا سب کے لیے allow کریں
       if (item.allowed) {
         return item.allowed.includes(role);
       }
@@ -156,9 +146,7 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
     });
 
     return { ...group, items: authorizedItems };
-  }).filter(group => group.items.length > 0); // 🪄 جادو: اگر گروپ کے اندر کوئی آئٹم نہیں، تو پورا گروپ غائب!
-    return { ...group, items: authorizedItems };
-  }).filter(group => group.items.length > 0); // 🪄 جادو: اگر گروپ کے اندر کوئی آئٹم نہیں، تو پورا گروپ غائب!
+  }).filter(group => group.items.length > 0);
 
   const handleLogout = async () => {
     await signOut(auth);
