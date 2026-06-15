@@ -1,6 +1,12 @@
+// app/(protected)/layout.tsx
+import dynamic from "next/dynamic";
 import SidebarLayout from "@/components/SidebarLayout";
-import RouteGuard from "@/components/RouteGuard";
 import { ReactNode } from "react";
+
+// 🛡️ RouteGuard کو صرف Client پر چلانے کی سخت ہدایت (Fixes Vercel Pre-render error)
+const RouteGuard = dynamic(() => import("@/components/RouteGuard"), {
+  ssr: false,
+});
 
 export default function ProtectedLayout({
   children,
@@ -9,7 +15,6 @@ export default function ProtectedLayout({
 }) {
   return (
     <SidebarLayout>
-      {/* 🛡️ RouteGuard ہر پیج کے URL کو چیک کرے گا اور غیر مجاز رسائی کو روکے گا */}
       <RouteGuard>
         {children}
       </RouteGuard>
