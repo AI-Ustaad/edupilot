@@ -23,18 +23,33 @@ export const PERMISSIONS = {
     view: "attendance.view", 
     create: "attendance.create", 
     update: "attendance.update", 
-    delete: "attendance.delete" 
+    delete: "attendance.delete",
+    manage: "attendance.manage" 
+  },
+  exams: { 
+    view: "exams.view", 
+    create: "exams.create", 
+    update: "exams.update", 
+    delete: "exams.delete", 
+    manage: "exams.manage" 
+  },
+  finance: { 
+    view: "finance.view", 
+    create: "finance.create", 
+    update: "finance.update", 
+    delete: "finance.delete", 
+    manage: "finance.manage" 
+  },
+  settings: { 
+    view: "settings.view", 
+    update: "settings.update", 
+    manage: "settings.manage" 
   },
   homework: { 
     view: "homework.view", 
     create: "homework.create", 
     update: "homework.update", 
     delete: "homework.delete" 
-  },
-  settings: { 
-    view: "settings.view", 
-    update: "settings.update", 
-    manage: "settings.manage" 
   },
   buses: { 
     view: "buses.view", 
@@ -102,20 +117,6 @@ export const PERMISSIONS = {
   },
   audit: { 
     view: "audit.view" 
-  },
-  finance: { 
-    view: "finance.view", 
-    create: "finance.create", 
-    update: "finance.update", 
-    delete: "finance.delete", 
-    manage: "finance.manage" 
-  },
-  exams: { 
-    view: "exams.view", 
-    create: "exams.create", 
-    update: "exams.update", 
-    delete: "exams.delete", 
-    manage: "exams.manage" 
   }
 } as const;
 
@@ -123,9 +124,11 @@ export type Permission =
   | "students.view" | "students.create" | "students.update" | "students.delete"
   | "staff.view" | "staff.create" | "staff.update" | "staff.delete"
   | "fees.view" | "fees.create" | "fees.update" | "fees.delete" | "fees.collect" | "fees.manage"
-  | "attendance.view" | "attendance.create" | "attendance.update" | "attendance.delete"
-  | "homework.view" | "homework.create" | "homework.update" | "homework.delete"
+  | "attendance.view" | "attendance.create" | "attendance.update" | "attendance.delete" | "attendance.manage"
+  | "exams.view" | "exams.create" | "exams.update" | "exams.delete" | "exams.manage"
+  | "finance.view" | "finance.create" | "finance.update" | "finance.delete" | "finance.manage"
   | "settings.view" | "settings.update" | "settings.manage"
+  | "homework.view" | "homework.create" | "homework.update" | "homework.delete"
   | "buses.view" | "buses.create" | "buses.update" | "buses.delete"
   | "parents.view" | "parents.create" | "parents.update" | "parents.delete"
   | "videoLectures.view" | "videoLectures.create" | "videoLectures.delete"
@@ -137,6 +140,4 @@ export type Permission =
   | "quizzes.view" | "quizzes.create" | "quizzes.update" | "quizzes.delete" | "quizzes.grade"
   | "lessonPlans.view" | "lessonPlans.create" | "lessonPlans.update" | "lessonPlans.delete"
   | "chat.view" | "chat.send" | "chat.delete"
-  | "audit.view"
-  | "finance.view" | "finance.create" | "finance.update" | "finance.delete" | "finance.manage"
-  | "exams.view" | "exams.create" | "exams.update" | "exams.delete" | "exams.manage";
+  | "audit.view";
