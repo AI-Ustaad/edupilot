@@ -36,11 +36,10 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
     setOpenGroups((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
-  // 🛡️ ڈائنیمک فلٹرنگ لاجک اور مینیو گروپس (useMemo کے اندر منتقل کر دیا گیا ہے)
+  // 🛡️ رول اور پرمیشن کی بنیاد پر ڈائنیمک فلٹرنگ
   const filteredMenuGroups = useMemo(() => {
     if (!user) return []; 
 
-    // ٹائپ اسکرپٹ کے ایرر کو ختم کرنے کے لیے ہم نے 'any[]' کا استعمال کیا ہے
     const groups: any[] = [
       {
         title: t("commandCenter"),
@@ -60,26 +59,21 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
         ],
       },
       
-      // ⚠️⚠️⚠️ اہم کام: اپنے باقی تمام مینیو گروپس (جیسے Finance, Staff, AI Tools وغیرہ) کا کوڈ یہاں پیسٹ کریں ⚠️⚠️⚠️
+      // ⚠️⚠️⚠️ اپنے باقی تمام مینیو گروپس (Finance, Staff, AI Tools وغیرہ) کا کوڈ اس جگہ پر پیسٹ کریں ⚠️⚠️⚠️
       
     ];
 
     return groups
       .map((group) => {
         const filteredItems = group.items.filter((item: any) => {
-          // 1. اگر یوزر سپر ایڈمن ہے تو سب کچھ دکھائیں
           if (role === "superAdmin") return true;
           
-          // 2. اگر item میں allowed رولز ڈیفائنڈ ہیں
           if (item.allowed && item.allowed.includes(role)) return true;
           
-          // 3. اگر item میں پرمیشنز ڈیفائنڈ ہیں
-         if (item.permissions && item.permissions.length > 0) {
-  return hasAnyPermission(role, item.permissions); // 👈 یہاں 'user' کی جگہ 'role' لکھیں
-}
+          if (item.permissions && item.permissions.length > 0) {
+            return hasAnyPermission(role, item.permissions);
           }
           
-          // ڈیفالٹ کے طور پر لنک کو چھپا دیں
           return false;
         });
 
@@ -101,7 +95,7 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
     <div className="flex h-screen bg-white">
       {/* 🖥️ Desktop Sidebar */}
       <aside className="hidden md:flex flex-col w-64 bg-gray-50 border-r">
-        <div className="h-16 flex items-center justify-center border-b">
+        <div className="h-16 flex items-center justify-center border-b shrink-0">
            <h1 className="text-xl font-bold text-gray-800">EduPilot</h1>
         </div>
 
@@ -144,7 +138,7 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
           ))}
         </nav>
 
-        <div className="p-4 border-t">
+        <div className="p-4 border-t shrink-0">
           <LanguageSwitcher />
           <button 
             onClick={handleLogout}
@@ -171,7 +165,7 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
       </main>
 
       {/* 📱 Mobile Navigation */}
-      <div className="md:hidden">
+      <div className="md:hidden shrink-0">
         <MobileBottomNav />
       </div>
     </div>
