@@ -13,7 +13,7 @@ export const GET = withAuth(
 
       if (!id) {
         return NextResponse.json(
-         createApiResponse(400, "Academic year ID is missing"),
+          createApiResponse(false, "Academic year ID is missing"), 
           { status: 400 }
         );
       }
