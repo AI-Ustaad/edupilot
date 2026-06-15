@@ -7,13 +7,16 @@ import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
+// 🛡️ نئے سیکیورٹی کمپوننٹس امپورٹ کیے گئے ہیں
+import RequirePermission from "@/components/RequirePermission";
+import { PERMISSIONS } from "@/lib/auth/permissions";
+
 export default function StudentsPage() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const queryClient = useQueryClient();
   const [ocrUploading, setOcrUploading] = useState(false);
 
-  // 1. Bulletproof React Query Fetching (Targets API v1)
   const { data: studentsData, isLoading: isStudentsLoading, isError } = useQuery({
     queryKey: ["students", user?.tenantId],
     queryFn: async () => {
@@ -24,13 +27,11 @@ export default function StudentsPage() {
       if (!text) return [];
       
       const json = JSON.parse(text);
-      // Safe Extract Array 
       return Array.isArray(json) ? json : (Array.isArray(json?.data) ? json.data : []);
     },
     enabled: !!user?.tenantId && !authLoading,
   });
 
-  // Safe fallback to prevent mapping errors
   const students = Array.isArray(studentsData) ? studentsData : [];
 
   const deleteMutation = useMutation({
@@ -119,20 +120,21 @@ export default function StudentsPage() {
       <div className="flex justify-between items-center flex-wrap gap-3">
         <h1 className="text-3xl font-black text-slate-900">Students Directory</h1>
         <div className="flex gap-3 flex-wrap">
-          {user?.role === "admin" && (
-            <>
-              <button onClick={handleOCRUpload} disabled={ocrUploading} className="bg-purple-600 text-white px-4 py-2 md:px-6 md:py-3 rounded-2xl flex items-center gap-2 hover:bg-purple-700 transition disabled:opacity-50 font-bold shadow-sm">
-                {ocrUploading ? <Loader2 size={18} className="animate-spin" /> : <FileText size={18} />}
-                {ocrUploading ? "Processing..." : "Upload OCR"}
-              </button>
-              <button onClick={handleImportCSV} className="bg-emerald-600 text-white px-4 py-2 md:px-6 md:py-3 rounded-2xl flex items-center gap-2 hover:bg-emerald-700 transition font-bold shadow-sm">
-                <Upload size={18}/> Import CSV
-              </button>
-              <button onClick={() => router.push("/students/add")} className="bg-blue-600 text-white px-4 py-2 md:px-6 md:py-3 rounded-2xl flex items-center gap-2 hover:bg-blue-700 transition font-bold shadow-sm">
-                <UserPlus size={18}/> Add New
-              </button>
-            </>
-          )}
+          
+          {/* 🛡️ 1. کریئیٹ (Create) پرمیشن والے بٹنز */}
+          <RequirePermission permissions={[PERMISSIONS.students.create]}>
+            <button onClick={handleOCRUpload} disabled={ocrUploading} className="bg-purple-600 text-white px-4 py-2 md:px-6 md:py-3 rounded-2xl flex items-center gap-2 hover:bg-purple-700 transition disabled:opacity-50 font-bold shadow-sm">
+              {ocrUploading ? <Loader2 size={18} className="animate-spin" /> : <FileText size={18} />}
+              {ocrUploading ? "Processing..." : "Upload OCR"}
+            </button>
+            <button onClick={handleImportCSV} className="bg-emerald-600 text-white px-4 py-2 md:px-6 md:py-3 rounded-2xl flex items-center gap-2 hover:bg-emerald-700 transition font-bold shadow-sm">
+              <Upload size={18}/> Import CSV
+            </button>
+            <button onClick={() => router.push("/students/add")} className="bg-blue-600 text-white px-4 py-2 md:px-6 md:py-3 rounded-2xl flex items-center gap-2 hover:bg-blue-700 transition font-bold shadow-sm">
+              <UserPlus size={18}/> Add New
+            </button>
+          </RequirePermission>
+
         </div>
       </div>
       <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
@@ -161,11 +163,14 @@ export default function StudentsPage() {
                       <Link href={`/students/${s.id}`} className="text-blue-600 hover:text-blue-800 text-sm font-bold bg-blue-50 px-3 py-1.5 rounded-lg border border-blue-100 hover:bg-blue-100 transition">
                         View 360°
                       </Link>
-                      {user?.role === "admin" && (
+                      
+                      {/* 🛡️ 2. ڈیلیٹ (Delete) پرمیشن والا بٹن */}
+                      <RequirePermission permissions={[PERMISSIONS.students.delete]}>
                         <button onClick={() => handleDelete(s.id)} className="text-red-500 hover:text-red-700 p-1.5 hover:bg-red-50 rounded-lg transition">
                           {deleteMutation.isPending ? <Loader2 size={18} className="animate-spin"/> : <Trash2 size={18}/>}
                         </button>
-                      )}
+                      </RequirePermission>
+
                     </div>
                   </td>
                 </tr>
