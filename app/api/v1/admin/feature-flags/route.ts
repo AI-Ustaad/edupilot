@@ -1,10 +1,12 @@
-export const dynamic = 'force-dynamic';
+eexport const dynamic = 'force-dynamic';
 
-import { NextResponse } from "next/server";
-// ... باقی کوڈ
 import { NextRequest, NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebase-admin";
-import { 
+import { withErrorHandler } from "@/route-helpers";
+
+export async function GET(req: NextRequest) {
+  // آپ کا کوڈ یہاں رہے گا...
+}
   withErrorHandler, 
   withAuth, 
   withTenant, 
