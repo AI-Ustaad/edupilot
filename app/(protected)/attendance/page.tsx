@@ -6,6 +6,8 @@ import {
   Calendar, Users, CheckCircle2, XCircle, Loader2, 
   AlertCircle, Save, Search, Clock 
 } from "lucide-react";
+import RequirePermission from "@/components/RequirePermission";
+import { PERMISSIONS } from "@/lib/auth/permissions";
 
 // --- API Helpers ---
 const fetchAttendance = async (params: Record<string, string>) => {
@@ -92,14 +94,18 @@ export default function AttendancePage() {
           </h1>
           <p className="text-sm text-gray-500 mt-1">Mark and track student presence securely.</p>
         </div>
-        <button 
-          onClick={handleSaveAll} 
-          disabled={saving || saveMutation.isPending || !selectedClass || !selectedSection}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 shadow-md disabled:opacity-50"
-        >
-          {saving || saveMutation.isPending ? <Loader2 className="animate-spin"/> : <Save size={18}/>} 
-          Save All
-        </button>
+        
+        {/* 🛡️ Protected Save Button */}
+        <RequirePermission permissions={[PERMISSIONS.attendance.manage]}>
+          <button 
+            onClick={handleSaveAll} 
+            disabled={saving || saveMutation.isPending || !selectedClass || !selectedSection}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 shadow-md disabled:opacity-50"
+          >
+            {saving || saveMutation.isPending ? <Loader2 className="animate-spin"/> : <Save size={18}/>} 
+            Save All
+          </button>
+        </RequirePermission>
       </div>
 
       {success && <div className="bg-green-50 text-green-700 p-3 rounded-lg flex items-center gap-2 font-bold border border-green-100"><CheckCircle2 size={18}/> Attendance saved successfully!</div>}
