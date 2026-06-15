@@ -19,7 +19,8 @@ import { useAuth } from "@/context/AuthContext";
 
 // ✅ Direct imports to avoid server code leakage
 import { PERMISSIONS } from "@/lib/auth/permissions";
-import { hasAnyPermission } from "@/lib/auth/rbac";
+import { hasAnyPermission } from "@/lib/auth/client-rbac";
+import { PERMISSIONS } from "@/lib/auth/permissions";
 
 export default function SidebarLayout({ children }: { children: React.ReactNode }) {
   const t = useTranslations("Sidebar");
