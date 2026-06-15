@@ -74,8 +74,9 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
           if (item.allowed && item.allowed.includes(role)) return true;
           
           // 3. اگر item میں پرمیشنز ڈیفائنڈ ہیں
-          if (item.permissions && item.permissions.length > 0) {
-            return hasAnyPermission(user, item.permissions);
+         if (item.permissions && item.permissions.length > 0) {
+  return hasAnyPermission(role, item.permissions); // 👈 یہاں 'user' کی جگہ 'role' لکھیں
+}
           }
           
           // ڈیفالٹ کے طور پر لنک کو چھپا دیں
