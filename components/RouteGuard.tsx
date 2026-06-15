@@ -5,7 +5,7 @@ import { useAuth } from "@/context/AuthContext";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 import { hasAnyPermission } from "@/lib/auth/rbac";
 import AccessDenied from "./AccessDenied";
-import { ReactNode, useEffect, useState } from "react";
+import { ReactNode } from "react";
 
 // 🗺️ URL اور اس کی مطلوبہ پرمیشنز کی میپنگ
 function getRequiredPermissions(pathname: string): any[] {
@@ -35,18 +35,9 @@ export default function RouteGuard({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const { user } = useAuth();
   
-  // 🛡️ یہ Hydration issue کو روکے گا تاکہ بلڈ کریش نہ ہو
-  const [isMounted, setIsMounted] = useState(false);
-
-  useEffect(() => {
-    setIsMounted(true);
-  }, []);
-
-  // بلڈ ٹائم پر یا براؤزر میں لوڈ ہونے سے پہلے خاموش رہیں
-  if (!isMounted) return null; 
-
   const role = user?.role;
-  // جب تک یوزر کا رول لوڈ نہ ہو جائے، کچھ نہ دکھائیں
+
+  // جب تک یوزر کا رول لوڈ نہ ہو جائے، ایک بلینک سکرین یا لوڈر دکھائیں تاکہ فلیش (Flash) نہ آئے
   if (!role || role === "loading") return null; 
 
   const requiredPermissions = getRequiredPermissions(pathname);
