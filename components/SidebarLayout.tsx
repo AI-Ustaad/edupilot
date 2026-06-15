@@ -18,7 +18,9 @@ import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { useAuth } from "@/context/AuthContext";
 
 // 🛡️ ہمارے نئے RBAC سسٹم کی امپورٹس
-import { PERMISSIONS, hasAnyPermission } from "@/lib/auth";
+// ✅ نئی لائنز (براہِ راست امپورٹ)
+import { PERMISSIONS } from "@/lib/auth/permissions";
+import { hasAnyPermission } from "@/lib/auth/rbac";
 
 export default function SidebarLayout({ children }: { children: React.ReactNode }) {
   const t = useTranslations("Sidebar");
