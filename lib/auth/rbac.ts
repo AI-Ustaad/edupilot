@@ -1,34 +1,28 @@
-// lib/auth/rbac.ts
-import { NextResponse } from "next/server";
+import { ROLE_PERMISSIONS, Role } from "./roles";
 import type { Permission } from "./permissions";
-import { ROLE_PERMISSIONS } from "./roles";
-import { getOrSet } from "@/lib/cache";
-
-const PERM_CACHE_TTL = 600; // 10 minutes
 
 /**
- * ✅ withPermission HOC - Curried form
- * Usage: withPermission(PERMISSIONS.students.view)(handler)
+ * چیک کرتا ہے کہ آیا دیے گئے Role کے پاس مخصوص Permission ہے یا نہیں
  */
-export function withPermission(requiredPermission: Permission) {
-  return (handler: Function) => {
-    return async (req: Request, context: any) => {
-      const user = context.user;
-      if (!user) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-      }
+export function hasPermission(role: string, permission: Permission): boolean {
+  if (!role) return false;
+  
+  const permissionsForRole = ROLE_PERMISSIONS[role];
+  if (!permissionsForRole) return false;
 
-      // Cache key per role
-      const cacheKey = `perm:${user.role}`;
-      const allowedPermissions = await getOrSet(cacheKey, PERM_CACHE_TTL, async () => {
-        return ROLE_PERMISSIONS[user.role] || [];
-      });
+  return permissionsForRole.includes(permission);
+}
 
-      if (!allowedPermissions.includes(requiredPermission)) {
-        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-      }
+/**
+ * چیک کرتا ہے کہ آیا دیے گئے Role کے پاس دی گئی پرمیشنز میں سے کوئی ایک بھی ہے یا نہیں
+ */
+export function hasAnyPermission(role: string, permissions: Permission[]): boolean {
+  return permissions.some((p) => hasPermission(role, p));
+}
 
-      return handler(req, context);
-    };
-  };
+/**
+ * چیک کرتا ہے کہ آیا دیے گئے Role کے پاس تمام دی گئی پرمیشنز موجود ہیں یا نہیں
+ */
+export function hasAllPermissions(role: string, permissions: Permission[]): boolean {
+  return permissions.every((p) => hasPermission(role, p));
 }
