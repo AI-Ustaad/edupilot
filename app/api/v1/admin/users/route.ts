@@ -1,27 +1,19 @@
 export const dynamic = 'force-dynamic';
-// app/api/admin/users/route.ts
+
+import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebase-admin";
-import { withAuth, withTenant, withErrorHandler } from "@/route-helpers";
+import { withErrorHandler, withAuth, withTenant, withPermission } from "@/route-helpers";
+import { PERMISSIONS } from "@/lib/auth/permissions";
 import { createApiResponse } from "@/lib/response/apiResponse";
 
-interface WithTenantContext {
-  tenantId: string;
-  user: {
-    uid: string;
-    email: string;
-    role: string;
-    tenantId: string;
-  };
-}
+export const runtime = 'nodejs';
 
 export const GET = withErrorHandler(
   withAuth(
-    withTenant(async (req: Request, { tenantId, user }: WithTenantContext) => {
-      if (user.role !== "admin") {
-        return createApiResponse(403, null, "Forbidden");
-      }
-
-      try {
+    withTenant(
+      withPermission(PERMISSIONS.settings.manage)(async (req: Request, context: any) => {
+        const { tenantId } = context || {};
+        
         const usersSnapshot = await adminDb
           .collection("users")
           .where("tenantId", "==", tenantId)
@@ -37,11 +29,8 @@ export const GET = withErrorHandler(
           };
         });
 
-        return createApiResponse(200, users);
-      } catch (err) {
-        console.error("Error fetching users:", err);
-        return createApiResponse(500, null, "Failed to fetch users");
-      }
-    })
+        return NextResponse.json(createApiResponse(200, users));
+      })
+    )
   )
 );
