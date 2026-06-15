@@ -1,44 +1,15 @@
-import { redirect } from "next/navigation";
-import { getSessionUser } from "@/lib/auth/auth-server";
-import { isSubscriptionValid } from "@/lib/subscription";
+import dynamic from "next/dynamic";
 import SidebarLayout from "@/components/SidebarLayout";
-import { ClientAuthWrapper } from "@/components/ClientAuthWrapper";
+import { ReactNode } from "react";
 
-import QueryProvider from "@/components/QueryProvider";
-import { BrandingProvider } from "@/context/BrandingContext";
+const RouteGuard = dynamic(() => import("@/components/RouteGuard"), {
+  ssr: false,
+});
 
-export default async function ProtectedLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  const user = await getSessionUser();
-
-  if (!user) redirect("/login");
-
-  if (user.onboardingRequired || !user.tenantId) {
-    redirect("/onboarding");
-  }
-
-  const { valid, message } = await isSubscriptionValid(user.tenantId);
-
-  if (!valid) {
-    redirect(
-      `/settings/billing?error=${encodeURIComponent(
-        message || "Subscription inactive"
-      )}`
-    );
-  }
-
+export default function ProtectedLayout({ children }: { children: ReactNode }) {
   return (
-    <ClientAuthWrapper>
-      <QueryProvider>
-        <BrandingProvider>
-          <div className="min-h-screen bg-slate-50">
-            <SidebarLayout>{children}</SidebarLayout>
-          </div>
-        </BrandingProvider>
-      </QueryProvider>
-    </ClientAuthWrapper>
+    <SidebarLayout>
+      <RouteGuard>{children}</RouteGuard>
+    </SidebarLayout>
   );
 }
