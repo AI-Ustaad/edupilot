@@ -8,7 +8,7 @@ import AccessDenied from "./AccessDenied";
 import { ReactNode } from "react";
 
 // 🛡️ پیجز اور ان کی مطلوبہ پرمیشنز/رولز کا نقشہ (Route Permissions Map)
-const routeRules: Record<string, { permissions?: string[]; allowedRoles?: string[] }> = {
+const routeRules: Record<string, { permissions?: any[]; allowedRoles?: string[] }> = {
   "/students": { permissions: [PERMISSIONS.students.view] },
   "/classes": { permissions: [PERMISSIONS.settings.view] },
   
