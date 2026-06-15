@@ -2,7 +2,8 @@ export const dynamic = 'force-dynamic';
 
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebase-admin";
-import { withErrorHandler, withAuth, withTenant, withPermission } from "@/route-helpers";
+import { withErrorHandler, withAuth, withTenant } from "@/route-helpers";
+import { withPermission } from "@/lib/auth/rbac";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 import { createApiResponse } from "@/lib/response/apiResponse";
 
