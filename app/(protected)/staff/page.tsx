@@ -4,6 +4,10 @@ import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Loader2, Camera, Upload, Plus, Trash2, FileSpreadsheet, FileText } from "lucide-react";
 
+// 🛡️ سیکیورٹی امپورٹس
+import RequirePermission from "@/components/RequirePermission";
+import { PERMISSIONS } from "@/lib/auth/permissions";
+
 // -------------------- Main Component --------------------
 export default function AddStaffPage() {
   const router = useRouter();
@@ -204,6 +208,7 @@ export default function AddStaffPage() {
           {tabs.map((tab, idx) => (
             <button
               key={idx}
+              type="button"
               onClick={() => setActiveTab(idx)}
               className={`flex-1 py-2 font-bold text-sm uppercase tracking-wider rounded-t-lg transition ${
                 activeTab === idx ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
@@ -220,7 +225,7 @@ export default function AddStaffPage() {
               <div className="col-span-2 flex items-center gap-4">
                 <div className="relative">
                   {form.personal.photo ? (
-                    <img src={form.personal.photo} className="w-24 h-24 rounded-full object-cover" />
+                    <img src={form.personal.photo} className="w-24 h-24 rounded-full object-cover" alt="Staff photo" />
                   ) : (
                     <div className="w-24 h-24 rounded-full bg-gray-200 flex items-center justify-center">
                       <Camera size={32} className="text-gray-400" />
@@ -355,26 +360,37 @@ export default function AddStaffPage() {
             </Section>
           )}
 
+          {/* 🛡️ ایکشن بٹنز کے لیے سیکیورٹی ریپرز */}
           <div className="flex flex-wrap items-center gap-3 mt-6">
             <label className="flex items-center gap-2 font-bold text-sm">
               <input type="checkbox" checked={createLogin} onChange={e => setCreateLogin(e.target.checked)} />
               Auto‑create Login Account
             </label>
-            <button type="submit" disabled={submitting} className="ml-auto bg-blue-600 text-white px-6 py-2 rounded-xl font-bold disabled:opacity-50 flex items-center gap-2">
-              {submitting && <Loader2 className="animate-spin" size={18} />}
-              {isEdit ? "Update Staff" : "Save Record"}
-            </button>
+            
+            {/* 🛡️ Save / Update Record Button Protected */}
+            <RequirePermission permissions={[PERMISSIONS.settings.update, PERMISSIONS.settings.create]}>
+              <button type="submit" disabled={submitting} className="ml-auto bg-blue-600 text-white px-6 py-2 rounded-xl font-bold disabled:opacity-50 flex items-center gap-2">
+                {submitting && <Loader2 className="animate-spin" size={18} />}
+                {isEdit ? "Update Staff" : "Save Record"}
+              </button>
+            </RequirePermission>
+
             {isEdit && (
               <button type="button" onClick={() => router.push("/staff/add")} className="px-4 py-2 border rounded-xl font-bold">
                 Cancel Edit
               </button>
             )}
-            <button type="button" onClick={() => setShowBulkModal(true)} className="ml-2 bg-green-600 text-white px-4 py-2 rounded-xl font-bold flex items-center gap-2">
-              <FileSpreadsheet size={18} /> Bulk Import
-            </button>
-            <button type="button" onClick={() => alert("OCR feature coming soon")} className="ml-2 bg-purple-600 text-white px-4 py-2 rounded-xl font-bold flex items-center gap-2">
-              <FileText size={18} /> OCR Extract
-            </button>
+            
+            {/* 🛡️ Bulk Import / OCR Buttons Protected */}
+            <RequirePermission permissions={[PERMISSIONS.settings.create]}>
+              <button type="button" onClick={() => setShowBulkModal(true)} className="ml-2 bg-green-600 text-white px-4 py-2 rounded-xl font-bold flex items-center gap-2">
+                <FileSpreadsheet size={18} /> Bulk Import
+              </button>
+              <button type="button" onClick={() => alert("OCR feature coming soon")} className="ml-2 bg-purple-600 text-white px-4 py-2 rounded-xl font-bold flex items-center gap-2">
+                <FileText size={18} /> OCR Extract
+              </button>
+            </RequirePermission>
+
           </div>
         </form>
       </div>
@@ -394,7 +410,7 @@ export default function AddStaffPage() {
                 onClick={() => router.push(`/staff/add?id=${staff.id}`)}
               >
                 {staff.personal?.photo ? (
-                  <img src={staff.personal.photo} className="w-10 h-10 rounded-full object-cover" />
+                  <img src={staff.personal.photo} className="w-10 h-10 rounded-full object-cover" alt="Avatar" />
                 ) : (
                   <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center">
                     <span className="text-xs font-bold">{staff.personal?.fullName?.[0]}</span>
@@ -453,7 +469,6 @@ function Select({ label, options, ...props }: { label: string; options: string[]
   );
 }
 
-// ✅ NO exceljs/xlsx import here - file sent to server
 function BulkImportModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState("");
@@ -466,7 +481,6 @@ function BulkImportModal({ onClose, onSuccess }: { onClose: () => void; onSucces
     setUploadError("");
 
     try {
-      // ✅ Send file to server - NO client-side parsing
       const formData = new FormData();
       formData.append('file', file);
 
