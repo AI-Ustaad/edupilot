@@ -3,7 +3,6 @@ import * as Sentry from "@sentry/nextjs";
 import "./globals.css";
 import Providers from "./providers";
 import enMessages from "../messages/en.json";
-import dynamic from "next/dynamic";
 
 export const dynamic = 'force-dynamic';
 
