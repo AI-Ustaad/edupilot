@@ -1,47 +1,52 @@
-// lib/auth/roles.ts
-import { PERMISSIONS, type Permission } from "./permissions";
+import { PERMISSIONS, Permission } from "./permissions";
 
+// تمام roles کی ایک central registry
+export const ROLES = {
+  SUPER_ADMIN: "superAdmin",
+  ADMIN: "admin",
+  TEACHER: "teacher",
+  ACCOUNTANT: "accountant",
+  PARENT: "parent",
+  STUDENT: "student",
+} as const;
+
+export type Role = typeof ROLES[keyof typeof ROLES];
+
+// Role-to-Permissions Mapping
 export const ROLE_PERMISSIONS: Record<string, Permission[]> = {
-  admin: Object.values(PERMISSIONS).flatMap(module => Object.values(module)) as Permission[],
+  [ROLES.SUPER_ADMIN]: [
+    // Super Admin کے پاس تمام پرمیشنز ہیں
+    ...Object.values(PERMISSIONS).flatMap((module) => Object.values(module)) as Permission[]
+  ],
   
-  teacher: [
+  [ROLES.ADMIN]: [
+    PERMISSIONS.students.view, PERMISSIONS.students.create, PERMISSIONS.students.update, PERMISSIONS.students.delete,
+    PERMISSIONS.staff.view, PERMISSIONS.staff.create, PERMISSIONS.staff.update,
+    PERMISSIONS.fees.view, PERMISSIONS.fees.collect,
+    PERMISSIONS.attendance.view, PERMISSIONS.attendance.update,
+    PERMISSIONS.settings.view, PERMISSIONS.settings.update,
+  ],
+
+  [ROLES.TEACHER]: [
+    PERMISSIONS.students.view,
+    PERMISSIONS.attendance.view, PERMISSIONS.attendance.create, PERMISSIONS.attendance.update,
+    PERMISSIONS.homework.view, PERMISSIONS.homework.create, PERMISSIONS.homework.update,
+  ],
+
+  [ROLES.ACCOUNTANT]: [
+    PERMISSIONS.students.view,
+    PERMISSIONS.fees.view, PERMISSIONS.fees.create, PERMISSIONS.fees.update, PERMISSIONS.fees.collect,
+  ],
+
+  [ROLES.PARENT]: [
     PERMISSIONS.students.view,
     PERMISSIONS.attendance.view,
-    PERMISSIONS.attendance.create,
-    PERMISSIONS.analytics.view,
-    PERMISSIONS.assignments.view,
-    PERMISSIONS.assignments.create,
-    PERMISSIONS.assignments.update,
-    PERMISSIONS.assignments.grade,
     PERMISSIONS.homework.view,
-    PERMISSIONS.homework.create,
-    PERMISSIONS.homework.update,
-    PERMISSIONS.quizzes.view,
-    PERMISSIONS.quizzes.create,
-    PERMISSIONS.quizzes.grade,
-    PERMISSIONS.lessonPlans.view,
-    PERMISSIONS.lessonPlans.create,
-    PERMISSIONS.chat.view,
-    PERMISSIONS.chat.send,
-  ],
-  
-  accountant: [
     PERMISSIONS.fees.view,
-    PERMISSIONS.fees.create,
-    PERMISSIONS.fees.update,
-    PERMISSIONS.fees.collect,
-    PERMISSIONS.ledger.view,
-    PERMISSIONS.subscriptions.view,
   ],
-  
-  parent: [
-    PERMISSIONS.parents.view,
-    PERMISSIONS.chat.view,
-    PERMISSIONS.chat.send,
+
+  [ROLES.STUDENT]: [
     PERMISSIONS.attendance.view,
-    PERMISSIONS.fees.view,
-    PERMISSIONS.marks.view,
+    PERMISSIONS.homework.view,
   ],
 };
-
-export type Role = keyof typeof ROLE_PERMISSIONS;
