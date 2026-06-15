@@ -1,3 +1,9 @@
+export const dynamic = 'force-dynamic'; // 🪄 بس یہ لائن سب سے اوپر ڈالیں
+
+import type { Metadata } from "next";
+import * as Sentry from "@sentry/nextjs";
+import "./globals.css";
+// ... آپ کا باقی سارا کوڈ
 import dynamic from "next/dynamic";
 import SidebarLayout from "@/components/SidebarLayout";
 import { ReactNode } from "react";
