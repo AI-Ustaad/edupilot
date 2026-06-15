@@ -1,4 +1,8 @@
 export const dynamic = 'force-dynamic';
+
+import { NextResponse } from "next/server";
+// ... باقی کوڈ
+export const dynamic = 'force-dynamic';
 import { adminDb } from "@/lib/firebase-admin";
 import { withAuth, withTenant, withErrorHandler, withRole } from "@/route-helpers";
 import { createApiResponse } from "@/lib/response/apiResponse";
