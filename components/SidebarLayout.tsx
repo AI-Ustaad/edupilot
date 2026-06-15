@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { signOut } from "firebase/auth";
@@ -17,6 +17,9 @@ import { useTranslations } from "next-intl";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { useAuth } from "@/context/AuthContext";
 
+// 🛡️ ہمارے نئے RBAC سسٹم کی امپورٹس
+import { PERMISSIONS, hasAnyPermission } from "@/lib/auth";
+
 export default function SidebarLayout({ children }: { children: React.ReactNode }) {
   const t = useTranslations("Sidebar");
   const pathname = usePathname();
@@ -24,7 +27,8 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   
   const { user } = useAuth();
-  const role = user?.role || "teacher";
+  // Role کو محفوظ طریقے سے گیٹ کریں
+  const role = user?.role || "";
 
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
     academic: true,
@@ -39,105 +43,114 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
     setOpenGroups((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
+  // 🛡️ Menu کے ہر آئٹم کو اب ہم نے Permissions کے ساتھ Map کر دیا ہے
   const menuGroups = [
     {
       title: t("commandCenter"),
       icon: LayoutDashboard,
+      key: null,
       items: [
         {
           name: t("commandCenter"),
           icon: LayoutDashboard,
           path: "/dashboard",
-          allowed: ["admin", "teacher", "accountant"],
+          permissions: [], // خالی کا مطلب ہے لاگ ان ہونے والے سبھی یوزرز اسے دیکھ سکتے ہیں
+          allowed: ["superAdmin", "admin", "teacher", "accountant", "parent", "student"], // Fallback
         },
       ],
-      allowed: ["admin", "teacher", "accountant"],
-      key: null,
     },
     {
       title: t("academic"),
       icon: BookOpen,
-      items: [
-        { name: t("students"), icon: Users, path: "/students", allowed: ["admin", "teacher"] },
-        { name: t("classes"), icon: GraduationCap, path: "/classes", allowed: ["admin"] },
-        { name: t("syllabus"), icon: FileText, path: "/admin/syllabus", allowed: ["admin"] },
-        { name: t("academicYear"), icon: Calendar, path: "/admin/academic-year", allowed: ["admin"] },
-        { name: t("videoLibrary"), icon: Film, path: "/video-lectures", allowed: ["admin", "teacher", "parent"] },
-      ],
-      allowed: ["admin", "teacher", "parent"],
       key: "academic",
+      items: [
+        { name: t("students"), icon: Users, path: "/students", permissions: [PERMISSIONS.students.view] },
+        { name: t("classes"), icon: GraduationCap, path: "/classes", permissions: [PERMISSIONS.settings.view] },
+        { name: t("syllabus"), icon: FileText, path: "/admin/syllabus", permissions: [PERMISSIONS.lessonPlans.view, PERMISSIONS.settings.view] },
+        { name: t("academicYear"), icon: Calendar, path: "/admin/academic-year", permissions: [PERMISSIONS.settings.view] },
+        { name: t("videoLibrary"), icon: Film, path: "/video-lectures", permissions: [PERMISSIONS.videoLectures.view] },
+      ],
     },
     {
       title: t("finance"),
       icon: DollarSign,
-      items: [
-        { name: t("fees"), icon: Wallet, path: "/fees", allowed: ["admin", "accountant"] }
-        // Ledger has been successfully removed from here
-      ],
-      allowed: ["admin", "accountant"],
       key: "finance",
+      items: [
+        { name: t("fees"), icon: Wallet, path: "/fees", permissions: [PERMISSIONS.fees.view] }
+      ],
     },
     {
       title: t("operations"),
       icon: Clock,
-      items: [
-        { name: t("attendance"), icon: ClipboardCheck, path: "/attendance", allowed: ["admin", "teacher"] },
-        { name: t("timetable"), icon: Clock, path: "/timetable", allowed: ["admin", "teacher"] },
-        { name: t("aiTimetable"), icon: Sparkles, path: "/ai-timetable", allowed: ["admin", "teacher"] },
-        { name: t("buses"), icon: Bus, path: "/admin/buses", allowed: ["admin"] },
-      ],
-      allowed: ["admin", "teacher"],
       key: "operations",
+      items: [
+        { name: t("attendance"), icon: ClipboardCheck, path: "/attendance", permissions: [PERMISSIONS.attendance.view] },
+        { name: t("timetable"), icon: Clock, path: "/timetable", permissions: [PERMISSIONS.settings.view, PERMISSIONS.attendance.view] },
+        { name: t("aiTimetable"), icon: Sparkles, path: "/ai-timetable", permissions: [PERMISSIONS.settings.view] },
+        { name: t("buses"), icon: Bus, path: "/admin/buses", permissions: [PERMISSIONS.buses.view] },
+      ],
     },
     {
       title: t("staff"),
       icon: UserCircle,
-      items: [
-        { name: t("staffManagement"), icon: UserCircle, path: "/staff", allowed: ["admin"] },
-        { name: t("parents"), icon: Heart, path: "/admin/parents", allowed: ["admin"] },
-        { name: t("leaveRequests"), icon: CalendarDays, path: "/leave-requests", allowed: ["admin"] },
-        { name: t("postHomework"), icon: FileText, path: "/teacher/homework", allowed: ["admin", "teacher"] },
-        { name: t("assignments"), icon: FileText, path: "/teacher/assignments", allowed: ["admin", "teacher"] },
-        { name: t("quizzes"), icon: FileText, path: "/teacher/quizzes", allowed: ["admin", "teacher"] },
-        { name: t("lessonPlans"), icon: Calendar, path: "/teacher/lesson-plans", allowed: ["admin", "teacher"] },
-        { name: t("bookCenter"), icon: BookOpen, path: "/teacher/book-center", allowed: ["admin", "teacher"] },
-        { name: t("manageBooks"), icon: FileText, path: "/teacher/manage-books", allowed: ["admin", "teacher"] },
-        { name: t("examCenter"), icon: FileText, path: "/teacher/exam-center", allowed: ["admin", "teacher"] },
-        { name: t("videoLectures"), icon: Film, path: "/teacher/video-lectures", allowed: ["admin", "teacher"] },
-        { name: t("chat"), icon: Send, path: "/teacher/chat", allowed: ["admin", "teacher"] },
-        { name: t("admissions"), icon: FileText, path: "/admin/admissions", allowed: ["admin"] },
-        { name: t("addSkills"), icon: Star, path: "/teacher/skills", allowed: ["admin", "teacher"] },
-        { name: t("behaviorPoints"), icon: PlusCircle, path: "/teacher/behavior", allowed: ["admin", "teacher"] },
-      ],
-      allowed: ["admin"],
       key: "staff",
+      items: [
+        { name: t("staffManagement"), icon: UserCircle, path: "/staff", permissions: [PERMISSIONS.staff.view] },
+        { name: t("parents"), icon: Heart, path: "/admin/parents", permissions: [PERMISSIONS.parents.view] },
+        { name: t("leaveRequests"), icon: CalendarDays, path: "/leave-requests", permissions: [PERMISSIONS.staff.view] },
+        { name: t("postHomework"), icon: FileText, path: "/teacher/homework", permissions: [PERMISSIONS.homework.view] },
+        { name: t("assignments"), icon: FileText, path: "/teacher/assignments", permissions: [PERMISSIONS.assignments.view] },
+        { name: t("quizzes"), icon: FileText, path: "/teacher/quizzes", permissions: [PERMISSIONS.quizzes.view] },
+        { name: t("lessonPlans"), icon: Calendar, path: "/teacher/lesson-plans", permissions: [PERMISSIONS.lessonPlans.view] },
+        { name: t("bookCenter"), icon: BookOpen, path: "/teacher/book-center", permissions: [PERMISSIONS.settings.view] },
+        { name: t("manageBooks"), icon: FileText, path: "/teacher/manage-books", permissions: [PERMISSIONS.settings.view] },
+        { name: t("examCenter"), icon: FileText, path: "/teacher/exam-center", permissions: [PERMISSIONS.quizzes.view] },
+        { name: t("videoLectures"), icon: Film, path: "/teacher/video-lectures", permissions: [PERMISSIONS.videoLectures.create, PERMISSIONS.videoLectures.view] },
+        { name: t("chat"), icon: Send, path: "/teacher/chat", permissions: [PERMISSIONS.chat.view] },
+        { name: t("admissions"), icon: FileText, path: "/admin/admissions", permissions: [PERMISSIONS.students.create] },
+        { name: t("addSkills"), icon: Star, path: "/teacher/skills", permissions: [PERMISSIONS.marks.view] },
+        { name: t("behaviorPoints"), icon: PlusCircle, path: "/teacher/behavior", permissions: [PERMISSIONS.marks.view] },
+      ],
     },
     {
       title: t("adminTools"),
       icon: Settings,
-      items: [
-        { name: t("settings"), icon: Settings, path: "/settings", allowed: ["admin"] },
-        { name: t("users"), icon: ShieldCheck, path: "/admin/users", allowed: ["admin"] },
-        { name: t("auditLogs"), icon: FileText, path: "/admin/audit", allowed: ["admin"] },
-        { name: t("billing"), icon: CreditCard, path: "/settings/billing", allowed: ["admin"] },
-      ],
-      allowed: ["admin"],
       key: "adminTools",
+      items: [
+        { name: t("settings"), icon: Settings, path: "/settings", permissions: [PERMISSIONS.settings.view] },
+        { name: t("users"), icon: ShieldCheck, path: "/admin/users", permissions: [PERMISSIONS.settings.manage] },
+        { name: t("auditLogs"), icon: FileText, path: "/admin/audit", permissions: [PERMISSIONS.audit.view] },
+        { name: t("billing"), icon: CreditCard, path: "/settings/billing", permissions: [PERMISSIONS.subscriptions.view] },
+      ],
     },
     {
       title: t("aiTools"),
       icon: Sparkles,
-      items: [
-        { name: t("aiAssistant"), icon: Bot, path: "/ai-chatbot", allowed: ["admin", "teacher"] },
-        { name: t("aiTimetable"), icon: Sparkles, path: "/ai-timetable", allowed: ["admin", "teacher"] },
-        { name: t("examQuestions"), icon: FileText, path: "/ai-exam-questions", allowed: ["admin", "teacher"] },
-      ],
-      allowed: ["admin", "teacher"],
       key: "aiTools",
+      items: [
+        { name: t("aiAssistant"), icon: Bot, path: "/ai-chatbot", permissions: [PERMISSIONS.settings.view, PERMISSIONS.assignments.view] },
+        { name: t("aiTimetable"), icon: Sparkles, path: "/ai-timetable", permissions: [PERMISSIONS.settings.view] },
+        { name: t("examQuestions"), icon: FileText, path: "/ai-exam-questions", permissions: [PERMISSIONS.quizzes.view] },
+      ],
     },
   ];
 
-  const visibleGroups = menuGroups.filter((g) => g.allowed.includes(role));
+  // 🛡️ سمارٹ فلٹرنگ (آئٹمز اور گروپس کو پرمیشنز کے لحاظ سے چھپانا)
+  const authorizedGroups = menuGroups.map(group => {
+    const authorizedItems = group.items.filter(item => {
+      // اگر پرمیشنز ڈیفائنڈ ہیں، تو نیا RBAC سسٹم استعمال کریں
+      if (item.permissions && item.permissions.length > 0) {
+        return hasAnyPermission(role, item.permissions);
+      }
+      // جن کی پرمیشنز نہیں (جیسے ڈیش بورڈ)، انہیں پرانے طریقے یا سب کے لیے allow کریں
+      if (item.allowed) {
+        return item.allowed.includes(role);
+      }
+      return true;
+    });
+
+    return { ...group, items: authorizedItems };
+  }).filter(group => group.items.length > 0); // 🪄 جادو: اگر گروپ کے اندر کوئی آئٹم نہیں، تو پورا گروپ غائب!
 
   const handleLogout = async () => {
     await signOut(auth);
@@ -177,14 +190,14 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
 
         {/* Navigation */}
         <div className="flex-1 overflow-y-auto py-2 px-4 custom-scrollbar">
-          {role === "loading" ? (
+          {!role || role === "loading" ? (
             <div className="animate-pulse space-y-4">
               <div className="h-8 bg-gray-100 rounded w-full"></div>
               <div className="h-8 bg-gray-100 rounded w-full"></div>
               <div className="h-8 bg-gray-100 rounded w-full"></div>
             </div>
           ) : (
-            visibleGroups.map((group) => (
+            authorizedGroups.map((group) => (
               <div key={group.title} className="mb-2">
                 <div
                   className="flex items-center justify-between px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-100 cursor-pointer transition-colors"
@@ -199,26 +212,24 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
 
                 {(!group.key || openGroups[group.key]) && (
                   <div className="ml-6 mt-1 space-y-1">
-                    {group.items
-                      .filter((i) => i.allowed.includes(role))
-                      .map((item) => {
-                        const isActive = pathname === item.path || pathname.startsWith(item.path + "/");
-                        return (
-                          <Link
-                            key={item.name}
-                            href={item.path}
-                            onClick={() => setIsMobileMenuOpen(false)}
-                            className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all ${
-                              isActive
-                                ? "bg-blue-600 text-white shadow-sm"
-                                : "text-gray-600 hover:bg-gray-100"
-                            }`}
-                          >
-                            <item.icon size={18} />
-                            <span>{item.name}</span>
-                          </Link>
-                        );
-                      })}
+                    {group.items.map((item) => {
+                      const isActive = pathname === item.path || pathname.startsWith(item.path + "/");
+                      return (
+                        <Link
+                          key={item.name}
+                          href={item.path}
+                          onClick={() => setIsMobileMenuOpen(false)}
+                          className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all ${
+                            isActive
+                              ? "bg-blue-600 text-white shadow-sm"
+                              : "text-gray-600 hover:bg-gray-100"
+                          }`}
+                        >
+                          <item.icon size={18} />
+                          <span>{item.name}</span>
+                        </Link>
+                      );
+                    })}
                   </div>
                 )}
               </div>
