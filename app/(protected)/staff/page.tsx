@@ -368,7 +368,7 @@ export default function AddStaffPage() {
             </label>
             
             {/* 🛡️ Save / Update Record Button Protected */}
-            <RequirePermission permissions={[PERMISSIONS.settings.update, PERMISSIONS.settings.create]}>
+            <RequirePermission permissions={[PERMISSIONS.settings.update, PERMISSIONS.settings.manage]}>
               <button type="submit" disabled={submitting} className="ml-auto bg-blue-600 text-white px-6 py-2 rounded-xl font-bold disabled:opacity-50 flex items-center gap-2">
                 {submitting && <Loader2 className="animate-spin" size={18} />}
                 {isEdit ? "Update Staff" : "Save Record"}
@@ -382,7 +382,7 @@ export default function AddStaffPage() {
             )}
             
             {/* 🛡️ Bulk Import / OCR Buttons Protected */}
-            <RequirePermission permissions={[PERMISSIONS.settings.create]}>
+            <RequirePermission permissions={[PERMISSIONS.settings.manage]}>
               <button type="button" onClick={() => setShowBulkModal(true)} className="ml-2 bg-green-600 text-white px-4 py-2 rounded-xl font-bold flex items-center gap-2">
                 <FileSpreadsheet size={18} /> Bulk Import
               </button>
