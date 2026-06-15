@@ -17,10 +17,9 @@ import { useTranslations } from "next-intl";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { useAuth } from "@/context/AuthContext";
 
-// ✅ Direct imports to avoid server code leakage
+// ✅ 100% Client-safe imports
 import { PERMISSIONS } from "@/lib/auth/permissions";
 import { hasAnyPermission } from "@/lib/auth/client-rbac";
-import { PERMISSIONS } from "@/lib/auth/permissions";
 
 export default function SidebarLayout({ children }: { children: React.ReactNode }) {
   const t = useTranslations("Sidebar");
