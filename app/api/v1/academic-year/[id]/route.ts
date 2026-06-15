@@ -13,7 +13,7 @@ export const GET = withAuth(
 
       if (!id) {
         return NextResponse.json(
-          createApiResponse(false, "Academic year ID is missing"), 
+          createApiResponse(400, "Academic year ID is missing"), 
           { status: 400 }
         );
       }
@@ -23,13 +23,13 @@ export const GET = withAuth(
 
       if (!doc.exists) {
         return NextResponse.json(
-          createApiResponse(false, "Academic year not found"), 
+          createApiResponse(404, "Academic year not found"), 
           { status: 404 }
         );
       }
 
       return NextResponse.json(
-        createApiResponse(true, "Academic year retrieved", { id: doc.id, ...doc.data() })
+        createApiResponse(200, "Academic year retrieved", { id: doc.id, ...doc.data() })
       );
     })
   )
