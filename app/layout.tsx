@@ -1,9 +1,8 @@
-// app/(protected)/layout.tsx
 import dynamic from "next/dynamic";
 import SidebarLayout from "@/components/SidebarLayout";
 import { ReactNode } from "react";
 
-// 🛡️ RouteGuard کو صرف Client پر چلانے کی سخت ہدایت (Fixes Vercel Pre-render error)
+// Client-side only import for the RouteGuard to prevent Vercel Build Pre-render errors
 const RouteGuard = dynamic(() => import("@/components/RouteGuard"), {
   ssr: false,
 });
