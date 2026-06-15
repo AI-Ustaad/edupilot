@@ -1,6 +1,5 @@
 import { PERMISSIONS, Permission } from "./permissions";
 
-// تمام roles کی ایک central registry
 export const ROLES = {
   SUPER_ADMIN: "superAdmin",
   ADMIN: "admin",
@@ -12,10 +11,8 @@ export const ROLES = {
 
 export type Role = typeof ROLES[keyof typeof ROLES];
 
-// Role-to-Permissions Mapping
 export const ROLE_PERMISSIONS: Record<string, Permission[]> = {
   [ROLES.SUPER_ADMIN]: [
-    // Super Admin کے پاس تمام پرمیشنز ہیں
     ...Object.values(PERMISSIONS).flatMap((module) => Object.values(module)) as Permission[]
   ],
   
