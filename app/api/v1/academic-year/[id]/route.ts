@@ -2,50 +2,35 @@ export const dynamic = 'force-dynamic';
 
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebase-admin";
-import { withAuth, withTenant, withErrorHandler, withRole } from "@/route-helpers";
+import { withAuth, withTenant, withErrorHandler } from "@/route-helpers";
 import { createApiResponse } from "@/lib/response/apiResponse";
 
-export async function GET(req: Request, context: any) {
-  // آپ کا کوڈ یہاں رہے گا...
-}
-import type { TenantContext } from "@/types/api";
+export const GET = withAuth(
+  withTenant(
+    withErrorHandler(async (req: Request, context: any) => {
+      const { params, tenantId } = context || {};
+      const { id } = params || {};
 
-function getId(req: Request): string {
-  const segments = new URL(req.url).pathname.split("/");
-  return segments[segments.length - 1];
-}
+      if (!id) {
+        return NextResponse.json(
+          createApiResponse(false, "Academic year ID is missing"), 
+          { status: 400 }
+        );
+      }
 
-export const PUT = withErrorHandler(
-  withAuth(
-    withTenant(
-      withRole(["admin"])(async (req: Request, { tenantId }: TenantContext) => {
-        const id = getId(req);
-        const { isCurrent } = await req.json();
-        if (isCurrent) {
-          const all = await adminDb.collection("academicYears")
-            .where("tenantId", "==", tenantId).get();
-          const batch = adminDb.batch();
-          all.docs.forEach(doc => batch.update(doc.ref, { isCurrent: false }));
-          await batch.commit();
-        }
-        await adminDb.collection("academicYears").doc(id).update({
-          isCurrent: !!isCurrent,
-          updatedAt: new Date(),
-        });
-        return createApiResponse(200, null, "Updated");
-      })
-    )
-  )
-);
+      const docRef = adminDb.collection(`tenants/${tenantId}/academicYears`).doc(id);
+      const doc = await docRef.get();
 
-export const DELETE = withErrorHandler(
-  withAuth(
-    withTenant(
-      withRole(["admin"])(async (req: Request, { tenantId }: TenantContext) => {
-        const id = getId(req);
-        await adminDb.collection("academicYears").doc(id).delete();
-        return createApiResponse(200, null, "Deleted");
-      })
-    )
+      if (!doc.exists) {
+        return NextResponse.json(
+          createApiResponse(false, "Academic year not found"), 
+          { status: 404 }
+        );
+      }
+
+      return NextResponse.json(
+        createApiResponse(true, "Academic year retrieved", { id: doc.id, ...doc.data() })
+      );
+    })
   )
 );
