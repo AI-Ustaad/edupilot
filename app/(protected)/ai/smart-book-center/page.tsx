@@ -1,7 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { Loader2, BookOpen } from "lucide-react";
+import { Loader2, BookOpen, Sparkles } from "lucide-react";
+import RequirePermission from "@/components/RequirePermission";
+import { PERMISSIONS } from "@/lib/auth/permissions";
 
 export default function SmartBookCenterPage() {
   const [query, setQuery] = useState("");
@@ -15,7 +17,6 @@ export default function SmartBookCenterPage() {
     if (!query.trim()) return;
     setLoading(true);
     setResult("");
-
     try {
       const res = await fetch("/api/ai/smart-book-center", {
         method: "POST",
@@ -33,40 +34,48 @@ export default function SmartBookCenterPage() {
 
   return (
     <div className="max-w-3xl mx-auto p-6 space-y-6">
-      <div className="flex items-center gap-3 mb-6">
+      <div className="flex items-center gap-3 mb-6 border-b pb-4">
         <BookOpen size={32} className="text-blue-600" />
-        <h1 className="text-2xl font-black text-gray-900">AI Smart Book Center</h1>
+        <div>
+          <h1 className="text-2xl font-black text-gray-900">AI Smart Book Center</h1>
+          <p className="text-gray-500 text-sm">Ask AI for book recommendations, summaries, or questions.</p>
+        </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="bg-white border border-gray-200 rounded-2xl p-6 space-y-4">
+      <form onSubmit={handleSubmit} className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm space-y-4">
         <input
           type="text"
           placeholder="e.g., books for grade 5 about science"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          className="w-full border border-gray-300 rounded-xl p-3"
+          className="w-full border border-gray-300 bg-gray-50 rounded-xl p-3 focus:ring-2 focus:ring-blue-500 outline-none"
           required
         />
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <select value={grade} onChange={(e) => setGrade(e.target.value)} className="border border-gray-300 rounded-xl p-3">
+          <select value={grade} onChange={(e) => setGrade(e.target.value)} className="border border-gray-300 bg-gray-50 rounded-xl p-3 focus:ring-2 focus:ring-blue-500 outline-none">
             <option value="">All Grades</option>
-            {[1,2,3,4,5,6,7,8,9,10].map(g => <option key={g} value={g.toString()}>Grade {g}</option>)}
+            {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(g => <option key={g} value={g.toString()}>Grade {g}</option>)}
           </select>
-          <select value={type} onChange={(e) => setType(e.target.value)} className="border border-gray-300 rounded-xl p-3">
+          <select value={type} onChange={(e) => setType(e.target.value)} className="border border-gray-300 bg-gray-50 rounded-xl p-3 focus:ring-2 focus:ring-blue-500 outline-none">
             <option value="recommendation">Recommendation</option>
-            <option value="summary">Summary</option>
-            <option value="qa">Q/A</option>
+            <option value="summary">Book Summary</option>
+            <option value="qa">Q/A from Book</option>
           </select>
         </div>
-        <button type="submit" disabled={loading} className="bg-blue-600 text-white px-6 py-3 rounded-xl font-bold flex items-center gap-2">
-          {loading ? <Loader2 className="animate-spin" size={18} /> : "Get Recommendations"}
-        </button>
+        
+        {/* 🛡️ Protected AI Action */}
+        <RequirePermission permissions={[PERMISSIONS.chat.send]}>
+          <button type="submit" disabled={loading} className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition disabled:opacity-50">
+            {loading ? <Loader2 className="animate-spin" size={18} /> : <Sparkles size={18} />} 
+            {loading ? "Processing..." : "Get AI Results"}
+          </button>
+        </RequirePermission>
       </form>
 
       {result && (
-        <div className="bg-white border border-gray-200 rounded-2xl p-6">
-          <h2 className="font-bold text-gray-800 mb-2">Result</h2>
-          <div className="text-gray-700 whitespace-pre-line">{result}</div>
+        <div className="bg-blue-50 border border-blue-200 rounded-2xl p-6 shadow-inner animate-fade-in">
+          <h2 className="font-black text-blue-900 mb-3 border-b border-blue-200 pb-2">AI Results</h2>
+          <div className="text-blue-900 leading-relaxed whitespace-pre-line font-medium">{result}</div>
         </div>
       )}
     </div>
