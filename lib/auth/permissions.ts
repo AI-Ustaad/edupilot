@@ -1,3 +1,5 @@
+// lib/auth/permissions.ts
+
 export const PERMISSIONS = {
   students: { 
     view: "students.view", 
@@ -9,7 +11,8 @@ export const PERMISSIONS = {
     view: "staff.view", 
     create: "staff.create", 
     update: "staff.update", 
-    delete: "staff.delete" 
+    delete: "staff.delete",
+    manage: "staff.manage" // Added for HR/Leave Approvals
   },
   fees: { 
     view: "fees.view", 
@@ -117,27 +120,36 @@ export const PERMISSIONS = {
   },
   audit: { 
     view: "audit.view" 
+  },
+  // 🚀 NEW MODULES ADDED TO FREEZE THE REGISTRY
+  timetable: {
+    view: "timetable.view",
+    create: "timetable.create",
+    update: "timetable.update",
+    delete: "timetable.delete"
+  },
+  behavior: {
+    view: "behavior.view",
+    create: "behavior.create",
+    update: "behavior.update",
+    delete: "behavior.delete"
+  },
+  skills: {
+    view: "skills.view",
+    create: "skills.create",
+    update: "skills.update",
+    delete: "skills.delete"
+  },
+  books: {
+    view: "books.view",
+    create: "books.create",
+    update: "books.update",
+    delete: "books.delete"
   }
 } as const;
 
-export type Permission = 
-  | "students.view" | "students.create" | "students.update" | "students.delete"
-  | "staff.view" | "staff.create" | "staff.update" | "staff.delete"
-  | "fees.view" | "fees.create" | "fees.update" | "fees.delete" | "fees.collect" | "fees.manage"
-  | "attendance.view" | "attendance.create" | "attendance.update" | "attendance.delete" | "attendance.manage"
-  | "exams.view" | "exams.create" | "exams.update" | "exams.delete" | "exams.manage"
-  | "finance.view" | "finance.create" | "finance.update" | "finance.delete" | "finance.manage"
-  | "settings.view" | "settings.update" | "settings.manage"
-  | "homework.view" | "homework.create" | "homework.update" | "homework.delete"
-  | "buses.view" | "buses.create" | "buses.update" | "buses.delete"
-  | "parents.view" | "parents.create" | "parents.update" | "parents.delete"
-  | "videoLectures.view" | "videoLectures.create" | "videoLectures.delete"
-  | "ledger.view" | "ledger.create" | "ledger.update" | "ledger.delete"
-  | "subscriptions.view" | "subscriptions.create" | "subscriptions.update" | "subscriptions.delete" | "subscriptions.activate"
-  | "marks.view" | "marks.create" | "marks.update" | "marks.delete"
-  | "analytics.view"
-  | "assignments.view" | "assignments.create" | "assignments.update" | "assignments.delete" | "assignments.grade"
-  | "quizzes.view" | "quizzes.create" | "quizzes.update" | "quizzes.delete" | "quizzes.grade"
-  | "lessonPlans.view" | "lessonPlans.create" | "lessonPlans.update" | "lessonPlans.delete"
-  | "chat.view" | "chat.send" | "chat.delete"
-  | "audit.view";
+// 🚀 ENTERPRISE MAGIC: Auto-extract types so you NEVER have to write them manually again!
+// This extracts all the string values from the nested PERMISSIONS object into a single Union Type.
+type PermissionsObject = typeof PERMISSIONS;
+type Modules = keyof PermissionsObject;
+export type Permission = PermissionsObject[Modules][keyof PermissionsObject[Modules]];
