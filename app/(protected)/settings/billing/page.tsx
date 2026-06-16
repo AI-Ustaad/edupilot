@@ -1,50 +1,36 @@
 "use client";
-import { useState, useEffect } from "react";
-import { PLANS } from "@/lib/stripe";
-import { Loader2 } from "lucide-react";
+import { CreditCard, Zap, Check } from "lucide-react";
+import RequirePermission from "@/components/RequirePermission";
+import { PERMISSIONS } from "@/lib/auth/permissions";
 
 export default function BillingPage() {
-  const [loading, setLoading] = useState(false);
-  const [subscription, setSubscription] = useState<any>(null);
-
-  useEffect(() => {
-    fetch("/api/subscriptions")
-      .then(res => res.json())
-      .then(setSubscription);
-  }, []);
-
-  const subscribe = async (planId: string) => {
-    setLoading(true);
-    const res = await fetch("/api/stripe/create-checkout", {
-      method: "POST",
-      body: JSON.stringify({ planId }),
-    });
-    const { url } = await res.json();
-    if (url) window.location.href = url;
-    setLoading(false);
-  };
-
   return (
-    <div className="p-6 max-w-6xl mx-auto">
-      <h1 className="text-2xl font-black text-gray-900 mb-6">Subscription & Billing</h1>
-      <div className="grid md:grid-cols-4 gap-4">
-        {Object.values(PLANS).map(plan => (
-          <div key={plan.id} className="bg-white rounded-xl shadow border border-gray-200 p-4 flex flex-col">
-            <h3 className="text-xl font-bold text-gray-900">{plan.name}</h3>
-            <p className="text-2xl font-black mt-2 text-gray-800">
-              {plan.price === 0 ? "Free" : `Rs ${plan.price.toLocaleString()}/mo`}
-            </p>
-            <p className="text-sm text-gray-500 mt-2">Up to {plan.limits.students} students</p>
-            <button
-              onClick={() => subscribe(plan.id)}
-              disabled={loading || subscription?.planId === plan.id}
-              className="mt-4 w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg font-bold disabled:opacity-50 transition"
-            >
-              {subscription?.planId === plan.id ? "Current Plan" : "Subscribe"}
-            </button>
+    <RequirePermission permissions={[PERMISSIONS.settings.manage]}>
+      <div className="p-6 max-w-4xl mx-auto space-y-6">
+        <h1 className="text-2xl font-black text-gray-900 flex items-center gap-2">
+          <CreditCard className="text-blue-600" /> Subscription & Billing
+        </h1>
+
+        <div className="bg-gradient-to-br from-blue-900 to-blue-700 text-white rounded-3xl p-8 shadow-lg">
+          <div className="flex justify-between items-center mb-6">
+            <div>
+              <p className="text-blue-200 font-bold mb-1">Current Plan</p>
+              <h2 className="text-3xl font-black flex items-center gap-2"><Zap className="text-yellow-400" /> Premium EduPilot</h2>
+            </div>
+            <span className="bg-white/20 px-4 py-2 rounded-full font-bold text-sm">Active</span>
           </div>
-        ))}
+          
+          <div className="space-y-2 mb-6">
+            <p className="flex items-center gap-2 text-sm text-blue-100"><Check size={16} className="text-green-400"/> Unlimited Students</p>
+            <p className="flex items-center gap-2 text-sm text-blue-100"><Check size={16} className="text-green-400"/> AI Features Enabled</p>
+            <p className="flex items-center gap-2 text-sm text-blue-100"><Check size={16} className="text-green-400"/> White-label Branding</p>
+          </div>
+
+          <button className="bg-white text-blue-900 px-6 py-3 rounded-xl font-bold hover:bg-blue-50 transition">
+            Manage Subscription via Stripe
+          </button>
+        </div>
       </div>
-    </div>
+    </RequirePermission>
   );
 }
