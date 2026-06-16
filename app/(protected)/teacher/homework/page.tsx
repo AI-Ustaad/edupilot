@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { Loader2, Send, Calendar } from "lucide-react";
+import RequirePermission from "@/components/RequirePermission";
+import { PERMISSIONS } from "@/lib/auth/permissions";
 
 interface ClassInfo {
   name: string;
@@ -9,7 +11,6 @@ interface ClassInfo {
 }
 
 export default function TeacherHomeworkPage() {
-  // فارم فیلڈز
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [classGrade, setClassGrade] = useState("");
@@ -22,11 +23,9 @@ export default function TeacherHomeworkPage() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
 
-  // پچھلی اسائنمنٹس
   const [assignments, setAssignments] = useState<any[]>([]);
   const [listLoading, setListLoading] = useState(true);
 
-  // کلاسز اور مضامین سیٹنگز سے لوڈ کریں (فرض کریں کہ /api/settings یہ ڈیٹا واپس کرتا ہے)
   useEffect(() => {
     fetch("/api/settings")
       .then(res => res.json())
@@ -37,7 +36,6 @@ export default function TeacherHomeworkPage() {
       .catch(console.error);
   }, []);
 
-  // پچھلی ہوم ورک لوڈ کریں
   useEffect(() => {
     fetch("/api/homework")
       .then(res => res.json())
@@ -74,7 +72,6 @@ export default function TeacherHomeworkPage() {
         setTitle("");
         setDescription("");
         setDueDate("");
-        // فہرست ریفریش کریں
         const updated = await fetch("/api/homework").then(r => r.json());
         setAssignments(updated.success ? updated.data : updated);
       } else {
@@ -89,108 +86,116 @@ export default function TeacherHomeworkPage() {
     }
   };
 
-  // کلاس تبدیل ہونے پر سیکشنز دکھائیں
   const selectedClassSections = classes.find(c => c.name === classGrade)?.sections || [];
 
   return (
     <div className="max-w-4xl mx-auto p-6 space-y-8">
       <h1 className="text-2xl font-black text-gray-900">Homework / Notice Management</h1>
 
-      {message && <div className="bg-green-50 text-green-700 p-3 rounded-xl mb-4">{message}</div>}
+      {message && <div className="bg-green-50 text-green-700 p-4 rounded-xl mb-4 font-bold">{message}</div>}
 
-      {/* تخلیق کا فارم */}
-      <form onSubmit={handleSubmit} className="bg-white border border-gray-200 rounded-2xl p-6 space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <input
-            type="text"
-            placeholder="Title (e.g., Math Homework)"
-            value={title}
-            onChange={e => setTitle(e.target.value)}
-            className="bg-white border border-gray-300 rounded-xl p-3 text-gray-900"
-            required
-          />
-          <input
-            type="text"
-            placeholder="Subject (e.g., Mathematics)"
-            value={subject}
-            onChange={e => setSubject(e.target.value)}
-            className="bg-white border border-gray-300 rounded-xl p-3 text-gray-900"
-            list="subject-list"
-            required
-          />
-          <datalist id="subject-list">
-            {subjects.map(s => <option key={s} value={s} />)}
-          </datalist>
-
-          <select
-            value={classGrade}
-            onChange={e => { setClassGrade(e.target.value); setSection(""); }}
-            className="bg-white border border-gray-300 rounded-xl p-3 text-gray-900"
-            required
-          >
-            <option value="">Select Class</option>
-            {classes.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
-          </select>
-
-          <select
-            value={section}
-            onChange={e => setSection(e.target.value)}
-            className="bg-white border border-gray-300 rounded-xl p-3 text-gray-900"
-            required
-            disabled={!classGrade}
-          >
-            <option value="">Select Section</option>
-            {selectedClassSections.map(s => <option key={s} value={s}>{s}</option>)}
-          </select>
-
-          <div className="flex items-center gap-2 border border-gray-300 rounded-xl p-3">
-            <Calendar size={18} className="text-gray-400" />
+      {/* 🛡️ Protected Creation Form */}
+      <RequirePermission permissions={[PERMISSIONS.homework.create]}>
+        <form onSubmit={handleSubmit} className="bg-white border border-gray-200 rounded-2xl p-6 space-y-4 shadow-sm">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <input
-              type="date"
-              value={dueDate}
-              onChange={e => setDueDate(e.target.value)}
-              className="bg-transparent text-gray-900 outline-none w-full"
-              placeholder="Due Date (optional)"
+              type="text"
+              placeholder="Title (e.g., Math Homework)"
+              value={title}
+              onChange={e => setTitle(e.target.value)}
+              className="bg-gray-50 border border-gray-200 rounded-xl p-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              required
             />
+            <input
+              type="text"
+              placeholder="Subject (e.g., Mathematics)"
+              value={subject}
+              onChange={e => setSubject(e.target.value)}
+              className="bg-gray-50 border border-gray-200 rounded-xl p-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              list="subject-list"
+              required
+            />
+            <datalist id="subject-list">
+              {subjects.map(s => <option key={s} value={s} />)}
+            </datalist>
+
+            <select
+              value={classGrade}
+              onChange={e => { setClassGrade(e.target.value); setSection(""); }}
+              className="bg-gray-50 border border-gray-200 rounded-xl p-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              required
+            >
+              <option value="">Select Class</option>
+              {classes.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
+            </select>
+
+            <select
+              value={section}
+              onChange={e => setSection(e.target.value)}
+              className="bg-gray-50 border border-gray-200 rounded-xl p-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+              required
+              disabled={!classGrade}
+            >
+              <option value="">Select Section</option>
+              {selectedClassSections.map(s => <option key={s} value={s}>{s}</option>)}
+            </select>
+
+            <div className="flex items-center gap-2 border border-gray-200 bg-gray-50 rounded-xl p-3 focus-within:ring-2 focus-within:ring-blue-500">
+              <Calendar size={18} className="text-gray-400" />
+              <input
+                type="date"
+                value={dueDate}
+                onChange={e => setDueDate(e.target.value)}
+                className="bg-transparent text-gray-900 outline-none w-full"
+                placeholder="Due Date (optional)"
+              />
+            </div>
           </div>
-        </div>
 
-        <textarea
-          placeholder="Description or instructions..."
-          rows={3}
-          value={description}
-          onChange={e => setDescription(e.target.value)}
-          className="w-full bg-white border border-gray-300 rounded-xl p-3 text-gray-900"
-          required
-        />
+          <textarea
+            placeholder="Description or instructions..."
+            rows={3}
+            value={description}
+            onChange={e => setDescription(e.target.value)}
+            className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            required
+          />
 
-        <button
-          type="submit"
-          disabled={loading}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition"
-        >
-          {loading ? <Loader2 className="animate-spin" size={18} /> : <Send size={18} />}
-          {loading ? "Posting..." : "Post Homework"}
-        </button>
-      </form>
+          <button
+            type="submit"
+            disabled={loading}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition disabled:opacity-50 w-full sm:w-auto"
+          >
+            {loading ? <Loader2 className="animate-spin" size={18} /> : <Send size={18} />}
+            {loading ? "Posting..." : "Post Homework"}
+          </button>
+        </form>
+      </RequirePermission>
 
-      {/* اسائنمنٹس کی فہرست */}
+      {/* Homework List */}
       <div>
-        <h2 className="text-xl font-bold mb-4">Recently Posted</h2>
+        <h2 className="text-xl font-black text-gray-900 mb-4 border-b pb-2">Recently Posted</h2>
         {listLoading ? (
-          <div className="text-center py-8"><Loader2 className="animate-spin mx-auto" /></div>
+          <div className="text-center py-8"><Loader2 className="animate-spin mx-auto text-blue-600" size={32} /></div>
         ) : assignments.length === 0 ? (
-          <div className="text-gray-400 py-8 text-center">No homework posted yet.</div>
+          <div className="bg-gray-50 border border-gray-200 rounded-xl p-8 text-center text-gray-500 font-medium">No homework posted yet.</div>
         ) : (
-          <div className="space-y-3">
+          <div className="grid gap-4">
             {assignments.map((a: any) => (
-              <div key={a.id} className="bg-white border border-gray-200 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                <div>
-                  <p className="font-bold text-gray-900">{a.title}</p>
-                  <p className="text-sm text-gray-500">{a.classGrade} - {a.section} | {a.subject}</p>
-                  <p className="text-sm text-gray-600">{a.description}</p>
-                  {a.dueDate && <p className="text-xs text-red-500 mt-1">Due: {a.dueDate}</p>}
+              <div key={a.id} className="bg-white border border-gray-200 rounded-xl p-5 hover:shadow-md transition">
+                <div className="flex justify-between items-start mb-2">
+                  <h3 className="font-bold text-lg text-gray-900">{a.title}</h3>
+                  {a.dueDate && (
+                    <span className="bg-red-50 text-red-600 text-xs font-bold px-2.5 py-1 rounded-full border border-red-100 flex items-center gap-1">
+                      <Calendar size={12}/> Due: {a.dueDate}
+                    </span>
+                  )}
                 </div>
+                <div className="flex gap-2 mb-3">
+                  <span className="bg-blue-50 text-blue-700 text-xs font-bold px-2 py-0.5 rounded-md border border-blue-100">{a.classGrade} - {a.section}</span>
+                  <span className="bg-purple-50 text-purple-700 text-xs font-bold px-2 py-0.5 rounded-md border border-purple-100">{a.subject}</span>
+                </div>
+                <p className="text-sm text-gray-600">{a.description}</p>
               </div>
             ))}
           </div>
