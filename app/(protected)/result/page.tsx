@@ -6,6 +6,8 @@ import {
   GraduationCap, Search, Loader2, AlertCircle, 
   FileText, Award, Users
 } from "lucide-react";
+import RequirePermission from "@/components/RequirePermission";
+import { PERMISSIONS } from "@/lib/auth/permissions";
 
 // --- API Helpers ---
 const fetchResults = async (params: Record<string, string>) => {
@@ -156,12 +158,15 @@ export default function ResultsPage() {
                       </span>
                     </td>
                     <td className="px-6 py-4 text-right">
-                      <button 
-                        onClick={() => handleGeneratePDF(row.studentId)}
-                        className="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition shadow-sm"
-                      >
-                        <FileText size={14}/> Report Card
-                      </button>
+                      {/* 🛡️ Protected Report Card Button */}
+                      <RequirePermission permissions={[PERMISSIONS.exams.manage]}>
+                        <button 
+                          onClick={() => handleGeneratePDF(row.studentId)}
+                          className="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition shadow-sm"
+                        >
+                          <FileText size={14}/> Report Card
+                        </button>
+                      </RequirePermission>
                     </td>
                   </tr>
                 ))}
