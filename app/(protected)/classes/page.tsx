@@ -2,12 +2,10 @@
 import React, { useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { 
-  School, Plus, Trash2, Loader2, AlertCircle, CheckCircle, 
-  Save, BookOpen 
-} from "lucide-react";
+import { School, Plus, Trash2, Loader2, AlertCircle, CheckCircle, Save, BookOpen } from "lucide-react";
+import RequirePermission from "@/components/RequirePermission";
+import { PERMISSIONS } from "@/lib/auth/permissions";
 
-// --- API Helpers ---
 const fetchClasses = async () => {
   const res = await fetch("/api/classes");
   if (!res.ok) throw new Error("Failed to fetch classes");
@@ -16,11 +14,7 @@ const fetchClasses = async () => {
 };
 
 const createClassApi = async (data: any) => {
-  const res = await fetch("/api/classes", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data),
-  });
+  const res = await fetch("/api/classes", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) });
   if (!res.ok) throw new Error("Failed to create class");
   return res.json();
 };
@@ -35,21 +29,17 @@ export default function ClassesManagementPage() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   
-  // Form State
   const [newClass, setNewClass] = useState("");
   const [newSection, setNewSection] = useState("");
-  const [isAdding, setIsAdding] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
-  // 🚀 Fetch Data via React Query
   const { data: sections = [], isLoading } = useQuery({
     queryKey: ["classes", user?.tenantId],
     queryFn: fetchClasses,
     enabled: !!user?.tenantId,
   });
 
-  // Mutations
   const createMutation = useMutation({
     mutationFn: createClassApi,
     onSuccess: () => {
@@ -84,7 +74,6 @@ export default function ClassesManagementPage() {
     }
   };
 
-  // Group sections by Class for better UI
   const groupedSections = sections.reduce((acc: any, section: any) => {
     const cls = section.classGrade;
     if (!acc[cls]) acc[cls] = [];
@@ -96,43 +85,29 @@ export default function ClassesManagementPage() {
     <div className="p-6 max-w-6xl mx-auto space-y-6 animate-fade-in">
       <div className="flex justify-between items-end">
         <div>
-          <h1 className="text-2xl font-black text-gray-900 flex items-center gap-3">
+          <h1 className="text-2xl font-black text-gray-900 flex items-center gap-3 border-b pb-2">
             <School className="text-blue-600"/> Classes & Sections
           </h1>
-          <p className="text-sm text-gray-500 mt-1">Manage your school&apos;s academic structure.</p>
+          <p className="text-sm text-gray-500 mt-2">Manage your school&apos;s academic structure.</p>
         </div>
       </div>
 
       {success && <div className="bg-green-50 text-green-700 p-4 rounded-xl flex items-center gap-2 font-bold border border-green-100"><CheckCircle size={20}/> {success}</div>}
       {error && <div className="bg-red-50 text-red-600 p-4 rounded-xl flex items-center gap-2 font-bold border border-red-100"><AlertCircle size={20}/> {error}</div>}
 
-      {/* ADD NEW SECTION FORM */}
-      <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
-        <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2"><Plus size={20} className="text-blue-500"/> Add New Section</h3>
-        <form onSubmit={handleAdd} className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <input 
-            type="text" 
-            placeholder="Class (e.g., 9, 10, 1st)" 
-            value={newClass} 
-            onChange={e => setNewClass(e.target.value)} 
-            className="border border-gray-300 rounded-xl px-4 py-3 font-medium" 
-          />
-          <input 
-            type="text" 
-            placeholder="Section (e.g., A, Blue, Morning)" 
-            value={newSection} 
-            onChange={e => setNewSection(e.target.value)} 
-            className="border border-gray-300 rounded-xl px-4 py-3 font-medium" 
-          />
-          <button 
-            type="submit" 
-            disabled={createMutation.isPending} 
-            className="bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl flex items-center justify-center gap-2 transition disabled:opacity-50"
-          >
-            {createMutation.isPending ? <Loader2 className="animate-spin"/> : <Save size={18}/>} Save Section
-          </button>
-        </form>
-      </div>
+      {/* 🛡️ Protected Add Form */}
+      <RequirePermission permissions={[PERMISSIONS.settings.manage]}>
+        <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
+          <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2"><Plus size={20} className="text-blue-500"/> Add New Section</h3>
+          <form onSubmit={handleAdd} className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <input type="text" placeholder="Class (e.g., 9, 10, 1st)" value={newClass} onChange={e => setNewClass(e.target.value)} className="bg-gray-50 border border-gray-300 rounded-xl px-4 py-3 font-medium outline-none focus:ring-2 focus:ring-blue-500" />
+            <input type="text" placeholder="Section (e.g., A, Blue, Morning)" value={newSection} onChange={e => setNewSection(e.target.value)} className="bg-gray-50 border border-gray-300 rounded-xl px-4 py-3 font-medium outline-none focus:ring-2 focus:ring-blue-500" />
+            <button type="submit" disabled={createMutation.isPending} className="bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl flex items-center justify-center gap-2 transition disabled:opacity-50 py-3">
+              {createMutation.isPending ? <Loader2 className="animate-spin"/> : <Save size={18}/>} Save Section
+            </button>
+          </form>
+        </div>
+      </RequirePermission>
 
       {/* SECTIONS LIST */}
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
@@ -149,20 +124,17 @@ export default function ClassesManagementPage() {
           <div className="divide-y divide-gray-100">
             {Object.entries(groupedSections).map(([className, sectionsList]: any) => (
               <div key={className} className="p-6">
-                <h3 className="text-xl font-black text-gray-900 mb-4 uppercase tracking-tight border-l-4 border-blue-600 pl-3">
-                  Class {className}
-                </h3>
+                <h3 className="text-xl font-black text-gray-900 mb-4 uppercase tracking-tight border-l-4 border-blue-600 pl-3">Class {className}</h3>
                 <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
                   {sectionsList.map((sec: any) => (
                     <div key={sec.id} className="bg-gray-50 border border-gray-200 rounded-xl p-3 flex justify-between items-center hover:bg-blue-50 hover:border-blue-200 transition group">
                       <span className="font-bold text-gray-700 group-hover:text-blue-700">{sec.sectionName}</span>
-                      <button 
-                        onClick={() => handleDelete(sec.id)} 
-                        disabled={deleteMutation.isPending}
-                        className="text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition disabled:opacity-50"
-                      >
-                        <Trash2 size={16}/>
-                      </button>
+                      {/* 🛡️ Protected Delete Action */}
+                      <RequirePermission permissions={[PERMISSIONS.settings.manage]}>
+                        <button onClick={() => handleDelete(sec.id)} disabled={deleteMutation.isPending} className="text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition disabled:opacity-50 p-1">
+                          <Trash2 size={16}/>
+                        </button>
+                      </RequirePermission>
                     </div>
                   ))}
                 </div>
