@@ -1,85 +1,46 @@
-import { NextResponse } from "next/server";
-import { adminDb } from "@/lib/firebase-admin";
-import { FieldValue } from "firebase-admin/firestore";
-import { withErrorHandler, withAuth, withTenant } from "@/route-helpers";
-import { withPermission } from "@/lib/auth/rbac";
+import { AttendanceService } from "@/services/attendance.service";
+import { AttendanceRepository } from "@/repositories/attendance.repository";
+import { successResponse, errorResponse } from "@/lib/utils/api-response";
+import { withPermission } from "@/lib/auth/withPermission";
 import { PERMISSIONS } from "@/lib/auth/permissions";
-import { logAction } from "@/lib/audit";
-import type { TenantContext } from "@/types/api";
 
-export const runtime = 'nodejs';
+// Initialize Service with its Repository (Dependency Injection)
+const attendanceService = new AttendanceService(new AttendanceRepository());
 
-// ==========================================
-// 1. GET: Fetch Attendance Securely
-// ==========================================
-export const GET = withErrorHandler(
-  withAuth(
-    withTenant(
-      withPermission(PERMISSIONS.attendance.view)(async (req: Request, { tenantId }: TenantContext) => {
-        const { searchParams } = new URL(req.url);
-        const classGrade = searchParams.get("classGrade");
-        const section = searchParams.get("section");
-        const date = searchParams.get("date");
+// 🟢 GET: Fetch Attendance (Protected by attendance.view)
+export const GET = withPermission(PERMISSIONS.attendance.view, async (req: Request, context: any) => {
+  try {
+    const tenantId = context.user.tenantId; // From auth middleware
+    const url = new URL(req.url);
+    const date = url.searchParams.get("date") || undefined;
+    const classGrade = url.searchParams.get("classGrade") || undefined;
+    const section = url.searchParams.get("section") || undefined;
 
-        let queryRef: any = adminDb.collection("attendance").where("tenantId", "==", tenantId);
-        if (classGrade) queryRef = queryRef.where("classGrade", "==", classGrade);
-        if (section) queryRef = queryRef.where("section", "==", section);
-        if (date) queryRef = queryRef.where("date", "==", date);
+    const records = await attendanceService.listAttendance(tenantId, { date, classGrade, section });
+    return successResponse(records, "Attendance records fetched successfully");
+  } catch (error: any) {
+    return errorResponse(error.message || "Failed to fetch attendance records", 500);
+  }
+});
 
-        const snap = await queryRef.get();
-        const attendance = snap.docs
-          .map(d => ({ id: d.id, ...d.data() }))
-          .filter((a: any) => !a.deleted); // Soft Delete support
+// 🔵 POST: Mark Attendance (Protected by attendance.create)
+export const POST = withPermission(PERMISSIONS.attendance.create, async (req: Request, context: any) => {
+  try {
+    const tenantId = context.user.tenantId;
+    const userId = context.user.uid;
+    const body = await req.json();
 
-        return NextResponse.json({ success: true, data: attendance });
-      })
-    )
-  )
-);
-
-// ==========================================
-// 2. POST: Mark/Update Attendance
-// ==========================================
-export const POST = withErrorHandler(
-  withAuth(
-    withTenant(
-      withPermission(PERMISSIONS.attendance.update)(async (req: Request, { tenantId, user }: TenantContext) => {
-        const data = await req.json();
-        const { studentId, studentName, classGrade, section, date, status } = data;
-
-        if (!studentId || !date || !status) {
-          return NextResponse.json({ success: false, message: "Missing fields" }, { status: 400 });
-        }
-
-        // Idempotent ID: Prevents duplicate entries for same student/date
-        const docId = `${studentId}_${date.replace(/-/g, '')}`;
-        const docRef = adminDb.collection("attendance").doc(docId);
-        
-        const snap = await docRef.get();
-        const isNew = !snap.exists;
-
-        await docRef.set({
-          studentId, studentName, classGrade, section, date, status,
-          tenantId,
-          deleted: false,
-          createdAt: isNew ? FieldValue.serverTimestamp() : (snap.data()?.createdAt || FieldValue.serverTimestamp()),
-          createdBy: isNew ? user.uid : (snap.data()?.createdBy || user.uid),
-          updatedAt: FieldValue.serverTimestamp(),
-          updatedBy: user.uid,
-        }, { merge: true });
-
-        // 🛡️ Audit Log
-        await logAction({
-          action: isNew ? "attendance.create" : "attendance.update",
-          userId: user.uid,
-          tenantId,
-          entityId: docId,
-          entityType: "attendance",
-          metadata: { studentId, date, status },
-        });
-
-        return NextResponse.json({ success: true, message: "Attendance saved" });
-      })
-    )
-  )
-);
+    // Check if it's a Bulk Attendance submission (Array) or Single Student (Object)
+    if (Array.isArray(body)) {
+      const result = await attendanceService.createBulk(body, tenantId, userId);
+      return successResponse(result, result.message, 201);
+    } else {
+      const record = await attendanceService.createSingle(body, tenantId, userId);
+      return successResponse(record, "Attendance marked successfully", 201);
+    }
+  } catch (error: any) {
+    // Return 400 Bad Request for Validation Errors (Zod)
+    const status = error.message.includes("Validation") ? 400 : 500;
+    return errorResponse(error.message || "Failed to mark attendance", status);
+  }
+});
