@@ -70,139 +70,79 @@ export default function SuperAdminAnalytics() {
   }
 
   return (
-    <RequirePermission permissions={[PERMISSIONS.analytics.view]}>
+    <RequirePermission permissions={["analytics.view" as any]}>
       <div className="p-6 space-y-6 max-w-7xl mx-auto">
-        <h1 className="text-2xl font-black">Super Admin Analytics Dashboard</h1>
+        <h1 className="text-2xl font-black text-gray-900">Super Admin Analytics Dashboard</h1>
 
         {/* Filters */}
-        <div className="flex flex-wrap gap-4 items-end bg-white p-4 rounded-xl shadow-sm border">
-          <div className="w-64">
-            <label className="block text-xs font-bold mb-1">Select School</label>
-            <select
-              value={selectedTenant}
-              onChange={(e) => setSelectedTenant(e.target.value)}
-              className="w-full border rounded p-2"
-            >
-              {tenants.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.name} ({t.id})
-                </option>
-              ))}
+        <div className="flex flex-wrap gap-4 items-end bg-white p-6 rounded-2xl shadow-sm border border-gray-200">
+          <div className="w-full md:w-64">
+            <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Select School</label>
+            <select value={selectedTenant} onChange={(e) => setSelectedTenant(e.target.value)} className="w-full border border-gray-300 bg-gray-50 rounded-xl p-3 outline-none focus:ring-2 focus:ring-blue-500">
+              {tenants.map((t) => <option key={t.id} value={t.id}>{t.name} ({t.id})</option>)}
             </select>
           </div>
-          <div>
-            <label className="block text-xs font-bold mb-1">Start Date</label>
-            <input
-              type="date"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-              className="border rounded p-2"
-            />
+          <div className="w-full md:w-auto">
+            <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Start Date</label>
+            <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="w-full border border-gray-300 bg-gray-50 rounded-xl p-3 outline-none focus:ring-2 focus:ring-blue-500" />
           </div>
-          <div>
-            <label className="block text-xs font-bold mb-1">End Date</label>
-            <input
-              type="date"
-              value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-              className="border rounded p-2"
-            />
+          <div className="w-full md:w-auto">
+            <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">End Date</label>
+            <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="w-full border border-gray-300 bg-gray-50 rounded-xl p-3 outline-none focus:ring-2 focus:ring-blue-500" />
           </div>
-          <button
-            onClick={fetchAnalytics}
-            className="bg-blue-600 text-white px-4 py-2 rounded flex items-center gap-2 font-bold"
-          >
-            <Filter size={16} /> Apply Filters
+          <button onClick={fetchAnalytics} className="w-full md:w-auto bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl flex items-center justify-center gap-2 font-bold transition">
+            <Filter size={18} /> Apply Filters
           </button>
-          <button
-            onClick={exportToCSV}
-            disabled={exporting}
-            className="bg-green-600 text-white px-4 py-2 rounded flex items-center gap-2 font-bold disabled:opacity-50"
-          >
-            <Download size={16} /> {exporting ? "Exporting..." : "Export CSV"}
+          <button onClick={exportToCSV} disabled={exporting} className="w-full md:w-auto bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-xl flex items-center justify-center gap-2 font-bold disabled:opacity-50 transition">
+            <Download size={18} /> {exporting ? "Exporting..." : "Export CSV"}
           </button>
         </div>
 
         {/* Key Metrics */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="bg-white p-5 rounded-xl shadow">
-            <p className="text-slate-500 text-sm">Total Students</p>
-            <p className="text-3xl font-black">{data.totalStudents || 0}</p>
+          <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:border-blue-200 transition">
+            <p className="text-gray-500 font-bold text-xs uppercase tracking-wider">Total Students</p>
+            <p className="text-3xl font-black text-gray-900 mt-2">{data.totalStudents || 0}</p>
           </div>
-          <div className="bg-white p-5 rounded-xl shadow">
-            <p className="text-slate-500 text-sm">Total Staff</p>
-            <p className="text-3xl font-black">{data.totalStaff || 0}</p>
+          <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:border-blue-200 transition">
+            <p className="text-gray-500 font-bold text-xs uppercase tracking-wider">Total Staff</p>
+            <p className="text-3xl font-black text-gray-900 mt-2">{data.totalStaff || 0}</p>
           </div>
-          <div className="bg-white p-5 rounded-xl shadow">
-            <p className="text-slate-500 text-sm">Total Revenue</p>
-            <p className="text-3xl font-black">Rs {data.totalRevenue?.toLocaleString() || 0}</p>
+          <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:border-blue-200 transition">
+            <p className="text-gray-500 font-bold text-xs uppercase tracking-wider">Total Revenue</p>
+            <p className="text-3xl font-black text-green-600 mt-2">Rs {data.totalRevenue?.toLocaleString() || 0}</p>
           </div>
-          <div className="bg-white p-5 rounded-xl shadow">
-            <p className="text-slate-500 text-sm">Active Users (30d)</p>
-            <p className="text-3xl font-black">{data.activeUsers || 0}</p>
+          <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:border-blue-200 transition">
+            <p className="text-gray-500 font-bold text-xs uppercase tracking-wider">Active Users (30d)</p>
+            <p className="text-3xl font-black text-purple-600 mt-2">{data.activeUsers || 0}</p>
           </div>
         </div>
 
         {/* Charts */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className="bg-white p-5 rounded-xl shadow">
-            <h3 className="font-bold mb-3">Revenue Trend</h3>
+          <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+            <h3 className="font-bold text-gray-900 mb-6">Revenue Trend</h3>
             <ResponsiveContainer width="100%" height={300}>
               <LineChart data={data.trend || []}>
-                <XAxis dataKey="date" />
-                <YAxis />
-                <Tooltip />
-                <Line type="monotone" dataKey="revenue" stroke="#3b82f6" strokeWidth={2} />
+                <XAxis dataKey="date" stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} />
+                <YAxis stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} />
+                <Tooltip cursor={{ fill: '#f1f5f9' }} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
+                <Line type="monotone" dataKey="revenue" stroke="#3b82f6" strokeWidth={3} dot={{ r: 4, fill: '#3b82f6' }} activeDot={{ r: 6 }} />
               </LineChart>
             </ResponsiveContainer>
           </div>
-          <div className="bg-white p-5 rounded-xl shadow">
-            <h3 className="font-bold mb-3">New Students (Monthly)</h3>
+          <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+            <h3 className="font-bold text-gray-900 mb-6">New Students (Monthly)</h3>
             <ResponsiveContainer width="100%" height={300}>
               <BarChart data={data.trend || []}>
-                <XAxis dataKey="date" />
-                <YAxis />
-                <Tooltip />
-                <Bar dataKey="students" fill="#10b981" />
+                <XAxis dataKey="date" stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} />
+                <YAxis stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} />
+                <Tooltip cursor={{ fill: '#f1f5f9' }} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
+                <Bar dataKey="students" fill="#10b981" radius={[4, 4, 0, 0]} barSize={40} />
               </BarChart>
             </ResponsiveContainer>
           </div>
         </div>
-
-        {/* Class Distribution (Pie Chart) */}
-        {data.classDistribution && data.classDistribution.length > 0 && (
-          <div className="bg-white p-5 rounded-xl shadow">
-            <h3 className="font-bold mb-3">Student Distribution by Class</h3>
-            <div className="flex flex-wrap items-center justify-center gap-8">
-              <ResponsiveContainer width="100%" height={300} className="md:w-1/2">
-                <PieChart>
-                  <Pie
-                    data={data.classDistribution}
-                    dataKey="value"
-                    nameKey="name"
-                    cx="50%"
-                    cy="50%"
-                    outerRadius={100}
-                    label
-                  >
-                    {data.classDistribution.map((_: any, idx: number) => (
-                      <Cell key={idx} fill={COLORS[idx % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                </PieChart>
-              </ResponsiveContainer>
-              <div className="flex flex-col gap-2">
-                {data.classDistribution.map((item: any, idx: number) => (
-                  <div key={idx} className="flex items-center gap-2">
-                    <div className="w-4 h-4 rounded-full" style={{ backgroundColor: COLORS[idx % COLORS.length] }} />
-                    <span className="text-sm font-medium">{item.name}: {item.value}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     </RequirePermission>
   );
