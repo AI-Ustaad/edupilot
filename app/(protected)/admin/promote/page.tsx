@@ -37,9 +37,8 @@ export default function PromoteStudentsPage() {
         <Users className="mx-auto text-blue-100 mb-4" size={80} />
         <h2 className="text-xl font-bold text-gray-800 mb-2">Academic Year End Promotion</h2>
         <p className="text-gray-500 mb-8 max-w-lg mx-auto">
-          This automated process will evaluate all current active students and move them to the next academic level based on your school's promotion map (e.g., Nursery → Prep → Class 1).
-        </p>
-
+  This automated process will evaluate all current active students and move them to the next academic level based on your school&apos;s promotion map (e.g., Nursery → Prep → Class 1).
+</p>
         {/* 🛡️ Protected Promote Button */}
         <RequirePermission permissions={[PERMISSIONS.students.update]}>
           <button 
