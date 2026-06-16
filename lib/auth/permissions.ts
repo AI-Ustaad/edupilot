@@ -150,6 +150,7 @@ export const PERMISSIONS = {
 
 // 🚀 ENTERPRISE MAGIC: Auto-extract types so you NEVER have to write them manually again!
 // This extracts all the string values from the nested PERMISSIONS object into a single Union Type.
-type PermissionsObject = typeof PERMISSIONS;
-type Modules = keyof PermissionsObject;
-export type Permission = PermissionsObject[Modules][keyof PermissionsObject[Modules]];
+type ValueOf<T> = T[keyof T];
+export type Permission = ValueOf<{
+  [K in keyof typeof PERMISSIONS]: ValueOf<typeof PERMISSIONS[K]>
+}>;
