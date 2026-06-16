@@ -2,6 +2,8 @@
 import { useEffect, useState } from "react";
 import { Loader2, Plus, Eye } from "lucide-react";
 import Link from "next/link";
+import RequirePermission from "@/components/RequirePermission";
+import { PERMISSIONS } from "@/lib/auth/permissions";
 
 export default function TeacherAssignmentsPage() {
   const [assignments, setAssignments] = useState<any[]>([]);
@@ -61,58 +63,60 @@ export default function TeacherAssignmentsPage() {
     <div className="max-w-5xl mx-auto p-6 space-y-8">
       <h1 className="text-2xl font-black text-gray-900">Assignments</h1>
 
-      {/* Create Form */}
-      <div className="bg-white border border-gray-200 rounded-2xl p-6">
-        <h2 className="text-lg font-bold text-gray-900 mb-4">Create New Assignment</h2>
-        <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <input placeholder="Title" value={form.title} onChange={e => setForm({ ...form, title: e.target.value })}
-            className="bg-white border border-gray-300 rounded-xl p-3 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500" required />
-          <textarea placeholder="Description" value={form.description} onChange={e => setForm({ ...form, description: e.target.value })}
-            className="col-span-2 bg-white border border-gray-300 rounded-xl p-3 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500" rows={2} />
-          <select value={form.classGrade} onChange={e => setForm({ ...form, classGrade: e.target.value })}
-            className="bg-white border border-gray-300 rounded-xl p-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500" required>
-            <option value="">Select Class</option>
-            {classes.map(c => <option key={c}>{c}</option>)}
-          </select>
-          <select value={form.section} onChange={e => setForm({ ...form, section: e.target.value })}
-            className="bg-white border border-gray-300 rounded-xl p-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500" required>
-            <option value="">Select Section</option>
-            {sections.filter((s: any) => s.classGrade === form.classGrade).map((s: any, idx: number) => (
-              <option key={idx} value={s.sectionName}>{s.sectionName}</option>
-            ))}
-          </select>
-          <input type="date" value={form.dueDate} onChange={e => setForm({ ...form, dueDate: e.target.value })}
-            className="bg-white border border-gray-300 rounded-xl p-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500" required />
-          <button type="submit" disabled={saving}
-            className="col-span-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition">
-            {saving ? <Loader2 className="animate-spin" size={18} /> : <Plus size={18} />} Create Assignment
-          </button>
-        </form>
-      </div>
+      {/* 🛡️ Protected Create Form */}
+      <RequirePermission permissions={[PERMISSIONS.assignments.create]}>
+        <div className="bg-white border border-gray-200 rounded-2xl p-6">
+          <h2 className="text-lg font-bold text-gray-900 mb-4">Create New Assignment</h2>
+          <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <input placeholder="Title" value={form.title} onChange={e => setForm({ ...form, title: e.target.value })}
+              className="bg-white border border-gray-300 rounded-xl p-3 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500" required />
+            <textarea placeholder="Description" value={form.description} onChange={e => setForm({ ...form, description: e.target.value })}
+              className="col-span-2 bg-white border border-gray-300 rounded-xl p-3 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500" rows={2} />
+            <select value={form.classGrade} onChange={e => setForm({ ...form, classGrade: e.target.value })}
+              className="bg-white border border-gray-300 rounded-xl p-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+              <option value="">Select Class</option>
+              {classes.map(c => <option key={c}>{c}</option>)}
+            </select>
+            <select value={form.section} onChange={e => setForm({ ...form, section: e.target.value })}
+              className="bg-white border border-gray-300 rounded-xl p-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+              <option value="">Select Section</option>
+              {sections.filter((s: any) => s.classGrade === form.classGrade).map((s: any, idx: number) => (
+                <option key={idx} value={s.sectionName}>{s.sectionName}</option>
+              ))}
+            </select>
+            <input type="date" value={form.dueDate} onChange={e => setForm({ ...form, dueDate: e.target.value })}
+              className="bg-white border border-gray-300 rounded-xl p-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500" required />
+            <button type="submit" disabled={saving}
+              className="col-span-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition">
+              {saving ? <Loader2 className="animate-spin" size={18} /> : <Plus size={18} />} Create Assignment
+            </button>
+          </form>
+        </div>
+      </RequirePermission>
 
       {/* Assignment List */}
       <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="bg-gray-50 text-gray-600">
+        <table className="w-full text-sm text-left">
+          <thead className="bg-gray-50 text-gray-600 border-b border-gray-200">
             <tr>
-              <th className="p-4 text-left">Title</th>
-              <th className="p-4 text-left">Class</th>
-              <th className="p-4 text-left">Due</th>
-              <th className="p-4 text-right">Actions</th>
+              <th className="p-4 font-bold">Title</th>
+              <th className="p-4 font-bold">Class</th>
+              <th className="p-4 font-bold">Due</th>
+              <th className="p-4 font-bold text-right">Actions</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody className="divide-y divide-gray-100">
             {assignments.length === 0 ? (
-              <tr><td colSpan={4} className="p-6 text-center text-gray-400">No assignments created.</td></tr>
+              <tr><td colSpan={4} className="p-6 text-center text-gray-400 font-medium">No assignments created.</td></tr>
             ) : (
               assignments.map((a: any) => (
-                <tr key={a.id} className="border-t border-gray-100 hover:bg-gray-50">
-                  <td className="p-4 font-medium text-gray-900">{a.title}</td>
-                  <td className="p-4 text-gray-600">{a.classGrade} {a.section}</td>
-                  <td className="p-4 text-gray-600">{new Date(a.dueDate).toLocaleDateString()}</td>
+                <tr key={a.id} className="hover:bg-gray-50 transition-colors">
+                  <td className="p-4 font-bold text-gray-900">{a.title}</td>
+                  <td className="p-4 text-gray-600 font-medium">{a.classGrade} {a.section}</td>
+                  <td className="p-4 text-gray-600 font-medium">{new Date(a.dueDate).toLocaleDateString()}</td>
                   <td className="p-4 text-right">
                     <Link href={`/teacher/assignments/submissions?assignmentId=${a.id}`}
-                      className="text-blue-600 hover:text-blue-800 inline-flex items-center gap-1 text-sm font-bold">
+                      className="text-blue-600 hover:bg-blue-50 px-3 py-1.5 rounded-lg inline-flex items-center gap-1 text-sm font-bold transition">
                       <Eye size={16} /> Submissions
                     </Link>
                   </td>
