@@ -27,8 +27,8 @@ export const POST = withPermission(PERMISSIONS.students.create, async (req: Requ
     const tenantId = context.user.tenantId;
     const body = await req.json();
     
-    // The service handles validation, database creation, and event logging
-    const newStudent = await studentService.create(body, tenantId);
+    // ✅ FIXED: Using 'createStudent' with exact parameter order (data, tenantId)
+    const newStudent = await studentService.createStudent(body, tenantId);
     
     return successResponse(newStudent, "Student enrolled successfully", 201);
   } catch (error: any) {
