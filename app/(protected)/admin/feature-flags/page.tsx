@@ -4,8 +4,9 @@ import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { useAuth } from "@/context/AuthContext";
 import { Loader2, ToggleLeft, ToggleRight } from "lucide-react";
+import RequirePermission from "@/components/RequirePermission";
+import { PERMISSIONS } from "@/lib/auth/permissions";
 
-// Feature keys matching ALL_FEATURES and menu.config.ts
 const FEATURE_FLAGS = [
   { key: "transport", label: "Bus Tracking" },
   { key: "aiTimetable", label: "AI Timetable" },
@@ -68,42 +69,44 @@ export default function FeatureFlagsPage() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto p-6 space-y-6">
-      <h1 className="text-2xl font-black text-gray-900">Feature Flags</h1>
-      <p className="text-sm text-gray-500">
-        Enable or disable features for this school. Changes affect the sidebar immediately.
-      </p>
+    <RequirePermission permissions={[PERMISSIONS.settings.manage]}>
+      <div className="max-w-4xl mx-auto p-6 space-y-6">
+        <h1 className="text-2xl font-black text-gray-900">Feature Flags</h1>
+        <p className="text-sm text-gray-500">
+          Enable or disable features for this school. Changes affect the sidebar immediately.
+        </p>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {FEATURE_FLAGS.map((f) => {
-          const enabled = flags[f.key] !== false; // default true if not set
-          return (
-            <motion.div
-              key={f.key}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="bg-white border border-gray-200 rounded-xl p-5 flex items-center justify-between shadow-sm"
-            >
-              <span className="font-semibold text-gray-900">{f.label}</span>
-              <button
-                onClick={() => toggle(f.key, enabled)}
-                disabled={updating === f.key}
-                className={`p-2 rounded-lg transition ${
-                  enabled ? "text-green-600 hover:bg-green-50" : "text-gray-400 hover:bg-gray-100"
-                }`}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {FEATURE_FLAGS.map((f) => {
+            const enabled = flags[f.key] !== false; // default true if not set
+            return (
+              <motion.div
+                key={f.key}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-white border border-gray-200 rounded-xl p-5 flex items-center justify-between shadow-sm"
               >
-                {updating === f.key ? (
-                  <Loader2 className="animate-spin" size={24} />
-                ) : enabled ? (
-                  <ToggleRight size={32} />
-                ) : (
-                  <ToggleLeft size={32} />
-                )}
-              </button>
-            </motion.div>
-          );
-        })}
+                <span className="font-semibold text-gray-900">{f.label}</span>
+                <button
+                  onClick={() => toggle(f.key, enabled)}
+                  disabled={updating === f.key}
+                  className={`p-2 rounded-lg transition ${
+                    enabled ? "text-green-600 hover:bg-green-50" : "text-gray-400 hover:bg-gray-100"
+                  }`}
+                >
+                  {updating === f.key ? (
+                    <Loader2 className="animate-spin" size={24} />
+                  ) : enabled ? (
+                    <ToggleRight size={32} />
+                  ) : (
+                    <ToggleLeft size={32} />
+                  )}
+                </button>
+              </motion.div>
+            );
+          })}
+        </div>
       </div>
-    </div>
+    </RequirePermission>
   );
 }
