@@ -9,6 +9,10 @@ import {
 } from "@/lib/validation";
 import { ZodError } from "zod";
 
+// 🚀 EVENT BUS IMPORTS (Phase 2)
+import { eventBus } from "@/lib/events/event-bus";
+import { EVENTS } from "@/lib/events/event-types";
+
 type CreateStudentDto = Omit<Student, "id" | "tenantId" | "createdAt" | "updatedAt">;
 
 export class StudentService {
@@ -32,6 +36,13 @@ export class StudentService {
 
     // ✅ Cache invalidation
     await invalidateCache(`dashboard:${tenantId}`);
+
+    // 🚀 FIRE THE EVENT: Let the rest of the system know a student was created!
+    eventBus.publish(EVENTS.STUDENT_CREATED, {
+      tenantId,
+      studentId: student.id,
+      studentData: student,
+    });
 
     return student as Student;
   }
