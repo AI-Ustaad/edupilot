@@ -1,227 +1,39 @@
-export const dynamic = 'force-dynamic';
-
-import { NextResponse } from "next/server";
-import { adminDb } from "@/lib/firebase-admin";
-import { FieldValue } from "firebase-admin/firestore";
-import { withErrorHandler, withAuth, withTenant } from "@/route-helpers";
-import { withPermission } from "@/lib/auth/rbac";
+import { StudentService } from "@/services/student.service";
+import { StudentRepository } from "@/repositories/student.repository";
+import { successResponse, errorResponse } from "@/lib/utils/api-response";
+import { withPermission } from "@/lib/auth/withPermission";
 import { PERMISSIONS } from "@/lib/auth/permissions";
-import { logAction } from "@/lib/audit";
-import type { TenantContext } from "@/types/api";
 
-export const runtime = 'nodejs';
+// Initialize Service (Dependency Injection)
+const studentService = new StudentService(new StudentRepository());
 
-// ==========================================
-// GET: Fetch Students (with filters)
-// ==========================================
-export const GET = withErrorHandler(
-  withAuth(
-    withTenant(
-      withPermission(PERMISSIONS.students.view)(async (req: Request, { tenantId }: TenantContext) => {
-        const { searchParams } = new URL(req.url);
-        const classGrade = searchParams.get("classGrade");
-        const section = searchParams.get("section");
-        const search = searchParams.get("search");
-        const limit = Math.min(parseInt(searchParams.get("limit") || "100"), 500);
+// 🟢 GET: Fetch Students List (Protected by students.view)
+export const GET = withPermission(PERMISSIONS.students.view, async (req: Request, context: any) => {
+  try {
+    const tenantId = context.user.tenantId;
+    
+    // Using listStudents from your existing service
+    const students = await studentService.listStudents(tenantId, 1, 9999); 
+    
+    return successResponse(students, "Students fetched successfully");
+  } catch (error: any) {
+    return errorResponse(error.message || "Failed to fetch students", 500);
+  }
+});
 
-        let query: any = adminDb.collection("students")
-          .where("tenantId", "==", tenantId)
-          .where("deleted", "==", false);
-
-        if (classGrade) query = query.where("classGrade", "==", classGrade);
-        if (section) query = query.where("section", "==", section);
-
-        query = query.limit(limit);
-
-        const snap = await query.get();
-        let students = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-
-        // Client-side search (Firestore doesn't support text search)
-        if (search) {
-          const searchLower = search.toLowerCase();
-          students = students.filter((s: any) => 
-            s.fullName?.toLowerCase().includes(searchLower) ||
-            s.rollNumber?.toString().includes(search) ||
-            s.fatherName?.toLowerCase().includes(searchLower)
-          );
-        }
-
-        return NextResponse.json({
-          success: true,
-          data: students,
-          count: students.length,
-        });
-      })
-    )
-  )
-);
-
-// ==========================================
-// POST: Create New Student
-// ==========================================
-export const POST = withErrorHandler(
-  withAuth(
-    withTenant(
-      withPermission(PERMISSIONS.students.create)(async (req: Request, { tenantId, user }: TenantContext) => {
-        const data = await req.json();
-
-        if (!data.fullName || !data.classGrade) {
-          return NextResponse.json(
-            { success: false, error: "Full name and class are required" },
-            { status: 400 }
-          );
-        }
-
-        const docRef = adminDb.collection("students").doc();
-        
-        const studentData = {
-          tenantId,
-          fullName: data.fullName,
-          fatherName: data.fatherName || "",
-          classGrade: data.classGrade,
-          section: data.section || "A",
-          rollNumber: data.rollNumber || "0",
-          dateOfBirth: data.dateOfBirth || null,
-          gender: data.gender || "Male",
-          contact: data.contact || {},
-          address: data.address || {},
-          parentId: data.parentId || null,
-          admissionDate: data.admissionDate || FieldValue.serverTimestamp(),
-          status: data.status || "active",
-          deleted: false,
-          createdAt: FieldValue.serverTimestamp(),
-          createdBy: user.uid,
-          updatedAt: FieldValue.serverTimestamp(),
-          updatedBy: user.uid,
-        };
-
-        await docRef.set(studentData);
-
-        await logAction({
-          action: "students.create",
-          userId: user.uid,
-          tenantId,
-          entityId: docRef.id,
-          entityType: "student",
-          metadata: {
-            fullName: data.fullName,
-            classGrade: data.classGrade,
-            section: data.section,
-          },
-        });
-
-        return NextResponse.json({
-          success: true,
-          id: docRef.id,
-          message: "Student created successfully",
-        }, { status: 201 });
-      })
-    )
-  )
-);
-
-// ==========================================
-// PUT: Update Student
-// ==========================================
-export const PUT = withErrorHandler(
-  withAuth(
-    withTenant(
-      withPermission(PERMISSIONS.students.update)(async (req: Request, { tenantId, user }: TenantContext) => {
-        const data = await req.json();
-        const studentId = data.id;
-
-        if (!studentId) {
-          return NextResponse.json(
-            { success: false, error: "Student ID required" },
-            { status: 400 }
-          );
-        }
-
-        const docRef = adminDb.collection("students").doc(studentId);
-        const snap = await docRef.get();
-
-        if (!snap.exists || snap.data()?.tenantId !== tenantId) {
-          return NextResponse.json(
-            { success: false, error: "Student not found" },
-            { status: 404 }
-          );
-        }
-
-        const { id, ...updateData } = data;
-        await docRef.update({
-          ...updateData,
-          updatedAt: FieldValue.serverTimestamp(),
-          updatedBy: user.uid,
-        });
-
-        await logAction({
-          action: "students.update",
-          userId: user.uid,
-          tenantId,
-          entityId: studentId,
-          entityType: "student",
-          metadata: { updatedFields: Object.keys(updateData) },
-        });
-
-        return NextResponse.json({
-          success: true,
-          message: "Student updated successfully",
-        });
-      })
-    )
-  )
-);
-
-// ==========================================
-// DELETE: Soft Delete Student
-// ==========================================
-export const DELETE = withErrorHandler(
-  withAuth(
-    withTenant(
-      withPermission(PERMISSIONS.students.delete)(async (req: Request, { tenantId, user }: TenantContext) => {
-        const { searchParams } = new URL(req.url);
-        const studentId = searchParams.get("id");
-
-        if (!studentId) {
-          return NextResponse.json(
-            { success: false, error: "Student ID required" },
-            { status: 400 }
-          );
-        }
-
-        const docRef = adminDb.collection("students").doc(studentId);
-        const snap = await docRef.get();
-
-        if (!snap.exists || snap.data()?.tenantId !== tenantId) {
-          return NextResponse.json(
-            { success: false, error: "Student not found" },
-            { status: 404 }
-          );
-        }
-
-        await docRef.update({
-          deleted: true,
-          deletedAt: FieldValue.serverTimestamp(),
-          deletedBy: user.uid,
-        });
-
-        await logAction({
-          action: "students.delete",
-          userId: user.uid,
-          tenantId,
-          entityId: studentId,
-          entityType: "student",
-          metadata: {
-            fullName: snap.data()?.fullName,
-            classGrade: snap.data()?.classGrade,
-          },
-        });
-
-        return NextResponse.json({
-          success: true,
-          message: "Student archived successfully",
-        });
-      })
-    )
-  )
-);
+// 🔵 POST: Add New Student (Protected by students.create)
+export const POST = withPermission(PERMISSIONS.students.create, async (req: Request, context: any) => {
+  try {
+    const tenantId = context.user.tenantId;
+    const body = await req.json();
+    
+    // The service handles validation, database creation, and event logging
+    const newStudent = await studentService.create(body, tenantId);
+    
+    return successResponse(newStudent, "Student enrolled successfully", 201);
+  } catch (error: any) {
+    // If Zod validation fails in the service, return 400 Bad Request
+    const status = error.message?.includes("Validation") ? 400 : 500;
+    return errorResponse(error.message || "Failed to enroll student", status);
+  }
+});
