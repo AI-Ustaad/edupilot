@@ -30,10 +30,10 @@ export default function StudyCenter() {
     setLoading(false);
   };
 
-  useEffect(() => {
+ useEffect(() => {
     fetchMaterials();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters]);
-
   const getIcon = (type: string) => {
     if (type === "pdf") return <FileText size={18} />;
     if (type === "video") return <Video size={18} />;
