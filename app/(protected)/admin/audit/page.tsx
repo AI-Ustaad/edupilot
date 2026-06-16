@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { Loader2, Search, AlertCircle } from "lucide-react";
+import RequirePermission from "@/components/RequirePermission";
+import { PERMISSIONS } from "@/lib/auth/permissions";
 
 interface LogEntry {
   id: string;
@@ -56,21 +58,21 @@ export default function AuditLogsPage() {
 
   if (loading) {
     return (
-      <div className="p-8 text-center">
-        <Loader2 className="animate-spin mx-auto" size={32} />
+      <div className="p-8 text-center flex h-[50vh] items-center justify-center">
+        <Loader2 className="animate-spin text-blue-600 mx-auto" size={40} />
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="p-8 text-center">
-        <div className="bg-white border border-gray-200 rounded-xl p-6 inline-block">
-          <AlertCircle className="inline mr-2 text-red-500" size={20} />
-          <span className="text-gray-900">{error}</span>
+      <div className="p-8 text-center flex h-[50vh] items-center justify-center">
+        <div className="bg-white border border-gray-200 rounded-2xl p-8 inline-block shadow-sm">
+          <AlertCircle className="mx-auto mb-3 text-red-500" size={32} />
+          <span className="text-gray-900 font-bold text-lg block mb-4">{error}</span>
           <button
             onClick={() => window.location.reload()}
-            className="mt-4 bg-blue-600 text-white px-4 py-2 rounded-lg block mx-auto"
+            className="bg-blue-600 text-white px-6 py-2 rounded-xl font-bold block mx-auto hover:bg-blue-700 transition"
           >
             Retry
           </button>
@@ -80,65 +82,67 @@ export default function AuditLogsPage() {
   }
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h1 className="text-2xl font-black text-gray-900">Audit Logs</h1>
-          <p className="text-gray-500">Track all actions performed by users in your institution.</p>
+    <RequirePermission permissions={[PERMISSIONS.audit.view]}>
+      <div className="p-6 max-w-7xl mx-auto space-y-6">
+        <div className="flex justify-between items-center mb-6">
+          <div>
+            <h1 className="text-2xl font-black text-gray-900">Audit Logs</h1>
+            <p className="text-gray-500 mt-1">Track all actions performed by users in your institution.</p>
+          </div>
         </div>
-      </div>
 
-      <div className="mb-4">
-        <div className="relative w-full md:w-96">
-          <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-          <input
-            type="text"
-            placeholder="Filter by action, user ID, or entity..."
-            value={filter}
-            onChange={(e) => setFilter(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900"
-          />
+        <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-200 flex">
+          <div className="relative w-full md:w-96">
+            <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Filter by action, user ID, or entity..."
+              value={filter}
+              onChange={(e) => setFilter(e.target.value)}
+              className="w-full pl-11 pr-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50 text-gray-900 transition"
+            />
+          </div>
         </div>
-      </div>
 
-      <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="border-b border-gray-200">
-              <tr>
-                <th className="p-4 text-left text-xs font-bold text-gray-600 uppercase">Timestamp</th>
-                <th className="p-4 text-left text-xs font-bold text-gray-600 uppercase">Action</th>
-                <th className="p-4 text-left text-xs font-bold text-gray-600 uppercase">User ID</th>
-                <th className="p-4 text-left text-xs font-bold text-gray-600 uppercase">Entity</th>
-                <th className="p-4 text-left text-xs font-bold text-gray-600 uppercase">Details</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {filteredLogs.length === 0 ? (
+        <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm text-left">
+              <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
-                  <td colSpan={5} className="p-10 text-center text-gray-400">
-                    {logs.length === 0 ? "No audit logs found." : "No logs match your filter."}
-                  </td>
+                  <th className="p-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Timestamp</th>
+                  <th className="p-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Action</th>
+                  <th className="p-4 text-xs font-bold text-gray-500 uppercase tracking-wider">User ID</th>
+                  <th className="p-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Entity</th>
+                  <th className="p-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Details</th>
                 </tr>
-              ) : (
-                filteredLogs.map((log) => (
-                  <tr key={log.id} className="hover:bg-gray-50">
-                    <td className="p-4 whitespace-nowrap text-gray-600">{formatDate(log.createdAt)}</td>
-                    <td className="p-4 font-mono text-xs font-bold text-blue-600">{log.action}</td>
-                    <td className="p-4 font-mono text-xs text-gray-500">{log.userId?.slice(0, 10)}...</td>
-                    <td className="p-4">
-                      {log.entityType || "—"} {log.entityId && `(${log.entityId.slice(0, 6)})`}
-                    </td>
-                    <td className="p-4 max-w-xs truncate text-gray-500">
-                      {log.metadata ? JSON.stringify(log.metadata).slice(0, 80) : "—"}
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {filteredLogs.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="p-10 text-center text-gray-400 font-medium">
+                      {logs.length === 0 ? "No audit logs found." : "No logs match your filter."}
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                ) : (
+                  filteredLogs.map((log) => (
+                    <tr key={log.id} className="hover:bg-gray-50 transition-colors">
+                      <td className="p-4 whitespace-nowrap text-gray-600 font-medium">{formatDate(log.createdAt)}</td>
+                      <td className="p-4 font-mono text-xs font-bold text-blue-600 bg-blue-50/50 rounded-lg inline-block mt-3 ml-2">{log.action}</td>
+                      <td className="p-4 font-mono text-xs text-gray-500">{log.userId?.slice(0, 10)}...</td>
+                      <td className="p-4 text-gray-700 font-medium">
+                        {log.entityType || "—"} {log.entityId && <span className="text-gray-400 text-xs ml-1">({log.entityId.slice(0, 6)})</span>}
+                      </td>
+                      <td className="p-4 max-w-xs truncate text-gray-500 text-xs font-mono">
+                        {log.metadata ? JSON.stringify(log.metadata).slice(0, 80) : "—"}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
-    </div>
+    </RequirePermission>
   );
 }
