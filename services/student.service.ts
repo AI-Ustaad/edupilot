@@ -10,7 +10,7 @@ import {
 import { ZodError } from "zod";
 
 // 🚀 EVENT BUS IMPORTS (Phase 2)
-import { eventBus } from "@/lib/events/event-bus";
+import { eventBus } from "@/lib/events"; // اب یہ index.ts سے آئے گا
 import { EVENTS } from "@/lib/events/event-types";
 
 type CreateStudentDto = Omit<Student, "id" | "tenantId" | "createdAt" | "updatedAt">;
