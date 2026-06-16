@@ -80,7 +80,7 @@ export default function LeaveRequestsPage() {
                 <p className="text-xs text-blue-600 font-bold uppercase tracking-widest mt-1 bg-blue-50 inline-block px-2 py-0.5 rounded border border-blue-100">
                   {leave.startDate} TO {leave.endDate}
                 </p>
-                <p className="text-sm text-gray-700 mt-3 bg-gray-50 p-3 rounded-xl border border-gray-100 italic">"{leave.reason}"</p>
+                <p className="text-sm text-gray-700 mt-3 bg-gray-50 p-3 rounded-xl border border-gray-100 italic">&quot;{leave.reason}&quot;</p>
               </div>
               
               {/* 🛡️ Protected Action Buttons */}
