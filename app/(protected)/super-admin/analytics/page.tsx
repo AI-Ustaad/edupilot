@@ -42,6 +42,7 @@ export default function SuperAdminAnalytics() {
 
   useEffect(() => {
     if (selectedTenant) fetchAnalytics();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedTenant, startDate, endDate]);
 
   const exportToCSV = () => {
