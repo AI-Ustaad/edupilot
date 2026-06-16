@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { Users, ShieldCheck, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
+import RequirePermission from "@/components/RequirePermission";
+import { PERMISSIONS } from "@/lib/auth/permissions";
 
 interface User {
   uid: string;
@@ -61,19 +63,19 @@ export default function ManageUsersPage() {
   if (loading) {
     return (
       <div className="p-8 text-center">
-        <Loader2 className="animate-spin mx-auto" size={32} />
+        <Loader2 className="animate-spin mx-auto text-blue-600" size={32} />
       </div>
     );
   }
 
   if (errorMsg && users.length === 0) {
     return (
-      <div className="p-8 text-center">
-        <div className="bg-red-50 text-red-600 p-4 rounded-xl inline-block">
+      <div className="p-8 text-center flex flex-col items-center justify-center">
+        <div className="bg-red-50 text-red-600 p-4 rounded-xl inline-block border border-red-100">
           <AlertCircle className="inline mr-2" size={20} />
           {errorMsg}
         </div>
-        <button onClick={fetchUsers} className="mt-4 bg-blue-600 text-gray-900 px-4 py-2 rounded">
+        <button onClick={fetchUsers} className="mt-4 bg-blue-600 text-white px-4 py-2 rounded-lg font-bold">
           Retry
         </button>
       </div>
@@ -81,7 +83,7 @@ export default function ManageUsersPage() {
   }
 
   return (
-    <div className="p-8 space-y-6">
+    <div className="p-6 md:p-8 space-y-6 max-w-6xl mx-auto">
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-black text-[#0F172A] flex items-center gap-2">
@@ -92,12 +94,12 @@ export default function ManageUsersPage() {
       </div>
 
       {successMsg && (
-        <div className="bg-green-50 text-green-700 p-4 rounded-xl flex items-center gap-3 border border-green-100">
+        <div className="bg-green-50 text-green-700 p-4 rounded-xl flex items-center gap-3 border border-green-100 font-bold shadow-sm">
           <CheckCircle2 size={20} /> {successMsg}
         </div>
       )}
       {errorMsg && (
-        <div className="bg-red-50 text-red-600 p-4 rounded-xl flex items-center gap-3 border border-red-100">
+        <div className="bg-red-50 text-red-600 p-4 rounded-xl flex items-center gap-3 border border-red-100 font-bold shadow-sm">
           <AlertCircle size={20} /> {errorMsg}
         </div>
       )}
@@ -116,45 +118,51 @@ export default function ManageUsersPage() {
             <tbody className="divide-y divide-slate-100">
               {users.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="p-10 text-center text-slate-400">No users found</td>
+                  <td colSpan={4} className="p-10 text-center text-slate-400 font-medium">No users found</td>
                 </tr>
               ) : (
                 users.map((u) => (
                   <tr key={u.uid} className="hover:bg-slate-50 transition-colors">
                     <td className="p-5 font-medium text-slate-700">
-                      <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center">
-                          <Users size={14} className="text-slate-500" />
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center">
+                          <Users size={16} className="text-slate-500" />
                         </div>
-                        {u.name || u.email.split("@")[0]}
+                        <span className="font-bold text-gray-900">{u.name || u.email.split("@")[0]}</span>
                       </div>
                     </td>
-                    <td className="p-5 text-slate-500">{u.email}</td>
+                    <td className="p-5 text-slate-500 font-medium">{u.email}</td>
                     <td className="p-5">
                       <span
-                        className={`px-3 py-1 rounded-full text-xs font-bold uppercase ${
+                        className={`px-3 py-1 rounded-full text-[10px] tracking-wider font-black uppercase border ${
                           u.role === "admin"
-                            ? "bg-blue-100 text-blue-700"
+                            ? "bg-blue-50 text-blue-700 border-blue-200"
                             : u.role === "teacher"
-                            ? "bg-green-100 text-green-700"
-                            : "bg-amber-100 text-amber-700"
+                            ? "bg-green-50 text-green-700 border-green-200"
+                            : "bg-amber-50 text-amber-700 border-amber-200"
                         }`}
                       >
                         {u.role}
                       </span>
                     </td>
                     <td className="p-5 text-right">
-                      <select
-                        value={u.role}
-                        onChange={(e) => updateRole(u.uid, e.target.value)}
-                        disabled={updating === u.uid}
-                        className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-sm font-bold outline-none focus:border-blue-400 disabled:opacity-50"
-                      >
-                        <option value="admin">Admin</option>
-                        <option value="teacher">Teacher</option>
-                        <option value="accountant">Accountant</option>
-                      </select>
-                      {updating === u.uid && <Loader2 size={14} className="inline ml-2 animate-spin text-blue-500" />}
+                      {/* 🛡️ Protected Action (Role change) */}
+                      <RequirePermission permissions={[PERMISSIONS.settings.manage]}>
+                        <div className="flex items-center justify-end gap-2">
+                          <select
+                            value={u.role}
+                            onChange={(e) => updateRole(u.uid, e.target.value)}
+                            disabled={updating === u.uid}
+                            className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm font-bold outline-none focus:border-blue-400 disabled:opacity-50 transition"
+                          >
+                            <option value="admin">Admin</option>
+                            <option value="teacher">Teacher</option>
+                            <option value="accountant">Accountant</option>
+                            <option value="parent">Parent</option>
+                          </select>
+                          {updating === u.uid && <Loader2 size={16} className="animate-spin text-blue-500" />}
+                        </div>
+                      </RequirePermission>
                     </td>
                   </tr>
                 ))
