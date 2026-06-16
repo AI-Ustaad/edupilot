@@ -54,7 +54,7 @@ export default function WhiteLabelPage() {
   return (
     <div className="max-w-4xl mx-auto p-6 space-y-6">
       <h1 className="text-2xl font-black text-gray-900">White‑label Settings</h1>
-      <p className="text-gray-500 text-sm">Customize your school portal's appearance and branding.</p>
+     <p className="text-gray-500 text-sm">Customize your school portal&apos;s appearance and branding.</p>
 
       {message && (
         <div
