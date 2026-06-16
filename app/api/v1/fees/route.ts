@@ -12,8 +12,8 @@ export const GET = withPermission(PERMISSIONS.fees.view, async (req: Request, co
   try {
     const tenantId = context.user.tenantId;
     
-    // Fetching all fee records or recent payments based on your service
-    const feeRecords = await feesService.getAll(tenantId); 
+    // ✅ FIXED: Using 'listFees' exactly as defined in your service
+    const feeRecords = await feesService.listFees(tenantId); 
     
     return successResponse(feeRecords, "Fee records fetched successfully");
   } catch (error: any) {
@@ -27,8 +27,8 @@ export const POST = withPermission(PERMISSIONS.fees.create, async (req: Request,
     const tenantId = context.user.tenantId;
     const body = await req.json();
     
-    // Service ensures correct calculations and audit logging before saving
-    const newFeeRecord = await feesService.create(body, tenantId);
+    // ✅ FIXED: Using 'createFee' with exact parameter order (body, tenantId)
+    const newFeeRecord = await feesService.createFee(body, tenantId);
     
     return successResponse(newFeeRecord, "Fee collected and recorded successfully", 201);
   } catch (error: any) {
