@@ -1,7 +1,8 @@
-// lib/events/subscribers/audit.subscriber.ts
+// lib/subscribers/audit.subscriber.ts (یا جہاں بھی آپ نے یہ فائل رکھی ہے)
 
-import { eventBus } from "../event-bus";
-import { EVENTS } from "../event-types";
+// 🚀 FIXED: Using Absolute Paths (@/) so Next.js never loses the file
+import { eventBus } from "@/lib/events/event-bus";
+import { EVENTS } from "@/lib/events/event-types";
 import { adminDb } from "@/lib/firebase-admin";
 
 export function registerAuditSubscriber() {
@@ -21,7 +22,7 @@ export function registerAuditSubscriber() {
           details: `Student ${studentData.firstName || 'Unknown'} was enrolled into the system.`,
           timestamp: new Date().toISOString(),
           module: "Students",
-          systemAction: true, // یہ بتائے گا کہ یہ کام Event Bus نے بیک گراؤنڈ میں کیا ہے
+          systemAction: true, 
         });
 
       console.log(`✅ [Audit Subscriber] Successfully logged creation of student: ${studentId}`);
@@ -29,6 +30,4 @@ export function registerAuditSubscriber() {
       console.error("❌ [Audit Subscriber] Failed to log event:", error);
     }
   });
-
-  // مستقبل میں ہم یہاں FEES اور ATTENDANCE کے ایونٹس بھی شامل کر سکتے ہیں...
 }
