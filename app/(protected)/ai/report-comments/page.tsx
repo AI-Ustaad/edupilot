@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Loader2, FileText, Sparkles } from "lucide-react";
+import { Loader2, FileText, Sparkles, CheckCircle2 } from "lucide-react";
 import RequirePermission from "@/components/RequirePermission";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 
