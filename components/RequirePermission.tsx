@@ -1,36 +1,32 @@
 "use client";
 
-import { useAuth } from "@/context/AuthContext";
-import { hasAnyPermission } from "@/lib/auth/client-rbac";
-import { ReactNode } from "react";
+import React from "react";
+import { usePermission } from "@/hooks/usePermission";
+import { Permission } from "@/lib/auth/permissions";
 
 interface RequirePermissionProps {
-  permissions?: any[];
-  allowedRoles?: string[];
-  children: ReactNode;
+  permissions: Permission | Permission[];
+  children: React.ReactNode;
+  fallback?: React.ReactNode; // اگر پرمیشن نہ ہو تو کیا دکھانا ہے؟ (مثلاً Lock icon یا خالی جگہ)
+  requireAll?: boolean;       // اگر true ہو تو دی گئی تمام پرمیشنز ہونا لازمی ہیں
 }
 
-export default function RequirePermission({ permissions, allowedRoles, children }: RequirePermissionProps) {
-  const { user } = useAuth();
-  const role = user?.role || "";
+export default function RequirePermission({ 
+  permissions, 
+  children, 
+  fallback = null, 
+  requireAll = false 
+}: RequirePermissionProps) {
+  
+  const { hasPermission, hasAllPermissions } = usePermission();
 
-  if (!role || role === "loading") return null;
+  const isAllowed = requireAll 
+    ? hasAllPermissions(Array.isArray(permissions) ? permissions : [permissions])
+    : hasPermission(permissions);
 
-  // سپر ایڈمن کو ہر بٹن نظر آئے گا
-  if (role === "superAdmin") return <>{children}</>;
-
-  // اگر مخصوص رولز دیے گئے ہیں
-  if (allowedRoles && allowedRoles.includes(role)) {
-    return <>{children}</>;
+  if (!isAllowed) {
+    return <>{fallback}</>;
   }
 
-  // اگر مخصوص پرمیشنز دی گئی ہیں
-  if (permissions && permissions.length > 0) {
-    if (hasAnyPermission(role, permissions)) {
-      return <>{children}</>;
-    }
-  }
-
-  // اگر اجازت نہیں ہے تو بٹن کو سکرین سے غائب کر دیں
-  return null;
+  return <>{children}</>;
 }
