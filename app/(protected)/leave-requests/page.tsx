@@ -84,7 +84,7 @@ export default function LeaveRequestsPage() {
               </div>
               
               {/* 🛡️ Protected Action Buttons */}
-              <RequirePermission permissions={[PERMISSIONS.staff.manage]}>
+              <RequirePermission permissions={[PERMISSIONS.staff.update]}>
                 <div className="flex gap-3 w-full sm:w-auto mt-4 sm:mt-0">
                   <button
                     onClick={() => approveLeave(leave.id)}
