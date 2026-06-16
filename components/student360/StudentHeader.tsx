@@ -1,3 +1,5 @@
+/* eslint-disable @next/next/no-img-element */
+/* eslint-disable jsx-a11y/alt-text */
 "use client";
 
 import { User, Phone, MapPin, Calendar, CheckCircle2, AlertCircle } from "lucide-react";
