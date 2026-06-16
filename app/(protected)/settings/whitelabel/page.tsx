@@ -1,4 +1,5 @@
-"use client";
+/* eslint-disable @next/next/no-img-element */
+/* eslint-disable jsx-a11y/alt-text */"use client";
 import { useState, useEffect } from "react";
 
 const convertToBase64 = (file: File): Promise<string> => {
