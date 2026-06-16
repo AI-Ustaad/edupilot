@@ -1,564 +1,90 @@
 "use client";
-
-import { useState, useEffect } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { Loader2, Camera, Upload, Plus, Trash2, FileSpreadsheet, FileText } from "lucide-react";
-
-// 🛡️ سیکیورٹی امپورٹس
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { Loader2, Plus, Trash2, Users } from "lucide-react";
 import RequirePermission from "@/components/RequirePermission";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 
-// -------------------- Main Component --------------------
-export default function AddStaffPage() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const editId = searchParams.get("id");
-  const isEdit = Boolean(editId);
+export default function StaffDirectoryPage() {
+  const [staff, setStaff] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const [activeTab, setActiveTab] = useState(0);
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
-  const [showBulkModal, setShowBulkModal] = useState(false);
-
-  const [staffList, setStaffList] = useState<any[]>([]);
-  const [directoryLoading, setDirectoryLoading] = useState(true);
-
-  const [form, setForm] = useState<any>({
-    personal: {
-      fullName: "", fatherName: "", cnic: "", dob: "",
-      gender: "Male", bloodGroup: "", nationality: "", religion: "",
-      maritalStatus: "Single", photo: "",
-    },
-    contact: {
-      mobile: "", whatsapp: "", email: "", currentAddress: "",
-      permanentAddress: "", city: "", province: "", country: "", postalCode: "",
-    },
-    professional: {
-      personnelNo: "", employeeId: "", designation: "", department: "",
-      role: "", employmentType: "", joiningDate: "", confirmationDate: "",
-      experience: "", qualification: "",
-    },
-    payroll: {
-      basicSalary: 0,
-      allowances: [{ name: "", amount: 0 }],
-      deductions: [{ name: "", amount: 0 }],
-      grossSalary: 0,
-      bankName: "", accountNumber: "", iban: "", salaryPaymentMethod: "",
-    },
-    education: [] as any[],
-    academic: {
-      subjects: [] as string[], classesAssigned: [] as string[],
-      timetable: "", sectionAssignment: "", classTeacher: false,
-    },
-    attendance: {
-      presentDays: 0, absentDays: 0, lateArrivals: 0,
-      leaves: 0, attendancePercent: 0,
-    },
-    leaves: {
-      casualLeaves: 0, medicalLeaves: 0, annualLeaves: 0, remainingLeaves: 0,
-    },
-    documents: {
-      cnicFront: "", cnicBack: "",
-      degreeCertificates: [] as string[],
-      experienceCertificates: [] as string[],
-      appointmentLetter: "", contract: "", cv: "",
-    },
-    emergency: { name: "", relation: "", phone: "", alternatePhone: "" },
-    performance: {
-      score: 0, principalRemarks: "", warnings: 0,
-      achievements: [] as string[],
-      promotions: [] as string[],
-      trainingHistory: [] as string[],
-    },
-  });
-
-  const [createLogin, setCreateLogin] = useState(false);
-
-  useEffect(() => {
-    if (editId) {
-      fetch(`/api/staff/${editId}`)
-        .then(res => res.json())
-        .then(json => {
-          const data = json.data || json;
-          if (data) {
-            setForm((prev: any) => deepMerge(prev, data));
-          }
-        })
-        .catch(console.error);
-    }
-  }, [editId]);
-
-  useEffect(() => {
-    fetch("/api/staff")
-      .then(res => res.json())
-      .then(json => {
-        const staffData = json.data?.data || json.data || json;
-        setStaffList(Array.isArray(staffData) ? staffData : []);
-      })
-      .catch(console.error)
-      .finally(() => setDirectoryLoading(false));
-  }, []);
-
-  const handleChange = (section: string, field: string, value: any) => {
-    setForm((prev: any) => ({
-      ...prev,
-      [section]: { ...prev[section], [field]: value },
-    }));
-  };
-
-  const handleArrayChange = (section: string, field: string, index: number, value: any) => {
-    const newArr = [...form[section][field]];
-    newArr[index] = value;
-    setForm((prev: any) => ({
-      ...prev,
-      [section]: { ...prev[section], [field]: newArr },
-    }));
-  };
-
-  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        handleChange("personal", "photo", reader.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const calcNetPay = () => {
-    const basic = form.payroll.basicSalary || 0;
-    const allowances = form.payroll.allowances.reduce((sum: number, a: any) => sum + (a.amount || 0), 0);
-    const deductions = form.payroll.deductions.reduce((sum: number, d: any) => sum + (d.amount || 0), 0);
-    return basic + allowances - deductions;
-  };
-
-  const createUserAccount = async (staff: any) => {
-    if (!createLogin) return;
+  const fetchStaff = async () => {
     try {
-      const email = staff.personal?.email || `${staff.professional?.personnelNo}@school`;
-      const password = staff.personal?.cnic || "12345678";
-      await fetch("/api/auth/register-user", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password, role: staff.professional?.role || "teacher", tenantId: staff.tenantId }),
-      });
+      const res = await fetch("/api/staff");
+      const data = await res.json();
+      setStaff(Array.isArray(data.data || data) ? (data.data || data) : []);
     } catch (err) {
-      console.error("Auto login creation failed", err);
-    }
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSubmitting(true);
-    setError("");
-    setSuccess("");
-
-    const payload = { ...form };
-    if (isEdit) payload.id = editId;
-
-    try {
-      const url = isEdit ? `/api/staff/${editId}` : "/api/staff";
-      const method = isEdit ? "PUT" : "POST";
-      const res = await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      const json = await res.json();
-
-      if (res.ok) {
-        setSuccess(isEdit ? "Staff updated successfully!" : "Staff added successfully!");
-        if (!isEdit) {
-          await createUserAccount(json.data || payload);
-        }
-        const dirRes = await fetch("/api/staff");
-        const dirJson = await dirRes.json();
-        const dirData = dirJson.data?.data || dirJson.data || dirJson;
-        setStaffList(Array.isArray(dirData) ? dirData : []);
-      } else {
-        setError(json.message || json.error || "Failed to save staff");
-      }
-    } catch (err) {
-      setError("Network error – please try again.");
+      console.error(err);
     } finally {
-      setSubmitting(false);
+      setLoading(false);
     }
   };
 
-  const tabs = [
-    { label: "Basic Info", icon: "👤" },
-    { label: "Professional", icon: "💼" },
-    { label: "Education", icon: "🎓" },
-    { label: "Financial", icon: "💰" },
-  ];
+  useEffect(() => { fetchStaff(); }, []);
+
+  const handleDelete = async (id: string) => {
+    if (!confirm("Are you sure you want to remove this staff member?")) return;
+    await fetch(`/api/staff/${id}`, { method: "DELETE" });
+    fetchStaff();
+  };
 
   return (
-    <div className="flex h-full">
-      <div className="flex-1 p-6 overflow-y-auto">
-        <h1 className="text-2xl font-black text-gray-900 mb-4">
-          {isEdit ? "Update Staff" : "Staff Onboarding"}
-        </h1>
-
-        {error && <div className="bg-red-50 text-red-700 p-3 rounded-xl font-bold mb-4">{error}</div>}
-        {success && <div className="bg-green-50 text-green-700 p-3 rounded-xl font-bold mb-4">{success}</div>}
-
-        <div className="flex mb-6 gap-1">
-          {tabs.map((tab, idx) => (
-            <button
-              key={idx}
-              type="button"
-              onClick={() => setActiveTab(idx)}
-              className={`flex-1 py-2 font-bold text-sm uppercase tracking-wider rounded-t-lg transition ${
-                activeTab === idx ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
+    <RequirePermission permissions={[PERMISSIONS.staff.view]}>
+      <div className="max-w-6xl mx-auto p-6 space-y-6">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div>
+            <h1 className="text-2xl font-black text-gray-900 flex items-center gap-2"><Users className="text-blue-600"/> Staff Directory</h1>
+            <p className="text-gray-500 text-sm">Manage teachers and administrative staff.</p>
+          </div>
+          <RequirePermission permissions={[PERMISSIONS.staff.create]}>
+            <Link href="/staff/add" className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 transition">
+              <Plus size={18} /> Add Staff
+            </Link>
+          </RequirePermission>
         </div>
 
-        <form onSubmit={handleSubmit}>
-          {activeTab === 0 && (
-            <Section title="Personal Information">
-              <div className="col-span-2 flex items-center gap-4">
-                <div className="relative">
-                  {form.personal.photo ? (
-                    <img src={form.personal.photo} className="w-24 h-24 rounded-full object-cover" alt="Staff photo" />
-                  ) : (
-                    <div className="w-24 h-24 rounded-full bg-gray-200 flex items-center justify-center">
-                      <Camera size={32} className="text-gray-400" />
-                    </div>
-                  )}
-                  <label className="absolute bottom-0 right-0 bg-blue-600 text-white p-1 rounded-full cursor-pointer">
-                    <Upload size={14} />
-                    <input type="file" accept="image/*" onChange={handlePhotoUpload} className="hidden" />
-                  </label>
-                </div>
-                <div>
-                  <Input label="Full Name *" value={form.personal.fullName} onChange={e => handleChange("personal", "fullName", e.target.value)} required />
-                </div>
-              </div>
-              <Input label="Father / Husband Name" value={form.personal.fatherName} onChange={e => handleChange("personal", "fatherName", e.target.value)} />
-              <Input label="CNIC" value={form.personal.cnic} onChange={e => handleChange("personal", "cnic", e.target.value)} />
-              <Input label="Date of Birth" value={form.personal.dob} onChange={e => handleChange("personal", "dob", e.target.value)} />
-              <Select label="Gender" value={form.personal.gender} onChange={e => handleChange("personal", "gender", e.target.value)} options={["Male", "Female", "Other"]} />
-              <Input label="Blood Group" value={form.personal.bloodGroup} onChange={e => handleChange("personal", "bloodGroup", e.target.value)} />
-              <Input label="Nationality" value={form.personal.nationality} onChange={e => handleChange("personal", "nationality", e.target.value)} />
-              <Input label="Religion" value={form.personal.religion} onChange={e => handleChange("personal", "religion", e.target.value)} />
-              <Select label="Marital Status" value={form.personal.maritalStatus} onChange={e => handleChange("personal", "maritalStatus", e.target.value)} options={["Single", "Married", "Divorced", "Widowed"]} />
-            </Section>
-          )}
-
-          {activeTab === 1 && (
-            <Section title="Professional Information">
-              <Input label="Personnel No *" value={form.professional.personnelNo} onChange={e => handleChange("professional", "personnelNo", e.target.value)} required />
-              <Input label="Employee ID" value={form.professional.employeeId} onChange={e => handleChange("professional", "employeeId", e.target.value)} />
-              <Input label="Designation *" value={form.professional.designation} onChange={e => handleChange("professional", "designation", e.target.value)} required />
-              <Input label="Department" value={form.professional.department} onChange={e => handleChange("professional", "department", e.target.value)} />
-              <Input label="Role" value={form.professional.role} onChange={e => handleChange("professional", "role", e.target.value)} />
-              <Input label="Employment Type" value={form.professional.employmentType} onChange={e => handleChange("professional", "employmentType", e.target.value)} />
-              <Input label="Joining Date" value={form.professional.joiningDate} onChange={e => handleChange("professional", "joiningDate", e.target.value)} />
-              <Input label="Confirmation Date" value={form.professional.confirmationDate} onChange={e => handleChange("professional", "confirmationDate", e.target.value)} />
-              <Input label="Experience (years)" value={form.professional.experience} onChange={e => handleChange("professional", "experience", e.target.value)} />
-              <Input label="Qualification" value={form.professional.qualification} onChange={e => handleChange("professional", "qualification", e.target.value)} />
-            </Section>
-          )}
-
-          {activeTab === 2 && (
-            <Section title="Education History">
-              {form.education.map((edu: any, idx: number) => (
-                <div key={idx} className="col-span-2 border p-3 rounded-lg relative mb-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const newEdu = [...form.education];
-                      newEdu.splice(idx, 1);
-                      setForm((prev: any) => ({ ...prev, education: newEdu }));
-                    }}
-                    className="absolute top-2 right-2 text-red-500"
-                  >
-                    <Trash2 size={16} />
-                  </button>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <Input label="Level" value={edu.level} onChange={e => { const arr = [...form.education]; arr[idx].level = e.target.value; setForm((prev: any) => ({ ...prev, education: arr })); }} />
-                    <Input label="Institute" value={edu.institute} onChange={e => { const arr = [...form.education]; arr[idx].institute = e.target.value; setForm((prev: any) => ({ ...prev, education: arr })); }} />
-                    <Input label="Passing Year" value={edu.passingYear} onChange={e => { const arr = [...form.education]; arr[idx].passingYear = e.target.value; setForm((prev: any) => ({ ...prev, education: arr })); }} />
-                    <Input label="Subjects" value={edu.subjects} onChange={e => { const arr = [...form.education]; arr[idx].subjects = e.target.value; setForm((prev: any) => ({ ...prev, education: arr })); }} />
-                  </div>
-                </div>
-              ))}
-              <button
-                type="button"
-                onClick={() => setForm((prev: any) => ({ ...prev, education: [...prev.education, { level: "", institute: "", passingYear: "", subjects: "" }] }))}
-                className="col-span-2 text-blue-600 font-bold flex items-center gap-1"
-              >
-                <Plus size={16} /> Add Education
-              </button>
-            </Section>
-          )}
-
-          {activeTab === 3 && (
-            <Section title="Payroll & Financial">
-              <Input label="Basic Salary" type="number" value={form.payroll.basicSalary} onChange={e => handleChange("payroll", "basicSalary", parseFloat(e.target.value) || 0)} />
-              
-              <div className="col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Allowances</label>
-                {form.payroll.allowances.map((allow: any, idx: number) => (
-                  <div key={idx} className="flex gap-2 mb-2">
-                    <input
-                      placeholder="Name"
-                      value={allow.name}
-                      onChange={e => { const arr = [...form.payroll.allowances]; arr[idx].name = e.target.value; setForm((prev: any) => ({ ...prev, payroll: { ...prev.payroll, allowances: arr } })); }}
-                      className="flex-1 p-2 border rounded-xl"
-                    />
-                    <input
-                      placeholder="Amount"
-                      type="number"
-                      value={allow.amount}
-                      onChange={e => { const arr = [...form.payroll.allowances]; arr[idx].amount = parseFloat(e.target.value) || 0; setForm((prev: any) => ({...prev, payroll: { ...prev.payroll, allowances: arr } })); }}
-                      className="w-24 p-2 border rounded-xl"
-                    />
-                    <button type="button" onClick={() => { const arr = form.payroll.allowances.filter((_: any, i: number) => i !== idx); setForm((prev: any) => ({ ...prev, payroll: { ...prev.payroll, allowances: arr } })); }} className="text-red-500"><Trash2 size={16} /></button>
-                  </div>
-                ))}
-                <button type="button" onClick={() => setForm((prev: any) => ({ ...prev, payroll: { ...prev.payroll, allowances: [...prev.payroll.allowances, { name: "", amount: 0 }] } }))} className="text-blue-600 font-bold text-sm">+ Add Allowance</button>
-              </div>
-
-              <div className="col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Deductions</label>
-                {form.payroll.deductions.map((ded: any, idx: number) => (
-                  <div key={idx} className="flex gap-2 mb-2">
-                    <input
-                      placeholder="Name"
-                      value={ded.name}
-                      onChange={e => { const arr = [...form.payroll.deductions]; arr[idx].name = e.target.value; setForm((prev: any) => ({ ...prev, payroll: { ...prev.payroll, deductions: arr } })); }}
-                      className="flex-1 p-2 border rounded-xl"
-                    />
-                    <input
-                      placeholder="Amount"
-                      type="number"
-                      value={ded.amount}
-                      onChange={e => { const arr = [...form.payroll.deductions]; arr[idx].amount = parseFloat(e.target.value) || 0; setForm((prev: any) => ({...prev, payroll: { ...prev.payroll, deductions: arr } })); }}
-                      className="w-24 p-2 border rounded-xl"
-                    />
-                    <button type="button" onClick={() => { const arr = form.payroll.deductions.filter((_: any, i: number) => i !== idx); setForm((prev: any) => ({ ...prev, payroll: { ...prev.payroll, deductions: arr } })); }} className="text-red-500"><Trash2 size={16} /></button>
-                  </div>
-                ))}
-                <button type="button" onClick={() => setForm((prev: any) => ({ ...prev, payroll: { ...prev.payroll, deductions: [...prev.payroll.deductions, { name: "", amount: 0 }] } }))} className="text-blue-600 font-bold text-sm">+ Add Deduction</button>
-              </div>
-
-              <div className="col-span-2 bg-gray-900 text-white p-4 rounded-xl flex justify-between items-center">
-                <span className="font-black text-lg">Net Pay (Live)</span>
-                <span className="text-2xl font-black text-green-400">Rs. {calcNetPay().toLocaleString()}</span>
-              </div>
-              <Input label="Bank Name" value={form.payroll.bankName} onChange={e => handleChange("payroll", "bankName", e.target.value)} />
-              <Input label="Account Number" value={form.payroll.accountNumber} onChange={e => handleChange("payroll", "accountNumber", e.target.value)} />
-              <Input label="IBAN" value={form.payroll.iban} onChange={e => handleChange("payroll", "iban", e.target.value)} />
-              <Input label="Salary Payment Method" value={form.payroll.salaryPaymentMethod} onChange={e => handleChange("payroll", "salaryPaymentMethod", e.target.value)} />
-            </Section>
-          )}
-
-          {/* 🛡️ ایکشن بٹنز کے لیے سیکیورٹی ریپرز */}
-          <div className="flex flex-wrap items-center gap-3 mt-6">
-            <label className="flex items-center gap-2 font-bold text-sm">
-              <input type="checkbox" checked={createLogin} onChange={e => setCreateLogin(e.target.checked)} />
-              Auto‑create Login Account
-            </label>
-            
-            {/* 🛡️ Save / Update Record Button Protected */}
-            <RequirePermission permissions={[PERMISSIONS.settings.update, PERMISSIONS.settings.manage]}>
-              <button type="submit" disabled={submitting} className="ml-auto bg-blue-600 text-white px-6 py-2 rounded-xl font-bold disabled:opacity-50 flex items-center gap-2">
-                {submitting && <Loader2 className="animate-spin" size={18} />}
-                {isEdit ? "Update Staff" : "Save Record"}
-              </button>
-            </RequirePermission>
-
-            {isEdit && (
-              <button type="button" onClick={() => router.push("/staff/add")} className="px-4 py-2 border rounded-xl font-bold">
-                Cancel Edit
-              </button>
-            )}
-            
-            {/* 🛡️ Bulk Import / OCR Buttons Protected */}
-            <RequirePermission permissions={[PERMISSIONS.settings.manage]}>
-              <button type="button" onClick={() => setShowBulkModal(true)} className="ml-2 bg-green-600 text-white px-4 py-2 rounded-xl font-bold flex items-center gap-2">
-                <FileSpreadsheet size={18} /> Bulk Import
-              </button>
-              <button type="button" onClick={() => alert("OCR feature coming soon")} className="ml-2 bg-purple-600 text-white px-4 py-2 rounded-xl font-bold flex items-center gap-2">
-                <FileText size={18} /> OCR Extract
-              </button>
-            </RequirePermission>
-
-          </div>
-        </form>
-      </div>
-
-      <div className="hidden lg:block w-72 border-l border-gray-200 bg-white overflow-y-auto p-4">
-        <h2 className="font-black text-gray-900 text-lg mb-4">Staff Directory</h2>
-        {directoryLoading ? (
-          <Loader2 className="animate-spin mx-auto" />
-        ) : staffList.length === 0 ? (
-          <p className="text-sm text-gray-500">No staff yet</p>
+        {loading ? (
+          <div className="flex h-64 items-center justify-center"><Loader2 className="animate-spin text-blue-600" size={32} /></div>
         ) : (
-          <div className="space-y-3">
-            {staffList.map((staff: any) => (
-              <div
-                key={staff.id}
-                className="flex items-center gap-3 p-2 bg-gray-50 rounded-xl cursor-pointer hover:bg-gray-100"
-                onClick={() => router.push(`/staff/add?id=${staff.id}`)}
-              >
-                {staff.personal?.photo ? (
-                  <img src={staff.personal.photo} className="w-10 h-10 rounded-full object-cover" alt="Avatar" />
-                ) : (
-                  <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center">
-                    <span className="text-xs font-bold">{staff.personal?.fullName?.[0]}</span>
-                  </div>
-                )}
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-bold text-gray-900 truncate">{staff.personal?.fullName}</p>
-                  <p className="text-xs text-gray-500 truncate">{staff.professional?.designation}</p>
-                  <p className="text-xs text-gray-400">{staff.professional?.personnelNo}</p>
-                </div>
-              </div>
-            ))}
+          <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm">
+                <thead className="bg-gray-50 border-b border-gray-200">
+                  <tr>
+                    <th className="p-4 font-bold text-gray-600">Name</th>
+                    <th className="p-4 font-bold text-gray-600">Role</th>
+                    <th className="p-4 font-bold text-gray-600">Email</th>
+                    <th className="p-4 font-bold text-right text-gray-600">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {staff.length === 0 ? (
+                    <tr><td colSpan={4} className="p-8 text-center text-gray-400 font-medium">No staff members found.</td></tr>
+                  ) : (
+                    staff.map((s) => (
+                      <tr key={s.id} className="hover:bg-gray-50 transition">
+                        <td className="p-4 font-bold text-gray-900">
+                          <Link href={`/staff-profile?id=${s.id}`} className="hover:text-blue-600 hover:underline">{s.name || s.fullName}</Link>
+                        </td>
+                        <td className="p-4">
+                          <span className="bg-blue-50 text-blue-700 border border-blue-100 px-3 py-1 rounded-full text-xs font-bold uppercase">{s.role || "Staff"}</span>
+                        </td>
+                        <td className="p-4 text-gray-600 font-medium">{s.email}</td>
+                        <td className="p-4 text-right">
+                          <RequirePermission permissions={[PERMISSIONS.staff.delete]}>
+                            <button onClick={() => handleDelete(s.id)} className="text-red-500 hover:bg-red-50 p-2 rounded-lg transition"><Trash2 size={18}/></button>
+                          </RequirePermission>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
       </div>
-
-      {showBulkModal && (
-        <BulkImportModal onClose={() => setShowBulkModal(false)} onSuccess={() => {
-          fetch("/api/staff")
-            .then(res => res.json())
-            .then(json => setStaffList(json.data?.data || json.data || []));
-          setShowBulkModal(false);
-        }} />
-      )}
-    </div>
+    </RequirePermission>
   );
-}
-
-// -------------------- Helper Components --------------------
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div className="bg-white border border-gray-200 rounded-xl p-6 space-y-4 mb-6">
-      <h2 className="font-bold text-gray-800 border-b pb-2">{title}</h2>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">{children}</div>
-    </div>
-  );
-}
-
-function Input({ label, ...props }: { label: string } & React.InputHTMLAttributes<HTMLInputElement>) {
-  return (
-    <div>
-      <label className="block text-sm font-medium text-gray-700">{label}</label>
-      <input {...props} className="mt-1 w-full p-2 border border-gray-300 rounded-xl" />
-    </div>
-  );
-}
-
-function Select({ label, options, ...props }: { label: string; options: string[] } & React.SelectHTMLAttributes<HTMLSelectElement>) {
-  return (
-    <div>
-      <label className="block text-sm font-medium text-gray-700">{label}</label>
-      <select {...props} className="mt-1 w-full p-2 border border-gray-300 rounded-xl bg-white">
-        {options.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-      </select>
-    </div>
-  );
-}
-
-function BulkImportModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
-  const [uploading, setUploading] = useState(false);
-  const [uploadError, setUploadError] = useState("");
-
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setUploading(true);
-    setUploadError("");
-
-    try {
-      const formData = new FormData();
-      formData.append('file', file);
-
-      const res = await fetch('/api/v1/staff/bulk', {
-        method: 'POST',
-        body: formData,
-      });
-
-      const result = await res.json();
-
-      if (res.ok) {
-        alert(`Successfully imported ${result.count} staff members`);
-        onSuccess();
-      } else {
-        setUploadError(result.message || "Import failed");
-      }
-    } catch (err: any) {
-      console.error("Upload error:", err);
-      setUploadError(err.message || "Error uploading file");
-    } finally {
-      setUploading(false);
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-2xl p-6 w-full max-w-md">
-        <h2 className="text-xl font-bold mb-4">Bulk Import Staff</h2>
-        <p className="text-sm text-gray-500 mb-4">
-          Upload an Excel file (.xlsx) with columns:<br />
-          <span className="font-mono text-xs bg-gray-100 px-2 py-1 rounded">
-            1. Full Name<br />
-            2. Email<br />
-            3. Phone<br />
-            4. Designation<br />
-            5. Personnel No
-          </span>
-        </p>
-        
-        {uploadError && (
-          <div className="bg-red-50 text-red-700 p-3 rounded-lg mb-4 text-sm font-bold">
-            {uploadError}
-          </div>
-        )}
-
-        <input
-          type="file"
-          accept=".xlsx,.xls"
-          className="mb-4 w-full"
-          onChange={handleFileUpload}
-          disabled={uploading}
-        />
-
-        {uploading && (
-          <div className="flex items-center justify-center gap-2 text-blue-600 font-bold mb-4">
-            <Loader2 className="animate-spin" size={18} />
-            Uploading and processing...
-          </div>
-        )}
-
-        <div className="flex justify-end gap-2">
-          <button onClick={onClose} className="px-4 py-2 border rounded-lg font-bold" disabled={uploading}>
-            Cancel
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function deepMerge(target: any, source: any): any {
-  const output = { ...target };
-  for (const key of Object.keys(source)) {
-    if (source[key] && typeof source[key] === "object" && !Array.isArray(source[key])) {
-      output[key] = deepMerge(target[key] || {}, source[key]);
-    } else {
-      output[key] = source[key];
-    }
-  }
-  return output;
 }
