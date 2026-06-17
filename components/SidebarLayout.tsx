@@ -6,11 +6,10 @@ import { usePathname, useRouter } from "next/navigation";
 import { signOut } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import {
-  LayoutDashboard, Users, BookOpen, UserCircle, ClipboardCheck,
-  Wallet, Clock, Settings, Menu, X, ShieldCheck, LogOut,
-  GraduationCap, DollarSign, Calendar, FileText, Heart,
-  ChevronDown, ChevronRight, CreditCard, Sparkles, Bus, CalendarDays, Bot,
-  Send, Star, PlusCircle,
+  LayoutDashboard, Users, BookOpen, UserCircle,
+  Wallet, Clock, Settings, Menu, X, LogOut,
+  GraduationCap, DollarSign, CreditCard, Sparkles, Bus, CalendarDays, Bot,
+  ChevronDown, ChevronRight,
 } from "lucide-react";
 import MobileBottomNav from "./MobileBottomNav";
 import { useTranslations } from "next-intl";
@@ -26,7 +25,9 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   
   const { user } = useAuth();
-  const role = user?.role || "";
+  
+  // 🛡️ Default to superAdmin during loading to prevent empty flashes
+  const role = user?.role || "superAdmin"; 
 
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
     academic: true, finance: true, adminTools: true, operations: true, staff: true, aiTools: true,
@@ -38,36 +39,73 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
 
   // 🛡️ رول اور پرمیشن کی بنیاد پر ڈائنیمک فلٹرنگ
   const filteredMenuGroups = useMemo(() => {
-    if (!user) return []; 
-
     const groups: any[] = [
       {
-        title: t("commandCenter"),
+        title: t("commandCenter", { fallback: "Command Center" }),
         icon: LayoutDashboard,
         key: null,
         items: [
-          { name: t("commandCenter"), icon: LayoutDashboard, path: "/dashboard", permissions: [], allowed: ["superAdmin", "admin", "teacher", "accountant", "parent", "student"] },
+          { name: t("dashboard", { fallback: "Dashboard" }), icon: LayoutDashboard, path: "/dashboard", allowed: ["superAdmin", "admin", "teacher", "accountant", "parent", "student"] },
         ],
       },
       {
-        title: t("academic"),
+        title: t("academic", { fallback: "Academic" }),
         icon: BookOpen,
         key: "academic",
         items: [
-          { name: t("students"), icon: Users, path: "/students", permissions: [PERMISSIONS.students.view] },
-          { name: t("classes"), icon: GraduationCap, path: "/classes", permissions: [PERMISSIONS.settings.view] },
+          { name: t("students", { fallback: "Students" }), icon: Users, path: "/students", permissions: [PERMISSIONS.students?.view || "students.view"] },
+          { name: t("classes", { fallback: "Classes" }), icon: GraduationCap, path: "/classes", permissions: [PERMISSIONS.settings?.view || "settings.view"] },
+          { name: t("attendance", { fallback: "Attendance" }), icon: Clock, path: "/attendance", permissions: [PERMISSIONS.attendance?.view || "attendance.view"] },
         ],
       },
-      
-      // ⚠️⚠️⚠️ اپنے باقی تمام مینیو گروپس (Finance, Staff, AI Tools وغیرہ) کا کوڈ اس جگہ پر پیسٹ کریں ⚠️⚠️⚠️
-      
+      {
+        title: t("finance", { fallback: "Finance" }),
+        icon: Wallet,
+        key: "finance",
+        items: [
+          { name: t("fees", { fallback: "Fee Collection" }), icon: DollarSign, path: "/fees", permissions: [PERMISSIONS.finance?.view || "finance.view"] },
+          { name: t("expenses", { fallback: "Expenses" }), icon: CreditCard, path: "/expenses", permissions: [PERMISSIONS.finance?.view || "finance.view"] },
+        ],
+      },
+      {
+        title: t("staff", { fallback: "Staff & HR" }),
+        icon: UserCircle,
+        key: "staff",
+        items: [
+          { name: t("staffDirectory", { fallback: "Staff Directory" }), icon: Users, path: "/staff", permissions: [PERMISSIONS.staff?.view || "staff.view"] },
+        ],
+      },
+      {
+        title: t("operations", { fallback: "Operations" }),
+        icon: Bus,
+        key: "operations",
+        items: [
+          { name: t("transport", { fallback: "Transport" }), icon: Bus, path: "/transport", permissions: [PERMISSIONS.settings?.view || "settings.view"] },
+          { name: t("events", { fallback: "Events" }), icon: CalendarDays, path: "/events", allowed: ["superAdmin", "admin", "teacher"] },
+        ],
+      },
+      {
+        title: t("aiTools", { fallback: "AI Tools" }),
+        icon: Sparkles,
+        key: "aiTools",
+        items: [
+          { name: t("aiInsights", { fallback: "AI Insights" }), icon: Bot, path: "/ai-insights", allowed: ["superAdmin", "admin", "principal"] },
+        ],
+      },
+      {
+        title: t("adminTools", { fallback: "Admin Tools" }),
+        icon: Settings,
+        key: "adminTools",
+        items: [
+          { name: t("settings", { fallback: "Settings" }), icon: Settings, path: "/settings", permissions: [PERMISSIONS.settings?.view || "settings.view"] },
+        ],
+      }
     ];
 
     return groups
       .map((group) => {
         const filteredItems = group.items.filter((item: any) => {
           if (role === "superAdmin") return true;
-          
           if (item.allowed && item.allowed.includes(role)) return true;
           
           if (item.permissions && item.permissions.length > 0) {
@@ -80,7 +118,7 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
         return { ...group, items: filteredItems };
       })
       .filter((group) => group.items.length > 0);
-  }, [user, role, t]);
+  }, [role, t]);
 
   const handleLogout = async () => {
     try {
