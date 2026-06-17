@@ -10,10 +10,8 @@ import MobileBottomNav from "./MobileBottomNav";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { useAuth } from "@/context/AuthContext";
 import { menuService } from "@/services/menu.service";
-import { useTranslations } from "next-intl";
 
 export default function SidebarLayout({ children }: { children: React.ReactNode }) {
-  const t = useTranslations("Sidebar");
   const pathname = usePathname();
   const router = useRouter();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -36,7 +34,6 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
       if (authLoading) return; 
 
       try {
-        // ✅ FIX: Added (user as any) to bypass strict TypeScript checking for permissions
         const menus = await menuService.getMenuForUser(role, (user as any)?.permissions);
         
         if (isMounted) {
@@ -143,7 +140,7 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
             className="mt-4 w-full flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 hover:text-red-700 rounded-lg transition-colors border border-transparent hover:border-red-100"
           >
             <LogOut className="w-4 h-4" />
-            {t("logout", { fallback: "Logout" })}
+            Logout
           </button>
         </div>
       </aside>
