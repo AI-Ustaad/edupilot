@@ -5,139 +5,57 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { signOut } from "firebase/auth";
 import { auth } from "@/lib/firebase";
-import {
-  LayoutDashboard, Users, BookOpen, UserCircle,
-  Wallet, Clock, Settings, Menu, X, LogOut,
-  GraduationCap, DollarSign, CreditCard, Sparkles, Bus, CalendarDays, Bot,
-  ChevronDown, ChevronRight, FileText, PenTool, Video, UserCheck, PieChart, 
-  Library, Home, MessageSquare, Bell, Shield, Activity
-} from "lucide-react";
+import { Menu, X, LogOut, ChevronDown, ChevronRight } from "lucide-react";
 import MobileBottomNav from "./MobileBottomNav";
-import { useTranslations } from "next-intl";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { useAuth } from "@/context/AuthContext";
-import { PERMISSIONS } from "@/lib/auth/permissions";
 import { hasAnyPermission } from "@/lib/auth/client-rbac";
+import { DEFAULT_MENU } from "@/services/menu.service"; // 🚀 نیا امپورٹ
 
 export default function SidebarLayout({ children }: { children: React.ReactNode }) {
-  const t = useTranslations("Sidebar");
   const pathname = usePathname();
   const router = useRouter();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   
   const { user } = useAuth();
-  
-  // 🛡️ Default to superAdmin during loading to prevent empty flashes
-  const role = user?.role || "superAdmin"; 
+  const role = user?.role || "superAdmin"; // 🛡️ لوڈنگ کے دوران غائب ہونے سے بچنے کے لیے
 
-  // تمام گروپس کو بائی ڈیفالٹ اوپن (Open) رکھا گیا ہے
-  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
-    academic: true, staff: true, finance: true, operations: true, aiTools: true, communication: true, adminTools: true
+  // تمام گروپس کو بائی ڈیفالٹ اوپن رکھا گیا ہے
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => {
+    const initial: Record<string, boolean> = {};
+    DEFAULT_MENU.forEach(m => initial[m.title] = true);
+    return initial;
   });
 
-  const toggleGroup = (key: string) => {
-    setOpenGroups((prev) => ({ ...prev, [key]: !prev[key] }));
+  const toggleGroup = (title: string) => {
+    setOpenGroups((prev) => ({ ...prev, [title]: !prev[title] }));
   };
 
-  // 🚀 The Complete Enterprise Menu Blueprint
+  // 🚀 Dynamic Filtering Logic based on DEFAULT_MENU
   const filteredMenuGroups = useMemo(() => {
-    const groups: any[] = [
-      {
-        title: t("commandCenter", { fallback: "Command Center" }),
-        icon: LayoutDashboard,
-        key: null,
-        items: [
-          { name: t("dashboard", { fallback: "Dashboard" }), icon: LayoutDashboard, path: "/dashboard", allowed: ["superAdmin", "admin", "teacher", "accountant", "parent", "student"] },
-        ],
-      },
-      {
-        title: t("academic", { fallback: "Academic" }),
-        icon: BookOpen,
-        key: "academic",
-        items: [
-          { name: t("students", { fallback: "Students" }), icon: Users, path: "/students", permissions: [PERMISSIONS.students?.view || "students.view"] },
-          { name: t("classes", { fallback: "Classes" }), icon: GraduationCap, path: "/classes", permissions: [PERMISSIONS.settings?.view || "settings.view"] },
-          { name: t("attendance", { fallback: "Attendance" }), icon: Clock, path: "/attendance", permissions: [PERMISSIONS.attendance?.view || "attendance.view"] },
-          { name: t("homework", { fallback: "Homework" }), icon: PenTool, path: "/homework", allowed: ["superAdmin", "admin", "teacher", "student", "parent"] },
-          { name: t("exams", { fallback: "Exams & Results" }), icon: FileText, path: "/exams", allowed: ["superAdmin", "admin", "teacher", "student", "parent"] },
-          { name: t("videoLectures", { fallback: "Video Lectures" }), icon: Video, path: "/video-lectures", allowed: ["superAdmin", "admin", "teacher", "student"] },
-        ],
-      },
-      {
-        title: t("staff", { fallback: "Staff & HR" }),
-        icon: UserCircle,
-        key: "staff",
-        items: [
-          { name: t("staffDirectory", { fallback: "Staff Directory" }), icon: Users, path: "/staff", permissions: [PERMISSIONS.staff?.view || "staff.view"] },
-          { name: t("teachers", { fallback: "Teachers" }), icon: BookOpen, path: "/teachers", permissions: [PERMISSIONS.staff?.view || "staff.view"] },
-          { name: t("staffAttendance", { fallback: "Staff Attendance" }), icon: UserCheck, path: "/staff-attendance", permissions: [PERMISSIONS.staff?.view || "staff.view"] },
-        ],
-      },
-      {
-        title: t("finance", { fallback: "Finance" }),
-        icon: Wallet,
-        key: "finance",
-        items: [
-          { name: t("fees", { fallback: "Fee Collection" }), icon: DollarSign, path: "/fees", permissions: [PERMISSIONS.finance?.view || "finance.view"] },
-          { name: t("expenses", { fallback: "Expenses" }), icon: CreditCard, path: "/expenses", permissions: [PERMISSIONS.finance?.view || "finance.view"] },
-          { name: t("financeReports", { fallback: "Financial Reports" }), icon: PieChart, path: "/finance/reports", permissions: [PERMISSIONS.finance?.view || "finance.view"] },
-        ],
-      },
-      {
-        title: t("operations", { fallback: "Operations" }),
-        icon: Bus,
-        key: "operations",
-        items: [
-          { name: t("transport", { fallback: "Transport (Bus)" }), icon: Bus, path: "/transport", permissions: [PERMISSIONS.settings?.view || "settings.view"] },
-          { name: t("library", { fallback: "Library" }), icon: Library, path: "/library", allowed: ["superAdmin", "admin", "teacher", "student"] },
-          { name: t("hostel", { fallback: "Hostel" }), icon: Home, path: "/hostel", permissions: [PERMISSIONS.settings?.view || "settings.view"] },
-          { name: t("events", { fallback: "Events" }), icon: CalendarDays, path: "/events", allowed: ["superAdmin", "admin", "teacher", "student", "parent"] },
-        ],
-      },
-      {
-        title: t("communication", { fallback: "Communication" }),
-        icon: MessageSquare,
-        key: "communication",
-        items: [
-          { name: t("messages", { fallback: "Messages" }), icon: MessageSquare, path: "/messages", allowed: ["superAdmin", "admin", "teacher", "parent", "student"] },
-          { name: t("notices", { fallback: "Notice Board" }), icon: Bell, path: "/notices", allowed: ["superAdmin", "admin", "teacher", "parent", "student"] },
-        ],
-      },
-      {
-        title: t("aiTools", { fallback: "AI Tools" }),
-        icon: Sparkles,
-        key: "aiTools",
-        items: [
-          { name: t("aiInsights", { fallback: "AI Insights" }), icon: Bot, path: "/ai-insights", allowed: ["superAdmin", "admin", "principal"] },
-        ],
-      },
-      {
-        title: t("adminTools", { fallback: "Admin Tools" }),
-        icon: Settings,
-        key: "adminTools",
-        items: [
-          { name: t("settings", { fallback: "Settings" }), icon: Settings, path: "/settings", permissions: [PERMISSIONS.settings?.view || "settings.view"] },
-          { name: t("roles", { fallback: "Roles & Permissions" }), icon: Shield, path: "/roles", allowed: ["superAdmin", "admin"] },
-          { name: t("audit", { fallback: "Audit Logs" }), icon: Activity, path: "/audit", allowed: ["superAdmin"] },
-        ],
+    return DEFAULT_MENU.map((group) => {
+      // 1. اگر گروپ کے اندر ڈائریکٹ لنک ہے (جیسے Dashboard)
+      if (!group.children && group.href) {
+        const canView = role === "superAdmin" || (group.permission && hasAnyPermission(role, [group.permission as any]));
+        return canView ? group : null;
       }
-    ];
 
-    // 🛡️ Filter menus based on user role and permissions
-    return groups
-      .map((group) => {
-        const filteredItems = group.items.filter((item: any) => {
+      // 2. اگر گروپ کے اندر Children (sub-menus) ہیں
+      if (group.children) {
+        const filteredChildren = group.children.filter((child) => {
           if (role === "superAdmin") return true;
-          if (item.allowed && item.allowed.includes(role)) return true;
-          if (item.permissions && item.permissions.length > 0) {
-            return hasAnyPermission(role, item.permissions);
-          }
+          if (child.permission) return hasAnyPermission(role, [child.permission as any]);
           return false;
         });
-        return { ...group, items: filteredItems };
-      })
-      .filter((group) => group.items.length > 0);
-  }, [role, t]);
+
+        // اگر پرمیشن کے بعد کوئی ایک بھی child بچ گیا ہے، تو گروپ دکھائیں
+        if (filteredChildren.length > 0) {
+          return { ...group, children: filteredChildren };
+        }
+      }
+      return null;
+    }).filter(Boolean); // null والی ویلیوز نکال دیں
+  }, [role]);
 
   const handleLogout = async () => {
     try {
@@ -157,37 +75,51 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
         </div>
 
         <nav className="flex-1 overflow-y-auto py-4 sidebar-scrollbar">
-          {filteredMenuGroups.map((group, index) => (
+          {filteredMenuGroups.map((group: any, index: number) => (
             <div key={index} className="mb-4">
-              {group.key && (
+              
+              {/* Group Title (If it has children) */}
+              {group.children ? (
                 <button 
-                  onClick={() => toggleGroup(group.key as string)}
+                  onClick={() => toggleGroup(group.title)}
                   className="w-full flex items-center justify-between px-4 py-2 text-xs font-bold text-gray-400 uppercase tracking-wider hover:bg-gray-100 transition-colors"
                 >
                   <div className="flex items-center gap-2">
                     <group.icon className="w-4 h-4" />
                     <span>{group.title}</span>
                   </div>
-                  {openGroups[group.key] ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                  {openGroups[group.title] ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
                 </button>
+              ) : (
+                /* Direct Link (Like Dashboard) */
+                <Link
+                  href={group.href}
+                  className={`flex items-center gap-3 px-6 py-2.5 text-sm font-medium transition-all duration-200 ${
+                    pathname === group.href ? "bg-blue-50 text-blue-600 border-r-4 border-blue-600" : "text-gray-600 hover:bg-gray-100"
+                  }`}
+                >
+                  <group.icon className={`w-4 h-4 ${pathname === group.href ? 'text-blue-600' : 'text-gray-400'}`} />
+                  {group.title}
+                </Link>
               )}
 
-              {(!group.key || openGroups[group.key]) && (
+              {/* Sub-menu Items */}
+              {group.children && openGroups[group.title] && (
                 <div className="mt-1 space-y-1">
-                  {group.items.map((item: any, itemIndex: number) => {
-                    const isActive = pathname === item.path || pathname.startsWith(`${item.path}/`);
+                  {group.children.map((child: any, childIndex: number) => {
+                    const isActive = pathname === child.href || pathname.startsWith(`${child.href}/`);
                     return (
                       <Link
-                        key={itemIndex}
-                        href={item.path}
+                        key={childIndex}
+                        href={child.href}
                         className={`flex items-center gap-3 px-6 py-2.5 text-sm font-medium transition-all duration-200 ${
                           isActive 
                             ? "bg-blue-50 text-blue-600 border-r-4 border-blue-600" 
                             : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
                         }`}
                       >
-                        <item.icon className={`w-4 h-4 ${isActive ? 'text-blue-600' : 'text-gray-400'}`} />
-                        {item.name}
+                        <child.icon className={`w-4 h-4 ${isActive ? 'text-blue-600' : 'text-gray-400'}`} />
+                        {child.title}
                       </Link>
                     );
                   })}
@@ -204,7 +136,7 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
             className="mt-4 w-full flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 hover:text-red-700 rounded-lg transition-colors border border-transparent hover:border-red-100"
           >
             <LogOut className="w-4 h-4" />
-            {t("logout", { fallback: "Logout" })}
+            Logout
           </button>
         </div>
       </aside>
