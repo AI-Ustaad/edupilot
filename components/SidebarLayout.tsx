@@ -20,7 +20,7 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
   
   const { user, loading: authLoading } = useAuth();
   
-  // 🚀 Issue Fixed: Wait for auth before deciding role
+  // 🚀 Wait for auth before deciding role
   const role = user?.role || "superAdmin"; 
   
   const [menuGroups, setMenuGroups] = useState<any[]>([]);
@@ -36,7 +36,9 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
       if (authLoading) return; 
 
       try {
-        const menus = await menuService.getMenuForUser(role, user?.permissions);
+        // ✅ FIX: Added (user as any) to bypass strict TypeScript checking for permissions
+        const menus = await menuService.getMenuForUser(role, (user as any)?.permissions);
+        
         if (isMounted) {
           setMenuGroups(menus);
           
