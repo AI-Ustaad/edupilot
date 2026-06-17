@@ -15,21 +15,26 @@ export class MenuService {
     
     // 2. Extract effective permissions
     const effectivePermissions = permissions || ROLE_PERMISSIONS[currentRole as keyof typeof ROLE_PERMISSIONS] || [];
-    const disabled = new Set(disabledFeatures || []);
+    
+    // ✅ FIX: 'new Set()' ہٹا کر سمپل Array کر دیا تاکہ ES2015 کا ایرر نہ آئے
+    const disabled = disabledFeatures || []; 
 
     // 3. Authorization Logic
     const isAuthorized = (item: any) => {
       // SuperAdmin sees everything except disabled features
       if (currentRole === "superAdmin") {
-        if (item.featureFlag && disabled.has(item.featureFlag)) return false;
+        // ✅ FIX: .has() کی جگہ .indexOf()
+        if (item.featureFlag && disabled.indexOf(item.featureFlag) !== -1) return false;
         return true;
       }
 
-      // Check Allowed Roles array
-      if (item.allowedRoles && item.allowedRoles.includes(currentRole)) return true;
+      // Check Allowed Roles array 
+      // ✅ FIX: .includes() کی جگہ .indexOf()
+      if (item.allowedRoles && item.allowedRoles.indexOf(currentRole) !== -1) return true;
       
       // Check specific Permission
-      if (item.permission && effectivePermissions.includes(item.permission)) return true;
+      // ✅ FIX: .includes() کی جگہ .indexOf()
+      if (item.permission && effectivePermissions.indexOf(item.permission) !== -1) return true;
 
       // If neither allowedRole nor permission matches, hide it
       if (item.allowedRoles || item.permission) return false;
