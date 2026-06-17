@@ -1,3 +1,5 @@
+// lib/workers/report.worker.tsx
+
 import { JobService } from "@/lib/services/job.service";
 import { eventBus } from "@/lib/events";
 import { EVENTS } from "@/lib/events/event-types";
@@ -5,6 +7,7 @@ import { adminDb } from "@/lib/firebase-admin";
 import { renderToBuffer } from "@react-pdf/renderer";
 import { ReportCardTemplate } from "@/lib/pdf/ReportCardTemplate";
 import React from "react";
+import { getStorage } from "firebase-admin/storage"; // ☁️ Firebase Storage Import
 
 export async function runReportWorker(data: any) {
   const { tenantId, jobId, studentIds, term } = data;
@@ -13,6 +16,7 @@ export async function runReportWorker(data: any) {
   console.log(`👷‍♂️ [Worker] Starting report generation for Job: ${jobId}`);
   
   try {
+    // جاب کا اسٹیٹس 'processing' کر دیں
     await JobService.updateProgress(tenantId, jobId, 0, total, "processing");
 
     // School Branding ایک ہی بار فیچ کریں
@@ -61,9 +65,32 @@ export async function runReportWorker(data: any) {
       const buffer = await renderToBuffer(<ReportCardTemplate data={pdfData} />);
       const pdfBytes = new Uint8Array(buffer);
 
-      // (مستقبل میں ہم یہاں pdfBytes کو Firebase Storage پر اپلوڈ کرنے کا کوڈ ڈالیں گے)
+      // ☁️ 5. FIREBASE STORAGE INTEGRATION (Enterprise Upload)
+      const bucket = getStorage().bucket(); 
+      const filePath = `tenants/${tenantId}/reports/${term}/${studentId}.pdf`;
+      const file = bucket.file(filePath);
+
+      // بفر کو کلاؤڈ پر محفوظ کریں (Save to Cloud)
+      await file.save(Buffer.from(pdfBytes), {
+        metadata: { contentType: "application/pdf" },
+      });
+
+      // ایک سیکیور ڈاؤن لوڈ لنک (Signed URL) بنائیں جو کچھ سالوں تک کارآمد ہو
+      const [downloadUrl] = await file.getSignedUrl({
+        action: "read",
+        expires: "01-01-2030", 
+      });
+
+      // 📝 6. ڈیٹا بیس میں سٹوڈنٹ کی رپورٹ کا ریکارڈ محفوظ کریں
+      await adminDb.collection("tenants").doc(tenantId).collection("generated_reports").add({
+        studentId,
+        jobId,
+        term,
+        fileUrl: downloadUrl,
+        createdAt: new Date().toISOString(),
+      });
       
-      // 5. ہر رپورٹ بننے کے بعد فرنٹ اینڈ کے لیے لائیو پروگریس (Progress) اپڈیٹ کریں
+      // 7. ہر رپورٹ بننے کے بعد فرنٹ اینڈ کے لیے لائیو پروگریس (Progress) اپڈیٹ کریں
       await JobService.updateProgress(tenantId, jobId, i + 1, total, "processing");
     }
     
