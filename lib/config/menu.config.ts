@@ -5,7 +5,7 @@ import {
   ClipboardCheck, CalendarDays, Clock3, Wallet, FileSpreadsheet, Briefcase,
   BookOpen, BookMarked, FileQuestion, Award, Brain, Bot, MessageSquare,
   School, Bus, HeartHandshake, Settings, Shield, BarChart3, Database,
-  CreditCard, Sparkles, Video, Library, Bell,
+  CreditCard, Sparkles, Video, Library, Bell, UserCircle // 🚀 یہ آئیکن مسنگ تھا!
 } from "lucide-react";
 
 export const DEFAULT_MENU = [
