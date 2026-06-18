@@ -10,7 +10,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import MobileBottomNav from "@/components/MobileBottomNav";
 
-// 🚀 اگر آپ کی فائل کسی اور فولڈر میں ہے تو اس پاتھ کو اپنی ضرورت کے مطابق بدل لیجیے گا
+// 🚀 Imports with correct paths
 import { getFilteredMenu } from "@/lib/config/menu.config"; 
 import { ROLE_PERMISSIONS } from "@/lib/auth/roles"; 
 
@@ -51,7 +51,7 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
   // Get user permissions
   const userPermissions = ROLE_PERMISSIONS[role as keyof typeof ROLE_PERMISSIONS] || [];
   
-  // 🚀 THE FIX: فنکشن کو بالکل صحیح ترتیب میں 3 پیرامیٹرز پاس کیے گئے ہیں
+  // 🚀 Properly passing 3 parameters for menu filtering
   const visibleGroups = isLoaded ? getFilteredMenu(role, userPermissions as string[], featureFlags) : [];
 
   const toggleGroup = (title: string) => {
@@ -61,7 +61,8 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
   const handleLogout = async () => {
     try {
       await signOut(auth);
-      await fetch("/api/auth/logout", { method: "POST" });
+      // 🚀 THE FIX: Logout route updated to include "v1"
+      await fetch("/api/v1/auth/logout", { method: "POST" });
       window.location.href = "/";
     } catch (error) {
       console.error("Logout error:", error);
