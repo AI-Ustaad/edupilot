@@ -68,6 +68,15 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
     }
   };
 
+  // اگر پیج ابھی لوڈ ہو رہا ہے تو سفید سکرین کی بجائے لوڈر دکھائیں
+  if (authLoading) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center bg-gray-50">
+        <Loader2 className="w-10 h-10 animate-spin text-blue-600" />
+      </div>
+    );
+  }
+
   return (
     <div className="flex h-screen bg-white">
       {/* 🖥️ Desktop Sidebar */}
@@ -77,7 +86,7 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
         </div>
 
         <nav className="flex-1 overflow-y-auto py-4 sidebar-scrollbar relative">
-          {menuLoading || authLoading ? (
+          {menuLoading ? (
             <div className="flex justify-center items-center h-32 text-gray-400">
               <Loader2 className="w-6 h-6 animate-spin" />
             </div>
