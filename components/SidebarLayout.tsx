@@ -21,6 +21,7 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
   // 🚀 Wait for auth before deciding role
   const role = user?.role || "superAdmin"; 
   
+  // 👉 یِہ لائن بالکل ایسی ہی ہونی چاہیے (بڑی بریکٹس [] کے ساتھ)
   const [menuGroups, setMenuGroups] = useState<any[]>([]);
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
   const [menuLoading, setMenuLoading] = useState(true);
@@ -30,7 +31,6 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
     let isMounted = true;
 
     const loadMenu = async () => {
-      // Don't render empty menu while firebase is authenticating
       if (authLoading) return; 
 
       try {
