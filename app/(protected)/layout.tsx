@@ -10,9 +10,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import MobileBottomNav from "@/components/MobileBottomNav";
 
-// 🚀 FIX 1: مینیو کنفیگ کا بالکل صحیح راستہ
+// 🚀 اگر آپ کی فائل کسی اور فولڈر میں ہے تو اس پاتھ کو اپنی ضرورت کے مطابق بدل لیجیے گا
 import { getFilteredMenu } from "@/lib/config/menu.config"; 
-// 🚀 FIX 2: رولز اور پرمیشنز کا بالکل صحیح راستہ
 import { ROLE_PERMISSIONS } from "@/lib/auth/roles"; 
 
 export default function ProtectedLayout({ children }: { children: React.ReactNode }) {
@@ -52,11 +51,11 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
   // Get user permissions
   const userPermissions = ROLE_PERMISSIONS[role as keyof typeof ROLE_PERMISSIONS] || [];
   
-  // 🚀 FIX 3: فنکشن اب صحیح طریقے سے 2 پیرامیٹرز پاس کر رہا ہے
-  const visibleGroups = isLoaded ? getFilteredMenu(userPermissions, featureFlags) : [];
+  // 🚀 THE FIX: فنکشن کو بالکل صحیح ترتیب میں 3 پیرامیٹرز پاس کیے گئے ہیں
+  const visibleGroups = isLoaded ? getFilteredMenu(role, userPermissions as string[], featureFlags) : [];
 
-  const toggleGroup = (key: string) => {
-    setOpenGroups((prev) => ({ ...prev, [key]: !prev[key] }));
+  const toggleGroup = (title: string) => {
+    setOpenGroups((prev) => ({ ...prev, [title]: !prev[title] }));
   };
 
   const handleLogout = async () => {
@@ -111,7 +110,6 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
       {/* Sidebar */}
       <motion.aside
         initial={false}
-        // 🚀 FIX 4: Server-Side Rendering (SSR) ایرر سے بچنے کے لیے window کو چیک کیا گیا ہے
         animate={{ x: isMobileMenuOpen ? 0 : typeof window !== 'undefined' && window.innerWidth < 768 ? -288 : 0 }}
         className={`fixed inset-y-0 left-0 z-40 w-72 flex flex-col bg-white border-r border-gray-100 shadow-sm md:relative md:translate-x-0 transition-transform duration-300 ease-in-out ${
           isMobileMenuOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
@@ -137,18 +135,18 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
 
         {/* Navigation Menu */}
         <nav className="flex-1 overflow-y-auto py-4 px-3 custom-scrollbar">
-          {visibleGroups.map((group) => (
-            <div key={group.title} className="mb-2">
+          {visibleGroups.map((group: any) => (
+            <div key={group.title || group.key} className="mb-2">
               {/* Group Header */}
               <button
-                onClick={() => toggleGroup(group.title)}
+                onClick={() => toggleGroup(group.title || group.key)}
                 className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-gray-600 hover:bg-gray-50 transition-colors group"
               >
                 <div className="flex items-center gap-3">
                   <group.icon size={18} className="text-blue-500 group-hover:text-blue-600 transition" />
                   <span className="text-xs font-bold uppercase tracking-wider">{group.title}</span>
                 </div>
-                {openGroups[group.title] ? (
+                {openGroups[group.title || group.key] ? (
                   <ChevronDown size={16} className="text-gray-400 transition" />
                 ) : (
                   <ChevronRight size={16} className="text-gray-400 transition" />
@@ -157,7 +155,7 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
 
               {/* Menu Items */}
               <AnimatePresence initial={false}>
-                {openGroups[group.title] && (
+                {openGroups[group.title || group.key] && (
                   <motion.div
                     initial={{ height: 0, opacity: 0 }}
                     animate={{ height: "auto", opacity: 1 }}
@@ -165,7 +163,7 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
                     transition={{ duration: 0.2 }}
                     className="ml-2 mt-1 space-y-1 overflow-hidden border-l-2 border-gray-100 pl-2"
                   >
-                    {group.items.map((item) => {
+                    {group.items.map((item: any) => {
                       const isActive = pathname === item.path || pathname.startsWith(item.path + "/");
                       return (
                         <button
