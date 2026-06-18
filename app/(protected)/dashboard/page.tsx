@@ -1,123 +1,286 @@
 "use client";
-
 import React from "react";
+import { motion } from "framer-motion";
 import { useAuth } from "@/context/AuthContext";
-import { useDashboardMetrics } from "@/hooks/useDashboardMetrics";
-import { Users, UserCheck, DollarSign, AlertTriangle, Loader2, TrendingUp, Calendar } from "lucide-react";
-import RequirePermission from "@/components/RequirePermission";
-import { PERMISSIONS } from "@/lib/auth/permissions";
+import {
+  Users, Briefcase, DollarSign, Activity, CalendarDays,
+  CreditCard, Clock, AlertTriangle, TrendingUp, Loader2,
+} from "lucide-react";
+import {
+  AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer,
+  PieChart, Pie, Cell,
+} from "recharts";
+import { useQuery } from "@tanstack/react-query";
+
+const fadeInUp = {
+  hidden: { opacity: 0, y: 20 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" } }
+};
+
+const staggerContainer = {
+  hidden: { opacity: 0 },
+  visible: { opacity: 1, transition: { staggerChildren: 0.1, delayChildren: 0.2 } }
+};
+
+const CHART_COLORS = ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#ec4899"];
+
+interface DashboardData {
+  students: number; staff: number; revenue: number;
+  todayAttendance: { present: number; absent: number };
+  attendanceTrend: { day: string; percent: number }[];
+  attendanceStats: { avg: number; highest: number; lowest: number };
+  feeMonth: { collected: number; pending: number; total: number };
+  classFeeSummary: { class: string; collected: number; total: number }[];
+  recentPayments: { id: string; studentName: string; amount: number; date: string }[];
+  classDistribution: { name: string; value: number }[];
+}
+
+// API Fetchers
+const fetchDashboardData = async () => {
+  const res = await fetch("/api/dashboard");
+  if (!res.ok) throw new Error("Failed to fetch dashboard data");
+  const json = await res.json();
+  return json.data || json;
+};
+
+const fetchRiskStudents = async () => {
+  const res = await fetch("/api/students/risk");
+  if (!res.ok) throw new Error("Failed to fetch risk students");
+  const json = await res.json();
+  return json.data || [];
+};
 
 export default function DashboardPage() {
   const { user } = useAuth();
-  const { data, isLoading, error } = useDashboardMetrics();
 
-  if (isLoading) {
+  const { data: data, isLoading: isDashLoading, error: dashError } = useQuery<DashboardData>({
+    queryKey: ["dashboard", user?.tenantId],
+    queryFn: fetchDashboardData,
+    enabled: !!user?.tenantId,
+  });
+
+  const { data: riskStudents = [] } = useQuery({
+    queryKey: ["riskStudents", user?.tenantId],
+    queryFn: fetchRiskStudents,
+    enabled: !!user?.tenantId,
+  });
+
+  if (isDashLoading) {
     return (
-      <div className="flex items-center justify-center h-[70vh]">
-        <div className="text-center">
-          <Loader2 className="animate-spin h-12 w-12 text-blue-600 mx-auto mb-4" />
-          <p className="text-gray-600 font-medium">Loading dashboard data...</p>
-        </div>
+      <div className="flex h-[70vh] items-center justify-center">
+        <Loader2 className="animate-spin text-blue-600" size={40} />
       </div>
     );
   }
 
-  if (error) {
+  if (dashError || !data) {
     return (
-      <div className="p-6">
-        <div className="bg-red-50 border border-red-200 text-red-700 p-6 rounded-2xl flex flex-col items-center gap-3 text-center">
-          <AlertTriangle size={32} />
-          <div>
-            <p className="font-bold text-lg">Failed to load dashboard</p>
-            <p className="text-sm">Please check your connection and try again.</p>
-          </div>
-        </div>
+      <div className="p-8 text-center text-red-500">
+        <AlertTriangle className="mx-auto mb-2" size={32} />
+        <p className="font-bold">Failed to load dashboard data.</p>
       </div>
     );
   }
 
-  const { metrics, risks } = data || { metrics: {}, risks: [] };
+  const attendancePercent =
+    data.todayAttendance.present + data.todayAttendance.absent > 0
+      ? ((data.todayAttendance.present / (data.todayAttendance.present + data.todayAttendance.absent)) * 100).toFixed(0)
+      : "0";
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6 animate-fade-in">
-      <div className="flex justify-between items-end border-b pb-4">
+    <motion.div initial="hidden" animate="visible" variants={staggerContainer} className="space-y-8">
+      {/* Header */}
+      <motion.div variants={fadeInUp} className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-black text-gray-900">Dashboard</h1>
-          <p className="text-gray-500 mt-1">Welcome back, here&apos;s what&apos;s happening today.</p>
+          <h1 className="text-3xl font-black text-gray-900">Command Center</h1>
+          <p className="text-gray-500 mt-1">Welcome back! Here's what's happening today.</p>
         </div>
-        <div className="hidden sm:flex items-center gap-2 bg-blue-50 text-blue-700 px-4 py-2 rounded-xl font-bold text-sm border border-blue-100">
-          <Calendar size={16} />
+        <div className="hidden md:flex items-center gap-2 bg-blue-50 text-blue-700 px-4 py-2 rounded-lg font-bold text-sm">
+          <CalendarDays size={16} />
           {new Date().toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
         </div>
-      </div>
+      </motion.div>
 
-      {/* Metrics Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <MetricCard title="Total Students" value={metrics.totalStudents || 0} icon={<Users className="text-blue-600" size={24} />} trend="+12%" color="blue" />
-        <MetricCard title="Total Staff" value={metrics.totalStaff || 0} icon={<UserCheck className="text-green-600" size={24} />} trend="+2%" color="green" />
-        <MetricCard title="Attendance Rate" value={`${metrics.attendanceRate || 0}%`} icon={<TrendingUp className="text-orange-600" size={24} />} trend="-1%" color="orange" />
-        
-        {/* 🛡️ Protected Revenue Metric */}
-        <RequirePermission permissions={[PERMISSIONS.analytics.view]}>
-          <MetricCard title="Total Revenue" value={`Rs. ${(metrics.totalRevenue || 0).toLocaleString()}`} icon={<DollarSign className="text-purple-600" size={24} />} trend="+8%" color="purple" />
-        </RequirePermission>
-      </div>
+      {/* KPI Cards */}
+      <motion.div variants={staggerContainer} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <KpiCard title="Total Students" value={data.students} icon={<Users size={24} className="text-blue-600" />} color="blue" />
+        <KpiCard title="Total Staff" value={data.staff} icon={<Briefcase size={24} className="text-purple-600" />} color="purple" />
+        <KpiCard title="Revenue (Month)" value={`Rs ${data.revenue.toLocaleString()}`} icon={<DollarSign size={24} className="text-green-600" />} color="green" />
+        <KpiCard title="Today's Attendance" value={`${attendancePercent}%`} subtitle={`${data.todayAttendance.present}P / ${data.todayAttendance.absent}A`} icon={<Activity size={24} className="text-cyan-600" />} color="cyan" />
+      </motion.div>
 
-      {/* At-Risk Students Section */}
-      <RequirePermission permissions={[PERMISSIONS.students.view]}>
-        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden mt-6">
-          <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between bg-gray-50">
-            <h2 className="font-bold text-gray-800 flex items-center gap-2">
-              <AlertTriangle size={20} className="text-red-500" /> Students at Risk
-            </h2>
-            <span className="text-xs font-bold bg-red-100 text-red-700 px-3 py-1 rounded-full border border-red-200">
-              {risks.length} Alert(s)
-            </span>
-          </div>
-          
-          {risks.length === 0 ? (
-            <div className="p-8 text-center text-gray-500 bg-white">
-              <p className="font-medium">No students at risk. Great job!</p>
-            </div>
-          ) : (
-            <div className="divide-y divide-gray-100 bg-white">
-              {risks.slice(0, 5).map((risk: any, index: number) => (
-                <div key={index} className="px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition">
-                  <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center border border-red-200">
-                      <span className="text-red-600 font-bold text-sm">{risk.studentName.charAt(0)}</span>
-                    </div>
-                    <div>
-                      <p className="font-bold text-gray-900">{risk.studentName}</p>
-                      <p className="text-xs text-gray-500 font-medium">Risk Score: {risk.riskScore}/100</p>
-                    </div>
+      {/* At Risk Students Section (AI Feature) */}
+      {riskStudents.length > 0 && (
+        <motion.div variants={fadeInUp} className="bg-gradient-to-br from-red-50 to-orange-50 border border-red-100 rounded-2xl p-6">
+          <h2 className="text-lg font-bold text-red-800 mb-4 flex items-center gap-2">
+            <AlertTriangle className="text-red-600" /> Students At Risk ({riskStudents.length})
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {riskStudents.slice(0, 6).map((student: any) => (
+              <div key={student.id} className="bg-white border border-red-100 rounded-xl p-4 shadow-sm">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <p className="font-bold text-gray-900">{student.fullName || student.name}</p>
+                    <p className="text-xs text-gray-500">{student.classGrade} {student.section}</p>
                   </div>
-                  <div className="text-right">
-                    <p className="text-sm font-bold text-red-600">{risk.reason}</p>
-                    <button className="text-xs text-blue-600 font-bold mt-1 hover:underline">View Profile</button>
-                  </div>
+                  <span className="text-xs bg-red-100 text-red-800 px-2 py-1 rounded-full font-bold">
+                    {student.riskReason || "At Risk"}
+                  </span>
                 </div>
-              ))}
+                <div className="flex gap-4 mt-3 text-xs">
+                  <div><p className="text-gray-400">Attendance</p><p className="font-bold text-red-600">{student.attendance}%</p></div>
+                  <div><p className="text-gray-400">Marks</p><p className="font-bold text-orange-600">{student.marks}%</p></div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </motion.div>
+      )}
+
+      {/* Charts Row 1 */}
+      <div className="grid lg:grid-cols-2 gap-6">
+        <motion.div variants={fadeInUp} className="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm">
+          <h3 className="text-lg font-bold flex items-center gap-2 mb-4 text-gray-900">
+            <TrendingUp size={20} className="text-blue-600" /> Weekly Attendance Trend
+          </h3>
+          <ResponsiveContainer width="100%" height={280}>
+            <AreaChart data={data.attendanceTrend}>
+              <defs>
+                <linearGradient id="colorPercent" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.8}/>
+                  <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                </linearGradient>
+              </defs>
+              <XAxis dataKey="day" stroke="#9ca3af" fontSize={12} />
+              <YAxis domain={[0, 100]} stroke="#9ca3af" fontSize={12} />
+              <Tooltip contentStyle={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: "12px" }} />
+              <Area type="monotone" dataKey="percent" stroke="#3b82f6" strokeWidth={3} fillOpacity={1} fill="url(#colorPercent)" />
+            </AreaChart>
+          </ResponsiveContainer>
+          <div className="grid grid-cols-3 gap-4 mt-4 text-center">
+            <div><p className="text-gray-500 text-xs">Average</p><p className="text-xl font-black text-gray-900">{data.attendanceStats.avg}%</p></div>
+            <div><p className="text-gray-500 text-xs">Highest</p><p className="text-xl font-black text-green-600">{data.attendanceStats.highest}%</p></div>
+            <div><p className="text-gray-500 text-xs">Lowest</p><p className="text-xl font-black text-red-500">{data.attendanceStats.lowest}%</p></div>
+          </div>
+        </motion.div>
+
+        <motion.div variants={fadeInUp} className="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm">
+          <h3 className="text-lg font-bold mb-4 flex items-center gap-2 text-gray-900">
+            <CreditCard size={20} className="text-green-600" /> Fee Collection (Current Month)
+          </h3>
+          <div className="mb-6">
+            <div className="flex justify-between text-sm mb-2">
+              <span className="text-gray-600 font-medium">Collected: <span className="font-bold text-green-600">Rs {data.feeMonth.collected.toLocaleString()}</span></span>
+              <span className="text-gray-500">Pending: <span className="font-bold text-orange-500">Rs {data.feeMonth.pending.toLocaleString()}</span></span>
+            </div>
+            <div className="w-full bg-gray-100 rounded-full h-3">
+              <div className="bg-gradient-to-r from-green-400 to-green-600 h-3 rounded-full" style={{ width: `${(data.feeMonth.collected / (data.feeMonth.total || 1)) * 100}%` }} />
+            </div>
+          </div>
+          <h4 className="font-bold mb-3 text-gray-800 text-sm">Class-wise Collection</h4>
+          <div className="space-y-3">
+            {data.classFeeSummary.map((c) => (
+              <div key={c.class}>
+                <div className="flex justify-between text-sm mb-1">
+                  <span className="text-gray-700 font-medium">{c.class}</span>
+                  <span className="text-gray-500">Rs {c.collected.toLocaleString()}</span>
+                </div>
+                <div className="w-full bg-gray-100 rounded-full h-2">
+                  <div className="bg-blue-500 h-2 rounded-full" style={{ width: `${(c.collected / (c.total || 1)) * 100}%` }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </motion.div>
+      </div>
+
+      {/* Charts Row 2 */}
+      <div className="grid lg:grid-cols-2 gap-6">
+        <motion.div variants={fadeInUp} className="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm">
+          <h3 className="text-lg font-bold mb-4 flex items-center gap-2 text-gray-900">
+            <Users size={20} className="text-purple-600" /> Student Distribution
+          </h3>
+          {data.classDistribution.length === 0 ? (
+            <div className="h-64 flex items-center justify-center text-gray-400">No data available</div>
+          ) : (
+            <div className="flex flex-col md:flex-row items-center gap-8">
+              <ResponsiveContainer width="100%" height={250}>
+                <PieChart>
+                  <Pie data={data.classDistribution} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={90} innerRadius={50} paddingAngle={2}>
+                    {data.classDistribution.map((_, idx) => (
+                      <Cell key={idx} fill={CHART_COLORS[idx % CHART_COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="flex flex-col gap-2 w-full">
+                {data.classDistribution.map((item, idx) => (
+                  <div key={idx} className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 rounded-full" style={{ backgroundColor: CHART_COLORS[idx % CHART_COLORS.length] }} />
+                      <span className="text-sm text-gray-700 font-medium">{item.name}</span>
+                    </div>
+                    <span className="text-sm font-bold text-gray-900">{item.value}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
-        </div>
-      </RequirePermission>
-    </div>
+        </motion.div>
+
+        <motion.div variants={fadeInUp} className="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm">
+          <h3 className="text-lg font-bold mb-4 flex items-center gap-2 text-gray-900">
+            <Clock size={20} className="text-orange-500" /> Recent Payments
+          </h3>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="text-gray-500 border-b border-gray-100">
+                <tr>
+                  <th className="pb-3 text-left font-bold">Student</th>
+                  <th className="pb-3 text-left font-bold">Month</th>
+                  <th className="pb-3 text-right font-bold">Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.recentPayments.map((p) => (
+                  <tr key={p.id} className="border-b border-gray-50 last:border-0">
+                    <td className="py-3 text-gray-900 font-medium">{p.studentName}</td>
+                    <td className="py-3 text-gray-600">{p.date}</td>
+                    <td className="py-3 text-green-600 font-bold text-right">Rs {p.amount.toLocaleString()}</td>
+                  </tr>
+                ))}
+                {data.recentPayments.length === 0 && (
+                  <tr><td colSpan={3} className="py-6 text-center text-gray-400">No recent payments</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </motion.div>
+      </div>
+    </motion.div>
   );
 }
 
-function MetricCard({ title, value, icon, trend, color }: any) {
-  const isPositive = trend.startsWith("+");
+// KPI Card Component
+function KpiCard({ title, value, icon, subtitle, color }: any) {
+  const colorClasses: Record<string, string> = {
+    blue: "bg-blue-50 text-blue-600", purple: "bg-purple-50 text-purple-600",
+    green: "bg-green-50 text-green-600", cyan: "bg-cyan-50 text-cyan-600",
+  };
+
   return (
-    <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm hover:shadow-md transition">
-      <div className="flex justify-between items-start mb-4">
-        <div className={`p-3 bg-${color}-50 rounded-xl border border-${color}-100`}>{icon}</div>
-        <span className={`text-[10px] tracking-wider font-black px-2 py-1 rounded-md border ${isPositive ? 'bg-green-50 text-green-700 border-green-200' : 'bg-red-50 text-red-700 border-red-200'}`}>
-          {trend}
-        </span>
+    <motion.div variants={fadeInUp} whileHover={{ y: -5, transition: { duration: 0.2 } }}>
+      <div className="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm hover:shadow-md transition-all">
+        <div className="flex justify-between items-start">
+          <div>
+            <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">{title}</p>
+            <p className="text-3xl font-black mt-2 text-gray-900">{value}</p>
+            {subtitle && <p className="text-xs text-gray-500 mt-1 font-medium">{subtitle}</p>}
+          </div>
+          <div className={`p-3 rounded-xl ${colorClasses[color] || colorClasses.blue}`}>{icon}</div>
+        </div>
       </div>
-      <p className="text-sm text-gray-500 font-bold">{title}</p>
-      <p className="text-2xl font-black text-gray-900 mt-1">{value}</p>
-    </div>
+    </motion.div>
   );
 }
