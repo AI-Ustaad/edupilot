@@ -1,16 +1,16 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React from "react";
 import { motion } from "framer-motion";
 import { useAuth } from "@/context/AuthContext";
 import {
   Users, Briefcase, DollarSign, Activity, CalendarDays,
   CreditCard, Clock, AlertTriangle, TrendingUp, Loader2,
-  GraduationCap, Target, Heart, BarChart3
+  GraduationCap
 } from "lucide-react";
 import {
   AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell, LineChart, Line,
+  PieChart, Pie, Cell
 } from "recharts";
 import { useQuery } from "@tanstack/react-query";
 
@@ -39,15 +39,23 @@ interface DashboardData {
   classDistribution: { name: string; value: number }[];
 }
 
+// 🚀 FIX: Updated to /api/v1/ and added credentials
 const fetchDashboardData = async () => {
-  const res = await fetch("/api/dashboard");
+  const res = await fetch("/api/v1/dashboard", {
+    credentials: "include",
+    cache: "no-store",
+  });
   if (!res.ok) throw new Error("Failed to fetch dashboard data");
   const json = await res.json();
   return json.data || json;
 };
 
+// 🚀 FIX: Updated to /api/v1/ and added credentials
 const fetchRiskStudents = async () => {
-  const res = await fetch("/api/students/risk");
+  const res = await fetch("/api/v1/students/risk", {
+    credentials: "include",
+    cache: "no-store",
+  });
   if (!res.ok) throw new Error("Failed to fetch risk students");
   const json = await res.json();
   return json.data || [];
@@ -56,7 +64,7 @@ const fetchRiskStudents = async () => {
 export default function DashboardPage() {
   const { user } = useAuth();
 
-  const { data: data, isLoading: isDashLoading, error: dashError } = useQuery<DashboardData>({
+  const { data, isLoading: isDashLoading, error: dashError } = useQuery<DashboardData>({
     queryKey: ["dashboard", user?.tenantId],
     queryFn: fetchDashboardData,
     enabled: !!user?.tenantId,
@@ -84,8 +92,8 @@ export default function DashboardPage() {
       <div className="p-8 text-center text-red-500">
         <div className="bg-red-50 border border-red-200 rounded-2xl p-8 max-w-md mx-auto">
           <AlertTriangle className="mx-auto mb-4 text-red-600" size={48} />
-          <h3 className="text-xl font-bold text-red-800 mb-2">Failed to load dashboard</h3>
-          <p className="text-red-600 mb-4">Please try refreshing the page or contact support.</p>
+          <h3 className="text-xl font-bold text-red-800 mb-2">Dashboard Analytics Failed</h3>
+          <p className="text-red-600 mb-4">We couldn&apos;t load your dashboard data. Please check your connection or try again.</p>
           <button
             onClick={() => window.location.reload()}
             className="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-xl font-bold transition"
@@ -108,7 +116,6 @@ export default function DashboardPage() {
       <motion.div variants={fadeInUp} className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h1 className="text-3xl md:text-4xl font-black text-gray-900">Command Center</h1>
-          {/* 🚀 FIX: Here's what's happening کو HTML entities کے ساتھ ٹھیک کر دیا گیا ہے */}
           <p className="text-gray-500 mt-2 text-lg">Welcome back! Here&apos;s what&apos;s happening at your school today.</p>
         </div>
         <div className="flex items-center gap-2 bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700 px-5 py-3 rounded-xl font-bold text-sm border border-blue-100 shadow-sm">
@@ -124,21 +131,18 @@ export default function DashboardPage() {
           value={data.students.toLocaleString()} 
           icon={<Users size={24} className="text-blue-600" />} 
           color="blue"
-          trend="+12%"
         />
         <KpiCard 
           title="Total Staff" 
           value={data.staff.toLocaleString()} 
           icon={<Briefcase size={24} className="text-purple-600" />} 
           color="purple"
-          trend="+5%"
         />
         <KpiCard 
           title="Revenue (Month)" 
           value={`Rs ${data.revenue.toLocaleString()}`} 
           icon={<DollarSign size={24} className="text-green-600" />} 
           color="green"
-          trend="+18%"
         />
         <KpiCard 
           title="Today's Attendance" 
@@ -185,12 +189,6 @@ export default function DashboardPage() {
                     <p className="text-gray-400 text-xs font-medium mb-1">Marks</p>
                     <p className="font-black text-orange-600 text-lg">{student.marks}%</p>
                   </div>
-                  {student.feeStatus && (
-                    <div>
-                      <p className="text-gray-400 text-xs font-medium mb-1">Fee Status</p>
-                      <p className="font-black text-yellow-600 text-lg">{student.feeStatus}</p>
-                    </div>
-                  )}
                 </div>
               </div>
             ))}
@@ -229,20 +227,6 @@ export default function DashboardPage() {
               />
             </AreaChart>
           </ResponsiveContainer>
-          <div className="grid grid-cols-3 gap-4 mt-6 text-center">
-            <div className="bg-gray-50 rounded-xl p-3">
-              <p className="text-gray-500 text-xs font-medium mb-1">Average</p>
-              <p className="text-2xl font-black text-gray-900">{data.attendanceStats.avg}%</p>
-            </div>
-            <div className="bg-green-50 rounded-xl p-3">
-              <p className="text-gray-500 text-xs font-medium mb-1">Highest</p>
-              <p className="text-2xl font-black text-green-600">{data.attendanceStats.highest}%</p>
-            </div>
-            <div className="bg-red-50 rounded-xl p-3">
-              <p className="text-gray-500 text-xs font-medium mb-1">Lowest</p>
-              <p className="text-2xl font-black text-red-500">{data.attendanceStats.lowest}%</p>
-            </div>
-          </div>
         </motion.div>
 
         <motion.div variants={fadeInUp} className="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm">
@@ -263,13 +247,10 @@ export default function DashboardPage() {
                 className="bg-gradient-to-r from-green-400 to-green-600 h-full rounded-full"
               />
             </div>
-            <p className="text-sm text-gray-600 mt-3 text-center">
-              Collection Rate: <span className="font-bold text-green-600">{((data.feeMonth.collected / (data.feeMonth.total || 1)) * 100).toFixed(1)}%</span>
-            </p>
           </div>
           <h4 className="font-bold mb-4 text-gray-800 text-sm">Class-wise Collection</h4>
           <div className="space-y-3 max-h-48 overflow-y-auto custom-scrollbar">
-            {data.classFeeSummary.map((c) => (
+            {data.classFeeSummary.map((c: any) => (
               <div key={c.class}>
                 <div className="flex justify-between text-sm mb-1.5">
                   <span className="text-gray-700 font-medium">{c.class}</span>
@@ -323,7 +304,7 @@ export default function DashboardPage() {
                 </PieChart>
               </ResponsiveContainer>
               <div className="flex flex-col gap-2 w-full">
-                {data.classDistribution.map((item, idx) => (
+                {data.classDistribution.map((item: any, idx: number) => (
                   <div key={idx} className="flex items-center justify-between p-2 hover:bg-gray-50 rounded-lg transition">
                     <div className="flex items-center gap-3">
                       <div className="w-4 h-4 rounded-full" style={{ backgroundColor: CHART_COLORS[idx % CHART_COLORS.length] }} />
@@ -352,7 +333,7 @@ export default function DashboardPage() {
                 </tr>
               </thead>
               <tbody>
-                {data.recentPayments.slice(0, 8).map((p) => (
+                {data.recentPayments.slice(0, 8).map((p: any) => (
                   <tr key={p.id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50 transition">
                     <td className="py-3.5 text-gray-900 font-medium">{p.studentName}</td>
                     <td className="py-3.5 text-gray-600">{p.date}</td>
