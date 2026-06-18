@@ -21,8 +21,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const loadUser = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await fetch("/api/auth/me", { cache: "no-store" });
-
+      // 🚀 FIX: Added v1 to the path and included credentials
+      const res = await fetch("/api/v1/auth/me", { 
+        cache: "no-store",
+        credentials: "include" 
+      });
+      
       if (res.status === 401) {
         setUser(null);
         return;
