@@ -38,7 +38,7 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
   }, []);
 
   // Filter menu based on permissions and feature flags
-  const visibleGroups = getFilteredMenu(userPermissions, featureFlags);
+  const visibleGroups = getFilteredMenu(role, userPermissions, featureFlags);
 
   const toggleGroup = (key: string) => {
     setOpenGroups((prev) => ({ ...prev, [key]: !prev[key] }));
