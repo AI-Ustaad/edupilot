@@ -108,7 +108,8 @@ export default function DashboardPage() {
       <motion.div variants={fadeInUp} className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h1 className="text-3xl md:text-4xl font-black text-gray-900">Command Center</h1>
-       <p className="text-gray-500 mt-2 text-lg">Welcome back! Here&apos;s what&apos;s happening at your school today.</p>
+          {/* 🚀 FIX: Here's what's happening کو HTML entities کے ساتھ ٹھیک کر دیا گیا ہے */}
+          <p className="text-gray-500 mt-2 text-lg">Welcome back! Here&apos;s what&apos;s happening at your school today.</p>
         </div>
         <div className="flex items-center gap-2 bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700 px-5 py-3 rounded-xl font-bold text-sm border border-blue-100 shadow-sm">
           <CalendarDays size={18} />
