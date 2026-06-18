@@ -93,7 +93,7 @@ export default function DashboardPage() {
       <motion.div variants={fadeInUp} className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-black text-gray-900">Command Center</h1>
-          <p className="text-gray-500 mt-1">Welcome back! Here's what's happening today.</p>
+         <p className="text-gray-500 mt-1">Welcome back! Here&apos;s what&apos;s happening today.</p>
         </div>
         <div className="hidden md:flex items-center gap-2 bg-blue-50 text-blue-700 px-4 py-2 rounded-lg font-bold text-sm">
           <CalendarDays size={16} />
