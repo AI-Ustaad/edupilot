@@ -1,15 +1,217 @@
-import dynamic from "next/dynamic";
-import SidebarLayout from "@/components/SidebarLayout";
-import { ReactNode } from "react";
+"use client";
 
-const RouteGuard = dynamic(() => import("@/components/RouteGuard"), {
-  ssr: false,
-});
+import { useState, useEffect } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { signOut } from "firebase/auth";
+import { auth } from "@/lib/firebase";
+import { Menu, X, LogOut, ShieldCheck, ChevronDown, ChevronRight } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
+import { getFilteredMenu } from "@/lib/menu-config";
+import { ROLE_PERMISSIONS } from "@/lib/auth/permissions";
+import { motion, AnimatePresence } from "framer-motion";
+import LanguageSwitcher from "@/components/LanguageSwitcher";
+import MobileBottomNav from "@/components/MobileBottomNav";
 
-export default function ProtectedLayout({ children }: { children: ReactNode }) {
+export default function ProtectedLayout({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+  const router = useRouter();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
+  const [featureFlags, setFeatureFlags] = useState<Record<string, boolean>>({});
+  const [isLoaded, setIsLoaded] = useState(false);
+
+  const { user, loading: authLoading } = useAuth();
+  const role = user?.role || "teacher";
+
+  // Initialize open groups
+  useEffect(() => {
+    const initialOpenGroups: Record<string, boolean> = {};
+    // Open first few groups by default
+    ["dashboard", "students", "academics"].forEach(key => {
+      initialOpenGroups[key] = true;
+    });
+    setOpenGroups(initialOpenGroups);
+    setIsLoaded(true);
+  }, []);
+
+  // Fetch feature flags
+  useEffect(() => {
+    if (!user?.tenantId) return;
+    
+    fetch("/api/admin/feature-flags")
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) setFeatureFlags(data.data || {});
+      })
+      .catch(console.error);
+  }, [user?.tenantId]);
+
+  // Get user permissions
+  const userPermissions = ROLE_PERMISSIONS[role] || [];
+  
+  // Filter menu based on role, permissions, and feature flags
+  const visibleGroups = isLoaded ? getFilteredMenu(role, userPermissions, featureFlags) : [];
+
+  const toggleGroup = (key: string) => {
+    setOpenGroups((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      await fetch("/api/auth/logout", { method: "POST" });
+      window.location.href = "/";
+    } catch (error) {
+      console.error("Logout error:", error);
+    }
+  };
+
+  if (authLoading) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-slate-50">
+        <div className="flex flex-col items-center gap-4">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-600" />
+          <p className="text-gray-600 font-medium">Loading EduPilot...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <SidebarLayout>
-      <RouteGuard>{children}</RouteGuard>
-    </SidebarLayout>
+    <div className="flex h-screen bg-slate-50 overflow-hidden">
+      {/* Mobile Menu Button */}
+      <button
+        className="md:hidden fixed top-4 right-4 z-50 p-2.5 bg-white rounded-xl shadow-lg border border-gray-100 hover:bg-gray-50 transition"
+        onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+        aria-label="Toggle menu"
+      >
+        {isMobileMenuOpen ? (
+          <X size={24} className="text-gray-700" />
+        ) : (
+          <Menu size={24} className="text-gray-700" />
+        )}
+      </button>
+
+      {/* Mobile Overlay */}
+      <AnimatePresence>
+        {isMobileMenuOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/40 backdrop-blur-sm z-30 md:hidden"
+            onClick={() => setIsMobileMenuOpen(false)}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Sidebar */}
+      <motion.aside
+        initial={false}
+        animate={{ x: isMobileMenuOpen ? 0 : window.innerWidth < 768 ? -288 : 0 }}
+        className={`fixed inset-y-0 left-0 z-40 w-72 flex flex-col bg-white border-r border-gray-100 shadow-sm md:relative md:translate-x-0 transition-transform duration-300 ease-in-out ${
+          isMobileMenuOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
+        }`}
+      >
+        {/* Logo Section */}
+        <div className="h-20 px-6 border-b border-gray-100 flex items-center gap-3 cursor-pointer shrink-0 hover:bg-gray-50 transition" onClick={() => router.push("/dashboard")}>
+          <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center shadow-md">
+            <ShieldCheck className="text-white w-6 h-6" />
+          </div>
+          <div>
+            <span className="text-xl font-black bg-gradient-to-r from-gray-900 to-gray-600 bg-clip-text text-transparent">
+              EduPilot
+            </span>
+            <p className="text-[10px] text-gray-400 font-medium -mt-1">School Management</p>
+          </div>
+        </div>
+
+        {/* Language Switcher */}
+        <div className="px-4 py-3 border-b border-gray-50 shrink-0">
+          <LanguageSwitcher />
+        </div>
+
+        {/* Navigation Menu */}
+        <nav className="flex-1 overflow-y-auto py-4 px-3 custom-scrollbar">
+          {visibleGroups.map((group) => (
+            <div key={group.key} className="mb-2">
+              {/* Group Header */}
+              <button
+                onClick={() => toggleGroup(group.key)}
+                className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-gray-600 hover:bg-gray-50 transition-colors group"
+              >
+                <div className="flex items-center gap-3">
+                  <group.icon size={18} className="text-blue-500 group-hover:text-blue-600 transition" />
+                  <span className="text-xs font-bold uppercase tracking-wider">{group.title}</span>
+                </div>
+                {openGroups[group.key] ? (
+                  <ChevronDown size={16} className="text-gray-400 transition" />
+                ) : (
+                  <ChevronRight size={16} className="text-gray-400 transition" />
+                )}
+              </button>
+
+              {/* Menu Items */}
+              <AnimatePresence initial={false}>
+                {openGroups[group.key] && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="ml-2 mt-1 space-y-1 overflow-hidden border-l-2 border-gray-100 pl-2"
+                  >
+                    {group.items.map((item) => {
+                      const isActive = pathname === item.path || pathname.startsWith(item.path + "/");
+                      return (
+                        <button
+                          key={item.id}
+                          onClick={() => {
+                            router.push(item.path);
+                            setIsMobileMenuOpen(false);
+                          }}
+                          className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
+                            isActive
+                              ? "bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700 shadow-sm border border-blue-100"
+                              : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                          }`}
+                        >
+                          <item.icon size={18} className={isActive ? "text-blue-600" : "text-gray-400"} />
+                          <span className="flex-1 text-left">{item.name}</span>
+                          {item.badge && (
+                            <span className="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-full font-bold">
+                              {item.badge}
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          ))}
+        </nav>
+
+        {/* Logout Section */}
+        <div className="p-4 border-t border-gray-100 shrink-0">
+          <button
+            onClick={handleLogout}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-red-600 hover:bg-red-50 transition-colors font-bold text-sm group"
+          >
+            <LogOut size={18} className="group-hover:scale-110 transition" />
+            <span>Secure Logout</span>
+          </button>
+        </div>
+      </motion.aside>
+
+      {/* Main Content */}
+      <main className="flex-1 overflow-y-auto bg-slate-50">
+        <div className="p-4 md:p-8 max-w-[1600px] mx-auto pb-24 md:pb-8">
+          {children}
+        </div>
+        <MobileBottomNav />
+      </main>
+    </div>
   );
 }
