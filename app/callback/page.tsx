@@ -13,13 +13,11 @@ export default function CallbackPage() {
       try {
         let user: User | null = null;
 
-        // Step 1: redirect result
         const result = await getRedirectResult(auth);
         if (result?.user) {
           user = result.user;
         }
 
-        // Step 2: fallback
         if (!user) {
           user = await new Promise<User | null>((resolve) => {
             const unsub = onAuthStateChanged(auth, (u) => {
@@ -34,11 +32,10 @@ export default function CallbackPage() {
           return;
         }
 
-        // Step 3: token
         const idToken = await user.getIdToken(true);
 
-        // Step 4: create session
-        const res = await fetch("/api/auth/session", {
+        // 🚀 FIX: Added v1 to the session API path
+        const res = await fetch("/api/v1/auth/session", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ idToken }),
@@ -50,7 +47,6 @@ export default function CallbackPage() {
           return;
         }
 
-        // Step 5: redirect
         window.location.replace("/dashboard");
 
       } catch (err) {
@@ -64,7 +60,7 @@ export default function CallbackPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center">
-      <p>Logging you in...</p>
+      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
     </div>
   );
 }
