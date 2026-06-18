@@ -10,7 +10,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import MobileBottomNav from "@/components/MobileBottomNav";
 
-// 🚀 Imports with correct paths
 import { getFilteredMenu } from "@/lib/config/menu.config"; 
 import { ROLE_PERMISSIONS } from "@/lib/auth/roles"; 
 
@@ -28,7 +27,6 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
   // Initialize open groups
   useEffect(() => {
     const initialOpenGroups: Record<string, boolean> = {};
-    // Open first few groups by default
     ["Command Center", "Students", "Academics"].forEach(key => {
       initialOpenGroups[key] = true;
     });
@@ -40,7 +38,8 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
   useEffect(() => {
     if (!user?.tenantId) return;
     
-    fetch("/api/admin/feature-flags")
+    // 🚀 FIX: API پاتھ میں 'v1' شامل کر دیا گیا ہے
+    fetch("/api/v1/admin/feature-flags")
       .then(res => res.json())
       .then(data => {
         if (data.success) setFeatureFlags(data.data || {});
@@ -51,7 +50,6 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
   // Get user permissions
   const userPermissions = ROLE_PERMISSIONS[role as keyof typeof ROLE_PERMISSIONS] || [];
   
-  // 🚀 Properly passing 3 parameters for menu filtering
   const visibleGroups = isLoaded ? getFilteredMenu(role, userPermissions as string[], featureFlags) : [];
 
   const toggleGroup = (title: string) => {
@@ -61,7 +59,7 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
   const handleLogout = async () => {
     try {
       await signOut(auth);
-      // 🚀 THE FIX: Logout route updated to include "v1"
+      // 🚀 FIX: Logout API پاتھ میں 'v1' شامل کر دیا گیا ہے
       await fetch("/api/v1/auth/logout", { method: "POST" });
       window.location.href = "/";
     } catch (error) {
@@ -138,7 +136,6 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
         <nav className="flex-1 overflow-y-auto py-4 px-3 custom-scrollbar">
           {visibleGroups.map((group: any) => (
             <div key={group.title || group.key} className="mb-2">
-              {/* Group Header */}
               <button
                 onClick={() => toggleGroup(group.title || group.key)}
                 className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-gray-600 hover:bg-gray-50 transition-colors group"
@@ -154,7 +151,6 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
                 )}
               </button>
 
-              {/* Menu Items */}
               <AnimatePresence initial={false}>
                 {openGroups[group.title || group.key] && (
                   <motion.div
