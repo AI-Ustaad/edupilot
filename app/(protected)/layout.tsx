@@ -6,11 +6,14 @@ import { signOut } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { Menu, X, LogOut, ShieldCheck, ChevronDown, ChevronRight } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
-import { getFilteredMenu } from "@/lib/menu-config";
-import { ROLE_PERMISSIONS } from "@/lib/auth/permissions";
 import { motion, AnimatePresence } from "framer-motion";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import MobileBottomNav from "@/components/MobileBottomNav";
+
+// 🚀 FIX 1: مینیو کنفیگ کا بالکل صحیح راستہ
+import { getFilteredMenu } from "@/lib/config/menu.config"; 
+// 🚀 FIX 2: رولز اور پرمیشنز کا بالکل صحیح راستہ
+import { ROLE_PERMISSIONS } from "@/lib/auth/roles"; 
 
 export default function ProtectedLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -27,7 +30,7 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
   useEffect(() => {
     const initialOpenGroups: Record<string, boolean> = {};
     // Open first few groups by default
-    ["dashboard", "students", "academics"].forEach(key => {
+    ["Command Center", "Students", "Academics"].forEach(key => {
       initialOpenGroups[key] = true;
     });
     setOpenGroups(initialOpenGroups);
@@ -47,10 +50,10 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
   }, [user?.tenantId]);
 
   // Get user permissions
-  const userPermissions = ROLE_PERMISSIONS[role] || [];
+  const userPermissions = ROLE_PERMISSIONS[role as keyof typeof ROLE_PERMISSIONS] || [];
   
-  // Filter menu based on role, permissions, and feature flags
-  const visibleGroups = isLoaded ? getFilteredMenu(role, userPermissions, featureFlags) : [];
+  // 🚀 FIX 3: فنکشن اب صحیح طریقے سے 2 پیرامیٹرز پاس کر رہا ہے
+  const visibleGroups = isLoaded ? getFilteredMenu(userPermissions, featureFlags) : [];
 
   const toggleGroup = (key: string) => {
     setOpenGroups((prev) => ({ ...prev, [key]: !prev[key] }));
@@ -108,7 +111,8 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
       {/* Sidebar */}
       <motion.aside
         initial={false}
-        animate={{ x: isMobileMenuOpen ? 0 : window.innerWidth < 768 ? -288 : 0 }}
+        // 🚀 FIX 4: Server-Side Rendering (SSR) ایرر سے بچنے کے لیے window کو چیک کیا گیا ہے
+        animate={{ x: isMobileMenuOpen ? 0 : typeof window !== 'undefined' && window.innerWidth < 768 ? -288 : 0 }}
         className={`fixed inset-y-0 left-0 z-40 w-72 flex flex-col bg-white border-r border-gray-100 shadow-sm md:relative md:translate-x-0 transition-transform duration-300 ease-in-out ${
           isMobileMenuOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
         }`}
@@ -134,17 +138,17 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
         {/* Navigation Menu */}
         <nav className="flex-1 overflow-y-auto py-4 px-3 custom-scrollbar">
           {visibleGroups.map((group) => (
-            <div key={group.key} className="mb-2">
+            <div key={group.title} className="mb-2">
               {/* Group Header */}
               <button
-                onClick={() => toggleGroup(group.key)}
+                onClick={() => toggleGroup(group.title)}
                 className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-gray-600 hover:bg-gray-50 transition-colors group"
               >
                 <div className="flex items-center gap-3">
                   <group.icon size={18} className="text-blue-500 group-hover:text-blue-600 transition" />
                   <span className="text-xs font-bold uppercase tracking-wider">{group.title}</span>
                 </div>
-                {openGroups[group.key] ? (
+                {openGroups[group.title] ? (
                   <ChevronDown size={16} className="text-gray-400 transition" />
                 ) : (
                   <ChevronRight size={16} className="text-gray-400 transition" />
@@ -153,7 +157,7 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
 
               {/* Menu Items */}
               <AnimatePresence initial={false}>
-                {openGroups[group.key] && (
+                {openGroups[group.title] && (
                   <motion.div
                     initial={{ height: 0, opacity: 0 }}
                     animate={{ height: "auto", opacity: 1 }}
@@ -178,11 +182,6 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
                         >
                           <item.icon size={18} className={isActive ? "text-blue-600" : "text-gray-400"} />
                           <span className="flex-1 text-left">{item.name}</span>
-                          {item.badge && (
-                            <span className="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-full font-bold">
-                              {item.badge}
-                            </span>
-                          )}
                         </button>
                       );
                     })}
