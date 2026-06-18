@@ -2,9 +2,10 @@ import type { Metadata } from "next";
 import * as Sentry from "@sentry/nextjs";
 import "./globals.css";
 import Providers from "./providers";
+import ClientWrapper from "./ClientWrapper"; // 🚀 FIX: ClientWrapper امپورٹ کیا گیا ہے
 import enMessages from "../messages/en.json";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 export function generateMetadata(): Metadata {
   return {
@@ -28,7 +29,10 @@ export default function RootLayout({
           locale="en"
           messages={enMessages}
         >
-          {children}
+          {/* 🚀 FIX: پوری ایپ کو ClientWrapper کے اندر لپیٹ دیا گیا ہے */}
+          <ClientWrapper>
+            {children}
+          </ClientWrapper>
         </Providers>
       </body>
     </html>
