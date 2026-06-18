@@ -1,178 +1,168 @@
 "use client";
-
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { signOut } from "firebase/auth";
 import { auth } from "@/lib/firebase";
-import { Menu, X, LogOut, ChevronDown, ChevronRight, Loader2 } from "lucide-react";
+import { Menu, X, LogOut, ShieldCheck, ChevronDown, ChevronRight } from "lucide-react";
 import MobileBottomNav from "./MobileBottomNav";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { useAuth } from "@/context/AuthContext";
-import { menuService } from "@/services/menu.service";
+import { getFilteredMenu } from "@/lib/menu-config";
+import { ROLE_PERMISSIONS } from "@/lib/auth/permissions";
+import { motion, AnimatePresence } from "framer-motion";
 
 export default function SidebarLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  
-  const { user, loading: authLoading } = useAuth();
-  
-  // 🚀 Wait for auth before deciding role
-  const role = user?.role || "superAdmin"; 
-  
-  // 👉 یِہ لائن بالکل ایسی ہی ہونی چاہیے (بڑی بریکٹس [] کے ساتھ)
-  const [menuGroups, setMenuGroups] = useState<any[]>([]);
-  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
-  const [menuLoading, setMenuLoading] = useState(true);
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
+    academic: true, finance: true, operations: true, staff: true, teacher: true, ai: true, admin: true,
+  });
+  const [featureFlags, setFeatureFlags] = useState<Record<string, boolean>>({});
 
-  // 🚀 Fetch dynamic RBAC menu
+  const { user } = useAuth();
+  const role = user?.role || "teacher";
+  
+  // Get permissions for the current role
+  const userPermissions = ROLE_PERMISSIONS[role] || [];
+
+  // Fetch feature flags to hide/show AI & Advanced features
   useEffect(() => {
-    let isMounted = true;
+    fetch("/api/admin/feature-flags")
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) setFeatureFlags(data.data || {});
+      })
+      .catch(console.error);
+  }, []);
 
-    const loadMenu = async () => {
-      if (authLoading) return; 
+  // Filter menu based on permissions and feature flags
+  const visibleGroups = getFilteredMenu(userPermissions, featureFlags);
 
-      try {
-        const menus = await menuService.getMenuForUser(role, (user as any)?.permissions);
-        
-        if (isMounted) {
-          setMenuGroups(menus);
-          
-          // Keep all groups open by default for better UX
-          const initialOpenState: Record<string, boolean> = {};
-          menus.forEach(m => { initialOpenState[m.title] = true; });
-          setOpenGroups(initialOpenState);
-        }
-      } catch (error) {
-        console.error("Failed to load menu", error);
-      } finally {
-        if (isMounted) setMenuLoading(false);
-      }
-    };
-    
-    loadMenu();
-    return () => { isMounted = false; };
-  }, [role, user, authLoading]);
-
-  const toggleGroup = (title: string) => {
-    setOpenGroups((prev) => ({ ...prev, [title]: !prev[title] }));
+  const toggleGroup = (key: string) => {
+    setOpenGroups((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
   const handleLogout = async () => {
-    try {
-      await signOut(auth);
-      router.push("/login");
-    } catch (error) {
-      console.error("Logout failed:", error);
-    }
+    await signOut(auth);
+    await fetch("/api/auth/logout", { method: "POST" });
+    window.location.href = "/";
   };
 
-  // اگر پیج ابھی لوڈ ہو رہا ہے تو سفید سکرین کی بجائے لوڈر دکھائیں
-  if (authLoading) {
-    return (
-      <div className="flex h-screen w-full items-center justify-center bg-gray-50">
-        <Loader2 className="w-10 h-10 animate-spin text-blue-600" />
-      </div>
-    );
-  }
-
   return (
-    <div className="flex h-screen bg-white">
-      {/* 🖥️ Desktop Sidebar */}
-      <aside className="hidden md:flex flex-col w-64 bg-gray-50 border-r">
-        <div className="h-16 flex items-center justify-center border-b shrink-0">
-           <h1 className="text-xl font-bold text-blue-600 tracking-tight">EduPilot</h1>
+    <div className="flex h-screen bg-slate-50 overflow-hidden">
+      {/* Mobile Menu Button */}
+      <button
+        className="md:hidden fixed top-4 right-4 z-50 p-2.5 bg-white rounded-xl shadow-lg border border-gray-100"
+        onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+      >
+        {isMobileMenuOpen ? <X size={24} className="text-gray-700" /> : <Menu size={24} className="text-gray-700" />}
+      </button>
+
+      {/* Sidebar Overlay for Mobile */}
+      <AnimatePresence>
+        {isMobileMenuOpen && (
+          <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/40 backdrop-blur-sm z-30 md:hidden"
+            onClick={() => setIsMobileMenuOpen(false)}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Sidebar */}
+      <div
+        className={`fixed inset-y-0 left-0 z-40 w-72 flex flex-col transform transition-transform duration-300 ease-in-out md:relative md:translate-x-0 ${
+          isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"
+        } bg-white border-r border-gray-100 shadow-sm`}
+      >
+        {/* Logo */}
+        <div
+          className="h-20 px-6 border-b border-gray-100 flex items-center gap-3 cursor-pointer shrink-0"
+          onClick={() => router.push("/dashboard")}
+        >
+          <div className="w-10 h-10 bg-gradient-to-br from-primary to-accent rounded-xl flex items-center justify-center shadow-md">
+            <ShieldCheck className="text-white w-6 h-6" />
+          </div>
+          <span className="text-2xl font-black bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent">EduPilot</span>
         </div>
 
-        <nav className="flex-1 overflow-y-auto py-4 sidebar-scrollbar relative">
-          {menuLoading ? (
-            <div className="flex justify-center items-center h-32 text-gray-400">
-              <Loader2 className="w-6 h-6 animate-spin" />
-            </div>
-          ) : (
-            menuGroups.map((group: any, index: number) => (
-              <div key={index} className="mb-4">
-                {group.children ? (
-                  <button 
-                    onClick={() => toggleGroup(group.title)}
-                    className="w-full flex items-center justify-between px-4 py-2 text-xs font-bold text-gray-400 uppercase tracking-wider hover:bg-gray-100 transition-colors"
-                  >
-                    <div className="flex items-center gap-2">
-                      {group.icon && <group.icon className="w-4 h-4" />}
-                      <span>{group.title}</span>
-                    </div>
-                    {openGroups[group.title] ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-                  </button>
-                ) : (
-                  <Link
-                    href={group.href}
-                    className={`flex items-center gap-3 px-6 py-2.5 text-sm font-medium transition-all duration-200 ${
-                      pathname === group.href ? "bg-blue-50 text-blue-600 border-r-4 border-blue-600" : "text-gray-600 hover:bg-gray-100"
-                    }`}
-                  >
-                    {group.icon && <group.icon className={`w-4 h-4 ${pathname === group.href ? 'text-blue-600' : 'text-gray-400'}`} />}
-                    {group.title}
-                  </Link>
-                )}
+        {/* Language Switcher */}
+        <div className="px-4 py-3 border-b border-gray-50 shrink-0">
+          <LanguageSwitcher />
+        </div>
 
-                {group.children && openGroups[group.title] && (
-                  <div className="mt-1 space-y-1">
-                    {group.children.map((child: any, childIndex: number) => {
-                      const isActive = pathname === child.href || pathname.startsWith(`${child.href}/`);
+        {/* Navigation */}
+        <div className="flex-1 overflow-y-auto py-4 px-3 custom-scrollbar">
+          {visibleGroups.map((group) => (
+            <div key={group.title} className="mb-2">
+              {group.key ? (
+                <div
+                  className="flex items-center justify-between px-3 py-2.5 rounded-xl text-gray-600 hover:bg-gray-50 cursor-pointer transition-colors"
+                  onClick={() => toggleGroup(group.key!)}
+                >
+                  <div className="flex items-center gap-3">
+                    <group.icon size={18} className="text-blue-500" />
+                    <span className="text-xs font-bold uppercase tracking-wider">{group.title}</span>
+                  </div>
+                  {openGroups[group.key] ? <ChevronDown size={16} className="text-gray-400" /> : <ChevronRight size={16} className="text-gray-400" />}
+                </div>
+              ) : (
+                <div className="px-3 py-2.5">
+                   <span className="text-xs font-bold uppercase tracking-wider text-gray-400">{group.title}</span>
+                </div>
+              )}
+              
+              <AnimatePresence initial={false}>
+                {(!group.key || openGroups[group.key!]) && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="ml-2 mt-1 space-y-1 overflow-hidden border-l-2 border-gray-100 pl-2"
+                  >
+                    {group.items.map((item) => {
+                      const isActive = pathname === item.path || pathname.startsWith(item.path + "/");
                       return (
                         <Link
-                          key={childIndex}
-                          href={child.href}
-                          className={`flex items-center gap-3 px-6 py-2.5 text-sm font-medium transition-all duration-200 ${
-                            isActive 
-                              ? "bg-blue-50 text-blue-600 border-r-4 border-blue-600" 
-                              : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                          key={item.id}
+                          href={item.path}
+                          onClick={() => setIsMobileMenuOpen(false)}
+                          className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
+                            isActive
+                              ? "bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700 shadow-sm border border-blue-100"
+                              : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
                           }`}
                         >
-                          {child.icon && <child.icon className={`w-4 h-4 ${isActive ? 'text-blue-600' : 'text-gray-400'}`} />}
-                          {child.title}
+                          <item.icon size={18} className={isActive ? "text-blue-600" : "text-gray-400"} />
+                          <span>{item.name}</span>
                         </Link>
                       );
                     })}
-                  </div>
+                  </motion.div>
                 )}
-              </div>
-            ))
-          )}
-        </nav>
+              </AnimatePresence>
+            </div>
+          ))}
+        </div>
 
-        <div className="p-4 border-t shrink-0 bg-gray-50">
-          <LanguageSwitcher />
-          <button 
+        {/* Logout */}
+        <div className="p-4 border-t border-gray-100 shrink-0">
+          <button
             onClick={handleLogout}
-            className="mt-4 w-full flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 hover:text-red-700 rounded-lg transition-colors border border-transparent hover:border-red-100"
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-red-600 hover:bg-red-50 transition-colors font-bold text-sm"
           >
-            <LogOut className="w-4 h-4" />
-            Logout
+            <LogOut size={18} />
+            <span>Secure Logout</span>
           </button>
         </div>
-      </aside>
+      </div>
 
-      {/* 📱 Main Content Area */}
-      <main className="flex-1 overflow-y-auto flex flex-col bg-gray-50/50">
-        <div className="md:hidden flex items-center justify-between p-4 bg-white border-b shrink-0">
-           <h1 className="text-xl font-bold text-blue-600">EduPilot</h1>
-           <button 
-             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-             className="p-2 rounded-md hover:bg-gray-100 text-gray-600"
-            >
-             {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-           </button>
-        </div>
-        
-        <div className="p-4 md:p-8 flex-1">
-          {children}
-        </div>
-      </main>
-
-      {/* 📱 Mobile Navigation (Bottom Bar) */}
-      <div className="md:hidden shrink-0">
+      {/* Main Content */}
+      <div className="flex-1 overflow-y-auto bg-slate-50">
+        <div className="p-4 md:p-8 max-w-[1600px] mx-auto pb-24 md:pb-8">{children}</div>
         <MobileBottomNav />
       </div>
     </div>
