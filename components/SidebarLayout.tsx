@@ -8,7 +8,7 @@ import { Menu, X, LogOut, ShieldCheck, ChevronDown, ChevronRight } from "lucide-
 import MobileBottomNav from "./MobileBottomNav";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { useAuth } from "@/context/AuthContext";
-import { getFilteredMenu } from "@/lib/menu-config";
+import { getFilteredMenu } from "@/lib/config/menu.config";
 import { ROLE_PERMISSIONS } from "@/lib/auth/permissions";
 import { motion, AnimatePresence } from "framer-motion";
 
