@@ -1,13 +1,17 @@
 // lib/config/menu.config.ts
 
+// lib/config/menu.config.ts
+
 import { 
   LayoutDashboard, Users, UserPlus, Upload, ScanLine, Sparkles, Award, GraduationCap, 
   BookOpen, Layers, Library, CalendarDays, ClipboardCheck, FileQuestion, Database, 
   UserCircle, Briefcase, Clock, TrendingUp, FileText, Video, DollarSign, CreditCard, 
   Receipt, PieChart, Megaphone, MessageSquare, MessageCircle, Mail, Bus, Home, Box, 
   Bot, Brain, ShieldCheck, Settings, ToggleRight, Activity, Star, Server, Globe, 
-  HardDrive, Building2, Stethoscope, Scale, FileSymlink, Network, Banknote, CalendarCheck
+  HardDrive, Building2, Stethoscope, Scale, FileSymlink, Network, Banknote, CalendarCheck, Wallet 
 } from 'lucide-react';
+
+// ... (باقی کا سارا کوڈ ویسے ہی رہے گا)
 
 export interface MenuItem {
   id: string;
