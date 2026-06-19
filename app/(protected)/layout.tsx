@@ -49,8 +49,7 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
 
   // Get user permissions
   const userPermissions = ROLE_PERMISSIONS[role as keyof typeof ROLE_PERMISSIONS] || [];
-  
-  const visibleGroups = isLoaded ? getFilteredMenu(role, userPermissions as string[], featureFlags) : [];
+  const visibleGroups = isLoaded ? getFilteredMenu(userPermissions as string[], featureFlags) : [];
 
   const toggleGroup = (title: string) => {
     setOpenGroups((prev) => ({ ...prev, [title]: !prev[title] }));
