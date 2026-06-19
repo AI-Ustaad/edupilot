@@ -1,3 +1,5 @@
+// lib/config/menu.config.ts
+
 import { 
   LayoutDashboard, Users, BookOpen, UserCircle, ClipboardCheck,
   Wallet, Clock, Settings, ShieldCheck, GraduationCap, 
@@ -5,6 +7,7 @@ import {
   Bus, CalendarDays, Bot, Film, Star, PlusCircle
 } from 'lucide-react';
 
+// 🟢 KEEP: Interfaces
 export interface MenuItem {
   id: string;
   name: string;
@@ -21,7 +24,7 @@ export interface MenuGroup {
   items: MenuItem[];
 }
 
-// 1. Define All Menu Items with Permissions & Feature Flags (Old Awesome Structure)
+// 🟡 MERGE: Old 8-Group Hierarchy + New 2026 Permissions & Feature Flags
 export const MENU_CONFIG: MenuGroup[] = [
   {
     title: 'Command Center',
@@ -113,16 +116,18 @@ export const MENU_CONFIG: MenuGroup[] = [
   }
 ];
 
-// 2. Helper Function to Filter Menu (Fixed: Expects 2 arguments)
+// 🟢 KEEP: Signature uses (userPermissions, featureFlags) to match strict RBAC
 export const getFilteredMenu = (
   userPermissions: string[], 
   enabledFeatureFlags: Record<string, boolean> = {}
 ) => {
   return MENU_CONFIG.map(group => {
     const filteredItems = group.items.filter(item => {
+      // Check Permission
       if (item.requiredPermission && !userPermissions.includes(item.requiredPermission)) {
         return false;
       }
+      // Check Feature Flag (Premium Check)
       if (item.featureFlag && enabledFeatureFlags[item.featureFlag] === false) {
         return false;
       }
