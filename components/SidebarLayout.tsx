@@ -11,7 +11,7 @@ import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { useAuth } from "@/context/AuthContext";
 // 🚀 FIX: menu.config.ts کو امپورٹ کریں
 import { getFilteredMenu } from "@/lib/config/menu.config";
-import { ROLE_PERMISSIONS } from "@/lib/auth/permissions";
+import { ROLE_PERMISSIONS } from "@/lib/auth/roles";
 import { motion, AnimatePresence } from "framer-motion";
 
 export default function SidebarLayout({ children }: { children: React.ReactNode }) {
