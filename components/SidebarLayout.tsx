@@ -39,7 +39,7 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
   }, []);
 
   // 🚀 FIX: پاس کردہ پیرامیٹرز
-  const visibleGroups = getFilteredMenu(role, userPermissions as string[], featureFlags);
+  const visibleGroups = getFilteredMenu(userPermissions as string[], featureFlags);
 
   const toggleGroup = (key: string) => {
     setOpenGroups((prev) => ({ ...prev, [key]: !prev[key] }));
