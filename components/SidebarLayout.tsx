@@ -1,3 +1,5 @@
+// components/SidebarLayout.tsx
+
 "use client";
 
 import { useState, useEffect } from "react";
@@ -8,16 +10,18 @@ import { auth } from "@/lib/firebase";
 import { Menu, X, LogOut, ShieldCheck, ChevronDown, ChevronRight } from "lucide-react";
 import MobileBottomNav from "@/components/MobileBottomNav";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
+// 🟢 KEEP: 2026 Auth & RBAC
 import { useAuth } from "@/context/AuthContext";
-// 🚀 FIX: Correct imports for 2026 Architecture
 import { getFilteredMenu } from "@/lib/config/menu.config";
 import { ROLE_PERMISSIONS } from "@/lib/auth/roles";
+// 🔴 REPLACE: Old Framer Motion Animations
 import { motion, AnimatePresence } from "framer-motion";
 
 export default function SidebarLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  // 🟢 KEEP: Accordion State
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
     academic: true, finance: true, operations: true, staff: true, teacher: true, ai: true, admin: true,
   });
@@ -25,13 +29,10 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
 
   const { user } = useAuth();
   const role = user?.role || "teacher";
-  
-  // Get permissions for the current role
   const userPermissions = ROLE_PERMISSIONS[role as keyof typeof ROLE_PERMISSIONS] || [];
 
-  // Fetch feature flags to hide/show AI & Advanced features
   useEffect(() => {
-    // 🚀 FIX: Using new v1 API path for feature flags
+    // 🟢 KEEP: v1 Feature Flags API with credentials
     fetch("/api/v1/admin/feature-flags", { credentials: "include" })
       .then(res => res.json())
       .then(data => {
@@ -40,7 +41,7 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
       .catch(console.error);
   }, []);
 
-  // 🚀 FIX: Correct 2-argument signature for getFilteredMenu
+  // 🟡 MERGE: Calling filtered menu strictly with 2 parameters
   const visibleGroups = getFilteredMenu(userPermissions as string[], featureFlags);
 
   const toggleGroup = (key: string) => {
@@ -49,8 +50,8 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
 
   const handleLogout = async () => {
     await signOut(auth);
-    // 🚀 FIX: Using new v1 API path for logout
-    await fetch("/api/v1/auth/logout", { method: "POST" });
+    // 🟢 KEEP: v1 Logout API with POST and credentials
+    await fetch("/api/v1/auth/logout", { method: "POST", credentials: "include" });
     window.location.href = "/";
   };
 
@@ -64,7 +65,7 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
         {isMobileMenuOpen ? <X size={24} className="text-gray-700" /> : <Menu size={24} className="text-gray-700" />}
       </button>
 
-      {/* Sidebar Overlay for Mobile */}
+      {/* Mobile Overlay */}
       <AnimatePresence>
         {isMobileMenuOpen && (
           <motion.div
@@ -75,7 +76,7 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
         )}
       </AnimatePresence>
 
-      {/* Sidebar - Original Awesome UI restored */}
+      {/* Sidebar - Accordion UI Restored */}
       <div
         className={`fixed inset-y-0 left-0 z-40 w-72 flex flex-col transform transition-transform duration-300 ease-in-out md:relative md:translate-x-0 ${
           isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"
@@ -97,7 +98,7 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
           <LanguageSwitcher />
         </div>
 
-        {/* Navigation */}
+        {/* Navigation - Animated Groups */}
         <div className="flex-1 overflow-y-auto py-4 px-3 custom-scrollbar">
           {visibleGroups.map((group: any) => (
             <div key={group.title} className="mb-2">
