@@ -14,20 +14,46 @@ import {
 } from "recharts";
 import { useQuery } from "@tanstack/react-query";
 
-const fadeInUp = { hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" } } };
-const staggerContainer = { hidden: { opacity: 0 }, visible: { opacity: 1, transition: { staggerChildren: 0.1, delayChildren: 0.2 } } };
+const fadeInUp = {
+  hidden: { opacity: 0, y: 20 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" } }
+};
+
+const staggerContainer = {
+  hidden: { opacity: 0 },
+  visible: { opacity: 1, transition: { staggerChildren: 0.1, delayChildren: 0.2 } }
+};
+
 const CHART_COLORS = ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#ec4899"];
 
-// 🚀 FIX: نئی v1 API اور Credentials کے ساتھ
+interface DashboardData {
+  students: number; staff: number; revenue: number;
+  todayAttendance: { present: number; absent: number };
+  attendanceTrend: { day: string; percent: number }[];
+  attendanceStats: { avg: number; highest: number; lowest: number };
+  feeMonth: { collected: number; pending: number; total: number };
+  classFeeSummary: { class: string; collected: number; total: number }[];
+  recentPayments: { id: string; studentName: string; amount: number; date: string }[];
+  classDistribution: { name: string; value: number }[];
+}
+
+// 🚀 FIX: SaaS 2026 v1 API اور Credentials شامل کیے گئے ہیں
 const fetchDashboardData = async () => {
-  const res = await fetch("/api/v1/dashboard", { credentials: "include", cache: "no-store" });
+  const res = await fetch("/api/v1/dashboard", {
+    credentials: "include",
+    cache: "no-store",
+  });
   if (!res.ok) throw new Error("Failed to fetch dashboard data");
   const json = await res.json();
   return json.data || json;
 };
 
+// 🚀 FIX: SaaS 2026 v1 API
 const fetchRiskStudents = async () => {
-  const res = await fetch("/api/v1/students/risk", { credentials: "include", cache: "no-store" });
+  const res = await fetch("/api/v1/students/risk", {
+    credentials: "include",
+    cache: "no-store",
+  });
   if (!res.ok) throw new Error("Failed to fetch risk students");
   const json = await res.json();
   return json.data || [];
@@ -36,7 +62,7 @@ const fetchRiskStudents = async () => {
 export default function DashboardPage() {
   const { user } = useAuth();
 
-  const { data, isLoading: isDashLoading, error: dashError } = useQuery({
+  const { data, isLoading: isDashLoading, error: dashError } = useQuery<DashboardData>({
     queryKey: ["dashboard", user?.tenantId],
     queryFn: fetchDashboardData,
     enabled: !!user?.tenantId,
@@ -65,13 +91,14 @@ export default function DashboardPage() {
     );
   }
 
-  const attendancePercent = data.todayAttendance.present + data.todayAttendance.absent > 0
-    ? ((data.todayAttendance.present / (data.todayAttendance.present + data.todayAttendance.absent)) * 100).toFixed(0)
-    : "0";
+  const attendancePercent =
+    data.todayAttendance.present + data.todayAttendance.absent > 0
+      ? ((data.todayAttendance.present / (data.todayAttendance.present + data.todayAttendance.absent)) * 100).toFixed(0)
+      : "0";
 
   return (
     <motion.div initial="hidden" animate="visible" variants={staggerContainer} className="space-y-8">
-      {/* 🚀 آپ کا پرانا اور Awesome Header اور Cards */}
+      {/* Header */}
       <motion.div variants={fadeInUp} className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-black text-gray-900">Command Center</h1>
@@ -83,6 +110,7 @@ export default function DashboardPage() {
         </div>
       </motion.div>
 
+      {/* KPI Cards */}
       <motion.div variants={staggerContainer} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         <KpiCard title="Total Students" value={data.students.toLocaleString()} icon={<Users size={24} className="text-blue-600" />} color="blue" />
         <KpiCard title="Total Staff" value={data.staff.toLocaleString()} icon={<Briefcase size={24} className="text-purple-600" />} color="purple" />
@@ -90,7 +118,7 @@ export default function DashboardPage() {
         <KpiCard title="Today's Attendance" value={`${attendancePercent}%`} subtitle={`${data.todayAttendance.present}P / ${data.todayAttendance.absent}A`} icon={<Activity size={24} className="text-cyan-600" />} color="cyan" />
       </motion.div>
 
-      {/* AI Risk Engine Data */}
+      {/* At Risk Students Section (AI Feature) */}
       {riskStudents.length > 0 && (
         <motion.div variants={fadeInUp} className="bg-gradient-to-br from-red-50 to-orange-50 border border-red-100 rounded-2xl p-6">
           <h2 className="text-lg font-bold text-red-800 mb-4 flex items-center gap-2">
@@ -118,7 +146,7 @@ export default function DashboardPage() {
         </motion.div>
       )}
 
-      {/* 🚀 آپ کے پرانے Attendance & Fee Charts */}
+      {/* Charts Row 1 */}
       <div className="grid lg:grid-cols-2 gap-6">
         <motion.div variants={fadeInUp} className="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm">
           <h3 className="text-lg font-bold flex items-center gap-2 mb-4 text-gray-900">
@@ -138,6 +166,11 @@ export default function DashboardPage() {
               <Area type="monotone" dataKey="percent" stroke="#3b82f6" strokeWidth={3} fillOpacity={1} fill="url(#colorPercent)" />
             </AreaChart>
           </ResponsiveContainer>
+          <div className="grid grid-cols-3 gap-4 mt-4 text-center">
+            <div><p className="text-gray-500 text-xs">Average</p><p className="text-xl font-black text-gray-900">{data.attendanceStats.avg}%</p></div>
+            <div><p className="text-gray-500 text-xs">Highest</p><p className="text-xl font-black text-green-600">{data.attendanceStats.highest}%</p></div>
+            <div><p className="text-gray-500 text-xs">Lowest</p><p className="text-xl font-black text-red-500">{data.attendanceStats.lowest}%</p></div>
+          </div>
         </motion.div>
 
         <motion.div variants={fadeInUp} className="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm">
@@ -153,17 +186,98 @@ export default function DashboardPage() {
               <div className="bg-gradient-to-r from-green-400 to-green-600 h-3 rounded-full" style={{ width: `${(data.feeMonth.collected / (data.feeMonth.total || 1)) * 100}%` }} />
             </div>
           </div>
+          <h4 className="font-bold mb-3 text-gray-800 text-sm">Class-wise Collection</h4>
+          <div className="space-y-3">
+            {data.classFeeSummary.map((c: any) => (
+              <div key={c.class}>
+                <div className="flex justify-between text-sm mb-1">
+                  <span className="text-gray-700 font-medium">{c.class}</span>
+                  <span className="text-gray-500">Rs {c.collected.toLocaleString()}</span>
+                </div>
+                <div className="w-full bg-gray-100 rounded-full h-2">
+                  <div className="bg-blue-500 h-2 rounded-full" style={{ width: `${(c.collected / (c.total || 1)) * 100}%` }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </motion.div>
+      </div>
+
+      {/* Charts Row 2 */}
+      <div className="grid lg:grid-cols-2 gap-6">
+        <motion.div variants={fadeInUp} className="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm">
+          <h3 className="text-lg font-bold mb-4 flex items-center gap-2 text-gray-900">
+            <Users size={20} className="text-purple-600" /> Student Distribution
+          </h3>
+          {data.classDistribution.length === 0 ? (
+            <div className="h-64 flex items-center justify-center text-gray-400">No data available</div>
+          ) : (
+            <div className="flex flex-col md:flex-row items-center gap-8">
+              <ResponsiveContainer width="100%" height={250}>
+                <PieChart>
+                  <Pie data={data.classDistribution} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={90} innerRadius={50} paddingAngle={2}>
+                    {data.classDistribution.map((_, idx) => (
+                      <Cell key={idx} fill={CHART_COLORS[idx % CHART_COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="flex flex-col gap-2 w-full">
+                {data.classDistribution.map((item: any, idx: number) => (
+                  <div key={idx} className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 rounded-full" style={{ backgroundColor: CHART_COLORS[idx % CHART_COLORS.length] }} />
+                      <span className="text-sm text-gray-700 font-medium">{item.name}</span>
+                    </div>
+                    <span className="text-sm font-bold text-gray-900">{item.value}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </motion.div>
+
+        <motion.div variants={fadeInUp} className="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm">
+          <h3 className="text-lg font-bold mb-4 flex items-center gap-2 text-gray-900">
+            <Clock size={20} className="text-orange-500" /> Recent Payments
+          </h3>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="text-gray-500 border-b border-gray-100">
+                <tr>
+                  <th className="pb-3 text-left font-bold">Student</th>
+                  <th className="pb-3 text-left font-bold">Month</th>
+                  <th className="pb-3 text-right font-bold">Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.recentPayments.map((p: any) => (
+                  <tr key={p.id} className="border-b border-gray-50 last:border-0">
+                    <td className="py-3 text-gray-900 font-medium">{p.studentName}</td>
+                    <td className="py-3 text-gray-600">{p.date}</td>
+                    <td className="py-3 text-green-600 font-bold text-right">Rs {p.amount.toLocaleString()}</td>
+                  </tr>
+                ))}
+                {data.recentPayments.length === 0 && (
+                  <tr><td colSpan={3} className="py-6 text-center text-gray-400">No recent payments</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
         </motion.div>
       </div>
     </motion.div>
   );
 }
 
+// KPI Card Component
 function KpiCard({ title, value, icon, subtitle, color }: any) {
   const colorClasses: Record<string, string> = {
     blue: "bg-blue-50 text-blue-600", purple: "bg-purple-50 text-purple-600",
     green: "bg-green-50 text-green-600", cyan: "bg-cyan-50 text-cyan-600",
   };
+
   return (
     <motion.div variants={fadeInUp} whileHover={{ y: -5, transition: { duration: 0.2 } }}>
       <div className="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm hover:shadow-md transition-all">
