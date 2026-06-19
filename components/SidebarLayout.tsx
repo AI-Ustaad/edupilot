@@ -9,7 +9,7 @@ import { Menu, X, LogOut, ShieldCheck, ChevronDown, ChevronRight } from "lucide-
 import MobileBottomNav from "@/components/MobileBottomNav";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { useAuth } from "@/context/AuthContext";
-// 🚀 FIX: Imports بالکل درست کر دی گئی ہیں
+// 🚀 FIX: Correct imports for 2026 Architecture
 import { getFilteredMenu } from "@/lib/config/menu.config";
 import { ROLE_PERMISSIONS } from "@/lib/auth/roles";
 import { motion, AnimatePresence } from "framer-motion";
@@ -31,7 +31,7 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
 
   // Fetch feature flags to hide/show AI & Advanced features
   useEffect(() => {
-    // 🚀 FIX: SaaS 2026 v1 API استعمال کی گئی ہے
+    // 🚀 FIX: Using new v1 API path for feature flags
     fetch("/api/v1/admin/feature-flags", { credentials: "include" })
       .then(res => res.json())
       .then(data => {
@@ -40,7 +40,7 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
       .catch(console.error);
   }, []);
 
-  // 🚀 FIX: getFilteredMenu اب صرف 2 arguments لیتا ہے جیسا ہم نے پچھلے ایرر میں ٹھیک کیا تھا
+  // 🚀 FIX: Correct 2-argument signature for getFilteredMenu
   const visibleGroups = getFilteredMenu(userPermissions as string[], featureFlags);
 
   const toggleGroup = (key: string) => {
@@ -49,7 +49,7 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
 
   const handleLogout = async () => {
     await signOut(auth);
-    // 🚀 FIX: SaaS 2026 v1 API
+    // 🚀 FIX: Using new v1 API path for logout
     await fetch("/api/v1/auth/logout", { method: "POST" });
     window.location.href = "/";
   };
@@ -75,7 +75,7 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
         )}
       </AnimatePresence>
 
-      {/* Sidebar */}
+      {/* Sidebar - Original Awesome UI restored */}
       <div
         className={`fixed inset-y-0 left-0 z-40 w-72 flex flex-col transform transition-transform duration-300 ease-in-out md:relative md:translate-x-0 ${
           isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"
