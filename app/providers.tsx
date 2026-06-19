@@ -1,7 +1,7 @@
 "use client";
 
 import { NextIntlClientProvider } from "next-intl";
-import QueryProvider from "@/components/QueryProvider"; // 🚀 FIX: QueryProvider امپورٹ کیا گیا ہے
+// ❌ یہاں سے QueryProvider ہٹا دیا گیا ہے تاکہ ڈپلیکیٹ نہ ہو۔ یہ اب صرف ClientWrapper میں چلے گا۔
 
 export default function Providers({
   children,
@@ -13,14 +13,8 @@ export default function Providers({
   messages: Record<string, any>;
 }) {
   return (
-    <NextIntlClientProvider
-      locale={locale}
-      messages={messages}
-    >
-      {/* 🚀 FIX: پوری ایپ کو QueryProvider میں لپیٹ دیا گیا ہے */}
-      <QueryProvider>
-        {children}
-      </QueryProvider>
+    <NextIntlClientProvider locale={locale} messages={messages}>
+      {children}
     </NextIntlClientProvider>
   );
 }
