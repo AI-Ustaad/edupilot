@@ -21,7 +21,7 @@ export interface MenuGroup {
   items: MenuItem[];
 }
 
-// 1. Define All Menu Items with Permissions & Feature Flags
+// 1. Define All Menu Items with Permissions & Feature Flags (Old Awesome Structure)
 export const MENU_CONFIG: MenuGroup[] = [
   {
     title: 'Command Center',
@@ -113,18 +113,16 @@ export const MENU_CONFIG: MenuGroup[] = [
   }
 ];
 
-// 2. Helper Function to Filter Menu Based on Permissions & Feature Flags
+// 2. Helper Function to Filter Menu (Fixed: Expects 2 arguments)
 export const getFilteredMenu = (
   userPermissions: string[], 
   enabledFeatureFlags: Record<string, boolean> = {}
 ) => {
   return MENU_CONFIG.map(group => {
     const filteredItems = group.items.filter(item => {
-      // Check Permission
       if (item.requiredPermission && !userPermissions.includes(item.requiredPermission)) {
         return false;
       }
-      // Check Feature Flag
       if (item.featureFlag && enabledFeatureFlags[item.featureFlag] === false) {
         return false;
       }
@@ -132,5 +130,5 @@ export const getFilteredMenu = (
     });
 
     return { ...group, items: filteredItems };
-  }).filter(group => group.items.length > 0); // Remove empty groups
+  }).filter(group => group.items.length > 0); 
 };
