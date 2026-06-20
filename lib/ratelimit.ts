@@ -2,7 +2,7 @@
 import { Ratelimit } from "@upstash/ratelimit";
 import { Redis } from "@upstash/redis";
 
-// 1. Redis client صرف تب بنائیں اگر ویریبلز موجود ہوں
+// Redis client صرف تب بنائیں جب ویریبلز موجود ہوں
 let redis: Redis | null = null;
 if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
   redis = new Redis({
@@ -11,42 +11,30 @@ if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) 
   });
 }
 
-// 2. ریئل Ratelimit instances (یا null)
-const _authLimiter = redis
-  ? new Ratelimit({
-      redis,
-      limiter: Ratelimit.slidingWindow(5, "60 s"),  // 5 req/min
-      prefix: "edupilot:auth",
-    })
-  : null;
-
-const _aiLimiter = redis
-  ? new Ratelimit({
-      redis,
-      limiter: Ratelimit.slidingWindow(10, "60 s"), // 10 req/min
-      prefix: "edupilot:ai",
-    })
-  : null;
-
-const _standardLimiter = redis
-  ? new Ratelimit({
-      redis,
-      limiter: Ratelimit.slidingWindow(30, "60 s"), // 30 req/min
-      prefix: "edupilot:standard",
-    })
-  : null;
-
-// 3. ڈمی limiter (جب Redis نہ ہو) – یہ withRateLimit کو خوش رکھتا ہے
+// ڈمی limiter – ہمیشہ اجازت دیتا ہے
 const dummyLimiter = {
   limit: async () => ({ success: true, reset: 0 }),
 };
 
-// 4. exports – ہمیشہ ایک قابل استعمال limiter آبجیکٹ برآمد کریں
-export const authLimiter = _authLimiter ?? dummyLimiter;
-export const aiLimiter = _aiLimiter ?? dummyLimiter;
-export const standardLimiter = _standardLimiter ?? dummyLimiter;
+// حقیقی Ratelimit instances (اگر Redis موجود ہو)
+const _authLimiter = redis
+  ? new Ratelimit({ redis, limiter: Ratelimit.slidingWindow(5, "60 s"), prefix: "edupilot:auth" })
+  : dummyLimiter;
 
-// 5. لاگ ان API کے لیے علیحدہ فنکشن (براہ راست استعمال)
+const _aiLimiter = redis
+  ? new Ratelimit({ redis, limiter: Ratelimit.slidingWindow(10, "60 s"), prefix: "edupilot:ai" })
+  : dummyLimiter;
+
+const _standardLimiter = redis
+  ? new Ratelimit({ redis, limiter: Ratelimit.slidingWindow(30, "60 s"), prefix: "edupilot:standard" })
+  : dummyLimiter;
+
+// ─── Exports (مطلوبہ ناموں کے ساتھ) ──────────────────────────────
+export const aiRateLimit = _aiLimiter;
+export const authRateLimit = _authLimiter;
+export const standardRateLimit = _standardLimiter;
+
+// لاگ ان API میں استعمال ہونے والا فنکشن
 export async function checkAuthRateLimit() {
-  return authLimiter.limit("login");
+  return _authLimiter.limit("login");
 }
