@@ -2,7 +2,7 @@
 import { Ratelimit } from "@upstash/ratelimit";
 import { Redis } from "@upstash/redis";
 
-// Redis client صرف اس صورت میں بنائیں جب ضروری environment variables موجود ہوں
+// 1. Redis client صرف تب بنائیں اگر ویریبلز موجود ہوں
 let redis: Redis | null = null;
 if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
   redis = new Redis({
@@ -11,43 +11,42 @@ if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) 
   });
 }
 
-// مختلف limiters جن کی مختلف حدود ہو سکتی ہیں (اگر Redis موجود ہے)
-const authLimiter = redis
-  ? new Ratelimit({ redis, limiter: Ratelimit.slidingWindow(5, "60 s"), prefix: "auth" })
+// 2. ریئل Ratelimit instances (یا null)
+const _authLimiter = redis
+  ? new Ratelimit({
+      redis,
+      limiter: Ratelimit.slidingWindow(5, "60 s"),  // 5 req/min
+      prefix: "edupilot:auth",
+    })
   : null;
 
-const aiLimiter = redis
-  ? new Ratelimit({ redis, limiter: Ratelimit.slidingWindow(10, "60 s"), prefix: "ai" })
+const _aiLimiter = redis
+  ? new Ratelimit({
+      redis,
+      limiter: Ratelimit.slidingWindow(10, "60 s"), // 10 req/min
+      prefix: "edupilot:ai",
+    })
   : null;
 
-const standardLimiter = redis
-  ? new Ratelimit({ redis, limiter: Ratelimit.slidingWindow(30, "60 s"), prefix: "standard" })
+const _standardLimiter = redis
+  ? new Ratelimit({
+      redis,
+      limiter: Ratelimit.slidingWindow(30, "60 s"), // 30 req/min
+      prefix: "edupilot:standard",
+    })
   : null;
 
-// تمام فنکشنز fail-open ہیں – اگر Redis نہ ہو تو ہمیشہ اجازت دیں
-async function safeLimit(limiter: Ratelimit | null): Promise<{ success: boolean; reset: number }> {
-  if (!limiter) return { success: true, reset: 0 };
-  try {
-    const result = await limiter.limit("key");
-    return { success: result.success, reset: result.reset };
-  } catch (error) {
-    console.error("Rate limiter error, allowing request:", error);
-    return { success: true, reset: 0 };
-  }
-}
+// 3. ڈمی limiter (جب Redis نہ ہو) – یہ withRateLimit کو خوش رکھتا ہے
+const dummyLimiter = {
+  limit: async () => ({ success: true, reset: 0 }),
+};
 
+// 4. exports – ہمیشہ ایک قابل استعمال limiter آبجیکٹ برآمد کریں
+export const authLimiter = _authLimiter ?? dummyLimiter;
+export const aiLimiter = _aiLimiter ?? dummyLimiter;
+export const standardLimiter = _standardLimiter ?? dummyLimiter;
+
+// 5. لاگ ان API کے لیے علیحدہ فنکشن (براہ راست استعمال)
 export async function checkAuthRateLimit() {
-  return safeLimit(authLimiter);
-}
-
-export async function aiRateLimit() {
-  return safeLimit(aiLimiter);
-}
-
-export async function authRateLimit() {
-  return safeLimit(authLimiter);
-}
-
-export async function standardRateLimit() {
-  return safeLimit(standardLimiter);
+  return authLimiter.limit("login");
 }
