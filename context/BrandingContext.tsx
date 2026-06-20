@@ -17,7 +17,9 @@ export function BrandingProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!user?.tenantId) return;
-    fetch("/api/settings/whitelabel")
+    
+    // 🚀 FIX: API پاتھ کو v1 کیا گیا ہے اور سیکیورٹی کے لیے credentials: "include" کا اضافہ کیا گیا ہے۔
+    fetch("/api/v1/settings/whitelabel", { credentials: "include" })
       .then((res) => res.json())
       .then((data) => {
         if (data.success && data.data) {
