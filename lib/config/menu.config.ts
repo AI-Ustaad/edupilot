@@ -1,4 +1,5 @@
 // lib/config/menu.config.ts
+import type { LucideIcon } from "lucide-react";
 import {
   LayoutDashboard,
   Users,
@@ -24,19 +25,19 @@ import {
   PlusCircle,
 } from "lucide-react";
 
-// ─── Types ──────────────────────────────────────
+// ─── Types (FIXED: LucideIcon instead of restrictive ComponentType) ────
 export interface MenuItemDef {
   id: string;
   name: string;
-  icon: React.ComponentType<{ size?: number; className?: string }>;
+  icon: LucideIcon;
   path: string;
-  requiredPermission?: string;   // e.g., "students.view"
-  featureFlag?: string;          // e.g., "transport"
+  requiredPermission?: string;
+  featureFlag?: string;
 }
 
 export interface MenuGroupDef {
   title: string;
-  icon: React.ComponentType<{ size?: number; className?: string }>;
+  icon: LucideIcon;
   key: string | null;
   items: MenuItemDef[];
 }
