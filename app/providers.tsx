@@ -1,5 +1,4 @@
 "use client";
-
 import { NextIntlClientProvider } from "next-intl";
 
 export default function Providers({
@@ -11,8 +10,9 @@ export default function Providers({
   locale: string;
   messages: Record<string, any>;
 }) {
+  // FIXED: QueryProvider ہٹا دیا — ClientWrapper میں پہلے سے ہے
+  // دو QueryProvider ہونے سے cache conflict ہوتا تھا
   return (
-    // 🚀 FIX: یہاں سے ہم نے QueryProvider ہٹا دیا ہے تاکہ وہ ClientWrapper کے ساتھ clash نہ کرے
     <NextIntlClientProvider locale={locale} messages={messages}>
       {children}
     </NextIntlClientProvider>
