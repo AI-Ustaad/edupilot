@@ -1,8 +1,7 @@
 // lib/auth/auth-server.ts
 import { adminAuth, adminDb } from "@/lib/firebase-admin";
 
-// 🆕 Global roles that are allowed without a tenant
-const GLOBAL_ROLES = ["superAdmin", "support", "system"];
+const GLOBAL_ROLES = new Set(["superAdmin", "support", "system"]);
 
 export async function getSessionUser() {
   const { cookies } = await import("next/headers");
@@ -10,17 +9,15 @@ export async function getSessionUser() {
   if (!sessionCookie) return null;
 
   try {
-    const decodedToken = await adminAuth.verifySessionCookie(
-      sessionCookie,
-      true
-    );
+    const decodedToken = await adminAuth.verifySessionCookie(sessionCookie, true);
 
+    // 1. UID سے تلاش
     let userDoc = await adminDb
       .collection("users")
       .doc(decodedToken.uid)
       .get();
 
-    // 🆕 Structured migration warning
+    // 2. اگر UID document موجود نہیں تو email fallback (صرف read)
     if (!userDoc.exists && decodedToken.email) {
       console.warn("UID migration fallback used", {
         uid: decodedToken.uid,
@@ -33,14 +30,15 @@ export async function getSessionUser() {
         .get();
 
       if (!snapshot.empty) {
+        // active document کو ترجیح دیں (migrated نہ ہو)
         const activeDoc =
-          snapshot.docs.find(
-            (d) => d.data().status !== "migrated"
-          ) ?? snapshot.docs[0];
+          snapshot.docs.find((d) => d.data().status !== "migrated") ??
+          snapshot.docs[0];
         userDoc = activeDoc;
       }
     }
 
+    // 3. اگر پھر بھی document نہ ملے → guest fallback
     if (!userDoc.exists) {
       return {
         uid: decodedToken.uid,
@@ -53,11 +51,11 @@ export async function getSessionUser() {
 
     const userData = userDoc.data() ?? {};
 
-    // 🆕 Tenant validation – skip for global roles
+    // 4. Tenant validation – non‑guest roles must have a tenant
     if (
       userData.role &&
       userData.role !== "guest" &&
-      !GLOBAL_ROLES.includes(userData.role) &&
+      !GLOBAL_ROLES.has(userData.role) &&
       !userData.tenantId
     ) {
       console.error(
