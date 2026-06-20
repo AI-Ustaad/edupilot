@@ -53,13 +53,22 @@ export class DashboardService {
       });
       const classDistribution = Object.entries(classMap).map(([name, value]) => ({ name, value }));
 
+      // 🔥 حقیقی اوسط، زیادہ سے زیادہ، کم سے کم — اب کوئی جعلی نمبر نہیں
+      const attendanceStats = attendanceTrend.length > 0
+        ? {
+            avg: Math.round(attendanceTrend.reduce((s, d) => s + d.percent, 0) / attendanceTrend.length),
+            highest: Math.max(...attendanceTrend.map(d => d.percent)),
+            lowest: Math.min(...attendanceTrend.map(d => d.percent)),
+          }
+        : { avg: 0, highest: 0, lowest: 0 };
+
       return {
         students: studentsCount,
         staff: staffCount,
         revenue: totalRevenue,
         todayAttendance,
         attendanceTrend,
-        attendanceStats: { avg: 85, highest: 98, lowest: 62 }, // placeholder
+        attendanceStats,             // ← یہاں حقیقی ڈیٹا
         feeMonth: { collected: totalRevenue, pending: 0, total: totalRevenue },
         classFeeSummary: [],
         recentPayments,
