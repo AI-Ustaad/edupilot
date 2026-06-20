@@ -1,8 +1,45 @@
-// route-helpers/withAuthAndPermission.ts
-import { withAuth } from "./withAuth";
-import { withPermission } from "@/lib/auth/rbac";  // آپ کی withPermission فائل
-import type { Permission } from "@/lib/auth/permissions";
+import { NextResponse } from "next/server";
+import { getSessionUser } from "@/lib/auth/auth-server";
 
-export function withAuthAndPermission(permission: Permission, handler: Function) {
-  return withAuth(withPermission(permission, handler));
+export function withAuth(handler: Function) {
+  return async (
+    req: Request,
+    context: any = {}
+  ) => {
+    try {
+      const user = await getSessionUser();
+
+      if (!user) {
+        return NextResponse.json(
+          {
+            success: false,
+            message: "Unauthorized",
+          },
+          {
+            status: 401,
+          }
+        );
+      }
+
+      // ✅ Inject authenticated user
+      context.user = user;
+
+      return handler(req, context);
+    } catch (error) {
+      console.error(
+        "Authentication failed:",
+        error
+      );
+
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Authentication failed",
+        },
+        {
+          status: 401,
+        }
+      );
+    }
+  };
 }
