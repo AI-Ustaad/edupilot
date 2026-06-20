@@ -3,7 +3,7 @@ import { withAuthAndPermission } from "@/route-helpers/withAuthAndPermission";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 import { StudentService } from "@/services/student.service";
 import { StudentRepository } from "@/repositories/student.repository";
-import { successResponse, errorResponse } from "@/lib/utils/api-response";
+import { successResponse } from "@/lib/utils/api-response";
 
 const studentService = new StudentService(new StudentRepository());
 
