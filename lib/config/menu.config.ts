@@ -25,13 +25,12 @@ import {
   PlusCircle,
 } from "lucide-react";
 
-// ─── Types (FIXED: LucideIcon instead of restrictive ComponentType) ────
 export interface MenuItemDef {
   id: string;
   name: string;
   icon: LucideIcon;
   path: string;
-  requiredPermission?: string;
+  requiredPermission?: string;   // اب صرف وہی سٹرنگ جو permissions.ts میں موجود ہے
   featureFlag?: string;
 }
 
@@ -42,7 +41,6 @@ export interface MenuGroupDef {
   items: MenuItemDef[];
 }
 
-// ─── ALL 14 JUNE FEATURES + NEW RBAC ────────────
 const ALL_MENU_GROUPS: MenuGroupDef[] = [
   {
     title: "Command Center",
@@ -54,7 +52,7 @@ const ALL_MENU_GROUPS: MenuGroupDef[] = [
         name: "Dashboard",
         icon: LayoutDashboard,
         path: "/dashboard",
-        requiredPermission: "dashboard.view",
+        requiredPermission: "analytics.view",   // matches PERMISSIONS.analytics.view
       },
     ],
   },
@@ -138,14 +136,14 @@ const ALL_MENU_GROUPS: MenuGroupDef[] = [
         name: "Timetable",
         icon: Clock,
         path: "/timetable",
-        requiredPermission: "settings.manage",
+        requiredPermission: "timetable.view",   // نیا نام
       },
       {
         id: "ai-timetable",
         name: "AI Timetable",
         icon: Sparkles,
         path: "/ai-timetable",
-        requiredPermission: "aiTimetable",
+        requiredPermission: "ai.view",          // عمومی AI پرمیشن، فیچر فلیگ سے کنٹرول
         featureFlag: "aiTimetable",
       },
       {
@@ -182,7 +180,7 @@ const ALL_MENU_GROUPS: MenuGroupDef[] = [
         name: "Leave Requests",
         icon: CalendarDays,
         path: "/leave-requests",
-        requiredPermission: "leaveRequests",
+        requiredPermission: "leave.manage",     // نئی پرمیشن
       },
       {
         id: "homework",
@@ -217,7 +215,7 @@ const ALL_MENU_GROUPS: MenuGroupDef[] = [
         name: "Book Center",
         icon: BookOpen,
         path: "/teacher/book-center",
-        requiredPermission: "bookCenter",
+        requiredPermission: "books.view",       // books ماڈیول کی پرمیشن
         featureFlag: "bookCenter",
       },
       {
@@ -225,7 +223,7 @@ const ALL_MENU_GROUPS: MenuGroupDef[] = [
         name: "Manage Books",
         icon: FileText,
         path: "/teacher/manage-books",
-        requiredPermission: "bookCenter",
+        requiredPermission: "books.create",     // books.create
         featureFlag: "bookCenter",
       },
       {
@@ -233,7 +231,7 @@ const ALL_MENU_GROUPS: MenuGroupDef[] = [
         name: "Exam Center",
         icon: FileText,
         path: "/teacher/exam-center",
-        requiredPermission: "examCenter",
+        requiredPermission: "exams.view",       // exams.view
         featureFlag: "examCenter",
       },
       {
@@ -256,7 +254,7 @@ const ALL_MENU_GROUPS: MenuGroupDef[] = [
         name: "Admissions",
         icon: FileText,
         path: "/admin/admissions",
-        requiredPermission: "admissions",
+        requiredPermission: "students.create",  // admissions کے لیے students.create استعمال کریں
         featureFlag: "admissions",
       },
       {
@@ -264,7 +262,7 @@ const ALL_MENU_GROUPS: MenuGroupDef[] = [
         name: "Skills",
         icon: Star,
         path: "/teacher/skills",
-        requiredPermission: "skills",
+        requiredPermission: "skills.view",      // skills.view
         featureFlag: "skills",
       },
       {
@@ -272,7 +270,7 @@ const ALL_MENU_GROUPS: MenuGroupDef[] = [
         name: "Behavior Points",
         icon: PlusCircle,
         path: "/teacher/behavior",
-        requiredPermission: "behavior",
+        requiredPermission: "behavior.view",    // behavior.view
         featureFlag: "behavior",
       },
     ],
@@ -330,7 +328,7 @@ const ALL_MENU_GROUPS: MenuGroupDef[] = [
         name: "AI Exam Generator",
         icon: FileText,
         path: "/ai-exam-questions",
-        requiredPermission: "aiExamGenerator",
+        requiredPermission: "ai.view",          // عمومی AI پرمیشن
         featureFlag: "aiExamGenerator",
       },
       {
@@ -338,25 +336,22 @@ const ALL_MENU_GROUPS: MenuGroupDef[] = [
         name: "AI Timetable",
         icon: Sparkles,
         path: "/ai-timetable",
-        requiredPermission: "aiTimetable",
+        requiredPermission: "ai.view",
         featureFlag: "aiTimetable",
       },
     ],
   },
 ];
 
-// ─── Main Export – used by SidebarLayout ─────────
 export function getFilteredMenu(
   permissions: string[],
   featureFlags: Record<string, boolean>
 ): MenuGroupDef[] {
   return ALL_MENU_GROUPS.map((group) => {
     const filteredItems = group.items.filter((item) => {
-      // Permission check
       if (item.requiredPermission && !permissions.includes(item.requiredPermission)) {
         return false;
       }
-      // Feature flag check: if flag exists and is explicitly false, hide
       if (
         item.featureFlag &&
         featureFlags.hasOwnProperty(item.featureFlag) &&
@@ -366,7 +361,6 @@ export function getFilteredMenu(
       }
       return true;
     });
-
     return { ...group, items: filteredItems };
   }).filter((group) => group.items.length > 0);
 }
