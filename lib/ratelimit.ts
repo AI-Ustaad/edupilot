@@ -2,7 +2,6 @@
 import { Ratelimit } from "@upstash/ratelimit";
 import { Redis } from "@upstash/redis";
 
-// Redis client صرف تب بنائیں جب ویریبلز موجود ہوں
 let redis: Redis | null = null;
 if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
   redis = new Redis({
@@ -11,30 +10,27 @@ if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) 
   });
 }
 
-// ڈمی limiter – ہمیشہ اجازت دیتا ہے
-const dummyLimiter = {
-  limit: async () => ({ success: true, reset: 0 }),
-};
+function createLimiter(max: number, prefix: string): Ratelimit | null {
+  if (!redis) return null;
+  return new Ratelimit({
+    redis,
+    limiter: Ratelimit.slidingWindow(max, "60 s"),
+    prefix,
+  });
+}
 
-// حقیقی Ratelimit instances (اگر Redis موجود ہو)
-const _authLimiter = redis
-  ? new Ratelimit({ redis, limiter: Ratelimit.slidingWindow(5, "60 s"), prefix: "edupilot:auth" })
-  : dummyLimiter;
+export const aiRateLimit = createLimiter(10, "edupilot:ai");
+export const authRateLimit = createLimiter(5, "edupilot:auth");
+export const standardRateLimit = createLimiter(30, "edupilot:standard");
 
-const _aiLimiter = redis
-  ? new Ratelimit({ redis, limiter: Ratelimit.slidingWindow(10, "60 s"), prefix: "edupilot:ai" })
-  : dummyLimiter;
-
-const _standardLimiter = redis
-  ? new Ratelimit({ redis, limiter: Ratelimit.slidingWindow(30, "60 s"), prefix: "edupilot:standard" })
-  : dummyLimiter;
-
-// ─── Exports (مطلوبہ ناموں کے ساتھ) ──────────────────────────────
-export const aiRateLimit = _aiLimiter;
-export const authRateLimit = _authLimiter;
-export const standardRateLimit = _standardLimiter;
-
-// لاگ ان API میں استعمال ہونے والا فنکشن
+// لاگ ان API کے لیے فنکشن (اگر limiter نہ ہو تو ہمیشہ کامیاب)
 export async function checkAuthRateLimit() {
-  return _authLimiter.limit("login");
+  if (!authRateLimit) return { success: true, reset: 0 };
+  try {
+    const result = await authRateLimit.limit("login");
+    return { success: result.success, reset: result.reset };
+  } catch (error) {
+    console.error("Rate limiter error:", error);
+    return { success: true, reset: 0 };
+  }
 }
