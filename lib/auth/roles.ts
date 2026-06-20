@@ -1,6 +1,4 @@
 // lib/auth/roles.ts
-import { PERMISSIONS } from "./permissions";
-
 export const ROLE_PERMISSIONS: Record<string, string[]> = {
   // ─── Super Admin (سب کچھ) ─────────────────
   super_admin: [
@@ -117,3 +115,6 @@ export const ROLE_PERMISSIONS: Record<string, string[]> = {
 };
 
 export type Role = keyof typeof ROLE_PERMISSIONS;
+
+// 🔥 ROLES export — تاکہ index.ts میں "export { ROLES }" کام کرے
+export const ROLES = Object.keys(ROLE_PERMISSIONS) as Role[];
