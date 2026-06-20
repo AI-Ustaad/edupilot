@@ -1,48 +1,52 @@
 export const dynamic = 'force-dynamic';
+import { withAuthAndPermission } from "@/route-helpers/withAuthAndPermission";
+import { PERMISSIONS } from "@/lib/auth/permissions";
 import { adminDb } from "@/lib/firebase-admin";
-import { withAuth, withTenant, withErrorHandler, withRole } from "@/route-helpers";
-import { createApiResponse } from "@/lib/response/apiResponse";
-import type { TenantContext } from "@/types/api";
+import { successResponse, errorResponse } from "@/lib/utils/api-response";
 
-export const GET = withErrorHandler(
-  withAuth(
-    withTenant(async (req: Request, { tenantId }: TenantContext) => {
-      const { searchParams } = new URL(req.url);
-      const classGrade = searchParams.get("classGrade");
-      const section = searchParams.get("section");
+export const GET = withAuthAndPermission(
+  PERMISSIONS.assignments.view,
+  async (req: Request, context: any) => {
+    const tenantId = context.user.tenantId;
+    if (!tenantId) return errorResponse("Tenant not found", 401);
 
-      let query = adminDb.collection("assignments").where("tenantId", "==", tenantId);
-      if (classGrade) query = query.where("classGrade", "==", classGrade);
-      if (section) query = query.where("section", "==", section);
-      query = query.orderBy("createdAt", "desc").limit(50);
+    const snapshot = await adminDb
+      .collection("assignments")
+      .where("tenantId", "==", tenantId)
+      .orderBy("createdAt", "desc")
+      .get();
 
-      const snapshot = await query.get();
-      const data = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-      return createApiResponse(200, data);
-    })
-  )
+    const assignments = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    return successResponse(assignments, "Assignments fetched successfully");
+  }
 );
 
-export const POST = withErrorHandler(
-  withAuth(
-    withTenant(
-      withRole(["admin", "teacher"])(async (req: Request, { tenantId, user }: TenantContext) => {
-        const { title, description, classGrade, section, dueDate } = await req.json();
-        if (!title || !classGrade || !section || !dueDate) {
-          return createApiResponse(400, null, "Missing required fields");
-        }
-        const ref = await adminDb.collection("assignments").add({
-          title,
-          description: description || "",
-          classGrade,
-          section,
-          dueDate,
-          createdBy: user.uid,
-          tenantId,
-          createdAt: new Date(),
-        });
-        return createApiResponse(201, { id: ref.id });
-      })
-    )
-  )
+export const POST = withAuthAndPermission(
+  PERMISSIONS.assignments.create,
+  async (req: Request, context: any) => {
+    const tenantId = context.user.tenantId;
+    if (!tenantId) return errorResponse("Tenant not found", 401);
+
+    const body = await req.json();
+    const { title, description, classGrade, section, subject, dueDate } = body;
+
+    if (!title || !classGrade || !section || !subject) {
+      return errorResponse("Missing required fields", 400);
+    }
+
+    const doc = await adminDb.collection("assignments").add({
+      tenantId,
+      title,
+      description: description || "",
+      classGrade,
+      section,
+      subject,
+      dueDate: dueDate || null,
+      createdBy: context.user.uid,
+      createdAt: new Date(),
+    });
+
+    const newAssignment = { id: doc.id, ...body };
+    return successResponse(newAssignment, "Assignment created successfully", 201);
+  }
 );
