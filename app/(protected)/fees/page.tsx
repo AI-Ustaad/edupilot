@@ -4,8 +4,8 @@ import React, { useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
-  Wallet, Plus, Trash2, Loader2, AlertCircle, CheckCircle,
-  Save, Search, DollarSign, Calendar, Users,
+  Wallet, Loader2, AlertCircle, CheckCircle,
+  Save, DollarSign, Calendar, Users, Trash2,
 } from "lucide-react";
 import RequirePermission from "@/components/RequirePermission";
 import { PERMISSIONS } from "@/lib/auth/permissions";
@@ -18,11 +18,20 @@ const fetchFees = async (params: Record<string, string>) => {
   const res = await fetch(`/api/v1/fees?${q}`);
   if (!res.ok) throw new Error("Failed to fetch fees");
   const json = await res.json();
-
-  // 🔒 محفوظ طریقہ – یقینی بنائیں کہ ہمیں ایرے ہی ملی ہے
   const data = json.data;
   if (Array.isArray(data)) return data;
-  if (data && Array.isArray(data.data)) return data.data; // nested
+  if (data && Array.isArray(data.data)) return data.data;
+  return [];
+};
+
+const fetchStudents = async () => {
+  const res = await fetch("/api/students");
+  if (!res.ok) throw new Error("Failed to fetch students");
+  const json = await res.json();
+  // API returns array directly or nested under 'data'/'students'
+  if (Array.isArray(json)) return json;
+  if (json.data && Array.isArray(json.data)) return json.data;
+  if (json.students) return json.students;
   return [];
 };
 
@@ -54,27 +63,32 @@ export default function FeesPage() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
-  // Filters
   const [selectedMonth, setSelectedMonth] = useState(
     new Date().toLocaleString("default", { month: "long" })
   );
   const [selectedClass, setSelectedClass] = useState("");
   const [selectedSection, setSelectedSection] = useState("");
 
-  // Fee entry grid state
   const [feeEntries, setFeeEntries] = useState<Record<string, { amount: string; status: string }>>({});
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState("");
   const [error, setError] = useState("");
 
   // ------------------------------------------------------------------
-  //  Data Fetching (React Query)
+  //  Fetch Data
   // ------------------------------------------------------------------
-  const { data: feeRecords = [], isLoading } = useQuery({
+  const { data: feeRecords = [], isLoading: feesLoading } = useQuery({
     queryKey: ["fees", user?.tenantId, selectedMonth, selectedClass, selectedSection],
     queryFn: () =>
       fetchFees({ month: selectedMonth, classGrade: selectedClass, section: selectedSection }),
     enabled: !!user?.tenantId && !!selectedMonth,
+  });
+
+  // 🔴 فرضی ڈیٹا کی جگہ اصلی طلبہ
+  const { data: students = [], isLoading: studentsLoading } = useQuery({
+    queryKey: ["students", user?.tenantId],
+    queryFn: fetchStudents,
+    enabled: !!user?.tenantId,
   });
 
   // ------------------------------------------------------------------
@@ -101,17 +115,11 @@ export default function FeesPage() {
   });
 
   // ------------------------------------------------------------------
-  //  Mock Students (real app میں /api/students سے لوڈ کریں)
+  //  Filter Students
   // ------------------------------------------------------------------
-  const students = [
-    { id: "st1", name: "Ahmed Khan", class: "9", section: "A", roll: 1 },
-    { id: "st2", name: "Sara Ali", class: "9", section: "A", roll: 2 },
-    { id: "st3", name: "Omar Farooq", class: "9", section: "B", roll: 1 },
-  ];
-
   const filteredStudents = students.filter(
-    (s) =>
-      (!selectedClass || s.class === selectedClass) &&
+    (s: any) =>
+      (!selectedClass || s.classGrade === selectedClass) &&
       (!selectedSection || s.section === selectedSection)
   );
 
@@ -122,15 +130,15 @@ export default function FeesPage() {
     setSaving(true);
     setError("");
     try {
-      const promises = filteredStudents.map((student) => {
+      const promises = filteredStudents.map((student: any) => {
         const entry = feeEntries[student.id] || { amount: "0", status: "pending" };
         return saveMutation.mutateAsync({
           studentId: student.id,
-          studentName: student.name,
-          classGrade: student.class,
+          studentName: student.fullName || student.name,
+          classGrade: student.classGrade,
           section: student.section,
-          month: selectedMonth,
-          amount: Number(entry.amount),
+          feeMonth: selectedMonth,
+          amountPaid: Number(entry.amount),
           status: entry.status,
         });
       });
@@ -160,14 +168,8 @@ export default function FeesPage() {
     .filter((f: any) => f.status === "pending")
     .reduce((sum: number, f: any) => sum + (f.amountPaid || f.amount || 0), 0);
 
-  // ------------------------------------------------------------------
-  //  Early return if no tenant
-  // ------------------------------------------------------------------
   if (!user?.tenantId) return <div className="p-8 text-center">Loading...</div>;
 
-  // ------------------------------------------------------------------
-  //  Render
-  // ------------------------------------------------------------------
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6 animate-fade-in">
       {/* HEADER */}
@@ -250,9 +252,7 @@ export default function FeesPage() {
             className="w-full border border-gray-300 rounded-lg px-3 py-2 font-medium"
           >
             {MONTHS.map((m) => (
-              <option key={m} value={m}>
-                {m}
-              </option>
+              <option key={m} value={m}>{m}</option>
             ))}
           </select>
         </div>
@@ -292,17 +292,15 @@ export default function FeesPage() {
           <DollarSign size={18} /> Fee Entry - {selectedMonth}
         </div>
 
-        {isLoading ? (
-          <div className="p-8 flex justify-center">
-            <Loader2 className="animate-spin text-green-500" size={32} />
-          </div>
+        {studentsLoading ? (
+          <div className="p-8 flex justify-center"><Loader2 className="animate-spin text-green-500" size={32} /></div>
         ) : filteredStudents.length === 0 ? (
           <div className="p-8 text-center text-gray-400 font-bold">
             No students found for selected filters.
           </div>
         ) : (
           <div className="divide-y divide-gray-100">
-            {filteredStudents.map((student) => {
+            {filteredStudents.map((student: any) => {
               const existing = feeRecords.find(
                 (f: any) => f.studentId === student.id && f.feeMonth === selectedMonth
               );
@@ -312,18 +310,15 @@ export default function FeesPage() {
                 feeEntries[student.id]?.status ?? existing?.status ?? "pending";
 
               return (
-                <div
-                  key={student.id}
-                  className="px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition"
-                >
+                <div key={student.id} className="px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition">
                   <div className="flex items-center gap-4 flex-1">
                     <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center font-bold text-gray-500">
-                      {student.roll}
+                      {student.rollNumber || "—"}
                     </div>
                     <div className="flex-1">
-                      <p className="font-bold text-gray-900">{student.name}</p>
+                      <p className="font-bold text-gray-900">{student.fullName || student.name}</p>
                       <p className="text-xs text-gray-400 uppercase">
-                        Class {student.class} - Section {student.section}
+                        Class {student.classGrade} - Section {student.section}
                       </p>
                     </div>
                   </div>
@@ -335,10 +330,7 @@ export default function FeesPage() {
                       onChange={(e) =>
                         setFeeEntries((prev) => ({
                           ...prev,
-                          [student.id]: {
-                            amount: e.target.value,
-                            status: prev[student.id]?.status ?? currentStatus,
-                          },
+                          [student.id]: { amount: e.target.value, status: prev[student.id]?.status ?? currentStatus },
                         }))
                       }
                       className="w-24 border border-gray-300 rounded-lg px-3 py-2 text-center font-bold"
@@ -348,10 +340,7 @@ export default function FeesPage() {
                       onChange={(e) =>
                         setFeeEntries((prev) => ({
                           ...prev,
-                          [student.id]: {
-                            amount: prev[student.id]?.amount ?? currentAmount,
-                            status: e.target.value,
-                          },
+                          [student.id]: { amount: prev[student.id]?.amount ?? currentAmount, status: e.target.value },
                         }))
                       }
                       className={`border rounded-lg px-3 py-2 font-bold ${
@@ -393,22 +382,13 @@ export default function FeesPage() {
                 {feeRecords.map((fee: any) => (
                   <tr key={fee.id} className="hover:bg-gray-50 transition">
                     <td className="px-6 py-3 font-bold text-gray-900">{fee.studentName}</td>
-                    <td className="px-6 py-3 text-gray-600">
-                      {fee.classGrade} - {fee.section}
-                    </td>
-                    <td className="px-6 py-3 font-black text-gray-900">
-                      Rs. {fee.amountPaid?.toLocaleString()}
-                    </td>
+                    <td className="px-6 py-3 text-gray-600">{fee.classGrade} - {fee.section}</td>
+                    <td className="px-6 py-3 font-black text-gray-900">Rs. {fee.amountPaid?.toLocaleString()}</td>
                     <td className="px-6 py-3">
-                      <span
-                        className={`px-3 py-1 rounded-full text-xs font-bold ${
-                          fee.status === "paid"
-                            ? "bg-green-100 text-green-700"
-                            : fee.status === "partial"
-                            ? "bg-blue-100 text-blue-700"
-                            : "bg-orange-100 text-orange-700"
-                        }`}
-                      >
+                      <span className={`px-3 py-1 rounded-full text-xs font-bold ${
+                        fee.status === "paid" ? "bg-green-100 text-green-700" :
+                        fee.status === "partial" ? "bg-blue-100 text-blue-700" : "bg-orange-100 text-orange-700"
+                      }`}>
                         {fee.status?.toUpperCase()}
                       </span>
                     </td>
@@ -419,11 +399,7 @@ export default function FeesPage() {
                           disabled={deleteMutation.isPending}
                           className="text-red-400 hover:text-red-600 bg-red-50 p-2 rounded-lg transition disabled:opacity-50"
                         >
-                          {deleteMutation.isPending ? (
-                            <Loader2 size={16} className="animate-spin" />
-                          ) : (
-                            <Trash2 size={16} />
-                          )}
+                          {deleteMutation.isPending ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
                         </button>
                       </RequirePermission>
                     </td>
