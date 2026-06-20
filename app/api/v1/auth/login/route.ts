@@ -1,14 +1,13 @@
-// const { success, reset } = await checkAuthRateLimit();
-// if (!success) { ... }
+// app/api/v1/auth/login/route.ts
 import { NextResponse } from "next/server";
 import { adminAuth, adminDb } from "@/lib/firebase-admin";
 import { checkAuthRateLimit } from "@/lib/ratelimit";
 
-export const runtime = 'nodejs';
+export const runtime = "nodejs";
 
 export async function POST(req: Request) {
   try {
-    // ✅ Rate Limit
+    // ✅ Rate Limit (fail-open)
     const { success, reset } = await checkAuthRateLimit();
     if (!success) {
       const resetTime = new Date(reset).toLocaleTimeString();
@@ -24,51 +23,38 @@ export async function POST(req: Request) {
     let uid: string;
     let userEmail: string;
 
-    // ==========================================
-    // ✅ FLOW 1: Google OAuth (idToken)
-    // ==========================================
+    // Google OAuth
     if (idToken) {
       const decodedToken = await adminAuth.verifyIdToken(idToken);
       uid = decodedToken.uid;
       userEmail = decodedToken.email || "";
     }
-    // ==========================================
-    // ✅ FLOW 2: Email + Password
-    // ==========================================
+    // Email/Password (صرف وجود چیک، اصل verify فرنٹ اینڈ SDK کرتا ہے)
     else if (email && password) {
-      // Admin SDK passwords verify نہیں کرتا
-      // یہ صرف user existence check ہے
-      // Real password verify frontend Firebase SDK کرتا ہے
       const userRecord = await adminAuth.getUserByEmail(email);
       uid = userRecord.uid;
       userEmail = userRecord.email || email;
-    }
-    else {
+    } else {
       return NextResponse.json(
         { success: false, error: "Email and password are required" },
         { status: 400 }
       );
     }
 
-    // ==========================================
-    // ✅ Tenant Info Firestore سے لیں
-    // ==========================================
+    // Firestore سے user data
     const userDoc = await adminDb.collection("users").doc(uid).get();
     const userData = userDoc.data();
 
-    // ==========================================
-    // ✅ Session Cookie بنائیں
-    // ==========================================
+    // Session cookie بنائیں
     const expiresIn = 60 * 60 * 24 * 5 * 1000; // 5 days
-    
     let sessionCookie: string;
-    
+
     if (idToken) {
       sessionCookie = await adminAuth.createSessionCookie(idToken, { expiresIn });
     } else {
-      // Email/Password کے لیے custom token بنائیں
+      // Email/Password کے لیے custom token (production میں proper session flow لگائیں)
       const customToken = await adminAuth.createCustomToken(uid);
-      sessionCookie = customToken; // Note: production میں proper session flow لگائیں
+      sessionCookie = customToken;
     }
 
     const response = NextResponse.json({
@@ -76,32 +62,30 @@ export async function POST(req: Request) {
       message: "Login successful",
       uid,
       email: userEmail,
-      role: userData?.role || "teacher",
-      tenantId: userData?.tenantId || null,
-      onboardingRequired: !userData?.tenantId,
+      role: userData?.role ?? "guest",
+      tenantId: userData?.tenantId ?? null,
+      onboardingRequired: userData?.onboardingRequired ?? true,
     });
 
-    // ✅ Secure Cookie Set کریں
     response.cookies.set("session", sessionCookie, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
-      maxAge: 60 * 60 * 24 * 5, // 5 days
+      maxAge: 60 * 60 * 24 * 5,
       path: "/",
     });
 
     return response;
-
   } catch (error: any) {
     console.error("Login API Error:", error);
 
-    if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-email') {
+    if (error.code === "auth/user-not-found" || error.code === "auth/invalid-email") {
       return NextResponse.json(
         { success: false, error: "Invalid email or password" },
         { status: 401 }
       );
     }
-    if (error.code === 'auth/id-token-expired') {
+    if (error.code === "auth/id-token-expired") {
       return NextResponse.json(
         { success: false, error: "Session expired. Please login again." },
         { status: 401 }
