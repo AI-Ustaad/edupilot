@@ -11,8 +11,8 @@ export const GET = withAuthAndPermission(
   PERMISSIONS.fees.view,
   async (req: Request, context: any) => {
     const tenantId = context.user.tenantId;
-    const fees = await feesService.listFees(tenantId);
-    return successResponse(fees);
+    const result = await feesService.listFees(tenantId);   // { data: [...], total, ... }
+    return successResponse(result.data);                    // صرف ایرے بھیجیں
   }
 );
 
