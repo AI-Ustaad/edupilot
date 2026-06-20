@@ -1,47 +1,51 @@
 export const dynamic = 'force-dynamic';
+import { withAuthAndPermission } from "@/route-helpers/withAuthAndPermission";
+import { PERMISSIONS } from "@/lib/auth/permissions";
 import { adminDb } from "@/lib/firebase-admin";
-import { withAuth, withTenant, withErrorHandler, withRole } from "@/route-helpers";
-import { createApiResponse } from "@/lib/response/apiResponse";
-import type { TenantContext } from "@/types/api";
+import { successResponse, errorResponse } from "@/lib/utils/api-response";
 
-export const GET = withErrorHandler(
-  withAuth(
-    withTenant(async (req: Request, { tenantId }: TenantContext) => {
-      const { searchParams } = new URL(req.url);
-      const classGrade = searchParams.get("classGrade");
-      const section = searchParams.get("section");
+export const GET = withAuthAndPermission(
+  PERMISSIONS.quizzes.view,
+  async (req: Request, context: any) => {
+    const tenantId = context.user.tenantId;
+    if (!tenantId) return errorResponse("Tenant not found", 401);
 
-      let query = adminDb.collection("quizzes").where("tenantId", "==", tenantId);
-      if (classGrade) query = query.where("classGrade", "==", classGrade);
-      if (section) query = query.where("section", "==", section);
-      query = query.orderBy("createdAt", "desc").limit(50);
+    const snapshot = await adminDb
+      .collection("quizzes")
+      .where("tenantId", "==", tenantId)
+      .orderBy("createdAt", "desc")
+      .get();
 
-      const snapshot = await query.get();
-      const data = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-      return createApiResponse(200, data);
-    })
-  )
+    const quizzes = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    return successResponse(quizzes, "Quizzes fetched successfully");
+  }
 );
 
-export const POST = withErrorHandler(
-  withAuth(
-    withTenant(
-      withRole(["admin", "teacher"])(async (req: Request, { tenantId, user }: TenantContext) => {
-        const { title, classGrade, section, questions } = await req.json();
-        if (!title || !classGrade || !section || !questions || !Array.isArray(questions) || questions.length === 0) {
-          return createApiResponse(400, null, "Missing required fields");
-        }
-        const ref = await adminDb.collection("quizzes").add({
-          title,
-          classGrade,
-          section,
-          questions,
-          createdBy: user.uid,
-          tenantId,
-          createdAt: new Date(),
-        });
-        return createApiResponse(201, { id: ref.id });
-      })
-    )
-  )
+export const POST = withAuthAndPermission(
+  PERMISSIONS.quizzes.create,
+  async (req: Request, context: any) => {
+    const tenantId = context.user.tenantId;
+    if (!tenantId) return errorResponse("Tenant not found", 401);
+
+    const body = await req.json();
+    const { title, classGrade, section, subject, dueDate, questions } = body;
+
+    if (!title || !classGrade || !section || !questions || !Array.isArray(questions)) {
+      return errorResponse("Missing required fields", 400);
+    }
+
+    const doc = await adminDb.collection("quizzes").add({
+      tenantId,
+      title,
+      classGrade,
+      section,
+      subject: subject || "",
+      dueDate: dueDate || null,
+      questions,
+      createdBy: context.user.uid,
+      createdAt: new Date(),
+    });
+
+    return successResponse({ id: doc.id, ...body }, "Quiz created successfully", 201);
+  }
 );
