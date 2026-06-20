@@ -30,7 +30,7 @@ export interface MenuItemDef {
   name: string;
   icon: LucideIcon;
   path: string;
-  requiredPermission?: string;   // اب صرف وہی سٹرنگ جو permissions.ts میں موجود ہے
+  requiredPermission?: string;
   featureFlag?: string;
 }
 
@@ -42,6 +42,7 @@ export interface MenuGroupDef {
 }
 
 const ALL_MENU_GROUPS: MenuGroupDef[] = [
+  // ── Command Center ────────────────────────
   {
     title: "Command Center",
     icon: LayoutDashboard,
@@ -52,14 +53,15 @@ const ALL_MENU_GROUPS: MenuGroupDef[] = [
         name: "Dashboard",
         icon: LayoutDashboard,
         path: "/dashboard",
-        requiredPermission: "analytics.view",   // matches PERMISSIONS.analytics.view
+        requiredPermission: "analytics.view",
       },
     ],
   },
+  // ── Students (الگ گروپ) ──────────────────
   {
-    title: "Academic",
-    icon: BookOpen,
-    key: "academic",
+    title: "Students",
+    icon: Users,
+    key: "students",
     items: [
       {
         id: "students",
@@ -68,6 +70,22 @@ const ALL_MENU_GROUPS: MenuGroupDef[] = [
         path: "/students",
         requiredPermission: "students.view",
       },
+      {
+        id: "admissions",
+        name: "Admissions",
+        icon: FileText,
+        path: "/admin/admissions",
+        requiredPermission: "students.create",   // admissions کے لیے students.create
+        featureFlag: "admissions",
+      },
+    ],
+  },
+  // ── Academic ──────────────────────────────
+  {
+    title: "Academic",
+    icon: BookOpen,
+    key: "academic",
+    items: [
       {
         id: "classes",
         name: "Classes & Sections",
@@ -98,6 +116,7 @@ const ALL_MENU_GROUPS: MenuGroupDef[] = [
       },
     ],
   },
+  // ── Finance ───────────────────────────────
   {
     title: "Finance",
     icon: DollarSign,
@@ -110,15 +129,10 @@ const ALL_MENU_GROUPS: MenuGroupDef[] = [
         path: "/fees",
         requiredPermission: "fees.view",
       },
-      {
-        id: "ledger",
-        name: "Ledger",
-        icon: ClipboardCheck,
-        path: "/ledger",
-        requiredPermission: "ledger.view",
-      },
+      // اگر بعد میں Ledger واپس چاہییں تو یہاں شامل کریں
     ],
   },
+  // ── Operations ────────────────────────────
   {
     title: "Operations",
     icon: Clock,
@@ -136,15 +150,7 @@ const ALL_MENU_GROUPS: MenuGroupDef[] = [
         name: "Timetable",
         icon: Clock,
         path: "/timetable",
-        requiredPermission: "timetable.view",   // نیا نام
-      },
-      {
-        id: "ai-timetable",
-        name: "AI Timetable",
-        icon: Sparkles,
-        path: "/ai-timetable",
-        requiredPermission: "ai.view",          // عمومی AI پرمیشن، فیچر فلیگ سے کنٹرول
-        featureFlag: "aiTimetable",
+        requiredPermission: "timetable.view",
       },
       {
         id: "buses",
@@ -156,6 +162,7 @@ const ALL_MENU_GROUPS: MenuGroupDef[] = [
       },
     ],
   },
+  // ── Staff (صرف سٹاف مینجمنٹ) ────────────
   {
     title: "Staff",
     icon: UserCircle,
@@ -168,6 +175,14 @@ const ALL_MENU_GROUPS: MenuGroupDef[] = [
         path: "/staff",
         requiredPermission: "staff.view",
       },
+    ],
+  },
+  // ── Teacher (تمام ٹیچنگ/ایڈمن کام) ─────
+  {
+    title: "Teacher",
+    icon: Users,         // یا کوئی اور آئیکن چاہییں تو بدل سکتے ہیں
+    key: "teacher",
+    items: [
       {
         id: "parents",
         name: "Parents",
@@ -180,7 +195,7 @@ const ALL_MENU_GROUPS: MenuGroupDef[] = [
         name: "Leave Requests",
         icon: CalendarDays,
         path: "/leave-requests",
-        requiredPermission: "leave.manage",     // نئی پرمیشن
+        requiredPermission: "leave.manage",
       },
       {
         id: "homework",
@@ -215,7 +230,7 @@ const ALL_MENU_GROUPS: MenuGroupDef[] = [
         name: "Book Center",
         icon: BookOpen,
         path: "/teacher/book-center",
-        requiredPermission: "books.view",       // books ماڈیول کی پرمیشن
+        requiredPermission: "books.view",
         featureFlag: "bookCenter",
       },
       {
@@ -223,7 +238,7 @@ const ALL_MENU_GROUPS: MenuGroupDef[] = [
         name: "Manage Books",
         icon: FileText,
         path: "/teacher/manage-books",
-        requiredPermission: "books.create",     // books.create
+        requiredPermission: "books.create",
         featureFlag: "bookCenter",
       },
       {
@@ -231,7 +246,7 @@ const ALL_MENU_GROUPS: MenuGroupDef[] = [
         name: "Exam Center",
         icon: FileText,
         path: "/teacher/exam-center",
-        requiredPermission: "exams.view",       // exams.view
+        requiredPermission: "exams.view",
         featureFlag: "examCenter",
       },
       {
@@ -250,19 +265,11 @@ const ALL_MENU_GROUPS: MenuGroupDef[] = [
         requiredPermission: "chat.send",
       },
       {
-        id: "admissions",
-        name: "Admissions",
-        icon: FileText,
-        path: "/admin/admissions",
-        requiredPermission: "students.create",  // admissions کے لیے students.create استعمال کریں
-        featureFlag: "admissions",
-      },
-      {
         id: "skills",
         name: "Skills",
         icon: Star,
         path: "/teacher/skills",
-        requiredPermission: "skills.view",      // skills.view
+        requiredPermission: "skills.view",
         featureFlag: "skills",
       },
       {
@@ -270,11 +277,12 @@ const ALL_MENU_GROUPS: MenuGroupDef[] = [
         name: "Behavior Points",
         icon: PlusCircle,
         path: "/teacher/behavior",
-        requiredPermission: "behavior.view",    // behavior.view
+        requiredPermission: "behavior.view",
         featureFlag: "behavior",
       },
     ],
   },
+  // ── Admin Tools ───────────────────────────
   {
     title: "Admin Tools",
     icon: Settings,
@@ -310,6 +318,7 @@ const ALL_MENU_GROUPS: MenuGroupDef[] = [
       },
     ],
   },
+  // ── AI Tools ─────────────────────────────
   {
     title: "AI Tools",
     icon: Sparkles,
@@ -328,7 +337,7 @@ const ALL_MENU_GROUPS: MenuGroupDef[] = [
         name: "AI Exam Generator",
         icon: FileText,
         path: "/ai-exam-questions",
-        requiredPermission: "ai.view",          // عمومی AI پرمیشن
+        requiredPermission: "ai.view",
         featureFlag: "aiExamGenerator",
       },
       {
