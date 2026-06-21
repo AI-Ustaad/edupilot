@@ -57,7 +57,7 @@ const ALL_MENU_GROUPS: MenuGroupDef[] = [
       },
     ],
   },
-  // ── Students (الگ گروپ) ──────────────────
+  // ── Students ──────────────────────────────
   {
     title: "Students",
     icon: Users,
@@ -75,8 +75,15 @@ const ALL_MENU_GROUPS: MenuGroupDef[] = [
         name: "Admissions",
         icon: FileText,
         path: "/admin/admissions",
-        requiredPermission: "students.create",   // admissions کے لیے students.create
+        requiredPermission: "students.create",
         featureFlag: "admissions",
+      },
+      {
+        id: "promote",
+        name: "Promote Students",
+        icon: GraduationCap,
+        path: "/admin/promote",
+        requiredPermission: "students.update",
       },
     ],
   },
@@ -129,7 +136,20 @@ const ALL_MENU_GROUPS: MenuGroupDef[] = [
         path: "/fees",
         requiredPermission: "fees.view",
       },
-      // اگر بعد میں Ledger واپس چاہییں تو یہاں شامل کریں
+      {
+        id: "ledger",
+        name: "Ledger",
+        icon: ClipboardCheck,
+        path: "/ledger",
+        requiredPermission: "ledger.view",
+      },
+      {
+        id: "billing",
+        name: "Billing",
+        icon: CreditCard,
+        path: "/settings/billing",
+        requiredPermission: "billing.view",
+      },
     ],
   },
   // ── Operations ────────────────────────────
@@ -162,7 +182,7 @@ const ALL_MENU_GROUPS: MenuGroupDef[] = [
       },
     ],
   },
-  // ── Staff (صرف سٹاف مینجمنٹ) ────────────
+  // ── Staff ─────────────────────────────────
   {
     title: "Staff",
     icon: UserCircle,
@@ -175,14 +195,6 @@ const ALL_MENU_GROUPS: MenuGroupDef[] = [
         path: "/staff",
         requiredPermission: "staff.view",
       },
-    ],
-  },
-  // ── Teacher (تمام ٹیچنگ/ایڈمن کام) ─────
-  {
-    title: "Teacher",
-    icon: Users,         // یا کوئی اور آئیکن چاہییں تو بدل سکتے ہیں
-    key: "teacher",
-    items: [
       {
         id: "parents",
         name: "Parents",
@@ -197,6 +209,14 @@ const ALL_MENU_GROUPS: MenuGroupDef[] = [
         path: "/leave-requests",
         requiredPermission: "leave.manage",
       },
+    ],
+  },
+  // ── Teacher Tools ─────────────────────────
+  {
+    title: "Teacher Tools",
+    icon: BookOpen,
+    key: "teacher",
+    items: [
       {
         id: "homework",
         name: "Homework",
@@ -297,7 +317,7 @@ const ALL_MENU_GROUPS: MenuGroupDef[] = [
       },
       {
         id: "users",
-        name: "Users",
+        name: "Users & Roles",
         icon: Users,
         path: "/admin/users",
         requiredPermission: "staff.view",
@@ -310,11 +330,11 @@ const ALL_MENU_GROUPS: MenuGroupDef[] = [
         requiredPermission: "audit.view",
       },
       {
-        id: "billing",
-        name: "Billing",
-        icon: CreditCard,
-        path: "/settings/billing",
-        requiredPermission: "billing.view",
+        id: "whitelabel",
+        name: "White Label",
+        icon: Settings,
+        path: "/settings/whitelabel",
+        requiredPermission: "settings.manage",
       },
     ],
   },
