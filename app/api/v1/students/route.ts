@@ -25,15 +25,24 @@ export const POST = withErrorHandler(
     PERMISSIONS.students.create,
     async (req: Request, context: any) => {
       const tenantId = context.user.tenantId;
-      const body = await req.json();
-
-      // Required fields check
-      if (!body.fullName || !body.classGrade) {
-        return errorResponse("Full Name and Class are required", 400);
+      let body;
+      try {
+        body = await req.json();
+      } catch {
+        return errorResponse("Invalid JSON body", 400);
       }
 
+      // Required fields
+      if (!body.fullName || !body.classGrade) {
+        return errorResponse("Full Name and Class/Grade are required", 400);
+      }
+
+      // Add tenant and creator
+      body.tenantId = tenantId;
+      body.createdBy = context.user.uid;
+
       const student = await studentService.createStudent(body, tenantId);
-      return successResponse(student, "Student created", 201);
+      return successResponse(student, "Student admitted successfully", 201);
     }
   )
 );
