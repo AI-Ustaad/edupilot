@@ -61,3 +61,5 @@ export const ROLE_PERMISSIONS: Record<string, string[]> = {
     "parents.view", "parents.manage",
   ],
 };
+
+export type Role = keyof typeof ROLE_PERMISSIONS;
