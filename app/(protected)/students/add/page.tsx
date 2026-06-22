@@ -59,34 +59,46 @@ export default function AddStudentPage() {
     setSubmitting(true);
     setError("");
     try {
+      // 🔥 Payload تیار کریں — صرف وہی فیلڈز بھیجیں جو واقعی پُر ہوں
+      const payload: Record<string, any> = {
+        fullName: form.fullName,
+        fatherName: form.fatherName,
+        cnic: form.cnic,
+        dob: form.dob,
+        gender: form.gender,
+        bloodGroup: form.bloodGroup,
+        religion: form.religion,
+        nationality: form.nationality,
+        phone: form.phone,
+        email: form.email,
+        address: form.address,
+        classGrade: form.classGrade,
+        section: form.section || undefined,
+        admissionNumber: form.admissionNumber,
+        guardianName: form.guardianName,
+        guardianRelation: form.guardianRelation,
+        guardianPhone: form.guardianPhone,
+        previousSchool: form.previousSchool,
+        medicalConditions: form.medicalConditions,
+        photoBase64: form.photoBase64,
+        tenantId: user?.tenantId,
+        createdBy: user?.uid,
+      };
+
+      // 🔥 اگر رول نمبر میں کوئی درست مثبت عدد ڈالا گیا ہو تب ہی شامل کریں
+      if (form.rollNumber && form.rollNumber.trim() !== "") {
+        const num = Number(form.rollNumber);
+        if (!Number.isNaN(num) && num > 0) {
+          payload.rollNumber = num;
+        }
+        // اگر غلط عدد ہو (مثلاً "abc") تو اسے چھوڑ دیں — سکیما اسے optional سمجھے گا
+      }
+      // ورنہ payload میں rollNumber شامل نہیں ہوگا
+
       const res = await fetch("/api/v1/students", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          fullName: form.fullName,
-          fatherName: form.fatherName,
-          cnic: form.cnic,
-          dob: form.dob,
-          gender: form.gender,
-          bloodGroup: form.bloodGroup,
-          religion: form.religion,
-          nationality: form.nationality,
-          phone: form.phone,
-          email: form.email,
-          address: form.address,
-          classGrade: form.classGrade,
-          section: form.section || undefined,
-          rollNumber: form.rollNumber ? Number(form.rollNumber) : undefined,
-          admissionNumber: form.admissionNumber,
-          guardianName: form.guardianName,
-          guardianRelation: form.guardianRelation,
-          guardianPhone: form.guardianPhone,
-          previousSchool: form.previousSchool,
-          medicalConditions: form.medicalConditions,
-          photoBase64: form.photoBase64,
-          tenantId: user?.tenantId,
-          createdBy: user?.uid,
-        }),
+        body: JSON.stringify(payload),
       });
 
       const data = await res.json();
@@ -104,7 +116,6 @@ export default function AddStudentPage() {
     }
   };
 
-  // ── UI ──────────────────────────────────────
   return (
     <div className="max-w-4xl mx-auto p-6 space-y-6">
       <h1 className="text-2xl font-black text-gray-900 flex items-center gap-2">
@@ -171,7 +182,7 @@ export default function AddStudentPage() {
   );
 }
 
-// ── Reusable Components ────────────────────────
+// Reusable Input & Select components
 function Input({ label, ...props }: { label: string } & React.InputHTMLAttributes<HTMLInputElement>) {
   return (
     <div>
