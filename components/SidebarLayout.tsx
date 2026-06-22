@@ -291,7 +291,6 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
 
   return (
     <div className="flex h-screen bg-white">
-      {/* موبائل مینیو بٹن */}
       <button
         className="md:hidden fixed top-4 right-4 z-50 p-2.5 bg-white rounded-xl shadow-lg border border-gray-100"
         onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
@@ -299,7 +298,6 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
         {isMobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
       </button>
 
-      {/* بیک ڈراپ (موبائل) */}
       {isMobileMenuOpen && (
         <div
           className="fixed inset-0 bg-black/40 backdrop-blur-sm z-30 md:hidden"
@@ -307,13 +305,11 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
         />
       )}
 
-      {/* سائیڈ بار */}
       <div
         className={`fixed inset-y-0 left-0 z-40 w-72 flex flex-col transform transition-transform duration-300 ease-in-out md:relative md:translate-x-0 ${
           isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"
         } bg-white border-r border-gray-100 shadow-sm`}
       >
-        {/* لوگو */}
         <div
           className="h-20 px-6 border-b border-gray-100 flex items-center gap-3 cursor-pointer shrink-0"
           onClick={() => router.push("/dashboard")}
@@ -324,7 +320,6 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
           <span className="text-2xl font-black text-gray-800">EduPilot</span>
         </div>
 
-        {/* مینیو */}
         <div className="flex-1 overflow-y-auto py-4 px-3 custom-scrollbar">
           {visibleGroups.map((group) => {
             const isOpen = openGroups[group.key] ?? false;
@@ -332,7 +327,6 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
 
             return (
               <div key={group.key} className="mb-1">
-                {/* پیرنٹ */}
                 <div
                   className="flex items-center justify-between px-3 py-2.5 rounded-xl text-gray-600 hover:bg-gray-50 cursor-pointer transition-colors"
                   onClick={() => toggleGroup(group.key)}
@@ -344,7 +338,6 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
                   {isOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
                 </div>
 
-                {/* ذیلی آئٹمز */}
                 {isOpen && (
                   <div className="ml-6 mt-1 space-y-1 border-l-2 border-gray-100 pl-2">
                     {group.items.map((item) => {
@@ -372,7 +365,6 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
           })}
         </div>
 
-        {/* لاگ آؤٹ */}
         <div className="p-4 border-t border-gray-100 shrink-0">
           <button
             onClick={handleLogout}
@@ -384,7 +376,6 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
         </div>
       </div>
 
-      {/* مین کنٹینٹ */}
       <div className="flex-1 overflow-y-auto bg-slate-50">
         <div className="p-4 md:p-8 max-w-[1600px] mx-auto pb-24 md:pb-8">{children}</div>
       </div>
