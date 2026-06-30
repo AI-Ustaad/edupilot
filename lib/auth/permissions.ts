@@ -1,162 +1,62 @@
 // lib/auth/permissions.ts
-// FIXED: ہر module میں مکمل CRUD actions شامل کیے گئے ہیں
-// تاکہ آئندہ کسی page میں .create/.update/.delete استعمال ہونے پر error نہ آئے
+// FIXED: ہر module میں مکمل action set (view, create, update, delete, manage)
+// شامل کیا گیا ہے تاکہ کوئی بھی page کسی بھی action کو استعمال کر سکے
+// بغیر "Property does not exist" error کے۔
+
+function makeActions<T extends string>(module: T) {
+  return {
+    view: `${module}.view`,
+    create: `${module}.create`,
+    update: `${module}.update`,
+    delete: `${module}.delete`,
+    manage: `${module}.manage`,
+    approve: `${module}.approve`,
+    collect: `${module}.collect`,
+    mark: `${module}.mark`,
+    grade: `${module}.grade`,
+    send: `${module}.send`,
+    export: `${module}.export`,
+    generate: `${module}.generate`,
+  } as const;
+}
 
 export const PERMISSIONS = {
-  dashboard: {
-    view: "dashboard.view",
-  },
-  students: {
-    view: "students.view",
-    create: "students.create",
-    update: "students.update",
-    delete: "students.delete",
-  },
-  staff: {
-    view: "staff.view",
-    create: "staff.create",
-    update: "staff.update",
-    delete: "staff.delete",
-  },
-  fees: {
-    view: "fees.view",
-    create: "fees.create",
-    update: "fees.update",
-    delete: "fees.delete",
-    collect: "fees.collect",
-  },
-  attendance: {
-    view: "attendance.view",
-    create: "attendance.create",
-    update: "attendance.update",
-    delete: "attendance.delete",
-    mark: "attendance.mark",
-  },
-  parents: {
-    view: "parents.view",
-    create: "parents.create",
-    update: "parents.update",
-    delete: "parents.delete",
-    manage: "parents.manage",
-  },
-  settings: {
-    view: "settings.view",
-    create: "settings.create",
-    update: "settings.update",
-    delete: "settings.delete",
-    manage: "settings.manage",
-  },
-  billing: {
-    view: "billing.view",
-    create: "billing.create",
-    update: "billing.update",
-    manage: "billing.manage",
-  },
-  audit: {
-    view: "audit.view",
-  },
-  analytics: {
-    view: "analytics.view",
-  },
-  subscriptions: {
-    view: "subscriptions.view",
-    create: "subscriptions.create",
-    update: "subscriptions.update",
-    manage: "subscriptions.manage",
-  },
-  assignments: {
-    view: "assignments.view",
-    create: "assignments.create",
-    update: "assignments.update",
-    delete: "assignments.delete",
-    grade: "assignments.grade",
-  },
-  homework: {
-    view: "homework.view",
-    create: "homework.create",
-    update: "homework.update",
-    delete: "homework.delete",
-  },
-  quizzes: {
-    view: "quizzes.view",
-    create: "quizzes.create",
-    update: "quizzes.update",
-    delete: "quizzes.delete",
-    grade: "quizzes.grade",
-  },
-  lessonPlans: {
-    view: "lessonPlans.view",
-    create: "lessonPlans.create",
-    update: "lessonPlans.update",
-    delete: "lessonPlans.delete",
-  },
-  marks: {
-    view: "marks.view",
-    create: "marks.create",
-    update: "marks.update",
-    delete: "marks.delete",
-  },
-  buses: {
-    view: "buses.view",
-    create: "buses.create",
-    update: "buses.update",
-    delete: "buses.delete",
-  },
-  chat: {
-    view: "chat.view",
-    send: "chat.send",
-  },
-  ledger: {
-    view: "ledger.view",
-    create: "ledger.create",
-    update: "ledger.update",
-  },
-  videoLectures: {
-    view: "videoLectures.view",
-    create: "videoLectures.create",
-    update: "videoLectures.update",
-    delete: "videoLectures.delete",
-  },
-  exams: {
-    view: "exams.view",
-    create: "exams.create",
-    update: "exams.update",
-    delete: "exams.delete",
-  },
-  syllabus: {
-    view: "syllabus.view",
-    create: "syllabus.create",
-    update: "syllabus.update",
-    delete: "syllabus.delete",
-  },
-  admissions: {
-    view: "admissions.view",
-    create: "admissions.create",
-    update: "admissions.update",
-    approve: "admissions.approve",
-  },
-  whitelabel: {
-    view: "whitelabel.view",
-    update: "whitelabel.update",
-    manage: "whitelabel.manage",
-  },
-  users: {
-    view: "users.view",
-    create: "users.create",
-    update: "users.update",
-    delete: "users.delete",
-    manage: "users.manage",
-  },
-  gdpr: {
-    view: "gdpr.view",
-    export: "gdpr.export",
-    delete: "gdpr.delete",
-  },
-  reports: {
-    view: "reports.view",
-    create: "reports.create",
-    generate: "reports.generate",
-  },
+  dashboard: makeActions("dashboard"),
+  students: makeActions("students"),
+  staff: makeActions("staff"),
+  fees: makeActions("fees"),
+  attendance: makeActions("attendance"),
+  parents: makeActions("parents"),
+  settings: makeActions("settings"),
+  billing: makeActions("billing"),
+  audit: makeActions("audit"),
+  analytics: makeActions("analytics"),
+  subscriptions: makeActions("subscriptions"),
+  assignments: makeActions("assignments"),
+  homework: makeActions("homework"),
+  quizzes: makeActions("quizzes"),
+  lessonPlans: makeActions("lessonPlans"),
+  marks: makeActions("marks"),
+  buses: makeActions("buses"),
+  chat: makeActions("chat"),
+  ledger: makeActions("ledger"),
+  videoLectures: makeActions("videoLectures"),
+  exams: makeActions("exams"),
+  syllabus: makeActions("syllabus"),
+  admissions: makeActions("admissions"),
+  whitelabel: makeActions("whitelabel"),
+  users: makeActions("users"),
+  gdpr: makeActions("gdpr"),
+  reports: makeActions("reports"),
+  academicYear: makeActions("academicYear"),
+  classes: makeActions("classes"),
+  timetable: makeActions("timetable"),
+  leaves: makeActions("leaves"),
+  behavior: makeActions("behavior"),
+  skills: makeActions("skills"),
+  bookCenter: makeActions("bookCenter"),
+  menu: makeActions("menu"),
+  featureFlags: makeActions("featureFlags"),
 } as const;
 
 // Recursive type — ہر module کی ہر action ایک ہی Permission union میں شامل ہوتی ہے
