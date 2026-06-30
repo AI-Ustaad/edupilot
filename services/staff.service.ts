@@ -1,81 +1,29 @@
-import { StaffRepository } from "@/repositories/staff.repository";
-import { Staff } from "@/types/staff";
+=================================================================
+services/staff.service.ts میں صرف import line تبدیل کریں
+=================================================================
+
+اپنی services/staff.service.ts میں یہ ڈھونڈیں:
+
 import {
   CreateStaffSchema,
   UpdateStaffSchema,
 } from "@/lib/validation";
-import { ZodError } from "zod";
 
-export class StaffService {
-  constructor(private repo: StaffRepository) {}
+اسے اس سے بدلیں:
 
-  async createStaff(data: unknown, tenantId: string, userId: string): Promise<Staff> {
-    let validated;
-    try {
-      validated = CreateStaffSchema.parse(data);
-    } catch (error) {
-      if (error instanceof ZodError) {
-        throw new Error(`Validation failed: ${error.errors.map(e => e.message).join(', ')}`);
-      }
-      throw error;
-    }
+import {
+  createStaffSchema as CreateStaffSchema,
+  updateStaffSchema as UpdateStaffSchema,
+} from "@/lib/validation";
 
-    const createData = {
-      ...validated,
-      tenantId,
-      createdBy: userId,
-    } as Omit<Staff, "id" | "createdAt" | "updatedAt">;
+یا سادہ طریقہ — بس lowercase استعمال کریں:
 
-    const id = await this.repo.create(createData, tenantId);
-    const staff = await this.repo.findById(id, tenantId);
-    if (!staff) throw new Error("Staff created but could not be retrieved");
-    return staff as Staff;
-  }
+import {
+  createStaffSchema,
+  updateStaffSchema,
+} from "@/lib/validation";
 
-  async getStaffById(id: string, tenantId: string): Promise<Staff | null> {
-    return this.repo.findById(id, tenantId);
-  }
+اور باقی فائل میں CreateStaffSchema.parse(...) کی جگہ
+createStaffSchema.parse(...) لکھیں۔
 
-  async listStaff(tenantId: string, page = 1, limit = 20) {
-    const allStaff = await this.repo.findAll(tenantId);
-    const start = (page - 1) * limit;
-    const end = start + limit;
-
-    return {
-      data: allStaff.slice(start, end),
-      total: allStaff.length,
-      page,
-      limit,
-      totalPages: Math.ceil(allStaff.length / limit),
-    };
-  }
-
-  async updateStaff(id: string, data: unknown, tenantId: string, userId: string): Promise<Staff> {
-    let validated;
-    try {
-      validated = UpdateStaffSchema.parse(data);
-    } catch (error) {
-      if (error instanceof ZodError) {
-        throw new Error(`Validation failed: ${error.errors.map(e => e.message).join(', ')}`);
-      }
-      throw error;
-    }
-
-    await this.repo.update(id, { ...validated, updatedBy: userId } as any, tenantId);
-    const updated = await this.repo.findById(id, tenantId);
-    if (!updated) throw new Error("Staff not found after update");
-    return updated as Staff;
-  }
-
-  async deleteStaff(id: string, tenantId: string): Promise<void> {
-    await this.repo.softDelete(id, tenantId);
-  }
-
-  async hardDeleteStaff(id: string, tenantId: string): Promise<void> {
-    await this.repo.delete(id, tenantId);
-  }
-
-  async countStaff(tenantId: string): Promise<number> {
-    return this.repo.count(tenantId);
-  }
-}
+=================================================================
