@@ -1,5 +1,6 @@
 // lib/auth/permissions.ts
-// FIXED: Permission type اب properly تمام nested values کو include کرتا ہے
+// FIXED: ہر module میں مکمل CRUD actions شامل کیے گئے ہیں
+// تاکہ آئندہ کسی page میں .create/.update/.delete استعمال ہونے پر error نہ آئے
 
 export const PERMISSIONS = {
   dashboard: {
@@ -33,15 +34,23 @@ export const PERMISSIONS = {
   },
   parents: {
     view: "parents.view",
+    create: "parents.create",
+    update: "parents.update",
+    delete: "parents.delete",
     manage: "parents.manage",
   },
   settings: {
     view: "settings.view",
+    create: "settings.create",
     update: "settings.update",
+    delete: "settings.delete",
     manage: "settings.manage",
   },
   billing: {
     view: "billing.view",
+    create: "billing.create",
+    update: "billing.update",
+    manage: "billing.manage",
   },
   audit: {
     view: "audit.view",
@@ -51,33 +60,47 @@ export const PERMISSIONS = {
   },
   subscriptions: {
     view: "subscriptions.view",
+    create: "subscriptions.create",
+    update: "subscriptions.update",
+    manage: "subscriptions.manage",
   },
   assignments: {
     view: "assignments.view",
     create: "assignments.create",
     update: "assignments.update",
+    delete: "assignments.delete",
     grade: "assignments.grade",
   },
   homework: {
     view: "homework.view",
     create: "homework.create",
     update: "homework.update",
+    delete: "homework.delete",
   },
   quizzes: {
     view: "quizzes.view",
     create: "quizzes.create",
+    update: "quizzes.update",
+    delete: "quizzes.delete",
     grade: "quizzes.grade",
   },
   lessonPlans: {
     view: "lessonPlans.view",
     create: "lessonPlans.create",
+    update: "lessonPlans.update",
+    delete: "lessonPlans.delete",
   },
   marks: {
     view: "marks.view",
+    create: "marks.create",
+    update: "marks.update",
+    delete: "marks.delete",
   },
   buses: {
     view: "buses.view",
+    create: "buses.create",
     update: "buses.update",
+    delete: "buses.delete",
   },
   chat: {
     view: "chat.view",
@@ -85,15 +108,58 @@ export const PERMISSIONS = {
   },
   ledger: {
     view: "ledger.view",
+    create: "ledger.create",
+    update: "ledger.update",
   },
   videoLectures: {
     view: "videoLectures.view",
     create: "videoLectures.create",
+    update: "videoLectures.update",
+    delete: "videoLectures.delete",
+  },
+  exams: {
+    view: "exams.view",
+    create: "exams.create",
+    update: "exams.update",
+    delete: "exams.delete",
+  },
+  syllabus: {
+    view: "syllabus.view",
+    create: "syllabus.create",
+    update: "syllabus.update",
+    delete: "syllabus.delete",
+  },
+  admissions: {
+    view: "admissions.view",
+    create: "admissions.create",
+    update: "admissions.update",
+    approve: "admissions.approve",
+  },
+  whitelabel: {
+    view: "whitelabel.view",
+    update: "whitelabel.update",
+    manage: "whitelabel.manage",
+  },
+  users: {
+    view: "users.view",
+    create: "users.create",
+    update: "users.update",
+    delete: "users.delete",
+    manage: "users.manage",
+  },
+  gdpr: {
+    view: "gdpr.view",
+    export: "gdpr.export",
+    delete: "gdpr.delete",
+  },
+  reports: {
+    view: "reports.view",
+    create: "reports.create",
+    generate: "reports.generate",
   },
 } as const;
 
-// FIXED: یہ اب ہر module کے ہر action کو ٹھیک طرح union type میں جمع کرتا ہے
-// پہلے یہ صرف 1 level گہرا تھا، اب recursive ہے
+// Recursive type — ہر module کی ہر action ایک ہی Permission union میں شامل ہوتی ہے
 type ValueOf<T> = T[keyof T];
 export type Permission = ValueOf<{
   [K in keyof typeof PERMISSIONS]: ValueOf<typeof PERMISSIONS[K]>;
