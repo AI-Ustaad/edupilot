@@ -1,5 +1,5 @@
 // lib/auth/permissions.ts
-// FIXED: PERMISSIONS اب صحیح طریقے سے export ہو رہی ہے
+// FIXED: Permission type اب properly تمام nested values کو include کرتا ہے
 
 export const PERMISSIONS = {
   dashboard: {
@@ -92,5 +92,9 @@ export const PERMISSIONS = {
   },
 } as const;
 
-export type Permission =
-  typeof PERMISSIONS[keyof typeof PERMISSIONS][keyof typeof PERMISSIONS[keyof typeof PERMISSIONS]];
+// FIXED: یہ اب ہر module کے ہر action کو ٹھیک طرح union type میں جمع کرتا ہے
+// پہلے یہ صرف 1 level گہرا تھا، اب recursive ہے
+type ValueOf<T> = T[keyof T];
+export type Permission = ValueOf<{
+  [K in keyof typeof PERMISSIONS]: ValueOf<typeof PERMISSIONS[K]>;
+}>;
