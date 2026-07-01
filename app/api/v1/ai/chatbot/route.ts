@@ -1,25 +1,25 @@
 export const dynamic = 'force-dynamic';
 
 import { NextResponse } from "next/server";
-import { withErrorHandler, withAuth, withTenant } from "@/route-helpers";
+import { withErrorHandler, withAuth, withTenant, withRateLimit } from "@/route-helpers";
 import { withPermission } from "@/lib/auth/rbac";
-import { ChatbotService } from "@/services/ai/chatbot.service";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 import { createApiResponse } from "@/lib/response/apiResponse";
+import { ChatbotService } from "@/services/ai/chatbot.service";
 
-// Rate limit کو محفوظ طریقے سے ہینڈل کرنے کے لیے wrapper
+// 🛡️ محفوظ wrapper: اگر Redis موجود نہیں ہے تو Rate Limit کو bypass کرے گا
 const safeRateLimit = (handler: Function) => async (req: Request, context: any) => {
+  if (!process.env.UPSTASH_REDIS_REST_URL || !process.env.UPSTASH_REDIS_REST_TOKEN) {
+    return handler(req, context);
+  }
+  
   try {
-    // اگر Upstash Redis موجود نہیں ہے تو یہ ڈائریکٹ handler کو کال کرے گا
-    if (!process.env.UPSTASH_REDIS_REST_URL || !process.env.UPSTASH_REDIS_REST_TOKEN) {
-      return handler(req, context);
-    }
-    // اگر Redis موجود ہے تو Rate Limit چیک کرے گا
     const { aiRateLimit } = await import("@/lib/ratelimit");
-    return aiRateLimit(handler)(req, context);
+    // withRateLimit درست طریقے سے استعمال ہو رہا ہے
+    return withRateLimit(aiRateLimit)(handler)(req, context);
   } catch (err) {
     console.error("Rate limit error:", err);
-    return handler(req, context); // Rate limit fail ہو تو بھی request کو آگے بھیجے
+    return handler(req, context);
   }
 };
 
