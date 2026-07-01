@@ -1,96 +1,56 @@
-import { NextResponse } from "next/server";
-import { adminDb } from "@/lib/firebase-admin";
-import { withErrorHandler, withAuth, withTenant } from "@/route-helpers";
-import { withPermission } from "@/lib/auth/rbac";
+export const dynamic = 'force-dynamic';
+import { withErrorHandler } from "@/route-helpers";
+import { withAuthAndPermission } from "@/route-helpers/withAuthAndPermission";
 import { PERMISSIONS } from "@/lib/auth/permissions";
-import type { TenantContext } from "@/types/api";
+import { StudentService } from "@/services/student.service";
+import { successResponse, errorResponse } from "@/lib/utils/api-response";
+
+// ✅ Constructor میں Argument ہٹا دیا گیا
+const studentService = new StudentService();
 
 export const GET = withErrorHandler(
-  withAuth(
-    withTenant(
-      withPermission(PERMISSIONS.students.view)(async (req: Request, { tenantId }: TenantContext) => {
-        // Extract [id] from dynamic route
-        const url = new URL(req.url);
-        const studentId = url.pathname.split("/").pop();
+  withAuthAndPermission(PERMISSIONS.students.view, async (req, context) => {
+    const tenantId = context.user.tenantId;
+    const id = context.params?.id;
 
-        if (!studentId) {
-          return NextResponse.json({ success: false, message: "Student ID is required" }, { status: 400 });
-        }
+    if (!id) return errorResponse("Student ID is required", 400);
 
-        try {
-          // ✅ OPTIMIZED: Direct Document Lookup (1 Read, Cheaper, Faster)
-          const studentRef = adminDb.collection("students").doc(studentId);
-          const studentSnap = await studentRef.get();
+    // ✅ نئی Method استعمال کی گئی ہے
+    const student = await studentService.getById(tenantId, id);
+    
+    if (!student) {
+      return errorResponse("Student not found", 404);
+    }
+    
+    return successResponse(student, "Student fetched");
+  })
+);
 
-          // ✅ SECURITY: Verify document exists AND belongs to this tenant
-          if (!studentSnap.exists || studentSnap.data()?.tenantId !== tenantId) {
-            return NextResponse.json({ success: false, message: "Student not found or access denied" }, { status: 404 });
-          }
+export const PUT = withErrorHandler(
+  withAuthAndPermission(PERMISSIONS.students.update, async (req, context) => {
+    const tenantId = context.user.tenantId;
+    const id = context.params?.id;
+    
+    if (!id) return errorResponse("Student ID is required", 400);
 
-          const studentData = studentSnap.data();
-          const studentDocId = studentSnap.id;
+    let body;
+    try { body = await req.json(); } catch { return errorResponse("Invalid JSON", 400); }
 
-          // 🚀 Parallel Fetching for Maximum Performance
-          const [attendanceSnap, marksSnap, feesSnap] = await Promise.all([
-            adminDb.collection("attendance").where("tenantId", "==", tenantId).where("studentId", "==", studentDocId).orderBy("date", "desc").limit(30).get(),
-            adminDb.collection("marks").where("tenantId", "==", tenantId).where("studentId", "==", studentDocId).orderBy("createdAt", "desc").limit(10).get(),
-            adminDb.collection("fees").where("tenantId", "==", tenantId).where("studentId", "==", studentDocId).orderBy("createdAt", "desc").limit(5).get()
-          ]);
+    // ✅ نئی Method استعمال کی گئی ہے
+    const updatedStudent = await studentService.update(tenantId, id, body);
+    return successResponse(updatedStudent, "Student updated");
+  })
+);
 
-          const attendance = attendanceSnap.docs.map(d => d.data());
-          const marks = marksSnap.docs.map(d => d.data());
-          const fees = feesSnap.docs.map(d => d.data());
+export const DELETE = withErrorHandler(
+  withAuthAndPermission(PERMISSIONS.students.delete, async (req, context) => {
+    const tenantId = context.user.tenantId;
+    const id = context.params?.id;
+    
+    if (!id) return errorResponse("Student ID is required", 400);
 
-          // 🧠 Advanced 40/40/20 Risk Engine
-          const presentCount = attendance.filter((a: any) => a.status === "Present").length;
-          const attPercent = attendance.length > 0 ? (presentCount / attendance.length) * 100 : 100;
-          const attRisk = attPercent < 75 ? 40 : 0;
-
-          const avgAcademic = marks.length > 0 
-            ? (marks.reduce((sum: number, m: any) => sum + ((m.marksObtained / m.totalMarks) * 100), 0) / marks.length)
-            : 100;
-          const acadRisk = avgAcademic < 40 ? 40 : (avgAcademic < 60 ? 20 : 0);
-
-          const hasPendingFees = fees.some((f: any) => f.status === "Pending" || (f.totalAmount && f.amountPaid < f.totalAmount));
-          const feeRisk = hasPendingFees ? 20 : 0;
-
-          const totalRiskScore = attRisk + acadRisk + feeRisk;
-          let riskLevel = "Low";
-          let riskReason = "On Track";
-
-          if (totalRiskScore >= 60) {
-            riskLevel = "High";
-            riskReason = "Critical: Attendance/Academic/Fee Issues";
-          } else if (totalRiskScore >= 20) {
-            riskLevel = "Medium";
-            riskReason = "Needs Attention";
-          }
-
-          return NextResponse.json({
-            success: true,
-            data: {
-              student: { id: studentDocId, ...studentData },
-              attendance,
-              marks,
-              fees,
-              risk: {
-                score: totalRiskScore,
-                level: riskLevel,
-                reason: riskReason,
-                breakdown: { 
-                  attendance: Math.round(attPercent), 
-                  academics: Math.round(avgAcademic), 
-                  fees: hasPendingFees ? "Pending" : "Clear" 
-                }
-              }
-            }
-          });
-
-        } catch (error) {
-          console.error("Student360 API Error:", error);
-          return NextResponse.json({ success: false, message: "Internal server error" }, { status: 500 });
-        }
-      })
-    )
-  )
+    // ✅ نئی Method استعمال کی گئی ہے
+    await studentService.delete(tenantId, id);
+    return successResponse(null, "Student deleted");
+  })
 );
