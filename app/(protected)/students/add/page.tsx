@@ -5,6 +5,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { Loader2, UserPlus, Upload, Camera } from "lucide-react";
+import Image from "next/image"; // ✅ Next.js Image import
 
 export default function AddStudentPage() {
   const router = useRouter();
@@ -59,7 +60,6 @@ export default function AddStudentPage() {
     setSubmitting(true);
     setError("");
     try {
-      // 🔥 Payload تیار کریں — صرف وہی فیلڈز بھیجیں جو واقعی پُر ہوں
       const payload: Record<string, any> = {
         fullName: form.fullName,
         fatherName: form.fatherName,
@@ -85,15 +85,12 @@ export default function AddStudentPage() {
         createdBy: user?.uid,
       };
 
-      // 🔥 اگر رول نمبر میں کوئی درست مثبت عدد ڈالا گیا ہو تب ہی شامل کریں
       if (form.rollNumber && form.rollNumber.trim() !== "") {
         const num = Number(form.rollNumber);
         if (!Number.isNaN(num) && num > 0) {
           payload.rollNumber = num;
         }
-        // اگر غلط عدد ہو (مثلاً "abc") تو اسے چھوڑ دیں — سکیما اسے optional سمجھے گا
       }
-      // ورنہ payload میں rollNumber شامل نہیں ہوگا
 
       const res = await fetch("/api/v1/students", {
         method: "POST",
@@ -129,16 +126,15 @@ export default function AddStudentPage() {
         {/* Photo Upload */}
         <div className="flex items-center gap-4">
           <div className="relative">
+            {/* ✅ Syntax Fix: صرف ایک شرط اور درست Image ٹیگ */}
             {form.photoBase64 ? (
-           {photoPreview && (
-  <Image 
-    src={photoPreview} 
-    alt="Student Photo" 
-    width={128} 
-    height={128} 
-    className="w-32 h-32 rounded-full object-cover" 
-  />
-)}
+              <Image 
+                src={form.photoBase64} 
+                alt="Student Photo" 
+                width={96} 
+                height={96} 
+                className="w-24 h-24 rounded-full object-cover" 
+              />
             ) : (
               <div className="w-24 h-24 rounded-full bg-gray-200 flex items-center justify-center">
                 <Camera size={32} className="text-gray-400" />
