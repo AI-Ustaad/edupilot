@@ -3,11 +3,12 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
+import Image from "next/image"; // ✅ Next.js Image import
 import {
   Loader2, Camera, Upload, Plus, Trash2, Save, UserPlus
 } from "lucide-react";
 
-// Reusable components (اگر آپ کے پاس نہ ہوں تو شامل کریں)
+// Reusable components
 const Input = ({ label, ...props }: { label: string } & React.InputHTMLAttributes<HTMLInputElement>) => (
   <div>
     <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
@@ -167,8 +168,15 @@ export default function AddStaffPage() {
           <Section title="Personal Information">
             <div className="col-span-2 flex items-center gap-4">
               <div className="relative">
+                {/* ✅ Syntax Fix: img کو next/image سے تبدیل کیا گیا */}
                 {form.personal.photo ? (
-                  <img src={form.personal.photo} className="w-24 h-24 rounded-full object-cover" />
+                  <Image 
+                    src={form.personal.photo} 
+                    alt="Staff Photo" 
+                    width={96} 
+                    height={96} 
+                    className="w-24 h-24 rounded-full object-cover" 
+                  />
                 ) : (
                   <div className="w-24 h-24 rounded-full bg-gray-200 flex items-center justify-center">
                     <Camera size={32} className="text-gray-400" />
