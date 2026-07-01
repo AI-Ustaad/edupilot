@@ -130,7 +130,15 @@ export default function AddStudentPage() {
         <div className="flex items-center gap-4">
           <div className="relative">
             {form.photoBase64 ? (
-              <img src={form.photoBase64} alt="Student" className="w-24 h-24 rounded-full object-cover" />
+           {photoPreview && (
+  <Image 
+    src={photoPreview} 
+    alt="Student Photo" 
+    width={128} 
+    height={128} 
+    className="w-32 h-32 rounded-full object-cover" 
+  />
+)}
             ) : (
               <div className="w-24 h-24 rounded-full bg-gray-200 flex items-center justify-center">
                 <Camera size={32} className="text-gray-400" />
