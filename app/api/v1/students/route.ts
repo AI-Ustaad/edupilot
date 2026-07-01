@@ -6,7 +6,7 @@ import { StudentService } from "@/services/student.service";
 import { StudentRepository } from "@/repositories/student.repository";
 import { successResponse, errorResponse } from "@/lib/utils/api-response";
 
-const studentService = new StudentService(new StudentRepository());
+const studentService = new StudentService();
 
 export const GET = withErrorHandler(
   withAuthAndPermission(PERMISSIONS.students.view, async (req, context) => {
