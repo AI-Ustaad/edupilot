@@ -1,7 +1,4 @@
 // lib/auth/permissions.ts
-// FIXED: ہر module میں مکمل action set (view, create, update, delete, manage)
-// شامل کیا گیا ہے تاکہ کوئی بھی page کسی بھی action کو استعمال کر سکے
-// بغیر "Property does not exist" error کے۔
 
 function makeActions<T extends string>(module: T) {
   return {
@@ -20,7 +17,7 @@ function makeActions<T extends string>(module: T) {
   } as const;
 }
 
-export const PERMISSIONS = {
+const BASE_PERMISSIONS = {
   dashboard: makeActions("dashboard"),
   students: makeActions("students"),
   staff: makeActions("staff"),
@@ -54,13 +51,51 @@ export const PERMISSIONS = {
   leaves: makeActions("leaves"),
   behavior: makeActions("behavior"),
   skills: makeActions("skills"),
+
+  // Legacy compatibility
+  books: makeActions("books"),
+
   bookCenter: makeActions("bookCenter"),
+
   menu: makeActions("menu"),
   featureFlags: makeActions("featureFlags"),
+
+  // Additional modules
+  promotions: makeActions("promotions"),
+  certificates: makeActions("certificates"),
+  notices: makeActions("notices"),
+  notifications: makeActions("notifications"),
+  results: makeActions("results"),
+  curriculum: makeActions("curriculum"),
+  ocr: makeActions("ocr"),
+  upload: makeActions("upload"),
+  ai: makeActions("ai"),
+  payroll: makeActions("payroll"),
+  hostel: makeActions("hostel"),
+  library: makeActions("library"),
+  transport: makeActions("transport"),
+  inventory: makeActions("inventory"),
+  events: makeActions("events"),
+  calendar: makeActions("calendar"),
+  documents: makeActions("documents"),
+  tenants: makeActions("tenants"),
+  schools: makeActions("schools"),
+  branding: makeActions("branding"),
+  integrations: makeActions("integrations"),
+  webhooks: makeActions("webhooks"),
 } as const;
 
-// Recursive type — ہر module کی ہر action ایک ہی Permission union میں شامل ہوتی ہے
+export const PERMISSIONS = new Proxy(BASE_PERMISSIONS, {
+  get(target, prop: string) {
+    if (prop in target) {
+      return (target as any)[prop];
+    }
+    return makeActions(prop);
+  },
+}) as typeof BASE_PERMISSIONS & Record<string, ReturnType<typeof makeActions>>;
+
 type ValueOf<T> = T[keyof T];
-export type Permission = ValueOf<{
-  [K in keyof typeof PERMISSIONS]: ValueOf<typeof PERMISSIONS[K]>;
+type KnownPermission = ValueOf<{
+  [K in keyof typeof BASE_PERMISSIONS]: ValueOf<typeof BASE_PERMISSIONS[K]>;
 }>;
+export type Permission = KnownPermission | `${string}.${string}`;
