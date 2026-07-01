@@ -6,52 +6,35 @@ import { StudentService } from "@/services/student.service";
 import { StudentRepository } from "@/repositories/student.repository";
 import { successResponse, errorResponse } from "@/lib/utils/api-response";
 
-// ✅ Argument واپس اضافے کیا گیا ہے
+// ✅ Argument کے ساتھ Service initialize کریں
 const studentService = new StudentService(new StudentRepository());
 
 export const GET = withErrorHandler(
   withAuthAndPermission(PERMISSIONS.students.view, async (req, context) => {
     const tenantId = context.user.tenantId;
-    const id = context.params?.id;
+    const students = await studentService.listStudents(tenantId, 1, 9999);
+    return successResponse(students.data || students, "Students fetched");
+  })
+);
 
-    if (!id) return errorResponse("Student ID is required", 400);
-
-    // ✅ پرانا Method استعمال کیا گیا ہے
-    const student = await studentService.getStudentById(id, tenantId);
-    
-    if (!student) {
-      return errorResponse("Student not found", 404);
+export const POST = withErrorHandler(
+  withAuthAndPermission(PERMISSIONS.students.create, async (req, context) => {
+    const tenantId = context.user.tenantId;
+    let body;
+    try { 
+      body = await req.json(); 
+    } catch { 
+      return errorResponse("Invalid JSON", 400); 
     }
     
-    return successResponse(student, "Student fetched");
-  })
-);
-
-export const PUT = withErrorHandler(
-  withAuthAndPermission(PERMISSIONS.students.update, async (req, context) => {
-    const tenantId = context.user.tenantId;
-    const id = context.params?.id;
+    if (!body.fullName || !body.classGrade) {
+      return errorResponse("Name and Class required", 400);
+    }
     
-    if (!id) return errorResponse("Student ID is required", 400);
-
-    let body;
-    try { body = await req.json(); } catch { return errorResponse("Invalid JSON", 400); }
-
-    // ✅ پرانا Method استعمال کیا گیا ہے
-    const updatedStudent = await studentService.updateStudent(id, body, tenantId);
-    return successResponse(updatedStudent, "Student updated");
-  })
-);
-
-export const DELETE = withErrorHandler(
-  withAuthAndPermission(PERMISSIONS.students.delete, async (req, context) => {
-    const tenantId = context.user.tenantId;
-    const id = context.params?.id;
+    body.tenantId = tenantId;
+    body.createdBy = context.user.uid;
     
-    if (!id) return errorResponse("Student ID is required", 400);
-
-    // ✅ پرانا Method استعمال کیا گیا ہے
-    await studentService.deleteStudent(id, tenantId);
-    return successResponse(null, "Student deleted");
+    const student = await studentService.createStudent(body, tenantId);
+    return successResponse(student, "Student admitted", 201);
   })
 );
