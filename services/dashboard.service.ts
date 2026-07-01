@@ -19,7 +19,7 @@ export class DashboardService {
 
   constructor() {
     this.studentService = new StudentService(new StudentRepository());
-    this.staffService = new StaffService(new StaffRepository());
+    this.staffService = new StaffService();
     this.feesService = new FeesService(new FeesRepository());
     this.attendanceService = new AttendanceService(new AttendanceRepository());
   }

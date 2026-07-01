@@ -1,23 +1,57 @@
 import { Resend } from "resend";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+let resend: Resend | null = null;
 
-export async function sendEmail(to: string, subject: string, html: string) {
+function getResend(): Resend | null {
+  if (!process.env.RESEND_API_KEY) {
+    return null;
+  }
+
+  if (!resend) {
+    resend = new Resend(process.env.RESEND_API_KEY);
+  }
+
+  return resend;
+}
+
+export async function sendEmail(
+  to: string,
+  subject: string,
+  html: string
+) {
+  const client = getResend();
+
+  if (!client) {
+    console.warn("RESEND_API_KEY not configured.");
+    return {
+      success: false,
+      error: "Email service not configured",
+    };
+  }
+
   try {
-    const { data, error } = await resend.emails.send({
+    const { data, error } = await client.emails.send({
       from: "EduPilot <noreply@edupilot.com>",
       to,
       subject,
       html,
     });
+
     if (error) {
-      console.error("Resend error:", error);
-      return { success: false, error };
+      return {
+        success: false,
+        error,
+      };
     }
-    console.log(`✅ Email sent to ${to}, id: ${data?.id}`);
-    return { success: true, id: data?.id };
+
+    return {
+      success: true,
+      id: data?.id,
+    };
   } catch (err) {
-    console.error("Email send failed:", err);
-    return { success: false, error: err };
+    return {
+      success: false,
+      error: err,
+    };
   }
 }

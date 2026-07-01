@@ -122,9 +122,9 @@ const MENU_GROUPS = [
     icon: Library,
     key: "books",
     items: [
-      { name: "Books", icon: BookOpen, path: "/teacher/book-center", permission: "books.view" },
-      { name: "Manage Books", icon: FileText, path: "/teacher/manage-books", permission: "books.create" },
-      { name: "Categories", icon: Bookmark, path: "/teacher/book-categories", permission: "books.view" },
+      { name: "Books", icon: BookOpen, path: "/teacher/book-center", permission: "bookCenter.view" },
+      { name: "Manage Books", icon: FileText, path: "/teacher/manage-books", permission: "bookCenter.create" },
+      { name: "Categories", icon: Bookmark, path: "/teacher/book-categories", permission: "bookCenter.view" },
     ],
   },
   {

@@ -14,9 +14,9 @@ export type {
 // Staff schemas — alias کے ساتھ تاکہ student schema سے ٹکراؤ نہ ہو
 export {
   createStaffSchema as CreateStaffSchema,
-  updateStaffSchema as UpdateStaffSchema,
+  updateSchema as UpdateStaffSchema,
   createStaffSchema,
-  updateStaffSchema,
+  updateSchema,
 } from "./staff.schema";
 
 // Fees schemas

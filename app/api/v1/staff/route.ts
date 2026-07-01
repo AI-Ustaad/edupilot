@@ -20,7 +20,7 @@ export const GET = withErrorHandler(
         const url = new URL(req.url);
         const page = parseInt(url.searchParams.get('page') || '1');
         const limit = parseInt(url.searchParams.get('limit') || '20');
-        const service = new StaffService(new StaffRepository());
+        const service = new StaffService();
         const result = await service.listStaff(tenantId, page, limit);
     await invalidateCache(`dashboard:${tenantId}`);
         return createApiResponse(200, result);
@@ -35,7 +35,7 @@ export const POST = withRateLimit(standardRateLimit)(
       withTenant(
         withPermission(PERMISSIONS.staff.create)(async (req: Request, { tenantId, user }: TenantContext) => {
           const limits = await subscriptionService.getPlanLimits(tenantId);
-          const service = new StaffService(new StaffRepository());
+          const service = new StaffService();
           const currentCount = await service.countStaff(tenantId);
           if (currentCount >= limits.maxStaff) {
     await invalidateCache(`dashboard:${tenantId}`);

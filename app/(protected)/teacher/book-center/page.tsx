@@ -30,7 +30,7 @@ export default function BookCenterPage() {
   );
 
   return (
-    <RequirePermission permissions={[PERMISSIONS.books.view]}>
+    <RequirePermission permissions={[PERMISSIONS.bookCenter.view]}>
       <div className="p-6 max-w-6xl mx-auto space-y-6">
         <h1 className="text-2xl font-black text-gray-900 flex items-center gap-2 border-b pb-4">
           <BookOpen className="text-blue-600" /> Digital Book Center

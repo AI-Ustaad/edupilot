@@ -1,21 +1,41 @@
-// lib/queue/publisher.ts
 import { Client } from "@upstash/qstash";
 
-// Initialize QStash Client
-const qstash = new Client({ token: process.env.QSTASH_TOKEN! });
+let qstash: Client | null = null;
+
+function getQstash() {
+  if (!process.env.QSTASH_TOKEN) {
+    return null;
+  }
+
+  if (!qstash) {
+    qstash = new Client({
+      token: process.env.QSTASH_TOKEN,
+    });
+  }
+
+  return qstash;
+}
 
 export class Queue {
   static async publishJob(jobType: string, payload: any) {
-    // Development اور Production کے URLs ہینڈل کرنے کے لیے
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://your-domain.com";
-    const webhookUrl = `${baseUrl}/api/webhooks/qstash`;
+    const client = getQstash();
 
-    console.log(`[Queue] Publishing ${jobType} job to ${webhookUrl}...`);
+    if (!client) {
+      console.warn("QSTASH_TOKEN missing.");
+      return;
+    }
 
-    return await qstash.publishJSON({
-      url: webhookUrl,
-      body: { type: jobType, data: payload },
-      retries: 3, // اگر ورکر فیل ہو جائے، تو QStash اسے 3 بار خود دوبارہ چلائے گا!
+    const baseUrl =
+      process.env.NEXT_PUBLIC_APP_URL ||
+      "https://your-domain.com";
+
+    return client.publishJSON({
+      url: `${baseUrl}/api/webhooks/qstash`,
+      body: {
+        type: jobType,
+        data: payload,
+      },
+      retries: 3,
     });
   }
 }

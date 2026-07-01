@@ -18,7 +18,7 @@ export const GET = withErrorHandler(
   withAuth(
     withTenant(
       withPermission(
-        PERMISSIONS.books.view,
+        PERMISSIONS.bookCenter.view,
         async (req: Request, { tenantId }: TenantContext) => {
           if (!tenantId) {
             return createApiResponse(401, null, "Tenant not found");

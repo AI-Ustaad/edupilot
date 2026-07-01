@@ -39,7 +39,7 @@ export const createStaffSchema = z.object({
   }).optional(),
 }).passthrough(); // باقی fields (payroll, education, etc.) کو پاس ہونے دیں
 
-export const updateStaffSchema = createStaffSchema.partial();
+export const updateSchema = createStaffSchema.partial();
 
 export type CreateStaffInput = z.infer<typeof createStaffSchema>;
-export type UpdateStaffInput = z.infer<typeof updateStaffSchema>;
+export type UpdateStaffInput = z.infer<typeof updateSchema>;

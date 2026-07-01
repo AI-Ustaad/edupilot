@@ -8,6 +8,7 @@ function makeActions<T extends string>(module: T) {
     delete: `${module}.delete`,
     manage: `${module}.manage`,
     approve: `${module}.approve`,
+    activate: `${module}.activate`,
     collect: `${module}.collect`,
     mark: `${module}.mark`,
     grade: `${module}.grade`,

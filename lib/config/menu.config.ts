@@ -250,7 +250,7 @@ const ALL_MENU_GROUPS: MenuGroupDef[] = [
         name: "Book Center",
         icon: BookOpen,
         path: "/teacher/book-center",
-        requiredPermission: "books.view",
+        requiredPermission: "bookCenter.view",
         featureFlag: "bookCenter",
       },
       {
@@ -258,7 +258,7 @@ const ALL_MENU_GROUPS: MenuGroupDef[] = [
         name: "Manage Books",
         icon: FileText,
         path: "/teacher/manage-books",
-        requiredPermission: "books.create",
+        requiredPermission: "bookCenter.create",
         featureFlag: "bookCenter",
       },
       {

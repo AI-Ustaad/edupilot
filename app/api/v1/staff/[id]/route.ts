@@ -31,8 +31,8 @@ export const GET = withErrorHandler(
       withPermission(PERMISSIONS.staff.view)(
         async (req: Request, { tenantId }: WithTenantContext) => {
           const id = getIdFromUrl(req);
-          const service = new StaffService(new StaffRepository());
-          const staff = await service.getStaffById(id, tenantId);
+          const service = new StaffService();
+          const staff = await service.getById(tenantId, id);
           if (!staff) {
     await invalidateCache(`dashboard:${tenantId}`);
             return createApiResponse(404, null, "Staff not found");
@@ -52,8 +52,8 @@ export const PUT = withErrorHandler(
         async (req: Request, { tenantId, user }: WithTenantContext) => {
           const id = getIdFromUrl(req);
           const body = await req.json();
-          const service = new StaffService(new StaffRepository());
-          await service.updateStaff(id, body, tenantId, user.uid);
+          const service = new StaffService();
+          await service.update(tenantId, id, body);
     await invalidateCache(`dashboard:${tenantId}`);
           return createApiResponse(200, null, "Staff updated successfully");
         }
@@ -68,14 +68,14 @@ export const DELETE = withErrorHandler(
       withPermission(PERMISSIONS.staff.delete)(
         async (req: Request, { tenantId, user }: WithTenantContext) => {
           const id = getIdFromUrl(req);
-          const service = new StaffService(new StaffRepository());
-          const staff = await service.getStaffById(id, tenantId);
+          const service = new StaffService();
+          const staff = await service.getById(tenantId, id);
           if (!staff) {
     await invalidateCache(`dashboard:${tenantId}`);
             return createApiResponse(404, null, "Staff not found");
           }
 
-          await service.deleteStaff(id, tenantId);
+          await service.delete(tenantId, id);
 
           // Audit log
           await logAction({
