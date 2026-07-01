@@ -3,10 +3,11 @@ import { withErrorHandler } from "@/route-helpers";
 import { withAuthAndPermission } from "@/route-helpers/withAuthAndPermission";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 import { StudentService } from "@/services/student.service";
+import { StudentRepository } from "@/repositories/student.repository";
 import { successResponse, errorResponse } from "@/lib/utils/api-response";
 
-// ✅ Constructor میں Argument ہٹا دیا گیا
-const studentService = new StudentService();
+// ✅ Argument واپس اضافے کیا گیا ہے
+const studentService = new StudentService(new StudentRepository());
 
 export const GET = withErrorHandler(
   withAuthAndPermission(PERMISSIONS.students.view, async (req, context) => {
@@ -15,8 +16,8 @@ export const GET = withErrorHandler(
 
     if (!id) return errorResponse("Student ID is required", 400);
 
-    // ✅ نئی Method استعمال کی گئی ہے
-    const student = await studentService.getById(tenantId, id);
+    // ✅ پرانا Method استعمال کیا گیا ہے
+    const student = await studentService.getStudentById(id, tenantId);
     
     if (!student) {
       return errorResponse("Student not found", 404);
@@ -36,8 +37,8 @@ export const PUT = withErrorHandler(
     let body;
     try { body = await req.json(); } catch { return errorResponse("Invalid JSON", 400); }
 
-    // ✅ نئی Method استعمال کی گئی ہے
-    const updatedStudent = await studentService.update(tenantId, id, body);
+    // ✅ پرانا Method استعمال کیا گیا ہے
+    const updatedStudent = await studentService.updateStudent(id, body, tenantId);
     return successResponse(updatedStudent, "Student updated");
   })
 );
@@ -49,8 +50,8 @@ export const DELETE = withErrorHandler(
     
     if (!id) return errorResponse("Student ID is required", 400);
 
-    // ✅ نئی Method استعمال کی گئی ہے
-    await studentService.delete(tenantId, id);
+    // ✅ پرانا Method استعمال کیا گیا ہے
+    await studentService.deleteStudent(id, tenantId);
     return successResponse(null, "Student deleted");
   })
 );
