@@ -50,7 +50,12 @@ export default function Student360Page() {
     );
   }
 
-  const { student, attendance, risk } = data;
+  // 🛡️ FIX: Data safely extract karna
+  // API agar data.student return karti hai to wo, warna direct data ko student maan lo.
+  const student = data?.student || data;
+  const attendance = data?.attendance || [];
+  const risk = data?.risk || {};
+  
   const healthScore = Math.max(0, 100 - (risk?.score || 0));
 
   const present = attendance?.filter((a: any) => a.status === "Present").length || 0;
@@ -68,6 +73,7 @@ export default function Student360Page() {
   return (
     <RequirePermission permissions={[PERMISSIONS.students.view]}>
       <div className="space-y-6 p-6 max-w-7xl mx-auto">
+        {/* 🛡️ Optional chaining (?). taake agar student undefined ho to crash na ho */}
         <StudentHeader student={student} healthScore={healthScore} />
         
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
