@@ -1,4 +1,7 @@
 // services/staff.service.ts
+// FIXED: constructor اب repository کو parameter کے طور پر بھی قبول کرتا ہے
+// تاکہ new StaffService() اور new StaffService(new StaffRepository()) دونوں کام کریں
+
 import { BaseService } from "./base.service";
 import { StaffRepository } from "@/repositories/staff.repository";
 import { Staff } from "@/types/staff";
@@ -11,21 +14,25 @@ import { ZodError } from "zod";
 export class StaffService extends BaseService {
   private repository: StaffRepository;
 
-  constructor() {
+  // FIXED: repository optional parameter — دونوں طریقے کام کریں گے:
+  // new StaffService()
+  // new StaffService(new StaffRepository())
+  constructor(repository?: StaffRepository) {
     super();
-    this.repository = new StaffRepository();
+    this.repository = repository ?? new StaffRepository();
   }
 
   async list(tenantId: string) {
     return this.repository.findAll(tenantId);
   }
 
+  async getStaffById(id: string, tenantId: string) {
+    return this.repository.findById(tenantId, id);
+  }
+
+  // backward compatibility alias
   async getById(tenantId: string, id: string) {
-    const staff = await this.repository.findById(tenantId, id);
-    if (!staff) {
-      throw new Error("Staff member not found");
-    }
-    return staff;
+    return this.repository.findById(tenantId, id);
   }
 
   async create(tenantId: string, data: any) {
