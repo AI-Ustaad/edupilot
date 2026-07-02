@@ -1,8 +1,6 @@
 "use client";
 import React from "react";
 import { motion } from "framer-motion";
-import { useQuery } from "@tanstack/react-query";
-import { useAuth } from "@/context/AuthContext";
 import {
   Users, Briefcase, DollarSign, Activity, CalendarDays,
   CreditCard, Clock, AlertTriangle, TrendingUp, Loader2,
@@ -11,6 +9,9 @@ import {
   AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell,
 } from "recharts";
+
+// 🚀 Layered Architecture Hooks
+import { useDashboardMetrics, useRiskStudents } from "@/hooks/useDashboard";
 
 const fadeInUp = {
   hidden: { opacity: 0, y: 20 },
@@ -22,45 +23,12 @@ const staggerContainer = {
 };
 const CHART_COLORS = ["#3b82f6","#10b981","#f59e0b","#ef4444","#8b5cf6","#ec4899"];
 
-interface DashboardData {
-  students: number;
-  staff: number;
-  revenue: number;
-  todayAttendance: { present: number; absent: number };
-  attendanceTrend: { day: string; percent: number }[];
-  attendanceStats: { avg: number; highest: number; lowest: number };
-  feeMonth: { collected: number; pending: number; total: number };
-  classFeeSummary: { class: string; collected: number; total: number }[];
-  recentPayments: { id: string; studentName: string; amount: number; date: string }[];
-  classDistribution: { name: string; value: number }[];
-}
-
 export default function DashboardPage() {
-  const { user } = useAuth();
-
-  // FIXED: /api/dashboard — v1 نہیں، rewrite خود لگاتی ہے
-  const { data, isLoading, error } = useQuery<DashboardData>({
-    queryKey: ["dashboard", user?.tenantId],
-    queryFn: async () => {
-      const res = await fetch("/api/dashboard", { credentials: "include" });
-      if (!res.ok) throw new Error("Failed to fetch dashboard");
-      const json = await res.json();
-      return json.data || json;
-    },
-    enabled: !!user?.tenantId,
-  });
-
-  // FIXED: /api/students/risk — v1 نہیں
-  const { data: riskStudents = [] } = useQuery<any[]>({
-    queryKey: ["riskStudents", user?.tenantId],
-    queryFn: async () => {
-      const res = await fetch("/api/students/risk", { credentials: "include" });
-      if (!res.ok) return [];
-      const json = await res.json();
-      return json.data || [];
-    },
-    enabled: !!user?.tenantId,
-  });
+  // 1. Fetch Live Dashboard Data
+  const { data, isLoading, error } = useDashboardMetrics();
+  
+  // 2. Fetch Live Risk Students
+  const { data: riskStudents = [] } = useRiskStudents();
 
   if (isLoading) {
     return (
@@ -79,10 +47,16 @@ export default function DashboardPage() {
     );
   }
 
-  const total = data.todayAttendance.present + data.todayAttendance.absent;
-  const attendancePercent = total > 0
-    ? ((data.todayAttendance.present / total) * 100).toFixed(0)
-    : "0";
+  // Safe Data Extraction (Guards against undefined)
+  const total = (data.todayAttendance?.present || 0) + (data.todayAttendance?.absent || 0);
+  const attendancePercent = total > 0 ? ((data.todayAttendance.present / total) * 100).toFixed(0) : "0";
+  
+  const attendanceTrend = data.attendanceTrend || [];
+  const attendanceStats = data.attendanceStats || { avg: 0, highest: 0, lowest: 0 };
+  const feeMonth = data.feeMonth || { collected: 0, pending: 0, total: 0 };
+  const classFeeSummary = data.classFeeSummary || [];
+  const recentPayments = data.recentPayments || [];
+  const classDistribution = data.classDistribution || [];
 
   return (
     <motion.div initial="hidden" animate="visible" variants={staggerContainer} className="space-y-8">
@@ -98,10 +72,10 @@ export default function DashboardPage() {
       </motion.div>
 
       <motion.div variants={staggerContainer} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        <KpiCard title="Total Students" value={data.students} icon={<Users size={24} className="text-blue-600" />} color="blue" />
-        <KpiCard title="Total Staff" value={data.staff} icon={<Briefcase size={24} className="text-purple-600" />} color="purple" />
-        <KpiCard title="Revenue (Month)" value={"Rs " + data.revenue.toLocaleString()} icon={<DollarSign size={24} className="text-green-600" />} color="green" />
-        <KpiCard title="Today Attendance" value={attendancePercent + "%"} subtitle={data.todayAttendance.present + "P / " + data.todayAttendance.absent + "A"} icon={<Activity size={24} className="text-cyan-600" />} color="cyan" />
+        <KpiCard title="Total Students" value={data.students || 0} icon={<Users size={24} className="text-blue-600" />} color="blue" />
+        <KpiCard title="Total Staff" value={data.staff || 0} icon={<Briefcase size={24} className="text-purple-600" />} color="purple" />
+        <KpiCard title="Revenue (Month)" value={"Rs " + (data.revenue || 0).toLocaleString()} icon={<DollarSign size={24} className="text-green-600" />} color="green" />
+        <KpiCard title="Today Attendance" value={attendancePercent + "%"} subtitle={(data.todayAttendance?.present || 0) + "P / " + (data.todayAttendance?.absent || 0) + "A"} icon={<Activity size={24} className="text-cyan-600" />} color="cyan" />
       </motion.div>
 
       {riskStudents.length > 0 && (
@@ -122,8 +96,8 @@ export default function DashboardPage() {
                   </span>
                 </div>
                 <div className="flex gap-4 mt-3 text-xs">
-                  <div><p className="text-gray-400">Attendance</p><p className="font-bold text-red-600">{student.attendance}%</p></div>
-                  <div><p className="text-gray-400">Marks</p><p className="font-bold text-orange-600">{student.marks}%</p></div>
+                  <div><p className="text-gray-400">Attendance</p><p className="font-bold text-red-600">{student.attendance || 0}%</p></div>
+                  <div><p className="text-gray-400">Marks</p><p className="font-bold text-orange-600">{student.marks || 0}%</p></div>
                 </div>
               </div>
             ))}
@@ -137,7 +111,7 @@ export default function DashboardPage() {
             <TrendingUp size={20} className="text-blue-600" /> Weekly Attendance Trend
           </h3>
           <ResponsiveContainer width="100%" height={280}>
-            <AreaChart data={data.attendanceTrend}>
+            <AreaChart data={attendanceTrend}>
               <defs>
                 <linearGradient id="colorPercent" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.8} />
@@ -151,9 +125,9 @@ export default function DashboardPage() {
             </AreaChart>
           </ResponsiveContainer>
           <div className="grid grid-cols-3 gap-4 mt-4 text-center">
-            <div><p className="text-gray-500 text-xs">Average</p><p className="text-xl font-black text-gray-900">{data.attendanceStats.avg}%</p></div>
-            <div><p className="text-gray-500 text-xs">Highest</p><p className="text-xl font-black text-green-600">{data.attendanceStats.highest}%</p></div>
-            <div><p className="text-gray-500 text-xs">Lowest</p><p className="text-xl font-black text-red-500">{data.attendanceStats.lowest}%</p></div>
+            <div><p className="text-gray-500 text-xs">Average</p><p className="text-xl font-black text-gray-900">{attendanceStats.avg}%</p></div>
+            <div><p className="text-gray-500 text-xs">Highest</p><p className="text-xl font-black text-green-600">{attendanceStats.highest}%</p></div>
+            <div><p className="text-gray-500 text-xs">Lowest</p><p className="text-xl font-black text-red-500">{attendanceStats.lowest}%</p></div>
           </div>
         </motion.div>
 
@@ -163,26 +137,27 @@ export default function DashboardPage() {
           </h3>
           <div className="mb-6">
             <div className="flex justify-between text-sm mb-2">
-              <span className="text-gray-600 font-medium">Collected: <span className="font-bold text-green-600">Rs {data.feeMonth.collected.toLocaleString()}</span></span>
-              <span className="text-gray-500">Pending: <span className="font-bold text-orange-500">Rs {data.feeMonth.pending.toLocaleString()}</span></span>
+              <span className="text-gray-600 font-medium">Collected: <span className="font-bold text-green-600">Rs {feeMonth.collected.toLocaleString()}</span></span>
+              <span className="text-gray-500">Pending: <span className="font-bold text-orange-500">Rs {feeMonth.pending.toLocaleString()}</span></span>
             </div>
             <div className="w-full bg-gray-100 rounded-full h-3">
-              <div className="bg-gradient-to-r from-green-400 to-green-600 h-3 rounded-full" style={{ width: ((data.feeMonth.collected / (data.feeMonth.total || 1)) * 100) + "%" }} />
+              <div className="bg-gradient-to-r from-green-400 to-green-600 h-3 rounded-full" style={{ width: ((feeMonth.collected / (feeMonth.total || 1)) * 100) + "%" }} />
             </div>
           </div>
           <h4 className="font-bold mb-3 text-gray-800 text-sm">Class-wise Collection</h4>
           <div className="space-y-3">
-            {data.classFeeSummary.map((c) => (
+            {classFeeSummary.map((c: any) => (
               <div key={c.class}>
                 <div className="flex justify-between text-sm mb-1">
                   <span className="text-gray-700 font-medium">{c.class}</span>
-                  <span className="text-gray-500">Rs {c.collected.toLocaleString()}</span>
+                  <span className="text-gray-500">Rs {(c.collected || 0).toLocaleString()}</span>
                 </div>
                 <div className="w-full bg-gray-100 rounded-full h-2">
                   <div className="bg-blue-500 h-2 rounded-full" style={{ width: ((c.collected / (c.total || 1)) * 100) + "%" }} />
                 </div>
               </div>
             ))}
+            {classFeeSummary.length === 0 && <p className="text-gray-400 text-sm text-center py-4">No fee data for this month yet.</p>}
           </div>
         </motion.div>
       </div>
@@ -192,14 +167,14 @@ export default function DashboardPage() {
           <h3 className="text-lg font-bold mb-4 flex items-center gap-2 text-gray-900">
             <Users size={20} className="text-purple-600" /> Student Distribution
           </h3>
-          {data.classDistribution.length === 0 ? (
+          {classDistribution.length === 0 ? (
             <div className="h-64 flex items-center justify-center text-gray-400">No data available</div>
           ) : (
             <div className="flex flex-col md:flex-row items-center gap-8">
               <ResponsiveContainer width="100%" height={250}>
                 <PieChart>
-                  <Pie data={data.classDistribution} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={90} innerRadius={50} paddingAngle={2}>
-                    {data.classDistribution.map((_, idx) => (
+                  <Pie data={classDistribution} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={90} innerRadius={50} paddingAngle={2}>
+                    {classDistribution.map((_, idx) => (
                       <Cell key={idx} fill={CHART_COLORS[idx % CHART_COLORS.length]} />
                     ))}
                   </Pie>
@@ -207,7 +182,7 @@ export default function DashboardPage() {
                 </PieChart>
               </ResponsiveContainer>
               <div className="flex flex-col gap-2 w-full">
-                {data.classDistribution.map((item, idx) => (
+                {classDistribution.map((item, idx) => (
                   <div key={idx} className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <div className="w-3 h-3 rounded-full" style={{ backgroundColor: CHART_COLORS[idx % CHART_COLORS.length] }} />
@@ -235,14 +210,14 @@ export default function DashboardPage() {
                 </tr>
               </thead>
               <tbody>
-                {data.recentPayments.map((p) => (
+                {recentPayments.map((p: any) => (
                   <tr key={p.id} className="border-b border-gray-50 last:border-0">
                     <td className="py-3 text-gray-900 font-medium">{p.studentName}</td>
                     <td className="py-3 text-gray-600">{p.date}</td>
-                    <td className="py-3 text-green-600 font-bold text-right">Rs {p.amount.toLocaleString()}</td>
+                    <td className="py-3 text-green-600 font-bold text-right">Rs {(p.amount || 0).toLocaleString()}</td>
                   </tr>
                 ))}
-                {data.recentPayments.length === 0 && (
+                {recentPayments.length === 0 && (
                   <tr><td colSpan={3} className="py-6 text-center text-gray-400">No recent payments</td></tr>
                 )}
               </tbody>
