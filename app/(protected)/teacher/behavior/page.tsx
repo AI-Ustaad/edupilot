@@ -4,8 +4,7 @@ import { Loader2, UserCheck, Star } from "lucide-react";
 import RequirePermission from "@/components/RequirePermission";
 
 export default function BehaviorPage() {
-  const [classes, setClasses] = useState<any[]>([]);
-  const [subjects, setSubjects] = useState<string[]>([]);
+  const [classesData, setClassesData] = useState<any[]>([]);
   const [classGrade, setClassGrade] = useState("");
   const [section, setSection] = useState("");
   const [studentId, setStudentId] = useState("");
@@ -15,19 +14,24 @@ export default function BehaviorPage() {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    fetch("/api/settings")
-      .then(r => r.json())
-      .then(d => {
-        setClasses(d.classes || []);
-        setSubjects(d.subjects || []);
-      });
+    fetchClasses();
   }, []);
+
+  const fetchClasses = async () => {
+    try {
+      const res = await fetch("/api/classes");
+      const data = await res.json();
+      setClassesData(data.data || []);
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   useEffect(() => {
     if (!classGrade || !section) return;
     fetch(`/api/students?classGrade=${classGrade}&section=${section}`)
       .then(r => r.json())
-      .then(d => setStudents(d.data || d));
+      .then(d => setStudents(Array.isArray(d) ? d : (d.data || [])));
   }, [classGrade, section]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -46,7 +50,7 @@ export default function BehaviorPage() {
     alert("Behavior recorded successfully!");
   };
 
-  const selectedSections = classes.find(c => c.name === classGrade)?.sections || [];
+  const availableSections = classesData.find(c => c.classGrade === classGrade)?.sections || [];
 
   return (
     <RequirePermission permissions={["behavior.create" as any]}>
@@ -60,16 +64,16 @@ export default function BehaviorPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Class</label>
-              <select value={classGrade} onChange={e => { setClassGrade(e.target.value); setSection(""); }} className="w-full bg-gray-50 border border-gray-300 rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+              <select value={classGrade} onChange={e => { setClassGrade(e.target.value); setSection(""); setStudentId(""); }} className="w-full bg-gray-50 border border-gray-300 rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-blue-500" required>
                 <option value="">Select Class</option>
-                {classes.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
+                {classesData.map(c => <option key={c.id} value={c.classGrade}>{c.classGrade}</option>)}
               </select>
             </div>
             <div>
               <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Section</label>
-              <select value={section} onChange={e => setSection(e.target.value)} className="w-full bg-gray-50 border border-gray-300 rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50" required disabled={!classGrade}>
+              <select value={section} onChange={e => { setSection(e.target.value); setStudentId(""); }} className="w-full bg-gray-50 border border-gray-300 rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50" required disabled={!classGrade}>
                 <option value="">Select Section</option>
-                {selectedSections.map(s => <option key={s} value={s}>{s}</option>)}
+                {availableSections.map((s: string) => <option key={s} value={s}>{s}</option>)}
               </select>
             </div>
           </div>
