@@ -5,6 +5,9 @@ import { Loader2, Plus, Calendar } from "lucide-react";
 import RequirePermission from "@/components/RequirePermission";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 
+// 🛡️ Safe Array Helper
+const safeArray = (data: any) => Array.isArray(data) ? data : (Array.isArray(data?.data) ? data.data : []);
+
 export default function CreateAssignmentPage() {
   const router = useRouter();
   const [classes, setClasses] = useState<any[]>([]);
@@ -23,16 +26,15 @@ export default function CreateAssignmentPage() {
   useEffect(() => {
     fetch("/api/classes")
       .then((res) => res.json())
-      .then((data) => setClasses(data.data || []))
+      .then((data) => setClasses(safeArray(data)))
       .catch(console.error);
 
     fetch("/api/settings")
       .then((res) => res.json())
-      .then((data) => setSubjects(data.subjects || []))
+      .then((data) => setSubjects(safeArray(data.subjects || data.data?.subjects)))
       .catch(console.error);
   }, []);
 
-  // 🛡️ Fix: Section کا Logic درست کیا گیا ہے
   const availableSections = classes
     .filter((c: any) => c.classGrade === form.classGrade)
     .map((c: any) => c.sectionName || c.section);
@@ -136,8 +138,8 @@ export default function CreateAssignmentPage() {
                 required
               />
               <datalist id="subject-list">
-                {subjects.map((s) => (
-                  <option key={s} value={s} />
+                {subjects.map((s, idx) => (
+                  <option key={idx} value={s} />
                 ))}
               </datalist>
             </div>
