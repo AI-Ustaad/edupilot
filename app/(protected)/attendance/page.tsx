@@ -1,104 +1,44 @@
 "use client";
 import React, { useState, useMemo } from "react";
 import { useAuth } from "@/context/AuthContext";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { 
-  Calendar, Users, CheckCircle2, XCircle, Loader2, 
-  AlertCircle, Save, Clock, BookOpen 
-} from "lucide-react";
+import { Calendar, Users, CheckCircle2, XCircle, Loader2, Save, Clock, BookOpen } from "lucide-react";
 import RequirePermission from "@/components/RequirePermission";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 
-// API Helpers
-const fetchClasses = async () => {
-  const res = await fetch("/api/classes");
-  if (!res.ok) throw new Error("Failed to fetch classes");
-  const json = await res.json();
-  return json.data || [];
-};
-
-const fetchStudents = async (classGrade: string, section: string) => {
-  const res = await fetch(`/api/students?classGrade=${classGrade}&section=${section}`);
-  if (!res.ok) throw new Error("Failed to fetch students");
-  const json = await res.json();
-  return json.data || [];
-};
-
-const fetchAttendance = async (params: Record<string, string>) => {
-  const q = new URLSearchParams(params);
-  const res = await fetch(`/api/attendance?${q}`);
-  if (!res.ok) throw new Error("Failed to fetch attendance");
-  const json = await res.json();
-  return json.data || [];
-};
-
-const saveAttendanceApi = async (data: any) => {
-  const res = await fetch("/api/attendance", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data),
-  });
-  if (!res.ok) throw new Error("Failed to save attendance");
-  return res.json();
-};
+// 🚀 Layered Architecture Hooks
+import { useClasses } from "@/hooks/useClasses";
+import { useStudents } from "@/hooks/useStudents";
+import { useAttendance, useSaveAttendance } from "@/hooks/useAttendance";
 
 export default function AttendancePage() {
   const { user } = useAuth();
-  const queryClient = useQueryClient();
   
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [selectedClass, setSelectedClass] = useState("");
   const [selectedSection, setSelectedSection] = useState("");
   const [entries, setEntries] = useState<Record<string, string>>({});
-  const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState(false);
 
-  // 1. Fetch Real Classes
-  const { data: classesData = [], isLoading: loadingClasses } = useQuery({
-    queryKey: ["classes", user?.tenantId],
-    queryFn: fetchClasses,
-    enabled: !!user?.tenantId,
-  });
+  // 1. Fetch Live Classes
+  const { data: classesData = [] } = useClasses();
+  const availableClasses = useMemo(() => Array.from(new Set(classesData.map((c: any) => c.classGrade))), [classesData]);
+  const availableSections = useMemo(() => classesData.filter((c: any) => c.classGrade === selectedClass).map((c: any) => c.sectionName || c.section), [classesData, selectedClass]);
 
-  // Extract unique classes (e.g., "10", "9")
-  const availableClasses = useMemo(() => {
-    return Array.from(new Set(classesData.map((c: any) => c.classGrade)));
-  }, [classesData]);
-
-  // Extract sections based on selected class
-  const availableSections = useMemo(() => {
-    if (!selectedClass) return [];
-    return classesData.filter((c: any) => c.classGrade === selectedClass).map((c: any) => c.sectionName || c.section);
-  }, [classesData, selectedClass]);
-
-  // 2. Fetch Real Students based on Class & Section
-  const { data: students = [], isLoading: loadingStudents } = useQuery({
-    queryKey: ["students", user?.tenantId, selectedClass, selectedSection],
-    queryFn: () => fetchStudents(selectedClass, selectedSection),
-    enabled: !!user?.tenantId && !!selectedClass && !!selectedSection,
-  });
+  // 2. Fetch Live Students (Filtered by Class & Section)
+  const { data: students = [], isLoading: loadingStudents } = useStudents(
+    selectedClass && selectedSection ? { classGrade: selectedClass, section: selectedSection } : undefined
+  );
 
   // 3. Fetch Existing Attendance for the day
-  const { data: attendanceRecords = [] } = useQuery({
-    queryKey: ["attendance", user?.tenantId, selectedClass, selectedSection, selectedDate],
-    queryFn: () => fetchAttendance({ classGrade: selectedClass, section: selectedSection, date: selectedDate }),
-    enabled: !!user?.tenantId && !!selectedClass && !!selectedSection,
-  });
+  const { data: attendanceRecords = [] } = useAttendance(selectedClass, selectedSection, selectedDate);
 
-  const saveMutation = useMutation({
-    mutationFn: saveAttendanceApi,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["attendance", user?.tenantId, selectedClass, selectedSection, selectedDate] });
-      setSuccess(true);
-      setTimeout(() => setSuccess(false), 3000);
-    },
-  });
+  // 4. Save Mutation
+  const saveMutation = useSaveAttendance();
 
   const handleSaveAll = async () => {
     if (students.length === 0) return;
-    setSaving(true);
     try {
-      const promises = students.map((student: any) => {
+      await Promise.all(students.map((student: any) => {
         const status = entries[student.id] || "Absent";
         return saveMutation.mutateAsync({
           studentId: student.id,
@@ -108,10 +48,11 @@ export default function AttendancePage() {
           date: selectedDate,
           status,
         });
-      });
-      await Promise.all(promises);
-    } finally {
-      setSaving(false);
+      }));
+      setSuccess(true);
+      setTimeout(() => setSuccess(false), 3000);
+    } catch (err) {
+      alert("Failed to save attendance.");
     }
   };
 
@@ -130,10 +71,10 @@ export default function AttendancePage() {
         <RequirePermission permissions={[PERMISSIONS.attendance.mark]}>
           <button 
             onClick={handleSaveAll} 
-            disabled={saving || saveMutation.isPending || students.length === 0}
+            disabled={saveMutation.isPending || students.length === 0}
             className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 shadow-md disabled:opacity-50"
           >
-            {saving || saveMutation.isPending ? <Loader2 className="animate-spin"/> : <Save size={18}/>} 
+            {saveMutation.isPending ? <Loader2 className="animate-spin"/> : <Save size={18}/>} 
             Save All
           </button>
         </RequirePermission>
@@ -141,7 +82,7 @@ export default function AttendancePage() {
 
       {success && <div className="bg-green-50 text-green-700 p-3 rounded-lg flex items-center gap-2 font-bold border border-green-100"><CheckCircle2 size={18}/> Attendance saved successfully!</div>}
 
-      {/* FILTERS - Now 100% Dynamic */}
+      {/* FILTERS - 100% Dynamic */}
       <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm flex flex-wrap gap-4">
         <input 
           type="date" 
@@ -149,17 +90,14 @@ export default function AttendancePage() {
           onChange={e => setSelectedDate(e.target.value)} 
           className="border border-gray-300 rounded-lg px-3 py-2 font-medium" 
         />
-        
         <select 
           value={selectedClass} 
           onChange={e => { setSelectedClass(e.target.value); setSelectedSection(""); }} 
           className="border border-gray-300 rounded-lg px-3 py-2 font-medium"
-          disabled={loadingClasses}
         >
-          <option value="">{loadingClasses ? "Loading Classes..." : "Select Class"}</option>
-          {availableClasses.map((cls: string) => <option key={cls} value={cls}>Class {cls}</option>)}
+          <option value="">Select Class</option>
+          {availableClasses.map((c: string) => <option key={c} value={c}>Class {c}</option>)}
         </select>
-
         <select 
           value={selectedSection} 
           onChange={e => setSelectedSection(e.target.value)} 
@@ -167,14 +105,14 @@ export default function AttendancePage() {
           disabled={!selectedClass}
         >
           <option value="">Select Section</option>
-          {availableSections.map((sec: string) => <option key={sec} value={sec}>Section {sec}</option>)}
+          {availableSections.map((s: string) => <option key={s} value={s}>Section {s}</option>)}
         </select>
       </div>
 
-      {/* STUDENTS LIST - Now Fetches Real DB Data */}
+      {/* STUDENTS LIST - Live DB Data */}
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
         <div className="px-6 py-4 bg-gray-50 border-b border-gray-200 font-bold text-gray-700 flex items-center gap-2">
-          <Users size={18} /> Students
+          <Users size={18}/> Students
         </div>
         
         {loadingStudents ? (
@@ -187,8 +125,6 @@ export default function AttendancePage() {
         ) : students.length === 0 ? (
           <div className="p-8 text-center text-gray-400 font-bold">
             No students found in Class {selectedClass} - Section {selectedSection}.
-            <br/>
-            <span className="text-xs">Please add students to this section first.</span>
           </div>
         ) : (
           <div className="divide-y divide-gray-100">
