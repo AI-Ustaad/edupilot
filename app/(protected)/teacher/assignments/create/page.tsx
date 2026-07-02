@@ -21,21 +21,21 @@ export default function CreateAssignmentPage() {
   });
 
   useEffect(() => {
-    // Live Classes Fetch
     fetch("/api/classes")
       .then((res) => res.json())
       .then((data) => setClasses(data.data || []))
       .catch(console.error);
 
-    // Subjects Fetch
     fetch("/api/settings")
       .then((res) => res.json())
       .then((data) => setSubjects(data.subjects || []))
       .catch(console.error);
   }, []);
 
-  const selectedClassSections =
-    classes.find((c) => c.classGrade === form.classGrade)?.sections || [];
+  // 🛡️ Fix: Section کا Logic درست کیا گیا ہے
+  const availableSections = classes
+    .filter((c: any) => c.classGrade === form.classGrade)
+    .map((c: any) => c.sectionName || c.section);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -105,8 +105,8 @@ export default function CreateAssignmentPage() {
                 required
               >
                 <option value="">Select Class</option>
-                {classes.map((c) => (
-                  <option key={c.id} value={c.classGrade}>{c.classGrade}</option>
+                {classes.map((c: any, idx: number) => (
+                  <option key={idx} value={c.classGrade}>{c.classGrade}</option>
                 ))}
               </select>
             </div>
@@ -120,8 +120,8 @@ export default function CreateAssignmentPage() {
                 disabled={!form.classGrade}
               >
                 <option value="">Select Section</option>
-                {selectedClassSections.map((sec: string) => (
-                  <option key={sec} value={sec}>{sec}</option>
+                {availableSections.map((sec: string, idx: number) => (
+                  <option key={idx} value={sec}>{sec}</option>
                 ))}
               </select>
             </div>
