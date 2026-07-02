@@ -2,17 +2,17 @@
 import { getAuth } from "firebase/auth";
 
 export interface TokenProvider {
-  getAccessToken(): Promise<string | null>;
+  getAccessToken(forceRefresh?: boolean): Promise<string | null>;
 }
 
 // 🚀 Firebase Implementation
 export const firebaseTokenProvider: TokenProvider = {
-  async getAccessToken() {
+  async getAccessToken(forceRefresh = false) {
     try {
       const auth = getAuth();
-    const currentUser = auth.currentUser;
+      const currentUser = auth.currentUser;
       if (currentUser) {
-        return await currentUser.getIdToken();
+        return await currentUser.getIdToken(forceRefresh);
       }
       return null;
     } catch (error) {
