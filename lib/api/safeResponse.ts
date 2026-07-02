@@ -14,22 +14,11 @@ export const safeObject = <T = any>(data: any): T | null => {
   return null;
 };
 
-export const safePagination = (data: any) => {
-  const items = safeArray(data?.data || data?.items);
-  return {
-    items,
-    total: data?.total ?? items.length,
-    page: data?.page ?? 1,
-    limit: data?.limit ?? items.length,
-    totalPages: data?.totalPages ?? 1,
-  };
-};
+// 🌟 آپ کی تجویز کردا Enterprise unwrapApiResponse
+export function unwrapApiResponse<T>(response: any): T {
+  return response?.data?.data ?? response?.data ?? response;
+}
 
-export const safeData = <T = any>(data: any): T => {
-  return (data?.data ?? data) as T;
-};
-
-// 🌟 آپ کی تجویز کردہ Enterprise isEmpty Function
 export const isEmpty = (value: any): boolean => {
   if (value === null) return true;
   if (value === undefined) return true;
