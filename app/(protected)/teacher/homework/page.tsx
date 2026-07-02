@@ -21,13 +21,11 @@ export default function TeacherHomeworkPage() {
   const [listLoading, setListLoading] = useState(true);
 
   useEffect(() => {
-    // Live Classes Fetch
     fetch("/api/classes")
       .then(res => res.json())
       .then(data => setClasses(data.data || []))
       .catch(console.error);
 
-    // Subjects Fetch
     fetch("/api/settings")
       .then(res => res.json())
       .then(data => setSubjects(data.subjects || []))
@@ -84,8 +82,10 @@ export default function TeacherHomeworkPage() {
     }
   };
 
-  // Extract Live Sections based on selected Class
-  const selectedClassSections = classes.find((c: any) => c.classGrade === classGrade)?.sections || [];
+  // 🛡️ Fix: Section کا Logic درست کیا گیا ہے
+  const availableSections = classes
+    .filter((c: any) => c.classGrade === classGrade)
+    .map((c: any) => c.sectionName || c.section);
 
   return (
     <div className="max-w-4xl mx-auto p-6 space-y-8">
@@ -124,7 +124,7 @@ export default function TeacherHomeworkPage() {
               required
             >
               <option value="">Select Class</option>
-              {classes.map((c: any) => <option key={c.id} value={c.classGrade}>{c.classGrade}</option>)}
+              {classes.map((c: any, idx: number) => <option key={idx} value={c.classGrade}>{c.classGrade}</option>)}
             </select>
 
             <select
@@ -135,7 +135,7 @@ export default function TeacherHomeworkPage() {
               disabled={!classGrade}
             >
               <option value="">Select Section</option>
-              {selectedClassSections.map((s: string) => <option key={s} value={s}>{s}</option>)}
+              {availableSections.map((s: string, idx: number) => <option key={idx} value={s}>{s}</option>)}
             </select>
 
             <div className="flex items-center gap-2 border border-gray-200 bg-gray-50 rounded-xl p-3 focus-within:ring-2 focus-within:ring-blue-500">
