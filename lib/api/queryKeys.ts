@@ -1,31 +1,22 @@
 // lib/api/queryKeys.ts
 export const QueryKeys = {
-  students: ["students"] as const,
-  student: (id: string) => ["students", id] as const,
+  students: (tenantId: string) => ["students", tenantId] as const,
+  student: (tenantId: string, id: string) => ["students", tenantId, id] as const,
   
-  staff: ["staff"] as const,
-  staffMember: (id: string) => ["staff", id] as const,
+  staff: (tenantId: string) => ["staff", tenantId] as const,
+  staffMember: (tenantId: string, id: string) => ["staff", tenantId, id] as const,
   
-  classes: ["classes"] as const,
-  sections: (classGrade: string) => ["classes", classGrade, "sections"] as const,
+  classes: (tenantId: string) => ["classes", tenantId] as const,
+  sections: (tenantId: string, classGrade: string) => ["classes", tenantId, classGrade, "sections"] as const,
   
-  attendance: ["attendance"] as const,
-  attendanceByDate: (classGrade: string, section: string, date: string) => 
-    ["attendance", classGrade, section, date] as const,
+  attendance: (tenantId: string, classGrade: string, section: string, date: string) => 
+    ["attendance", tenantId, classGrade, section, date] as const,
     
-  fees: ["fees"] as const,
-  feesByMonth: (month: string, classGrade: string) => ["fees", month, classGrade] as const,
+  fees: (tenantId: string, month: string, classGrade: string) => 
+    ["fees", tenantId, month, classGrade] as const,
   
-  parents: ["parents"] as const,
+  parents: (tenantId: string) => ["parents", tenantId] as const,
   
-  dashboard: ["dashboard"] as const,
-  analytics: ["analytics"] as const,
-  
-  reports: ["reports"] as const,
-  
-  exams: ["exams"] as const,
-  marks: (classGrade: string, section: string, term: string) => 
-    ["marks", classGrade, section, term] as const,
-    
-  subscriptions: ["subscriptions"] as const,
+  dashboard: (tenantId: string) => ["dashboard", tenantId] as const,
+  analytics: (tenantId: string) => ["analytics", tenantId] as const,
 };
