@@ -39,10 +39,17 @@ export default function ResultsPage() {
     enabled: !!user?.tenantId,
   });
 
-  const availableClasses = useMemo(() => Array.from(new Set(classesData.map((c: any) => c.classGrade))), [classesData]);
+  // 🛡️ Fix: Explicitly type as string[]
+  const availableClasses = useMemo(() => {
+    const classes = classesData.map((c: any) => c.classGrade as string);
+    return Array.from(new Set(classes));
+  }, [classesData]);
+
   const availableSections = useMemo(() => {
-    if (!selectedClass) return [];
-    return classesData.filter((c: any) => c.classGrade === selectedClass).map((c: any) => c.sectionName || c.section);
+    if (!selectedClass) return [] as string[];
+    return classesData
+      .filter((c: any) => c.classGrade === selectedClass)
+      .map((c: any) => (c.sectionName || c.section) as string);
   }, [classesData, selectedClass]);
 
   const { data: results = [], isLoading, error } = useQuery({
@@ -72,14 +79,16 @@ export default function ResultsPage() {
           <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 block">Class</label>
           <select value={selectedClass} onChange={e => { setSelectedClass(e.target.value); setSelectedSection(""); }} className="w-full border border-gray-300 rounded-lg px-3 py-2 font-medium focus:ring-2 focus:ring-indigo-500 outline-none">
             <option value="">Select Class</option>
-            {availableClasses.map(c => <option key={c} value={c}>Class {c}</option>)}
+            {/* 🛡️ Fix: Typed as string */}
+            {availableClasses.map((c: string) => <option key={c} value={c}>Class {c}</option>)}
           </select>
         </div>
         <div className="flex-1 min-w-[150px]">
           <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 block">Section</label>
           <select value={selectedSection} onChange={e => setSelectedSection(e.target.value)} disabled={!selectedClass} className="w-full border border-gray-300 rounded-lg px-3 py-2 font-medium disabled:bg-gray-100 focus:ring-2 focus:ring-indigo-500 outline-none">
             <option value="">Select Section</option>
-            {availableSections.map(s => <option key={s} value={s}>Section {s}</option>)}
+            {/* 🛡️ Fix: Typed as string */}
+            {availableSections.map((s: string) => <option key={s} value={s}>Section {s}</option>)}
           </select>
         </div>
         <div className="flex-1 min-w-[200px]">
