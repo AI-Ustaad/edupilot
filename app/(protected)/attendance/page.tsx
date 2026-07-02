@@ -174,7 +174,7 @@ export default function AttendancePage() {
       {/* STUDENTS LIST - Now Fetches Real DB Data */}
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
         <div className="px-6 py-4 bg-gray-50 border-b border-gray-200 font-bold text-gray-700 flex items-center gap-2">
-          <Users size={18/> Students
+          <Users size={18} /> Students
         </div>
         
         {loadingStudents ? (
