@@ -6,7 +6,7 @@ import RequirePermission from "@/components/RequirePermission";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 
 // 🚀 نئی Layered Architecture کے Hooks Import کریں
-import { useClasses, useCreateClass, useDeleteClass } from "@/hooks/classes/useClasses";
+import { useClasses, useCreateClass, useDeleteClass } from "@/hooks/useClasses";
 
 export default function ClassesManagementPage() {
   const { user } = useAuth();
