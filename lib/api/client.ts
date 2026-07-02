@@ -1,12 +1,7 @@
 // lib/api/client.ts
 import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
 import * as Sentry from "@sentry/nextjs";
-import { firebaseTokenProvider, TokenProvider } from "@/lib/auth/tokenProvider";
-
-// 🌟 Tenant Provider Interface (آپ اسے Context کے ذریعے Inject کریں گے)
-export interface TenantProvider {
-  getTenantId(): string | null;
-}
+import { firebaseTokenProvider } from "@/lib/auth/tokenProvider";
 
 // 🚀 Enterprise Axios Instance
 const apiClient = axios.create({
@@ -34,7 +29,9 @@ apiClient.interceptors.request.use(
       }
 
       // 3. Distributed Tracing کیلئے Request ID
-      config.headers["x-request-id"] = crypto.randomUUID();
+      if (typeof crypto !== "undefined" && crypto.randomUUID) {
+        config.headers["x-request-id"] = crypto.randomUUID();
+      }
       
     } catch (err) {
       console.error("[API Client] Interceptor Error:", err);
@@ -59,16 +56,19 @@ apiClient.interceptors.response.use(
       if (status === 401 && !originalRequest._retry) {
         originalRequest._retry = true;
         try {
-          const auth = getAuth();
-          if (auth.currentUser) {
-            await auth.currentUser.getIdToken(true); // Force Refresh
-            const newToken = await auth.currentUser.getIdToken();
+          // Force Refresh Token
+          const newToken = await firebaseTokenProvider.getAccessToken(true);
+          if (newToken) {
             originalRequest.headers.Authorization = `Bearer ${newToken}`;
-            return apiClient(originalRequest);
+            return apiClient(originalRequest); // Request دوبارہ بھیجیں
+          } else {
+            throw new Error("No user found for token refresh");
           }
         } catch (refreshError) {
           console.error("[API Client] Token Refresh Failed. Logging out.");
-          if (typeof window !== "undefined") window.location.href = "/login";
+          if (typeof window !== "undefined") {
+            window.location.href = "/login";
+          }
           return Promise.reject(refreshError);
         }
       }
