@@ -1,10 +1,12 @@
 "use client";
-
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Loader2, Sparkles, Download, Trash2 } from "lucide-react";
 import RequirePermission from "@/components/RequirePermission";
 import { PERMISSIONS } from "@/lib/auth/permissions";
+
+// 🛡️ Safe Array Helper
+const safeArray = (data: any) => Array.isArray(data) ? data : (Array.isArray(data?.data) ? data.data : []);
 
 export default function AITimetablePage() {
   const [classes, setClasses] = useState<string[]>([]);
@@ -17,15 +19,27 @@ export default function AITimetablePage() {
   const [timetable, setTimetable] = useState<any[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [dataLoading, setDataLoading] = useState(true);
 
   useEffect(() => {
-    fetch("/api/settings")
-      .then((res) => res.json())
-      .then((data) => {
-        setClasses(data.classes || []);
-        setSubjects(data.subjects || []);
-      })
-      .catch(console.error);
+    const fetchInitialData = async () => {
+      try {
+        const classesRes = await fetch("/api/classes");
+        const classesJson = await classesRes.json();
+        const classesData = safeArray(classesJson);
+        // Extract unique class grades
+        setClasses(Array.from(new Set(classesData.map((c: any) => c.classGrade as string))));
+
+        const settingsRes = await fetch("/api/settings");
+        const settingsJson = await settingsRes.json();
+        setSubjects(safeArray(settingsJson.subjects || settingsJson.data?.subjects));
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setDataLoading(false);
+      }
+    };
+    fetchInitialData();
   }, []);
 
   const generateTimetable = async () => {
@@ -79,34 +93,38 @@ export default function AITimetablePage() {
         <div>
           <label className="text-sm font-bold text-slate-700">Select Classes</label>
           <div className="flex flex-wrap gap-2 mt-2">
-            {classes.map((c) => (
-              <button
-                key={c}
-                onClick={() => setSelectedClasses((prev) => prev.includes(c) ? prev.filter((x) => x !== c) : [...prev, c])}
-                className={`px-3 py-1.5 rounded-full text-sm font-bold border transition ${
-                  selectedClasses.includes(c) ? "bg-blue-600 text-white border-blue-600" : "bg-gray-50 text-gray-600 hover:bg-gray-100"
-                }`}
-              >
-                {c}
-              </button>
-            ))}
+            {dataLoading ? <Loader2 className="animate-spin text-blue-500" size={20} /> : 
+              classes.map((c) => (
+                <button
+                  key={c}
+                  onClick={() => setSelectedClasses((prev) => prev.includes(c) ? prev.filter((x) => x !== c) : [...prev, c])}
+                  className={`px-3 py-1.5 rounded-full text-sm font-bold border transition ${
+                    selectedClasses.includes(c) ? "bg-blue-600 text-white border-blue-600" : "bg-gray-50 text-gray-600 hover:bg-gray-100"
+                  }`}
+                >
+                  {c}
+                </button>
+              ))
+            }
           </div>
         </div>
 
         <div>
           <label className="text-sm font-bold text-slate-700">Select Subjects</label>
           <div className="flex flex-wrap gap-2 mt-2">
-            {subjects.map((s) => (
-              <button
-                key={s}
-                onClick={() => setSelectedSubjects((prev) => prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s])}
-                className={`px-3 py-1.5 rounded-full text-sm font-bold border transition ${
-                  selectedSubjects.includes(s) ? "bg-green-600 text-white border-green-600" : "bg-gray-50 text-gray-600 hover:bg-gray-100"
-                }`}
-              >
-                {s}
-              </button>
-            ))}
+            {dataLoading ? <Loader2 className="animate-spin text-blue-500" size={20} /> : 
+              subjects.map((s) => (
+                <button
+                  key={s}
+                  onClick={() => setSelectedSubjects((prev) => prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s])}
+                  className={`px-3 py-1.5 rounded-full text-sm font-bold border transition ${
+                    selectedSubjects.includes(s) ? "bg-green-600 text-white border-green-600" : "bg-gray-50 text-gray-600 hover:bg-gray-100"
+                  }`}
+                >
+                  {s}
+                </button>
+              ))
+            }
           </div>
         </div>
 
@@ -135,7 +153,6 @@ export default function AITimetablePage() {
 
       {error && <div className="bg-red-50 text-red-600 p-4 rounded-xl border border-red-200 font-bold">{error}</div>}
 
-      {/* 🛡️ Protected Generate Button */}
       <RequirePermission permissions={["timetable.create" as any]}>
         <button onClick={generateTimetable} disabled={loading} className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition disabled:opacity-50 w-full sm:w-auto">
           {loading ? <Loader2 className="animate-spin" size={18} /> : <Sparkles size={18} />}
