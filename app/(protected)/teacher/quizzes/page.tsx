@@ -92,8 +92,10 @@ export default function TeacherQuizzesPage() {
     }
   };
 
-  // Extract Live Sections based on selected Class
-  const availableSections = classesData.find((c: any) => c.classGrade === classGrade)?.sections || [];
+  // 🛡️ Fix: Section کا Logic درست کیا گیا ہے
+  const availableSections = classesData
+    .filter((c: any) => c.classGrade === classGrade)
+    .map((c: any) => c.sectionName || c.section);
 
   if (loading) return <div className="p-8 text-center"><Loader2 className="animate-spin text-blue-600 mx-auto" size={32} /></div>;
 
@@ -109,11 +111,11 @@ export default function TeacherQuizzesPage() {
               <input placeholder="Quiz Title" value={title} onChange={e => setTitle(e.target.value)} className="border border-gray-300 bg-gray-50 rounded-xl p-3 focus:ring-2 focus:ring-blue-500 outline-none" required />
               <select value={classGrade} onChange={e => { setClassGrade(e.target.value); setSection(""); }} className="border border-gray-300 bg-gray-50 rounded-xl p-3 focus:ring-2 focus:ring-blue-500 outline-none" required>
                 <option value="">Select Class</option>
-                {classesData.map((c: any) => <option key={c.id} value={c.classGrade}>{c.classGrade}</option>)}
+                {classesData.map((c: any, idx: number) => <option key={idx} value={c.classGrade}>{c.classGrade}</option>)}
               </select>
               <select value={section} onChange={e => setSection(e.target.value)} className="border border-gray-300 bg-gray-50 rounded-xl p-3 focus:ring-2 focus:ring-blue-500 outline-none" required disabled={!classGrade}>
                 <option value="">Select Section</option>
-                {availableSections.map((s: string) => <option key={s} value={s}>{s}</option>)}
+                {availableSections.map((s: string, idx: number) => <option key={idx} value={s}>{s}</option>)}
               </select>
               <input type="text" placeholder="Subject" value={subject} onChange={e => setSubject(e.target.value)} list="subject-list" className="border border-gray-300 bg-gray-50 rounded-xl p-3 focus:ring-2 focus:ring-blue-500 outline-none" required />
               <datalist id="subject-list">
