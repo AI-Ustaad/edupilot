@@ -1,8 +1,6 @@
-// app/(protected)/fees/page.tsx
 "use client";
 import React, { useState, useMemo } from "react";
 import { useAuth } from "@/context/AuthContext";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Wallet, Loader2, AlertCircle, CheckCircle,
   Save, DollarSign, Calendar, Users, Trash2,
@@ -10,49 +8,15 @@ import {
 import RequirePermission from "@/components/RequirePermission";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 
-const fetchFees = async (params: Record<string, string>) => {
-  const q = new URLSearchParams(params);
-  const res = await fetch(`/api/v1/fees?${q}`);
-  if (!res.ok) throw new Error("Failed to fetch fees");
-  const json = await res.json();
-  return Array.isArray(json.data) ? json.data : (json.data?.data || []);
-};
-
-const fetchStudents = async () => {
-  const res = await fetch("/api/students");
-  if (!res.ok) throw new Error("Failed to fetch students");
-  const json = await res.json();
-  return Array.isArray(json) ? json : (json.data || []);
-};
-
-const fetchClasses = async () => {
-  const res = await fetch("/api/classes");
-  if (!res.ok) throw new Error("Failed to fetch classes");
-  const json = await res.json();
-  return json.data || [];
-};
-
-const saveFeeApi = async (feeData: any) => {
-  const res = await fetch("/api/v1/fees", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(feeData),
-  });
-  if (!res.ok) throw new Error("Failed to save fee");
-  return res.json();
-};
-
-const deleteFeeApi = async (id: string) => {
-  const res = await fetch(`/api/v1/fees?id=${id}`, { method: "DELETE" });
-  if (!res.ok) throw new Error("Failed to delete fee");
-  return res.json();
-};
+// 🚀 Layered Architecture Hooks
+import { useClasses } from "@/hooks/useClasses";
+import { useStudents } from "@/hooks/useStudents";
+import { useFees, useSaveFee, useDeleteFee } from "@/hooks/useFees";
 
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
 export default function FeesPage() {
   const { user } = useAuth();
-  const queryClient = useQueryClient();
 
   const [selectedMonth, setSelectedMonth] = useState(new Date().toLocaleString("default", { month: "long" }));
   const [selectedClass, setSelectedClass] = useState("");
@@ -60,57 +24,23 @@ export default function FeesPage() {
   const [feeEntries, setFeeEntries] = useState<Record<string, { amount: string; status: string }>>({});
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState("");
-  const [error, setError] = useState("");
 
-  const { data: classesData = [] } = useQuery({
-    queryKey: ["classes", user?.tenantId],
-    queryFn: fetchClasses,
-    enabled: !!user?.tenantId,
-  });
+  // 1. Fetch Live Classes
+  const { data: classesData = [] } = useClasses();
+  const availableClasses = useMemo(() => Array.from(new Set(classesData.map((c: any) => c.classGrade))), [classesData]);
+  const availableSections = useMemo(() => classesData.filter((c: any) => c.classGrade === selectedClass).map((c: any) => c.sectionName || c.section), [classesData, selectedClass]);
 
-  // 🛡️ Fix: Explicitly type as string[] to avoid unknown type errors
-  const availableClasses = useMemo(() => {
-    const classes = classesData.map((c: any) => c.classGrade as string);
-    return Array.from(new Set(classes));
-  }, [classesData]);
+  // 2. Fetch Live Students
+  const { data: students = [], isLoading: studentsLoading } = useStudents(
+    selectedClass && selectedSection ? { classGrade: selectedClass, section: selectedSection } : undefined
+  );
 
-  const availableSections = useMemo(() => {
-    if (!selectedClass) return [] as string[];
-    return classesData
-      .filter((c: any) => c.classGrade === selectedClass)
-      .map((c: any) => (c.sectionName || c.section) as string);
-  }, [classesData, selectedClass]);
+  // 3. Fetch Fee Records
+  const { data: feeRecords = [], isLoading: feesLoading } = useFees(selectedMonth, selectedClass, selectedSection);
 
-  const { data: feeRecords = [], isLoading: feesLoading } = useQuery({
-    queryKey: ["fees", user?.tenantId, selectedMonth, selectedClass, selectedSection],
-    queryFn: () => fetchFees({ month: selectedMonth, classGrade: selectedClass, section: selectedSection }),
-    enabled: !!user?.tenantId && !!selectedMonth,
-  });
-
-  const { data: students = [], isLoading: studentsLoading } = useQuery({
-    queryKey: ["students", user?.tenantId],
-    queryFn: fetchStudents,
-    enabled: !!user?.tenantId,
-  });
-
-  const saveMutation = useMutation({
-    mutationFn: saveFeeApi,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["fees", user?.tenantId, selectedMonth, selectedClass, selectedSection] });
-      setSuccess("Fee records saved successfully!");
-      setTimeout(() => setSuccess(""), 3000);
-    },
-    onError: () => setError("Failed to save fee records."),
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: deleteFeeApi,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["fees", user?.tenantId, selectedMonth, selectedClass, selectedSection] });
-      setSuccess("Fee record archived.");
-      setTimeout(() => setSuccess(""), 3000);
-    },
-  });
+  // 4. Mutations
+  const saveMutation = useSaveFee();
+  const deleteMutation = useDeleteFee();
 
   const filteredStudents = students.filter(
     (s: any) => (!selectedClass || s.classGrade === selectedClass) && (!selectedSection || s.section === selectedSection)
@@ -118,9 +48,8 @@ export default function FeesPage() {
 
   const handleSaveAll = async () => {
     setSaving(true);
-    setError("");
     try {
-      const promises = filteredStudents.map((student: any) => {
+      await Promise.all(filteredStudents.map((student: any) => {
         const entry = feeEntries[student.id] || { amount: "0", status: "pending" };
         return saveMutation.mutateAsync({
           studentId: student.id,
@@ -131,8 +60,11 @@ export default function FeesPage() {
           amountPaid: Number(entry.amount),
           status: entry.status,
         });
-      });
-      await Promise.all(promises);
+      }));
+      setSuccess("Fee records saved successfully!");
+      setTimeout(() => setSuccess(""), 3000);
+    } catch (err) {
+      alert("Failed to save fees.");
     } finally {
       setSaving(false);
     }
@@ -167,7 +99,6 @@ export default function FeesPage() {
       </div>
 
       {success && <div className="bg-green-50 text-green-700 p-3 rounded-lg flex items-center gap-2 font-bold border border-green-100"><CheckCircle size={18} /> {success}</div>}
-      {error && <div className="bg-red-50 text-red-600 p-3 rounded-lg flex items-center gap-2 font-bold border border-red-100"><AlertCircle size={18} /> {error}</div>}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="bg-gradient-to-br from-green-500 to-green-600 text-white p-6 rounded-2xl shadow-lg">
@@ -201,16 +132,14 @@ export default function FeesPage() {
           <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 block">Class</label>
           <select value={selectedClass} onChange={(e) => { setSelectedClass(e.target.value); setSelectedSection(""); }} className="w-full border border-gray-300 rounded-lg px-3 py-2 font-medium">
             <option value="">All Classes</option>
-            {/* 🛡️ Fix: Typed as string */}
-            {availableClasses.map((c: string) => <option key={c} value={c}>Class {c}</option>)}
+            {availableClasses.map((c) => <option key={c} value={c}>Class {c}</option>)}
           </select>
         </div>
         <div className="flex-1 min-w-[150px]">
           <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 block">Section</label>
           <select value={selectedSection} onChange={(e) => setSelectedSection(e.target.value)} disabled={!selectedClass} className="w-full border border-gray-300 rounded-lg px-3 py-2 font-medium disabled:bg-gray-100">
             <option value="">All Sections</option>
-            {/* 🛡️ Fix: Typed as string */}
-            {availableSections.map((s: string) => <option key={s} value={s}>Section {s}</option>)}
+            {availableSections.map((s) => <option key={s} value={s}>Section {s}</option>)}
           </select>
         </div>
       </div>
@@ -219,7 +148,7 @@ export default function FeesPage() {
         <div className="px-6 py-4 bg-gray-50 border-b border-gray-200 font-bold text-gray-700 flex items-center gap-2">
           <DollarSign size={18} /> Fee Entry - {selectedMonth}
         </div>
-        {studentsLoading ? (
+        {studentsLoading || feesLoading ? (
           <div className="p-8 flex justify-center"><Loader2 className="animate-spin text-green-500" size={32} /></div>
         ) : filteredStudents.length === 0 ? (
           <div className="p-8 text-center text-gray-400 font-bold">No students found for selected filters.</div>
