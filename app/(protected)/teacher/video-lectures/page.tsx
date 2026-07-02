@@ -8,8 +8,10 @@ export default function TeacherVideoLecturesPage() {
   const [videos, setVideos] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
-  const [classes, setClasses] = useState<string[]>([]);
+  
+  const [classesData, setClassesData] = useState<any[]>([]);
   const [subjects, setSubjects] = useState<string[]>([]);
+  
   const [form, setForm] = useState({
     title: "",
     description: "",
@@ -19,19 +21,28 @@ export default function TeacherVideoLecturesPage() {
   });
 
   useEffect(() => {
-    fetch("/api/settings")
-      .then(res => res.json())
-      .then(data => {
-        setClasses(data.classes || []);
-        setSubjects(data.subjects || []);
-      });
+    fetchInitialData();
     fetchVideos();
   }, []);
+
+  const fetchInitialData = async () => {
+    try {
+      const classesRes = await fetch("/api/classes");
+      const classesJson = await classesRes.json();
+      setClassesData(classesJson.data || []);
+
+      const settingsRes = await fetch("/api/settings");
+      const settingsJson = await settingsRes.json();
+      setSubjects(settingsJson.subjects || []);
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   const fetchVideos = async () => {
     const res = await fetch("/api/video-lectures");
     const data = await res.json();
-    setVideos(Array.isArray(data) ? data : []);
+    setVideos(Array.isArray(data) ? data : (data.data || []));
     setLoading(false);
   };
 
@@ -75,7 +86,6 @@ export default function TeacherVideoLecturesPage() {
     <div className="max-w-4xl mx-auto p-6 space-y-8">
       <h1 className="text-2xl font-black text-gray-900 flex items-center gap-2"><Upload className="text-blue-600" /> Upload Video Lecture</h1>
 
-      {/* 🛡️ Protected Upload Form */}
       <RequirePermission permissions={[PERMISSIONS.videoLectures.create]}>
         <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
           <h2 className="text-lg font-bold text-gray-900 mb-4">New Video</h2>
@@ -86,16 +96,19 @@ export default function TeacherVideoLecturesPage() {
             <input type="text" placeholder="Description (optional)" value={form.description}
               onChange={e => setForm({ ...form, description: e.target.value })}
               className="bg-gray-50 border border-gray-300 rounded-xl p-3 text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none" />
+            
             <select value={form.classGrade} onChange={e => setForm({ ...form, classGrade: e.target.value })}
               className="bg-gray-50 border border-gray-300 rounded-xl p-3 text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none" required>
               <option value="">Select Class</option>
-              {classes.map(c => <option key={c}>{c}</option>)}
+              {classesData.map((c: any) => <option key={c.id} value={c.classGrade}>{c.classGrade}</option>)}
             </select>
+            
             <select value={form.subject} onChange={e => setForm({ ...form, subject: e.target.value })}
               className="bg-gray-50 border border-gray-300 rounded-xl p-3 text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none" required>
               <option value="">Select Subject</option>
-              {subjects.map(s => <option key={s}>{s}</option>)}
+              {subjects.map(s => <option key={s} value={s}>{s}</option>)}
             </select>
+            
             <div className="col-span-2">
               <label className="text-sm font-bold text-gray-700 mb-2 block">Video File (MP4, WebM, etc.)</label>
               <input type="file" accept="video/*" onChange={e => setForm({ ...form, file: e.target.files?.[0] || null })}
@@ -110,7 +123,6 @@ export default function TeacherVideoLecturesPage() {
         </div>
       </RequirePermission>
 
-      {/* Previously Uploaded Videos */}
       <div>
         <h2 className="text-lg font-bold text-gray-900 mb-4 border-b pb-2">Uploaded Videos</h2>
         {videos.length === 0 ? (
