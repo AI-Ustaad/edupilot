@@ -9,18 +9,28 @@ export default function VideoLecturesPage() {
   const [loading, setLoading] = useState(true);
   const [filterClass, setFilterClass] = useState("");
   const [filterSubject, setFilterSubject] = useState("");
-  const [classes, setClasses] = useState<string[]>([]);
+  
+  const [classesData, setClassesData] = useState<any[]>([]);
   const [subjects, setSubjects] = useState<string[]>([]);
 
   useEffect(() => {
-    fetch("/api/settings")
-      .then(res => res.json())
-      .then(data => {
-        setClasses(data.classes || []);
-        setSubjects(data.subjects || []);
-      });
+    fetchInitialData();
     fetchVideos();
   }, []);
+
+  const fetchInitialData = async () => {
+    try {
+      const classesRes = await fetch("/api/classes");
+      const classesJson = await classesRes.json();
+      setClassesData(classesJson.data || []);
+
+      const settingsRes = await fetch("/api/settings");
+      const settingsJson = await settingsRes.json();
+      setSubjects(settingsJson.subjects || []);
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   const fetchVideos = async (classGrade?: string, subject?: string) => {
     let url = "/api/video-lectures";
@@ -31,7 +41,7 @@ export default function VideoLecturesPage() {
 
     const res = await fetch(url);
     const data = await res.json();
-    setVideos(Array.isArray(data) ? data : []);
+    setVideos(Array.isArray(data) ? data : (data.data || []));
     setLoading(false);
   };
 
@@ -48,17 +58,16 @@ export default function VideoLecturesPage() {
           <Film className="text-blue-600" /> Video Library
         </h1>
 
-        {/* Filters */}
         <div className="flex flex-wrap gap-3">
           <select value={filterClass} onChange={e => { setFilterClass(e.target.value); setFilterSubject(""); }}
             className="bg-white border border-gray-300 rounded-xl p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
             <option value="">All Classes</option>
-            {classes.map(c => <option key={c}>{c}</option>)}
+            {classesData.map((c: any) => <option key={c.id} value={c.classGrade}>{c.classGrade}</option>)}
           </select>
           <select value={filterSubject} onChange={e => setFilterSubject(e.target.value)}
             className="bg-white border border-gray-300 rounded-xl p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
             <option value="">All Subjects</option>
-            {subjects.map(s => <option key={s}>{s}</option>)}
+            {subjects.map(s => <option key={s} value={s}>{s}</option>)}
           </select>
           <button onClick={() => { setFilterClass(""); setFilterSubject(""); }}
             className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-xl text-sm font-bold transition">
@@ -66,7 +75,6 @@ export default function VideoLecturesPage() {
           </button>
         </div>
 
-        {/* Video Cards */}
         {videos.length === 0 ? (
           <div className="bg-white border border-gray-200 rounded-2xl p-10 text-center text-gray-400 font-medium">
             No video lectures available.
