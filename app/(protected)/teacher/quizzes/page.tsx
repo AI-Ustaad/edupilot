@@ -5,6 +5,9 @@ import Link from "next/link";
 import RequirePermission from "@/components/RequirePermission";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 
+// 🛡️ Safe Array Helper
+const safeArray = (data: any) => Array.isArray(data) ? data : (Array.isArray(data?.data) ? data.data : []);
+
 interface Question {
   question: string;
   options: string[];
@@ -36,11 +39,11 @@ export default function TeacherQuizzesPage() {
     try {
       const classesRes = await fetch("/api/classes");
       const classesJson = await classesRes.json();
-      setClassesData(classesJson.data || []);
+      setClassesData(safeArray(classesJson));
 
       const settingsRes = await fetch("/api/settings");
       const settingsJson = await settingsRes.json();
-      setSubjects(settingsJson.subjects || []);
+      setSubjects(safeArray(settingsJson.subjects || settingsJson.data?.subjects));
     } catch (err) {
       console.error(err);
     }
@@ -50,7 +53,7 @@ export default function TeacherQuizzesPage() {
     try {
       const res = await fetch("/api/quizzes");
       const data = await res.json();
-      setQuizzes(Array.isArray(data) ? data : (data.data || []));
+      setQuizzes(safeArray(data));
     } catch (err) {
       console.error(err);
     } finally {
@@ -92,7 +95,6 @@ export default function TeacherQuizzesPage() {
     }
   };
 
-  // 🛡️ Fix: Section کا Logic درست کیا گیا ہے
   const availableSections = classesData
     .filter((c: any) => c.classGrade === classGrade)
     .map((c: any) => c.sectionName || c.section);
@@ -119,7 +121,7 @@ export default function TeacherQuizzesPage() {
               </select>
               <input type="text" placeholder="Subject" value={subject} onChange={e => setSubject(e.target.value)} list="subject-list" className="border border-gray-300 bg-gray-50 rounded-xl p-3 focus:ring-2 focus:ring-blue-500 outline-none" required />
               <datalist id="subject-list">
-                {subjects.map(s => <option key={s} value={s} />)}
+                {subjects.map((s, idx) => <option key={idx} value={s} />)}
               </datalist>
               <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} className="border border-gray-300 bg-gray-50 rounded-xl p-3 focus:ring-2 focus:ring-blue-500 outline-none" required />
             </div>
@@ -165,8 +167,8 @@ export default function TeacherQuizzesPage() {
               {quizzes.length === 0 ? (
                 <tr><td colSpan={4} className="p-8 text-center text-gray-400 font-medium">No quizzes created yet.</td></tr>
               ) : (
-                quizzes.map((q: any) => (
-                  <tr key={q.id} className="hover:bg-gray-50 transition-colors">
+                quizzes.map((q: any, idx: number) => (
+                  <tr key={q.id || idx} className="hover:bg-gray-50 transition-colors">
                     <td className="p-4 font-bold text-gray-900">{q.title}</td>
                     <td className="p-4 text-gray-700 font-medium">{q.classGrade} {q.section}</td>
                     <td className="p-4 text-gray-600 font-bold bg-gray-50 rounded-md w-max inline-block mt-3 ml-4 px-3 py-1">{q.questions?.length || 0}</td>
