@@ -47,7 +47,8 @@ export default function ParentDashboard() {
             <div className="flex justify-between items-center mb-4">
               <div className="bg-green-50 text-green-600 p-3 rounded-xl"><Clock size={24} /></div>
             </div>
-           <p className="text-gray-500 font-bold text-sm">Today&apos;s Attendance</p>
+            {/* 🛡️ Fix: ESLint unescaped entity */}
+            <p className="text-gray-500 font-bold text-sm">Today&apos;s Attendance</p>
             <p className="text-2xl font-black text-gray-900">{data.attendance > 0 ? "Present" : "Absent"}</p>
           </div>
 
