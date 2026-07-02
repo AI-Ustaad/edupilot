@@ -17,25 +17,33 @@ export default function ManageBooksPage() {
   const [classGrade, setClassGrade] = useState("");
   const [subject, setSubject] = useState("");
   const [chapters, setChapters] = useState<Chapter[]>([{ title: "", contentText: "", file: null }]);
-  const [classes, setClasses] = useState<string[]>([]);
+  
+  const [classesData, setClassesData] = useState<any[]>([]);
   const [subjects, setSubjects] = useState<string[]>([]);
 
   useEffect(() => {
-    fetchSettings();
+    fetchInitialData();
     fetchBooks();
   }, []);
 
-  const fetchSettings = async () => {
-    const res = await fetch("/api/settings");
-    const data = await res.json();
-    setClasses(data.classes || []);
-    setSubjects(data.subjects || []);
+  const fetchInitialData = async () => {
+    try {
+      const classesRes = await fetch("/api/classes");
+      const classesJson = await classesRes.json();
+      setClassesData(classesJson.data || []);
+
+      const settingsRes = await fetch("/api/settings");
+      const settingsJson = await settingsRes.json();
+      setSubjects(settingsJson.subjects || []);
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   const fetchBooks = async () => {
     const res = await fetch("/api/books");
     const data = await res.json();
-    setBooks(Array.isArray(data) ? data : []);
+    setBooks(Array.isArray(data) ? data : (data.data || []));
     setLoading(false);
   };
 
@@ -59,7 +67,6 @@ export default function ManageBooksPage() {
     if (!title || !classGrade || !subject) return;
     setSaving(true);
     try {
-      // فائلیں اپ لوڈ کریں (اگر کوئی ہوں) اور URLs حاصل کریں
       const processedChapters = await Promise.all(
         chapters.map(async (ch) => {
           let fileUrl = ch.fileUrl || "";
@@ -98,7 +105,6 @@ export default function ManageBooksPage() {
     <div className="max-w-5xl mx-auto p-6 space-y-8">
       <h1 className="text-2xl font-black text-gray-900">Manage Books</h1>
 
-      {/* Add Book Form */}
       <div className="bg-white border border-gray-200 rounded-2xl p-6 space-y-4">
         <h2 className="text-lg font-bold text-gray-900">Add New Book</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -107,16 +113,15 @@ export default function ManageBooksPage() {
           <select value={classGrade} onChange={e => setClassGrade(e.target.value)}
             className="bg-white border border-gray-300 rounded-xl p-3 text-gray-900" required>
             <option value="">Select Class</option>
-            {classes.map(c => <option key={c}>{c}</option>)}
+            {classesData.map((c: any) => <option key={c.id} value={c.classGrade}>{c.classGrade}</option>)}
           </select>
           <select value={subject} onChange={e => setSubject(e.target.value)}
             className="bg-white border border-gray-300 rounded-xl p-3 text-gray-900" required>
             <option value="">Select Subject</option>
-            {subjects.map(s => <option key={s}>{s}</option>)}
+            {subjects.map(s => <option key={s} value={s}>{s}</option>)}
           </select>
         </div>
 
-        {/* Chapters */}
         <h3 className="font-semibold text-gray-700">Chapters</h3>
         {chapters.map((ch, idx) => (
           <div key={idx} className="border border-gray-200 rounded-xl p-4 space-y-3">
@@ -149,7 +154,6 @@ export default function ManageBooksPage() {
         </button>
       </div>
 
-      {/* Books List */}
       <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
         <table className="w-full text-sm">
           <thead className="bg-gray-50 text-gray-600">
