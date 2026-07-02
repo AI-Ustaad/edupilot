@@ -4,6 +4,9 @@ import { Loader2, Send, Calendar } from "lucide-react";
 import RequirePermission from "@/components/RequirePermission";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 
+// 🛡️ Safe Array Helper
+const safeArray = (data: any) => Array.isArray(data) ? data : (Array.isArray(data?.data) ? data.data : []);
+
 export default function TeacherHomeworkPage() {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -23,22 +26,20 @@ export default function TeacherHomeworkPage() {
   useEffect(() => {
     fetch("/api/classes")
       .then(res => res.json())
-      .then(data => setClasses(data.data || []))
+      .then(data => setClasses(safeArray(data)))
       .catch(console.error);
 
     fetch("/api/settings")
       .then(res => res.json())
-      .then(data => setSubjects(data.subjects || []))
+      .then(data => setSubjects(safeArray(data.subjects || data.data?.subjects)))
       .catch(console.error);
   }, []);
 
   useEffect(() => {
     fetch("/api/homework")
       .then(res => res.json())
-      .then(data => {
-        if (data.success) setAssignments(data.data);
-        else setAssignments(data);
-      })
+      .then(data => setAssignments(safeArray(data)))
+      .catch(console.error)
       .finally(() => setListLoading(false));
   }, []);
 
@@ -69,7 +70,7 @@ export default function TeacherHomeworkPage() {
         setDescription("");
         setDueDate("");
         const updated = await fetch("/api/homework").then(r => r.json());
-        setAssignments(updated.success ? updated.data : updated);
+        setAssignments(safeArray(updated));
       } else {
         const err = await res.json();
         alert(err.message || "Failed to post");
@@ -82,7 +83,7 @@ export default function TeacherHomeworkPage() {
     }
   };
 
-  // 🛡️ Fix: Section کا Logic درست کیا گیا ہے
+  // Extract Live Sections based on selected Class
   const availableSections = classes
     .filter((c: any) => c.classGrade === classGrade)
     .map((c: any) => c.sectionName || c.section);
@@ -114,7 +115,7 @@ export default function TeacherHomeworkPage() {
               required
             />
             <datalist id="subject-list">
-              {subjects.map(s => <option key={s} value={s} />)}
+              {subjects.map((s, idx) => <option key={idx} value={s} />)}
             </datalist>
 
             <select
@@ -178,8 +179,8 @@ export default function TeacherHomeworkPage() {
           <div className="bg-gray-50 border border-gray-200 rounded-xl p-8 text-center text-gray-500 font-medium">No homework posted yet.</div>
         ) : (
           <div className="grid gap-4">
-            {assignments.map((a: any) => (
-              <div key={a.id} className="bg-white border border-gray-200 rounded-xl p-5 hover:shadow-md transition">
+            {assignments.map((a: any, idx: number) => (
+              <div key={a.id || idx} className="bg-white border border-gray-200 rounded-xl p-5 hover:shadow-md transition">
                 <div className="flex justify-between items-start mb-2">
                   <h3 className="font-bold text-lg text-gray-900">{a.title}</h3>
                   {a.dueDate && (
