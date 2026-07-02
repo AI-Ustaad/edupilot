@@ -1,16 +1,12 @@
 "use client";
-
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@/context/AuthContext";
 import { Loader2, Plus, Calendar } from "lucide-react";
 import RequirePermission from "@/components/RequirePermission";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 
 export default function CreateAssignmentPage() {
   const router = useRouter();
-  const { user } = useAuth();
-
   const [classes, setClasses] = useState<any[]>([]);
   const [subjects, setSubjects] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
@@ -25,18 +21,21 @@ export default function CreateAssignmentPage() {
   });
 
   useEffect(() => {
-    // کلاسز اور سیکشنز لانے کے لیے settings API
+    // Live Classes Fetch
+    fetch("/api/classes")
+      .then((res) => res.json())
+      .then((data) => setClasses(data.data || []))
+      .catch(console.error);
+
+    // Subjects Fetch
     fetch("/api/settings")
       .then((res) => res.json())
-      .then((data) => {
-        setClasses(data.classes || []);
-        setSubjects(data.subjects || []);
-      })
+      .then((data) => setSubjects(data.subjects || []))
       .catch(console.error);
   }, []);
 
   const selectedClassSections =
-    classes.find((c) => c.name === form.classGrade)?.sections || [];
+    classes.find((c) => c.classGrade === form.classGrade)?.sections || [];
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -53,7 +52,7 @@ export default function CreateAssignmentPage() {
         body: JSON.stringify(form),
       });
       if (res.ok) {
-        router.push("/teacher/assignments"); // واپس فہرست پر
+        router.push("/teacher/assignments");
       } else {
         const data = await res.json();
         setError(data.message || "Failed to create assignment.");
@@ -76,14 +75,9 @@ export default function CreateAssignmentPage() {
           <div className="bg-red-50 text-red-700 p-4 rounded-xl font-bold">{error}</div>
         )}
 
-        <form
-          onSubmit={handleSubmit}
-          className="bg-white border border-gray-200 rounded-2xl p-6 space-y-5 shadow-sm"
-        >
+        <form onSubmit={handleSubmit} className="bg-white border border-gray-200 rounded-2xl p-6 space-y-5 shadow-sm">
           <div>
-            <label className="text-sm font-bold text-gray-700 block mb-1">
-              Title *
-            </label>
+            <label className="text-sm font-bold text-gray-700 block mb-1">Title *</label>
             <input
               type="text"
               value={form.title}
@@ -93,9 +87,7 @@ export default function CreateAssignmentPage() {
             />
           </div>
           <div>
-            <label className="text-sm font-bold text-gray-700 block mb-1">
-              Description
-            </label>
+            <label className="text-sm font-bold text-gray-700 block mb-1">Description</label>
             <textarea
               rows={3}
               value={form.description}
@@ -105,27 +97,21 @@ export default function CreateAssignmentPage() {
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="text-sm font-bold text-gray-700 block mb-1">
-                Class *
-              </label>
+              <label className="text-sm font-bold text-gray-700 block mb-1">Class *</label>
               <select
                 value={form.classGrade}
-                onChange={(e) => {
-                  setForm({ ...form, classGrade: e.target.value, section: "" });
-                }}
+                onChange={(e) => setForm({ ...form, classGrade: e.target.value, section: "" })}
                 className="w-full border border-gray-300 rounded-xl p-3 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 required
               >
                 <option value="">Select Class</option>
                 {classes.map((c) => (
-                  <option key={c.name} value={c.name}>{c.name}</option>
+                  <option key={c.id} value={c.classGrade}>{c.classGrade}</option>
                 ))}
               </select>
             </div>
             <div>
-              <label className="text-sm font-bold text-gray-700 block mb-1">
-                Section *
-              </label>
+              <label className="text-sm font-bold text-gray-700 block mb-1">Section *</label>
               <select
                 value={form.section}
                 onChange={(e) => setForm({ ...form, section: e.target.value })}
@@ -140,9 +126,7 @@ export default function CreateAssignmentPage() {
               </select>
             </div>
             <div>
-              <label className="text-sm font-bold text-gray-700 block mb-1">
-                Subject *
-              </label>
+              <label className="text-sm font-bold text-gray-700 block mb-1">Subject *</label>
               <input
                 type="text"
                 value={form.subject}
@@ -158,9 +142,7 @@ export default function CreateAssignmentPage() {
               </datalist>
             </div>
             <div>
-              <label className="text-sm font-bold text-gray-700 block mb-1">
-                Due Date
-              </label>
+              <label className="text-sm font-bold text-gray-700 block mb-1">Due Date</label>
               <div className="relative">
                 <Calendar size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                 <input
