@@ -1,14 +1,8 @@
 "use client";
-
 import { useEffect, useState } from "react";
 import { Loader2, Send, Calendar } from "lucide-react";
 import RequirePermission from "@/components/RequirePermission";
 import { PERMISSIONS } from "@/lib/auth/permissions";
-
-interface ClassInfo {
-  name: string;
-  sections: string[];
-}
 
 export default function TeacherHomeworkPage() {
   const [title, setTitle] = useState("");
@@ -18,7 +12,7 @@ export default function TeacherHomeworkPage() {
   const [subject, setSubject] = useState("");
   const [dueDate, setDueDate] = useState("");
 
-  const [classes, setClasses] = useState<ClassInfo[]>([]);
+  const [classes, setClasses] = useState<any[]>([]);
   const [subjects, setSubjects] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
@@ -27,12 +21,16 @@ export default function TeacherHomeworkPage() {
   const [listLoading, setListLoading] = useState(true);
 
   useEffect(() => {
+    // Live Classes Fetch
+    fetch("/api/classes")
+      .then(res => res.json())
+      .then(data => setClasses(data.data || []))
+      .catch(console.error);
+
+    // Subjects Fetch
     fetch("/api/settings")
       .then(res => res.json())
-      .then(data => {
-        setClasses(data.classes || []);
-        setSubjects(data.subjects || []);
-      })
+      .then(data => setSubjects(data.subjects || []))
       .catch(console.error);
   }, []);
 
@@ -86,7 +84,8 @@ export default function TeacherHomeworkPage() {
     }
   };
 
-  const selectedClassSections = classes.find(c => c.name === classGrade)?.sections || [];
+  // Extract Live Sections based on selected Class
+  const selectedClassSections = classes.find((c: any) => c.classGrade === classGrade)?.sections || [];
 
   return (
     <div className="max-w-4xl mx-auto p-6 space-y-8">
@@ -94,7 +93,6 @@ export default function TeacherHomeworkPage() {
 
       {message && <div className="bg-green-50 text-green-700 p-4 rounded-xl mb-4 font-bold">{message}</div>}
 
-      {/* 🛡️ Protected Creation Form */}
       <RequirePermission permissions={[PERMISSIONS.homework.create]}>
         <form onSubmit={handleSubmit} className="bg-white border border-gray-200 rounded-2xl p-6 space-y-4 shadow-sm">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -126,7 +124,7 @@ export default function TeacherHomeworkPage() {
               required
             >
               <option value="">Select Class</option>
-              {classes.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
+              {classes.map((c: any) => <option key={c.id} value={c.classGrade}>{c.classGrade}</option>)}
             </select>
 
             <select
@@ -137,7 +135,7 @@ export default function TeacherHomeworkPage() {
               disabled={!classGrade}
             >
               <option value="">Select Section</option>
-              {selectedClassSections.map(s => <option key={s} value={s}>{s}</option>)}
+              {selectedClassSections.map((s: string) => <option key={s} value={s}>{s}</option>)}
             </select>
 
             <div className="flex items-center gap-2 border border-gray-200 bg-gray-50 rounded-xl p-3 focus-within:ring-2 focus-within:ring-blue-500">
@@ -172,7 +170,6 @@ export default function TeacherHomeworkPage() {
         </form>
       </RequirePermission>
 
-      {/* Homework List */}
       <div>
         <h2 className="text-xl font-black text-gray-900 mb-4 border-b pb-2">Recently Posted</h2>
         {listLoading ? (
