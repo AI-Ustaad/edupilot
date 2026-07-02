@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import {
   Loader2, Plus, Trash2, Users, Upload, FileSpreadsheet, X, CheckCircle2, AlertTriangle,
@@ -7,34 +7,25 @@ import {
 import RequirePermission from "@/components/RequirePermission";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 
+// 🚀 نئی Hooks Import کریں
+import { useStaff, useDeleteStaff } from "@/hooks/useStaff";
+
 export default function StaffDirectoryPage() {
-  const [staff, setStaff] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  // 1. Fetch Staff using Custom Hook
+  const { data: staff = [], isLoading } = useStaff();
   
+  // 2. Delete Mutation
+  const deleteMutation = useDeleteStaff();
+
   // Bulk Import states
   const [showBulkModal, setShowBulkModal] = useState(false);
   const [bulkFile, setBulkFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [bulkMessage, setBulkMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
-  const fetchStaff = async () => {
-    try {
-      const res = await fetch("/api/staff");
-      const data = await res.json();
-      setStaff(Array.isArray(data.data || data) ? (data.data || data) : []);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => { fetchStaff(); }, []);
-
   const handleDelete = async (id: string) => {
     if (!confirm("Are you sure you want to remove this staff member?")) return;
-    await fetch(`/api/staff/${id}`, { method: "DELETE" });
-    fetchStaff();
+    deleteMutation.mutate(id);
   };
 
   // Bulk Import handler
@@ -57,7 +48,6 @@ export default function StaffDirectoryPage() {
       const json = await res.json();
       if (json.success) {
         setBulkMessage({ type: "success", text: `✅ ${json.count} staff members imported successfully!` });
-        fetchStaff(); // ریفریش کریں
         setTimeout(() => {
           setShowBulkModal(false);
           setBulkFile(null);
@@ -157,7 +147,7 @@ export default function StaffDirectoryPage() {
         )}
 
         {/* Staff Table */}
-        {loading ? (
+        {isLoading ? (
           <div className="flex h-64 items-center justify-center"><Loader2 className="animate-spin text-blue-600" size={32} /></div>
         ) : (
           <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
@@ -175,18 +165,30 @@ export default function StaffDirectoryPage() {
                   {staff.length === 0 ? (
                     <tr><td colSpan={4} className="p-8 text-center text-gray-400 font-medium">No staff members found.</td></tr>
                   ) : (
-                    staff.map((s) => (
+                    staff.map((s: any) => (
                       <tr key={s.id} className="hover:bg-gray-50 transition">
                         <td className="p-4 font-bold text-gray-900">
-                          <Link href={`/staff-profile?id=${s.id}`} className="hover:text-blue-600 hover:underline">{s.name || s.fullName}</Link>
+                          <Link href={`/staff-profile?id=${s.id}`} className="hover:text-blue-600 hover:underline">
+                            {s.personal?.fullName || s.fullName || "N/A"}
+                          </Link>
                         </td>
                         <td className="p-4">
-                          <span className="bg-blue-50 text-blue-700 border border-blue-100 px-3 py-1 rounded-full text-xs font-bold uppercase">{s.role || "Staff"}</span>
+                          <span className="bg-blue-50 text-blue-700 border border-blue-100 px-3 py-1 rounded-full text-xs font-bold uppercase">
+                            {s.professional?.designation || s.role || "Staff"}
+                          </span>
                         </td>
-                        <td className="p-4 text-gray-600 font-medium">{s.email}</td>
+                        <td className="p-4 text-gray-600 font-medium">{s.contact?.email || s.email || "N/A"}</td>
                         <td className="p-4 text-right">
                           <RequirePermission permissions={[PERMISSIONS.staff.delete]}>
-                            <button onClick={() => handleDelete(s.id)} className="text-red-500 hover:bg-red-50 p-2 rounded-lg transition"><Trash2 size={18}/></button>
+                            <button 
+                              onClick={() => handleDelete(s.id)} 
+                              className="text-red-500 hover:bg-red-50 p-2 rounded-lg transition disabled:opacity-50"
+                              disabled={deleteMutation.isPending && deleteMutation.variables === s.id}
+                            >
+                              {deleteMutation.isPending && deleteMutation.variables === s.id ? 
+                                <Loader2 size={18} className="animate-spin"/> : <Trash2 size={18}/>
+                              }
+                            </button>
                           </RequirePermission>
                         </td>
                       </tr>
