@@ -5,6 +5,9 @@ import { Loader2, Sparkles, Clipboard, Check } from "lucide-react";
 import RequirePermission from "@/components/RequirePermission";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 
+// 🛡️ Safe Array Helper
+const safeArray = (data: any) => Array.isArray(data) ? data : (Array.isArray(data?.data) ? data.data : []);
+
 export default function AIExamQuestionsPage() {
   const [classes, setClasses] = useState<string[]>([]);
   const [subjects, setSubjects] = useState<string[]>([]);
@@ -16,15 +19,26 @@ export default function AIExamQuestionsPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
+  const [dataLoading, setDataLoading] = useState(true);
 
   useEffect(() => {
-    fetch("/api/settings")
-      .then(res => res.json())
-      .then(data => {
-        setClasses(data.classes || []);
-        setSubjects(data.subjects || []);
-      })
-      .catch(console.error);
+    const fetchInitialData = async () => {
+      try {
+        const classesRes = await fetch("/api/classes");
+        const classesJson = await classesRes.json();
+        const classesData = safeArray(classesJson);
+        setClasses(Array.from(new Set(classesData.map((c: any) => c.classGrade as string))));
+
+        const settingsRes = await fetch("/api/settings");
+        const settingsJson = await settingsRes.json();
+        setSubjects(safeArray(settingsJson.subjects || settingsJson.data?.subjects));
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setDataLoading(false);
+      }
+    };
+    fetchInitialData();
   }, []);
 
   const generateExam = async () => {
@@ -88,16 +102,16 @@ export default function AIExamQuestionsPage() {
       <div className="bg-white border border-gray-200 rounded-2xl p-6 grid grid-cols-1 md:grid-cols-2 gap-4 shadow-sm">
         <div>
           <label className="text-sm font-bold text-gray-700 mb-1 block">Class</label>
-          <select value={className} onChange={e => setClassName(e.target.value)} className={inputClass}>
-            <option value="">Select Class</option>
-            {classes.map(c => <option key={c}>{c}</option>)}
+          <select value={className} onChange={e => setClassName(e.target.value)} className={inputClass} disabled={dataLoading}>
+            <option value="">{dataLoading ? "Loading..." : "Select Class"}</option>
+            {classes.map((c) => <option key={c} value={c}>{c}</option>)}
           </select>
         </div>
         <div>
           <label className="text-sm font-bold text-gray-700 mb-1 block">Subject</label>
-          <select value={subject} onChange={e => setSubject(e.target.value)} className={inputClass}>
-            <option value="">Select Subject</option>
-            {subjects.map(s => <option key={s}>{s}</option>)}
+          <select value={subject} onChange={e => setSubject(e.target.value)} className={inputClass} disabled={dataLoading}>
+            <option value="">{dataLoading ? "Loading..." : "Select Subject"}</option>
+            {subjects.map((s) => <option key={s} value={s}>{s}</option>)}
           </select>
         </div>
         <div>
@@ -111,7 +125,6 @@ export default function AIExamQuestionsPage() {
           </select>
         </div>
 
-        {/* 🛡️ Protected Generate Button */}
         <RequirePermission permissions={[PERMISSIONS.exams.manage]}>
           <button onClick={generateExam} disabled={loading} className="col-span-1 md:col-span-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition mt-2 disabled:opacity-50">
             {loading ? <Loader2 className="animate-spin" size={18} /> : <Sparkles size={18} />}
