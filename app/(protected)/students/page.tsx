@@ -5,45 +5,22 @@ import { useRouter } from "next/navigation";
 import { Trash2, UserPlus, Upload, Loader2, FileText, AlertCircle } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
-// 🛡️ نئے سیکیورٹی کمپوننٹس امپورٹ کیے گئے ہیں
+// 🚀 نئی Hooks Import کریں
+import { useStudents, useDeleteStudent } from "@/hooks/useStudents";
 import RequirePermission from "@/components/RequirePermission";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 
 export default function StudentsPage() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
-  const queryClient = useQueryClient();
   const [ocrUploading, setOcrUploading] = useState(false);
 
-  const { data: studentsData, isLoading: isStudentsLoading, isError } = useQuery({
-    queryKey: ["students", user?.tenantId],
-    queryFn: async () => {
-      const res = await fetch("/api/v1/students");
-      if (!res.ok) throw new Error("Failed to fetch students");
-      
-      const text = await res.text();
-      if (!text) return [];
-      
-      const json = JSON.parse(text);
-      return Array.isArray(json) ? json : (Array.isArray(json?.data) ? json.data : []);
-    },
-    enabled: !!user?.tenantId && !authLoading,
-  });
-
-  const students = Array.isArray(studentsData) ? studentsData : [];
-
-  const deleteMutation = useMutation({
-    mutationFn: async (id: string) => {
-      const res = await fetch(`/api/v1/students/${id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("Delete failed");
-      return id;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["students"] });
-    },
-  });
+  // 1. Fetch Students using Custom Hook
+  const { data: students = [], isLoading: isStudentsLoading, isError } = useStudents();
+  
+  // 2. Delete Mutation
+  const deleteMutation = useDeleteStudent();
 
   const handleDelete = (id: string) => {
     if (!confirm("Are you sure?")) return;
@@ -59,10 +36,10 @@ export default function StudentsPage() {
       if (!file) return;
       const formData = new FormData();
       formData.append("file", file);
+      // Note: You can later move this to a custom hook useUploadCSV()
       const res = await fetch("/api/v1/students/bulk", { method: "POST", body: formData });
       if (res.ok) {
         alert("Students imported successfully!");
-        queryClient.invalidateQueries({ queryKey: ["students"] });
       } else {
         alert("Import failed");
       }
@@ -85,7 +62,7 @@ export default function StudentsPage() {
         const text = await res.text();
         if (!text) throw new Error("Empty response");
         const result = JSON.parse(text);
-        
+
         if (result.success && result.data) {
           sessionStorage.setItem("ocrStudentData", JSON.stringify(result.data));
           router.push("/students/add?ocr=true");
@@ -120,8 +97,6 @@ export default function StudentsPage() {
       <div className="flex justify-between items-center flex-wrap gap-3">
         <h1 className="text-3xl font-black text-slate-900">Students Directory</h1>
         <div className="flex gap-3 flex-wrap">
-          
-          {/* 🛡️ 1. کریئیٹ (Create) پرمیشن والے بٹنز */}
           <RequirePermission permissions={[PERMISSIONS.students.create]}>
             <button onClick={handleOCRUpload} disabled={ocrUploading} className="bg-purple-600 text-white px-4 py-2 md:px-6 md:py-3 rounded-2xl flex items-center gap-2 hover:bg-purple-700 transition disabled:opacity-50 font-bold shadow-sm">
               {ocrUploading ? <Loader2 size={18} className="animate-spin" /> : <FileText size={18} />}
@@ -134,9 +109,9 @@ export default function StudentsPage() {
               <UserPlus size={18}/> Add New
             </button>
           </RequirePermission>
-
         </div>
       </div>
+
       <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left">
@@ -163,14 +138,17 @@ export default function StudentsPage() {
                       <Link href={`/students/${s.id}`} className="text-blue-600 hover:text-blue-800 text-sm font-bold bg-blue-50 px-3 py-1.5 rounded-lg border border-blue-100 hover:bg-blue-100 transition">
                         View 360°
                       </Link>
-                      
-                      {/* 🛡️ 2. ڈیلیٹ (Delete) پرمیشن والا بٹن */}
                       <RequirePermission permissions={[PERMISSIONS.students.delete]}>
-                        <button onClick={() => handleDelete(s.id)} className="text-red-500 hover:text-red-700 p-1.5 hover:bg-red-50 rounded-lg transition">
-                          {deleteMutation.isPending ? <Loader2 size={18} className="animate-spin"/> : <Trash2 size={18}/>}
+                        <button 
+                          onClick={() => handleDelete(s.id)} 
+                          className="text-red-500 hover:text-red-700 p-1.5 hover:bg-red-50 rounded-lg transition disabled:opacity-50"
+                          disabled={deleteMutation.isPending && deleteMutation.variables === s.id}
+                        >
+                          {deleteMutation.isPending && deleteMutation.variables === s.id ? 
+                            <Loader2 size={18} className="animate-spin"/> : <Trash2 size={18}/>
+                          }
                         </button>
                       </RequirePermission>
-
                     </div>
                   </td>
                 </tr>
