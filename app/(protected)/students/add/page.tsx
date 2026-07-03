@@ -1,41 +1,32 @@
-// app/(protected)/students/add/page.tsx
 "use client";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { Loader2, UserPlus, Upload, Camera } from "lucide-react";
-import Image from "next/image"; // ✅ Next.js Image import
+import Image from "next/image";
+
+// 🚀 Layered Architecture Hooks
+import { useCreateStudent } from "@/hooks/useStudents";
+import { useToast } from "@/components/ToastProvider";
 
 export default function AddStudentPage() {
   const router = useRouter();
   const { user } = useAuth();
+  const { showToast } = useToast();
+  
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
+
+  const createMutation = useCreateStudent();
 
   const [form, setForm] = useState({
-    fullName: "",
-    fatherName: "",
-    cnic: "",
-    dob: "",
-    gender: "Male",
-    bloodGroup: "",
-    religion: "",
-    nationality: "",
-    phone: "",
-    email: "",
-    address: "",
-    classGrade: "",
-    section: "",
-    rollNumber: "",
-    admissionNumber: "",
-    guardianName: "",
-    guardianRelation: "",
-    guardianPhone: "",
-    previousSchool: "",
-    medicalConditions: "",
-    photoBase64: "",
+    fullName: "", fatherName: "", cnic: "", dob: "",
+    gender: "Male", bloodGroup: "", religion: "", nationality: "",
+    phone: "", email: "", address: "",
+    classGrade: "", section: "", rollNumber: "", admissionNumber: "",
+    guardianName: "", guardianRelation: "", guardianPhone: "",
+    previousSchool: "", medicalConditions: "", photoBase64: "",
   });
 
   const handleChange = (field: string, value: any) => {
@@ -59,58 +50,32 @@ export default function AddStudentPage() {
     }
     setSubmitting(true);
     setError("");
-    try {
-      const payload: Record<string, any> = {
-        fullName: form.fullName,
-        fatherName: form.fatherName,
-        cnic: form.cnic,
-        dob: form.dob,
-        gender: form.gender,
-        bloodGroup: form.bloodGroup,
-        religion: form.religion,
-        nationality: form.nationality,
-        phone: form.phone,
-        email: form.email,
-        address: form.address,
-        classGrade: form.classGrade,
-        section: form.section || undefined,
-        admissionNumber: form.admissionNumber,
-        guardianName: form.guardianName,
-        guardianRelation: form.guardianRelation,
-        guardianPhone: form.guardianPhone,
-        previousSchool: form.previousSchool,
-        medicalConditions: form.medicalConditions,
-        photoBase64: form.photoBase64,
-        tenantId: user?.tenantId,
-        createdBy: user?.uid,
-      };
 
-      if (form.rollNumber && form.rollNumber.trim() !== "") {
-        const num = Number(form.rollNumber);
-        if (!Number.isNaN(num) && num > 0) {
-          payload.rollNumber = num;
-        }
-      }
+    const payload: Record<string, any> = {
+      ...form,
+      tenantId: user?.tenantId,
+      createdBy: user?.uid,
+    };
 
-      const res = await fetch("/api/v1/students", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-
-      const data = await res.json();
-
-      if (res.ok) {
-        setSuccess("Student admitted successfully!");
-        setTimeout(() => router.push("/students"), 1500);
+    if (form.rollNumber && form.rollNumber.trim() !== "") {
+      const num = Number(form.rollNumber);
+      if (!Number.isNaN(num) && num > 0) {
+        payload.rollNumber = num;
       } else {
-        setError(data.error || data.message || "Failed to admit student.");
+        delete payload.rollNumber;
       }
-    } catch (err) {
-      setError("Network error.");
-    } finally {
-      setSubmitting(false);
     }
+
+    createMutation.mutate(payload, {
+      onSuccess: () => {
+        showToast("Student admitted successfully!", "success");
+        setTimeout(() => router.push("/students"), 1500);
+      },
+      onError: (err: any) => {
+        setError(err.response?.data?.message || "Failed to admit student.");
+        setSubmitting(false);
+      }
+    });
   };
 
   return (
@@ -120,13 +85,11 @@ export default function AddStudentPage() {
       </h1>
 
       {error && <div className="bg-red-50 text-red-700 p-3 rounded-xl font-bold">{error}</div>}
-      {success && <div className="bg-green-50 text-green-700 p-3 rounded-xl font-bold">{success}</div>}
 
       <form onSubmit={handleSubmit} className="bg-white border border-gray-200 rounded-2xl p-6 space-y-6">
         {/* Photo Upload */}
         <div className="flex items-center gap-4">
           <div className="relative">
-            {/* ✅ Syntax Fix: صرف ایک شرط اور درست Image ٹیگ */}
             {form.photoBase64 ? (
               <Image 
                 src={form.photoBase64} 
