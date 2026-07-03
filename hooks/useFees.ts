@@ -21,7 +21,7 @@ export const useFees = (month: string, classGrade: string, section: string) => {
   });
 };
 
-// ✨ Save Fee
+// ✨ Save Fee (With Optimistic Update)
 export const useSaveFee = () => {
   const queryClient = useQueryClient();
   const { user } = useAuth();
@@ -31,10 +31,33 @@ export const useSaveFee = () => {
     mutationFn: async (data: any) => {
       return apiClient.post("/fees", data);
     },
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({
-        queryKey: QueryKeys.fees(tenantId, variables.feeMonth, variables.classGrade)
+    onMutate: async (newFee) => {
+      const queryKey = QueryKeys.fees(tenantId, newFee.feeMonth, newFee.classGrade);
+      await queryClient.cancelQueries({ queryKey });
+
+      const previousFees = queryClient.getQueryData(queryKey);
+
+      // 🚀 Optimistically update the cache
+      queryClient.setQueryData(queryKey, (old: any[] = []) => {
+        const existingIndex = old.findIndex((f: any) => f.studentId === newFee.studentId && f.feeMonth === newFee.feeMonth);
+        if (existingIndex > -1) {
+          const updated = [...old];
+          updated[existingIndex] = { ...updated[existingIndex], ...newFee };
+          return updated;
+        }
+        return [...old, { id: `temp-${Date.now()}`, ...newFee }];
       });
+
+      return { previousFees, queryKey };
+    },
+    onError: (err, newFee, context) => {
+      // Rollback on error
+      if (context?.previousFees && context?.queryKey) {
+        queryClient.setQueryData(context.queryKey, context.previousFees);
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["fees", tenantId] });
       queryClient.invalidateQueries({ queryKey: QueryKeys.dashboard(tenantId) });
     },
   });
