@@ -10,6 +10,9 @@ import { motion, AnimatePresence } from "framer-motion";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import MobileBottomNav from "@/components/MobileBottomNav";
 
+// 🚀 Global Search Import
+import GlobalSearch from "@/components/GlobalSearch";
+
 import { getFilteredMenu } from "@/lib/config/menu.config"; 
 import { ROLE_PERMISSIONS } from "@/lib/auth/roles"; 
 
@@ -205,6 +208,10 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
         </div>
         <MobileBottomNav />
       </main>
+
+      {/* 🚀 Global Search (Ctrl + K) */}
+      <GlobalSearch />
+      
     </div>
   );
 }
