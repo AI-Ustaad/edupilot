@@ -5,7 +5,7 @@ import { safeObject, safeArray } from "@/lib/api/safeResponse";
 import { QueryKeys } from "@/lib/api/queryKeys";
 import { useAuth } from "@/context/AuthContext";
 
-// 🔄 Fetch Dashboard Metrics (KPIs, Charts, Ledgers)
+// 🔄 Fetch Dashboard Metrics
 export const useDashboardMetrics = () => {
   const { user } = useAuth();
   const tenantId = user?.tenantId || "unknown";
