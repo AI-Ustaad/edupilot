@@ -1,35 +1,30 @@
 "use client";
-
 import { useState } from "react";
 import { Loader2, BookOpen, Sparkles } from "lucide-react";
 import RequirePermission from "@/components/RequirePermission";
 import { PERMISSIONS } from "@/lib/auth/permissions";
+import { useAskSmartBookCenter } from "@/hooks/useAI";
 
 export default function SmartBookCenterPage() {
   const [query, setQuery] = useState("");
   const [grade, setGrade] = useState("");
   const [type, setType] = useState("recommendation");
   const [result, setResult] = useState("");
-  const [loading, setLoading] = useState(false);
+  
+  const askMutation = useAskSmartBookCenter();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!query.trim()) return;
-    setLoading(true);
     setResult("");
-    try {
-      const res = await fetch("/api/ai/smart-book-center", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query: query.trim(), grade, type }),
-      });
-      const json = await res.json();
-      setResult(json.data?.result || json.result || "No recommendations found.");
-    } catch (err) {
-      setResult("Network error. Please try again.");
-    } finally {
-      setLoading(false);
-    }
+    
+    askMutation.mutate(
+      { query: query.trim(), grade, type },
+      {
+        onSuccess: (data) => setResult(data?.result || "No recommendations found."),
+        onError: () => setResult("Network error or AI service unavailable."),
+      }
+    );
   };
 
   return (
@@ -63,11 +58,10 @@ export default function SmartBookCenterPage() {
           </select>
         </div>
         
-        {/* 🛡️ Protected AI Action */}
         <RequirePermission permissions={[PERMISSIONS.chat.send]}>
-          <button type="submit" disabled={loading} className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition disabled:opacity-50">
-            {loading ? <Loader2 className="animate-spin" size={18} /> : <Sparkles size={18} />} 
-            {loading ? "Processing..." : "Get AI Results"}
+          <button type="submit" disabled={askMutation.isPending} className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition disabled:opacity-50">
+            {askMutation.isPending ? <Loader2 className="animate-spin" size={18} /> : <Sparkles size={18} />}
+            {askMutation.isPending ? "Processing..." : "Get AI Results"}
           </button>
         </RequirePermission>
       </form>
