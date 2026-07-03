@@ -4,6 +4,7 @@ import apiClient from "@/lib/api/client";
 import { safeArray } from "@/lib/api/safeResponse";
 import { QueryKeys } from "@/lib/api/queryKeys";
 import { useAuth } from "@/context/AuthContext";
+import { useToast } from "@/components/ToastProvider";
 
 // 1. 🔄 Fetch All Staff
 export const useStaff = () => {
@@ -25,6 +26,7 @@ export const useCreateStaff = () => {
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const tenantId = user?.tenantId || "unknown";
+  const { showToast } = useToast();
 
   return useMutation({
     mutationFn: async (data: any) => {
@@ -33,32 +35,20 @@ export const useCreateStaff = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QueryKeys.staff(tenantId) });
       queryClient.invalidateQueries({ queryKey: QueryKeys.dashboard(tenantId) });
+      showToast("Staff member added successfully!", "success");
+    },
+    onError: (err: any) => {
+      showToast(err.response?.data?.message || "Failed to add staff.", "error");
     },
   });
 };
 
-// 3. ✏️ Update Staff
-export const useUpdateStaff = () => {
-  const queryClient = useQueryClient();
-  const { user } = useAuth();
-  const tenantId = user?.tenantId || "unknown";
-
-  return useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: any }) => {
-      return apiClient.put(`/staff/${id}`, data);
-    },
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: QueryKeys.staff(tenantId) });
-      queryClient.invalidateQueries({ queryKey: QueryKeys.staffMember(tenantId, variables.id) });
-    },
-  });
-};
-
-// 4. 🗑️ Delete Staff (With Optimistic Update)
+// 3. 🗑️ Delete Staff (With Optimistic Update)
 export const useDeleteStaff = () => {
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const tenantId = user?.tenantId || "unknown";
+  const { showToast } = useToast();
 
   return useMutation({
     mutationFn: async (id: string) => {
@@ -66,10 +56,8 @@ export const useDeleteStaff = () => {
     },
     onMutate: async (deletedId: string) => {
       await queryClient.cancelQueries({ queryKey: QueryKeys.staff(tenantId) });
-      
       const previousStaff = queryClient.getQueryData(QueryKeys.staff(tenantId));
       
-      // Optimistically remove from UI
       queryClient.setQueryData(QueryKeys.staff(tenantId), (old: any[]) => 
         old.filter((s: any) => s.id !== deletedId)
       );
@@ -77,11 +65,13 @@ export const useDeleteStaff = () => {
       return { previousStaff };
     },
     onError: (err, deletedId, context) => {
-      // Rollback on error
       queryClient.setQueryData(QueryKeys.staff(tenantId), context?.previousStaff);
+      showToast("Failed to delete staff.", "error");
+    },
+    onSuccess: () => {
+      showToast("Staff member deleted.", "success");
     },
     onSettled: () => {
-      // Sync with server at the end
       queryClient.invalidateQueries({ queryKey: QueryKeys.staff(tenantId) });
       queryClient.invalidateQueries({ queryKey: QueryKeys.dashboard(tenantId) });
     },
