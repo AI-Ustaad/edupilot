@@ -32,3 +32,33 @@ export const useGenerateTimetable = () => {
     },
   });
 };
+
+// 📝 Generate AI Report Comments
+export const useGenerateReportComments = () => {
+  return useMutation({
+    mutationFn: async (data: any) => {
+      const res = await apiClient.post("/ai/report-comments", data);
+      return safeObject(res);
+    },
+  });
+};
+
+// 📚 AI Smart Book Center
+export const useAskSmartBookCenter = () => {
+  return useMutation({
+    mutationFn: async (data: any) => {
+      const res = await apiClient.post("/ai/smart-book-center", data);
+      return safeObject(res);
+    },
+  });
+};
+
+// 📅 Generate AI Timetable (یہ ہم پہلے ہی بنا چکے ہیں، بس تصدیق کر لیں)
+export const useGenerateTimetable = () => {
+  return useMutation({
+    mutationFn: async (data: { classes: string[]; days: string[]; periods: number; subjects: string[]; teachers: string[] }) => {
+      const res = await apiClient.post("/ai/timetable", data);
+      return safeObject(res);
+    },
+  });
+};
