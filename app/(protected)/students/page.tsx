@@ -6,7 +6,7 @@ import { Trash2, UserPlus, Upload, Loader2, FileText, AlertCircle } from "lucide
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
 
-// 🚀 نئی Hooks Import کریں
+// 🚀 Layered Architecture Hooks
 import { useStudents, useDeleteStudent } from "@/hooks/useStudents";
 import RequirePermission from "@/components/RequirePermission";
 import { PERMISSIONS } from "@/lib/auth/permissions";
@@ -19,7 +19,7 @@ export default function StudentsPage() {
   // 1. Fetch Students using Custom Hook
   const { data: students = [], isLoading: isStudentsLoading, isError } = useStudents();
   
-  // 2. Delete Mutation
+  // 2. Delete Mutation (With Optimistic Update Built-in)
   const deleteMutation = useDeleteStudent();
 
   const handleDelete = (id: string) => {
@@ -36,7 +36,6 @@ export default function StudentsPage() {
       if (!file) return;
       const formData = new FormData();
       formData.append("file", file);
-      // Note: You can later move this to a custom hook useUploadCSV()
       const res = await fetch("/api/v1/students/bulk", { method: "POST", body: formData });
       if (res.ok) {
         alert("Students imported successfully!");
@@ -125,7 +124,12 @@ export default function StudentsPage() {
             </thead>
             <tbody className="divide-y divide-slate-100">
               {students.map((s: any, idx: number) => (
-                <tr key={s.id || idx} className="hover:bg-slate-50 transition-colors">
+                <tr 
+                  key={s.id || idx} 
+                  className={`hover:bg-slate-50 transition-colors ${
+                    deleteMutation.isPending && deleteMutation.variables === s.id ? 'opacity-50 pointer-events-none' : ''
+                  }`}
+                >
                   <td className="p-5 font-bold text-slate-800">{s.fullName || s.name || "N/A"}</td>
                   <td className="p-5 text-slate-600 font-medium">
                     <span className="bg-blue-50 text-blue-700 px-2 py-1 rounded-lg text-sm border border-blue-100">
@@ -142,7 +146,7 @@ export default function StudentsPage() {
                         <button 
                           onClick={() => handleDelete(s.id)} 
                           className="text-red-500 hover:text-red-700 p-1.5 hover:bg-red-50 rounded-lg transition disabled:opacity-50"
-                          disabled={deleteMutation.isPending && deleteMutation.variables === s.id}
+                          disabled={deleteMutation.isPending}
                         >
                           {deleteMutation.isPending && deleteMutation.variables === s.id ? 
                             <Loader2 size={18} className="animate-spin"/> : <Trash2 size={18}/>
