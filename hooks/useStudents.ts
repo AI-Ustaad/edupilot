@@ -38,7 +38,7 @@ export const useStudent = (id: string) => {
   });
 };
 
-// 3. 🔄 Fetch Student 360 Data (Attendance, Marks, Risk)
+// 3. 🔄 Fetch Student 360 Data (Routing Fix: Use single student endpoint to avoid Next.js dynamic route conflicts)
 export const useStudent360 = (id: string) => {
   const { user } = useAuth();
   const tenantId = user?.tenantId || "unknown";
@@ -46,7 +46,8 @@ export const useStudent360 = (id: string) => {
   return useQuery({
     queryKey: ["students", tenantId, id, "360"],
     queryFn: async () => {
-      const response = await apiClient.get(`/students/360?id=${id}`);
+      // یہ /api/v1/students/[id] والے Route کو Call کرے گا
+      const response = await apiClient.get(`/students/${id}`);
       return safeObject(response);
     },
     enabled: !!id && !!tenantId,
