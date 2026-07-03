@@ -1,28 +1,19 @@
 "use client";
 import { useParams } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
-import { useAuth } from "@/context/AuthContext";
 import { Loader2, AlertTriangle, User, Mail, Phone, MapPin, Calendar, Users, BookOpen, CreditCard, Activity } from "lucide-react";
 import RequirePermission from "@/components/RequirePermission";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 import Image from "next/image";
 
+// 🚀 Layered Architecture Hook
+import { useStudent360 } from "@/hooks/useStudents";
+
 export default function Student360Page() {
   const params = useParams();
   const studentId = params?.id as string;
-  const { user } = useAuth();
 
-  const { data: student, isLoading, isError, error } = useQuery({
-    queryKey: ["student360", studentId, user?.tenantId],
-    queryFn: async () => {
-      const res = await fetch(`/api/students/${studentId}`);
-      if (!res.ok) throw new Error("Failed to fetch student 360 data");
-      const json = await res.json();
-      if (!json.success) throw new Error(json.message || "API Error");
-      return json.data; // یہاں سے سیدھا Student کا Object آئے گا
-    },
-    enabled: !!user?.tenantId && !!studentId,
-  });
+  // 1. Fetch Student 360 Data using Custom Hook
+  const { data, isLoading, isError, error } = useStudent360(studentId);
 
   if (isLoading) {
     return (
@@ -33,7 +24,7 @@ export default function Student360Page() {
     );
   }
 
-  if (isError || !student) {
+  if (isError || !data) {
     return (
       <div className="flex flex-col items-center justify-center h-96 text-center p-6 bg-red-50 rounded-2xl border border-red-200 max-w-2xl mx-auto mt-10">
         <AlertTriangle className="text-red-500 w-12 h-12 mb-4" />
@@ -43,11 +34,27 @@ export default function Student360Page() {
     );
   }
 
+  // Extract Data Safely
+  const student = data?.student || data;
+  const attendance = data?.attendance || [];
+  const risk = data?.risk || {};
+  
+  const present = attendance.filter((a: any) => a.status === "Present").length;
+  const absent = attendance.filter((a: any) => a.status === "Absent").length;
+  const late = attendance.filter((a: any) => a.status === "Late").length;
+  
+  const attendanceStats = {
+    percentage: risk?.breakdown?.attendance || 0,
+    present,
+    absent,
+    late,
+  };
+
   return (
     <RequirePermission permissions={[PERMISSIONS.students.view]}>
       <div className="space-y-6 p-6 max-w-7xl mx-auto">
         
-        {/* 📸 Header Card with Real Photo & Basic Info */}
+        {/* Header Card with Real Photo & Basic Info */}
         <div className="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm">
           <div className="flex flex-col md:flex-row items-center gap-6">
             <div className="relative">
@@ -85,7 +92,7 @@ export default function Student360Page() {
           </div>
         </div>
 
-        {/* 📊 Grid Layout for Original Student Data */}
+        {/* Grid Layout for Original Student Data */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           
           {/* Personal Information */}
