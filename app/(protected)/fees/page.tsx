@@ -76,8 +76,9 @@ export default function FeesPage() {
     }
   };
 
-  const totalCollected = feeRecords.filter((f: any) => f.status === "paid").reduce((sum: number, f: any) => sum + (f.amountPaid || 0), 0);
-  const totalPending = feeRecords.filter((f: any) => f.status === "pending").reduce((sum: number, f: any) => sum + (f.amountPaid || 0), 0);
+  // 🛡️ Case-Insensitive Math Logic
+  const totalCollected = feeRecords.filter((f: any) => f.status?.toLowerCase() === "paid").reduce((sum: number, f: any) => sum + (f.amountPaid || 0), 0);
+  const totalPending = feeRecords.filter((f: any) => f.status?.toLowerCase() === "pending" || f.status?.toLowerCase() === "partial").reduce((sum: number, f: any) => sum + (f.amountPaid || 0), 0);
 
   if (!user?.tenantId) return <div className="p-8 text-center">Loading...</div>;
 
@@ -100,20 +101,21 @@ export default function FeesPage() {
 
       {success && <div className="bg-green-50 text-green-700 p-3 rounded-lg flex items-center gap-2 font-bold border border-green-100"><CheckCircle size={18} /> {success}</div>}
 
+      {/* 🎨 Summary Cards with Hover Effects */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-gradient-to-br from-green-500 to-green-600 text-white p-6 rounded-2xl shadow-lg">
+        <div className="bg-gradient-to-br from-green-500 to-green-600 text-white p-6 rounded-2xl shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
           <div className="flex items-center justify-between">
             <div><p className="text-sm font-medium opacity-90">Total Collected</p><p className="text-3xl font-black mt-2">Rs. {totalCollected.toLocaleString()}</p></div>
             <CheckCircle size={40} className="opacity-50" />
           </div>
         </div>
-        <div className="bg-gradient-to-br from-orange-500 to-orange-600 text-white p-6 rounded-2xl shadow-lg">
+        <div className="bg-gradient-to-br from-orange-500 to-orange-600 text-white p-6 rounded-2xl shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
           <div className="flex items-center justify-between">
             <div><p className="text-sm font-medium opacity-90">Total Pending</p><p className="text-3xl font-black mt-2">Rs. {totalPending.toLocaleString()}</p></div>
             <AlertCircle size={40} className="opacity-50" />
           </div>
         </div>
-        <div className="bg-gradient-to-br from-blue-500 to-blue-600 text-white p-6 rounded-2xl shadow-lg">
+        <div className="bg-gradient-to-br from-blue-500 to-blue-600 text-white p-6 rounded-2xl shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
           <div className="flex items-center justify-between">
             <div><p className="text-sm font-medium opacity-90">Total Records</p><p className="text-3xl font-black mt-2">{feeRecords.length}</p></div>
             <Users size={40} className="opacity-50" />
@@ -205,7 +207,7 @@ export default function FeesPage() {
                     <td className="px-6 py-3 text-gray-600">{fee.classGrade} - {fee.section}</td>
                     <td className="px-6 py-3 font-black text-gray-900">Rs. {fee.amountPaid?.toLocaleString()}</td>
                     <td className="px-6 py-3">
-                      <span className={`px-3 py-1 rounded-full text-xs font-bold ${fee.status === "paid" ? "bg-green-100 text-green-700" : fee.status === "partial" ? "bg-blue-100 text-blue-700" : "bg-orange-100 text-orange-700"}`}>
+                      <span className={`px-3 py-1 rounded-full text-xs font-bold ${fee.status?.toLowerCase() === "paid" ? "bg-green-100 text-green-700" : fee.status?.toLowerCase() === "partial" ? "bg-blue-100 text-blue-700" : "bg-orange-100 text-orange-700"}`}>
                         {fee.status?.toUpperCase()}
                       </span>
                     </td>
