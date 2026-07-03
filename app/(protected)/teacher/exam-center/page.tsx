@@ -10,7 +10,6 @@ export default function ExamCenterPage() {
         <FileText className="text-blue-600" /> Exam Center
       </h1>
 
-      {/* 🛡️ Protected Create Area */}
       <RequirePermission permissions={[PERMISSIONS.exams.create]}>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="bg-white border border-gray-200 rounded-2xl p-8 text-center shadow-sm hover:shadow-md transition cursor-pointer group">
