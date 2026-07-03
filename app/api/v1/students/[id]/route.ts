@@ -1,57 +1,46 @@
-export const dynamic = 'force-dynamic';
-import { withErrorHandler } from "@/route-helpers";
-import { withAuthAndPermission } from "@/route-helpers/withAuthAndPermission";
-import { PERMISSIONS } from "@/lib/auth/permissions";
-import { StudentService } from "@/services/student.service";
-import { StudentRepository } from "@/repositories/student.repository";
-import { successResponse, errorResponse } from "@/lib/utils/api-response";
+// app/api/v1/students/[id]/route.ts
+import { NextRequest, NextResponse } from "next/server";
+import { adminDb } from "@/lib/firebase-admin";
+import { getSessionUser } from "@/lib/auth/auth-server";
 
-// ✅ Argument واپس اضافے کیا گیا ہے
-const studentService = new StudentService(new StudentRepository());
-
-export const GET = withErrorHandler(
-  withAuthAndPermission(PERMISSIONS.students.view, async (req, context) => {
-    const tenantId = context.user.tenantId;
-    const id = context.params?.id;
-
-    if (!id) return errorResponse("Student ID is required", 400);
-
-    // ✅ پرانا Method استعمال کیا گیا ہے
-    const student = await studentService.getStudentById(id, tenantId);
-    
-    if (!student) {
-      return errorResponse("Student not found", 404);
+// 🛡️ Direct Route Handler (No wrappers to avoid params dropping)
+export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
+  try {
+    const user = await getSessionUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    
-    return successResponse(student, "Student fetched");
-  })
-);
 
-export const PUT = withErrorHandler(
-  withAuthAndPermission(PERMISSIONS.students.update, async (req, context) => {
-    const tenantId = context.user.tenantId;
-    const id = context.params?.id;
-    
-    if (!id) return errorResponse("Student ID is required", 400);
+    const studentId = params.id;
+    if (!studentId) {
+      return NextResponse.json({ error: "Student ID is required" }, { status: 400 });
+    }
 
-    let body;
-    try { body = await req.json(); } catch { return errorResponse("Invalid JSON", 400); }
+    // Directly fetch from Firestore
+    const docRef = adminDb.collection("students").doc(studentId);
+    const docSnap = await docRef.get();
 
-    // ✅ پرانا Method استعمال کیا گیا ہے
-    const updatedStudent = await studentService.updateStudent(id, body, tenantId);
-    return successResponse(updatedStudent, "Student updated");
-  })
-);
+    if (!docSnap.exists) {
+      return NextResponse.json({ error: "Student not found in DB" }, { status: 404 });
+    }
 
-export const DELETE = withErrorHandler(
-  withAuthAndPermission(PERMISSIONS.students.delete, async (req, context) => {
-    const tenantId = context.user.tenantId;
-    const id = context.params?.id;
-    
-    if (!id) return errorResponse("Student ID is required", 400);
+    const studentData = docSnap.data() as any;
 
-    // ✅ پرانا Method استعمال کیا گیا ہے
-    await studentService.deleteStudent(id, tenantId);
-    return successResponse(null, "Student deleted");
-  })
-);
+    // Tenant Isolation Check
+    if (studentData.tenantId !== user.tenantId) {
+      return NextResponse.json({ error: "Forbidden: Tenant mismatch" }, { status: 403 });
+    }
+
+    return NextResponse.json({
+      success: true,
+      data: { id: docSnap.id, ...studentData }
+    });
+
+  } catch (error: any) {
+    console.error("[GET /students/[id]] Error:", error);
+    return NextResponse.json(
+      { error: error.message || "Internal Server Error" },
+      { status: 500 }
+    );
+  }
+}
