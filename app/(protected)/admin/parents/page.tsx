@@ -52,7 +52,7 @@ export default function ManageParents() {
           </div>
 
           <div className="border border-gray-200 bg-gray-50 rounded-xl p-4">
-            <label className="font-bold text-gray-800 mb-2 block">Link Students (Select all that apply)</label>
+            <label className="font-bold text-gray-800 mb-2 block">Link Students</label>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-2 max-h-60 overflow-y-auto bg-white p-3 border border-gray-200 rounded-lg">
               {studentsLoading ? (
                 <p className="text-gray-400 text-sm italic p-2 col-span-2 text-center"><Loader2 className="animate-spin inline mr-2" size={14} /> Loading students...</p>
