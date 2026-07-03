@@ -1,25 +1,24 @@
 "use client";
 import { useState } from "react";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from "recharts";
-import { Download, Filter, Calendar, Loader2 } from "lucide-react";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line } from "recharts";
+import { Download, Loader2 } from "lucide-react";
 import RequirePermission from "@/components/RequirePermission";
 
 // 🚀 Layered Architecture Hooks
 import { useTenants, useAnalytics } from "@/hooks/useAnalytics";
-
-const COLORS = ["#3b82f6", "#8b5cf6", "#10b981", "#f59e0b", "#ef4444", "#ec489a", "#06b6d4"];
+import { useExportCSV } from "@/hooks/useReports";
 
 export default function SuperAdminAnalytics() {
   const [selectedTenant, setSelectedTenant] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
-  const [exporting, setExporting] = useState(false);
 
   // 1. Fetch Tenants List
   const { data: tenants = [], isLoading: tenantsLoading } = useTenants();
 
   // 2. Fetch Analytics Data based on selected Tenant & Dates
   const { data: analyticsData = {}, isLoading: dataLoading } = useAnalytics(selectedTenant, startDate, endDate);
+  const exportMutation = useExportCSV();
   
   const trend = analyticsData.trend || [];
   const totalStudents = analyticsData.totalStudents || 0;
@@ -27,21 +26,11 @@ export default function SuperAdminAnalytics() {
   const totalRevenue = analyticsData.totalRevenue || 0;
   const activeUsers = analyticsData.activeUsers || 0;
 
-  const exportToCSV = () => {
-    setExporting(true);
-    const csvRows = [
-      ["Date", "New Students", "Revenue", "Active Users"],
-      ...trend.map((item: any) => [item.date, item.students, item.revenue, item.users]),
-    ];
-    const csvContent = csvRows.map(row => row.join(",")).join("\n");
-    const blob = new Blob([csvContent], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `analytics_${selectedTenant || 'global'}_${Date.now()}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-    setExporting(false);
+  const handleExport = () => {
+    exportMutation.mutate({ 
+      endpoint: "/super-admin/analytics/export", 
+      params: { tenantId: selectedTenant, startDate, endDate } 
+    });
   };
 
   if (tenantsLoading || dataLoading) {
@@ -78,8 +67,8 @@ export default function SuperAdminAnalytics() {
             <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">End Date</label>
             <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="w-full border border-gray-300 bg-gray-50 rounded-xl p-3 outline-none focus:ring-2 focus:ring-blue-500" />
           </div>
-          <button onClick={exportToCSV} disabled={exporting} className="w-full md:w-auto bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-xl flex items-center justify-center gap-2 font-bold disabled:opacity-50 transition">
-            <Download size={18} /> {exporting ? "Exporting..." : "Export CSV"}
+          <button onClick={handleExport} disabled={exportMutation.isPending} className="w-full md:w-auto bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-xl flex items-center justify-center gap-2 font-bold disabled:opacity-50 transition">
+            <Download size={18} /> {exportMutation.isPending ? "Exporting..." : "Export CSV"}
           </button>
         </div>
 
