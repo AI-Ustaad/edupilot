@@ -38,8 +38,12 @@ export const usePendingAdmissions = () => {
   return useQuery({
     queryKey: ["admissions", tenantId, "pending"],
     queryFn: async () => {
-      const res = await apiClient.get("/students?admissionStatus=pending");
-      return safeArray(res);
+      // تمام سٹوڈنٹس Fetch کریں
+      const res = await apiClient.get("/students");
+      const allStudents = safeArray(res);
+      
+      // 🛡️ Client-side Filter: صرف وہ سٹوڈنٹس رکھیں جن کا Status pending ہے یا خالی ہے
+      return allStudents.filter((s: any) => !s.admissionStatus || s.admissionStatus === "pending");
     },
     enabled: !!tenantId && tenantId !== "unknown",
   });
