@@ -2,7 +2,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import apiClient from "@/lib/api/client";
 import { safeArray } from "@/lib/api/safeResponse";
-import { QueryKeys } from "@/lib/api/queryKeys";
 import { useAuth } from "@/context/AuthContext";
 
 // 🔄 Fetch Marks by Class, Section, Term, Subject
@@ -11,7 +10,6 @@ export const useMarks = (classGrade: string, section: string, term: string, subj
   const tenantId = user?.tenantId || "unknown";
 
   return useQuery({
-    // Marks کا اپنا الگ Cache Key ہے
     queryKey: ["marks", tenantId, classGrade, section, term, subject],
     queryFn: async () => {
       if (!classGrade || !section || !term || !subject) return [];
@@ -37,7 +35,7 @@ export const useSaveMarks = () => {
       queryClient.invalidateQueries({ 
         queryKey: ["marks", tenantId, variables.classGrade, variables.section, variables.term, variables.subject] 
       });
-      queryClient.invalidateQueries({ queryKey: QueryKeys.dashboard(tenantId) });
+      queryClient.invalidateQueries({ queryKey: ["dashboard", tenantId] });
     },
   });
 };
