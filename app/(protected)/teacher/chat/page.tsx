@@ -20,12 +20,10 @@ export default function TeacherChatPage() {
     setInput("");
 
     try {
-      // Assuming an API endpoint to save/send chat messages
       await apiClient.post("/chat", { text: newMessage.text });
       showToast("Message sent", "success");
     } catch (err) {
       showToast("Failed to send message", "error");
-      // Optional: Remove message from UI if failed
     }
   };
 
