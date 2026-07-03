@@ -52,13 +52,3 @@ export const useAskSmartBookCenter = () => {
     },
   });
 };
-
-// 📅 Generate AI Timetable (یہ ہم پہلے ہی بنا چکے ہیں، بس تصدیق کر لیں)
-export const useGenerateTimetable = () => {
-  return useMutation({
-    mutationFn: async (data: { classes: string[]; days: string[]; periods: number; subjects: string[]; teachers: string[] }) => {
-      const res = await apiClient.post("/ai/timetable", data);
-      return safeObject(res);
-    },
-  });
-};
