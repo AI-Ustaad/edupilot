@@ -1,9 +1,9 @@
 "use client";
-
 import { useState } from "react";
 import { Loader2, FileText, Sparkles, CheckCircle2 } from "lucide-react";
 import RequirePermission from "@/components/RequirePermission";
 import { PERMISSIONS } from "@/lib/auth/permissions";
+import { useGenerateReportComments } from "@/hooks/useAI";
 
 export default function ReportCommentsPage() {
   const [studentName, setStudentName] = useState("");
@@ -12,32 +12,21 @@ export default function ReportCommentsPage() {
   const [marks, setMarks] = useState("");
   const [attendance, setAttendance] = useState("");
   const [comment, setComment] = useState("");
-  const [loading, setLoading] = useState(false);
+  
+  const generateMutation = useGenerateReportComments();
 
   const generate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!studentName || !grade || !subject || !marks || !attendance) return;
-    setLoading(true);
     setComment("");
-    try {
-      const res = await fetch("/api/ai/report-comments", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          studentName,
-          grade,
-          subject,
-          marks: parseInt(marks),
-          attendance: parseInt(attendance),
-        }),
-      });
-      const json = await res.json();
-      setComment(json.data?.comment || json.comment || "Could not generate comment.");
-    } catch (err) {
-      setComment("Network error.");
-    } finally {
-      setLoading(false);
-    }
+    
+    generateMutation.mutate(
+      { studentName, grade, subject, marks: parseInt(marks), attendance: parseInt(attendance) },
+      {
+        onSuccess: (data) => setComment(data?.comment || "Could not generate comment."),
+        onError: () => setComment("Network error or AI service unavailable."),
+      }
+    );
   };
 
   return (
@@ -59,11 +48,10 @@ export default function ReportCommentsPage() {
           <input placeholder="Attendance (%)" type="number" value={attendance} onChange={e => setAttendance(e.target.value)} className="border border-gray-300 bg-gray-50 rounded-xl p-3 focus:ring-2 focus:ring-green-500 outline-none" required />
         </div>
         
-        {/* 🛡️ Protected Generate Button */}
         <RequirePermission permissions={[PERMISSIONS.exams.manage]}>
-          <button type="submit" disabled={loading} className="w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition disabled:opacity-50">
-            {loading ? <Loader2 className="animate-spin" size={18} /> : <Sparkles size={18} />} 
-            {loading ? "Generating..." : "Generate AI Comment"}
+          <button type="submit" disabled={generateMutation.isPending} className="w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition disabled:opacity-50">
+            {generateMutation.isPending ? <Loader2 className="animate-spin" size={18} /> : <Sparkles size={18} />}
+            {generateMutation.isPending ? "Generating..." : "Generate AI Comment"}
           </button>
         </RequirePermission>
       </form>
