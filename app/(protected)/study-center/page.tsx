@@ -50,7 +50,7 @@ export default function StudyCenter() {
 
         {isLoading && <div className="text-center py-8"><Loader2 className="animate-spin mx-auto text-blue-600" size={32} /></div>}
 
-        {!loading && materials.length === 0 && (
+       {!isLoading && materials.length === 0 && (
           <div className="bg-white border border-gray-200 rounded-xl text-center text-gray-500 py-12 font-medium">No study materials found for the selected filters.</div>
         )}
 
