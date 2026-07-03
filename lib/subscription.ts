@@ -1,3 +1,4 @@
+// lib/subscription.ts
 import { adminDb } from "@/lib/firebase-admin";
 
 export interface PlanLimits {
@@ -7,61 +8,44 @@ export interface PlanLimits {
 
 const PLAN_LIMITS: Record<string, PlanLimits> = {
   free: { students: 50, staff: 10 },
-  basic: { students: 200, staff: 50 },
-  pro: { students: 1000, staff: 200 },
-  enterprise: { students: 9999, staff: 9999 },
+  basic: { students: 500, staff: 50 },
+  pro: { students: 2000, staff: 200 },
+  enterprise: { students: 999999, staff: 999999 },
 };
 
-export async function getPlanLimits(
-  tenantId: string
-): Promise<PlanLimits> {
-  const subDoc = await adminDb
-    .collection("subscriptions")
-    .doc(tenantId)
-    .get();
-
-  const sub = subDoc.data();
-  const planId = sub?.planId || "free";
-
-  return PLAN_LIMITS[planId] || PLAN_LIMITS.free;
+export async function getTenantSubscription(tenantId: string) {
+  const subDoc = await adminDb.collection("subscriptions").doc(tenantId).get();
+  if (!subDoc.exists) {
+    return { planId: "free", status: "active", limits: PLAN_LIMITS.free };
+  }
+  const subData = subDoc.data() as any;
+  return {
+    planId: subData.planId || "free",
+    status: subData.status || "active",
+    limits: PLAN_LIMITS[subData.planId] || PLAN_LIMITS.free,
+  };
 }
 
-export async function isSubscriptionValid(
-  tenantId: string
-): Promise<{ valid: boolean; message?: string }> {
+export async function getTenantUsage(tenantId: string) {
+  const studentsSnapshot = await adminDb.collection("students").where("tenantId", "==", tenantId).get();
+  const staffSnapshot = await adminDb.collection("staff").where("tenantId", "==", tenantId).get();
+  
+  return {
+    studentsUsed: studentsSnapshot.size,
+    staffUsed: staffSnapshot.size,
+  };
+}
 
-  // ✅ TEMPORARY FIX: Always return valid
-  // TODO: Remove this after adding proper subscription documents
-
-  return { valid: true };
-
-  /*
-  const subDoc = await adminDb
-    .collection("subscriptions")
-    .doc(tenantId)
-    .get();
-
-  const sub = subDoc.data();
-
-  if (!sub || sub.status !== "active") {
+// یہ فنکشن Check کرے گا کہ نیا سٹوڈنٹ Add ہو سکتا ہے یا نہیں
+export async function canAddStudent(tenantId: string): Promise<{ allowed: boolean; message?: string }> {
+  const { limits } = await getTenantSubscription(tenantId);
+  const { studentsUsed } = await getTenantUsage(tenantId);
+  
+  if (studentsUsed >= limits.students) {
     return {
-      valid: false,
-      message: "Your subscription is inactive. Please upgrade."
+      allowed: false,
+      message: `You have reached the student limit (${limits.students}) of your plan. Please upgrade your plan to add more students.`
     };
   }
-
-  if (
-    sub.trialEndsAt &&
-    new Date() > new Date(sub.trialEndsAt)
-  ) {
-    if (sub.planId === "free") {
-      return {
-        valid: false,
-        message: "Your free trial has ended. Please select a plan."
-      };
-    }
-  }
-
-  return { valid: true };
-  */
+  return { allowed: true };
 }
