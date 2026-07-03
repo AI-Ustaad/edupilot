@@ -8,22 +8,25 @@ import {
   Loader2,
   FileText,
   Image as ImageIcon,
-  Camera,
   UserPlus,
   AlertCircle,
   CheckCircle2,
 } from "lucide-react";
 
+// 🚀 Layered Architecture Hooks
+import { useCreateStudent } from "@/hooks/useStudents";
+import { useToast } from "@/components/ToastProvider";
+
 export default function OCRAdmissionPage() {
   const router = useRouter();
   const { user } = useAuth();
+  const { showToast } = useToast();
 
   const [file, setFile] = useState<File | null>(null);
   const [extracting, setExtracting] = useState(false);
   const [extractedData, setExtractedData] = useState<any>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
 
   // یہ وہ اضافی فیلڈز ہیں جو OCR نہیں نکال سکتا، انہیں صارف خود بھرے گا
   const [manualFields, setManualFields] = useState({
@@ -34,6 +37,8 @@ export default function OCRAdmissionPage() {
     previousSchool: "",
     medicalConditions: "",
   });
+
+  const createMutation = useCreateStudent();
 
   // فائل اپ لوڈ ہینڈلر
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -56,73 +61,54 @@ export default function OCRAdmissionPage() {
     setError("");
 
     try {
-      // فائل کو Base64 میں تبدیل کریں (یا FormData استعمال کریں)
-      const reader = new FileReader();
-      reader.onload = async () => {
-        const base64 = (reader.result as string).split(",")[1]; // data:image/png;base64, کے بغیر
-        const res = await fetch("/api/students/ocr-admission", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            image: base64,
-            fileName: file.name,
-            tenantId: user?.tenantId,
-          }),
-        });
-
-        const json = await res.json();
-        if (res.ok && json.success) {
-          setExtractedData(json.data);
-        } else {
-          setError(json.message || "OCR extraction failed.");
-        }
-        setExtracting(false);
-      };
-      reader.onerror = () => {
-        setError("Failed to read file.");
-        setExtracting(false);
-      };
-      reader.readAsDataURL(file);
+      const formData = new FormData();
+      formData.append("file", file);
+      
+      const res = await fetch("/api/v1/students/ocr-admission", { 
+        method: "POST", 
+        body: formData 
+      });
+      
+      const json = await res.json();
+      if (res.ok && json.success) {
+        setExtractedData(json.data);
+        showToast("Data extracted successfully!", "success");
+      } else {
+        setError(json.message || "OCR extraction failed.");
+      }
     } catch (err) {
       setError("Network error. Please try again.");
+    } finally {
       setExtracting(false);
     }
   };
 
-  // داخلہ فائنل کریں
-  const handleAdmit = async () => {
+  // داخلہ فائنل کریں (Enterprise Hook کے ذریعے)
+  const handleAdmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     if (!extractedData) return;
 
     setSubmitting(true);
     setError("");
 
-    try {
-      const payload = {
-        ...extractedData,
-        ...manualFields,
-        tenantId: user?.tenantId,
-        createdBy: user?.uid,
-        admissionMethod: "ocr",
-      };
+    const payload = {
+      ...extractedData,
+      ...manualFields,
+      tenantId: user?.tenantId,
+      createdBy: user?.uid,
+      admissionMethod: "ocr",
+    };
 
-      const res = await fetch("/api/students", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-
-      if (res.ok) {
-        setSuccess("Student admitted successfully via OCR!");
+    createMutation.mutate(payload, {
+      onSuccess: () => {
+        showToast("Student admitted successfully via OCR!", "success");
         setTimeout(() => router.push("/students"), 1500);
-      } else {
-        const data = await res.json();
-        setError(data.message || "Admission failed.");
+      },
+      onError: (err: any) => {
+        setError(err.response?.data?.message || "Admission failed.");
+        setSubmitting(false);
       }
-    } catch (err) {
-      setError("Network error.");
-    } finally {
-      setSubmitting(false);
-    }
+    });
   };
 
   return (
@@ -134,19 +120,14 @@ export default function OCRAdmissionPage() {
         Upload a scanned admission form image or PDF. The system will automatically extract student details.
       </p>
 
-      {/* Error / Success */}
+      {/* Error / Success Messages */}
       {error && (
         <div className="bg-red-50 text-red-700 p-4 rounded-xl font-bold flex items-center gap-2">
           <AlertCircle size={20} /> {error}
         </div>
       )}
-      {success && (
-        <div className="bg-green-50 text-green-700 p-4 rounded-xl font-bold flex items-center gap-2">
-          <CheckCircle2 size={20} /> {success}
-        </div>
-      )}
 
-      {/* File Upload */}
+      {/* File Upload Section */}
       <div className="bg-white border border-gray-200 rounded-2xl p-6">
         <h2 className="font-bold text-lg mb-4 flex items-center gap-2">
           <Upload size={20} className="text-indigo-500" /> Upload Document
@@ -171,7 +152,7 @@ export default function OCRAdmissionPage() {
           <button
             onClick={handleExtract}
             disabled={!file || extracting}
-            className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-xl font-bold flex items-center gap-2 disabled:opacity-50"
+            className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-xl font-bold flex items-center gap-2 disabled:opacity-50 transition w-full sm:w-auto"
           >
             {extracting ? <Loader2 className="animate-spin" size={18} /> : <FileText size={18} />}
             {extracting ? "Extracting..." : "Extract Data"}
@@ -179,15 +160,15 @@ export default function OCRAdmissionPage() {
         </div>
       </div>
 
-      {/* Extracted Data Preview */}
+      {/* Extracted Data Preview & Manual Form */}
       {extractedData && (
-        <div className="bg-white border border-gray-200 rounded-2xl p-6 space-y-6">
+        <form onSubmit={handleAdmit} className="bg-white border border-gray-200 rounded-2xl p-6 space-y-6 shadow-sm">
           <h2 className="font-bold text-lg flex items-center gap-2 text-green-600">
             <CheckCircle2 size={20} /> Extracted Information
           </h2>
 
+          {/* Auto-extracted fields (readonly) */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Auto-extracted fields (readonly) */}
             <Field label="Full Name" value={extractedData.fullName || ""} />
             <Field label="Father Name" value={extractedData.fatherName || ""} />
             <Field label="CNIC / B-Form" value={extractedData.cnic || ""} />
@@ -200,7 +181,7 @@ export default function OCRAdmissionPage() {
           </div>
 
           {/* Manual fields (editable) */}
-          <div>
+          <div className="pt-6 border-t border-gray-100">
             <h3 className="font-bold text-gray-800 mb-3">Additional Details (Fill Manually)</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Input
@@ -238,20 +219,20 @@ export default function OCRAdmissionPage() {
           </div>
 
           <button
-            onClick={handleAdmit}
+            type="submit"
             disabled={submitting || !manualFields.classGrade}
-            className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-xl font-bold flex items-center gap-2 disabled:opacity-50"
+            className="w-full bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-xl font-bold flex items-center justify-center gap-2 disabled:opacity-50 transition"
           >
             {submitting ? <Loader2 className="animate-spin" size={18} /> : <UserPlus size={18} />}
             {submitting ? "Admitting..." : "Confirm Admission via OCR"}
           </button>
-        </div>
+        </form>
       )}
     </div>
   );
 }
 
-// Reusable components
+// 🛠️ Reusable UI Components
 function Field({ label, value }: { label: string; value: string }) {
   return (
     <div>
@@ -259,7 +240,7 @@ function Field({ label, value }: { label: string; value: string }) {
       <input
         readOnly
         value={value}
-        className="w-full bg-gray-50 border border-gray-200 rounded-xl p-2 text-gray-700 cursor-not-allowed"
+        className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 text-gray-700 cursor-not-allowed"
       />
     </div>
   );
@@ -269,7 +250,7 @@ function Input({ label, ...props }: { label: string } & React.InputHTMLAttribute
   return (
     <div>
       <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1 block">{label}</label>
-      <input {...props} className="w-full border border-gray-300 rounded-xl p-2 text-gray-900" />
+      <input {...props} className="w-full border border-gray-300 rounded-xl p-3 text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none" />
     </div>
   );
 }
