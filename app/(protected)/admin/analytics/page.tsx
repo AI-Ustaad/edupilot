@@ -1,29 +1,57 @@
 "use client";
-import { useEffect, useState } from "react";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
+import { useQuery } from "@tanstack/react-query";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Loader2 } from "recharts";
 import RequirePermission from "@/components/RequirePermission";
-import { PERMISSIONS } from "@/lib/auth/permissions";
+import apiClient from "@/lib/api/client";
+import { safeObject } from "@/lib/api/safeResponse";
+import { useAuth } from "@/context/AuthContext";
 
-export default function SaasAnalytics() {
-  const [data, setData] = useState([]);
+export default function AdminAnalyticsPage() {
+  const { user } = useAuth();
+  const tenantId = user?.tenantId || "unknown";
 
-  useEffect(() => {
-    fetch("/api/saas-analytics").then(res => res.json()).then(res => setData(res.tenants || []));
-  }, []);
+  const { data: analyticsData = {}, isLoading } = useQuery({
+    queryKey: ["analytics", tenantId],
+    queryFn: async () => safeObject(await apiClient.get("/analytics")),
+  });
+
+  if (isLoading) return <div className="flex h-96 items-center justify-center"><Loader2 className="animate-spin text-blue-600" size={32} /></div>;
+
+  const trend = analyticsData.trend || [];
 
   return (
-    <RequirePermission permissions={[PERMISSIONS.analytics.view]}>
-      <div className="p-6 max-w-6xl mx-auto space-y-6">
-        <h1 className="text-2xl font-black text-gray-900 mb-6">SaaS Analytics (Super Admin)</h1>
-        
-        <div className="bg-white border border-gray-200 rounded-2xl shadow-sm p-6">
-          <ResponsiveContainer width="100%" height={400}>
-            <BarChart data={data}>
-              <XAxis dataKey="name" stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} />
-              <YAxis stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `${value}`} />
-              <Tooltip cursor={{ fill: '#f1f5f9' }} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
-              <Bar dataKey="students" fill="#3b82f6" name="Students" radius={[4, 4, 0, 0]} barSize={40} />
-              <Bar dataKey="revenue" fill="#10b981" name="Revenue" radius={[4, 4, 0, 0]} barSize={40} />
+    <RequirePermission permissions={["analytics.view" as any]}>
+      <div className="p-6 space-y-6 max-w-7xl mx-auto">
+        <h1 className="text-2xl font-black text-gray-900">School Analytics</h1>
+
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+            <p className="text-gray-500 font-bold text-xs uppercase tracking-wider">Total Students</p>
+            <p className="text-3xl font-black text-gray-900 mt-2">{analyticsData.totalStudents || 0}</p>
+          </div>
+          <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+            <p className="text-gray-500 font-bold text-xs uppercase tracking-wider">Total Staff</p>
+            <p className="text-3xl font-black text-gray-900 mt-2">{analyticsData.totalStaff || 0}</p>
+          </div>
+          <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+            <p className="text-gray-500 font-bold text-xs uppercase tracking-wider">Total Revenue</p>
+            <p className="text-3xl font-black text-green-600 mt-2">Rs {(analyticsData.totalRevenue || 0).toLocaleString()}</p>
+          </div>
+          <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+            <p className="text-gray-500 font-bold text-xs uppercase tracking-wider">Active Users</p>
+            <p className="text-3xl font-black text-purple-600 mt-2">{analyticsData.activeUsers || 0}</p>
+          </div>
+        </div>
+
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+          <h3 className="font-bold text-gray-900 mb-6">Revenue & Enrollment Trend</h3>
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={trend}>
+              <XAxis dataKey="date" stroke="#94a3b8" fontSize={12} />
+              <YAxis stroke="#94a3b8" fontSize={12} />
+              <Tooltip cursor={{ fill: '#f1f5f9' }} />
+              <Bar dataKey="students" fill="#10b981" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="revenue" fill="#3b82f6" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
