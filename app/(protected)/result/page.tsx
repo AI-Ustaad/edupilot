@@ -1,4 +1,3 @@
-// app/(protected)/result/page.tsx
 "use client";
 import React, { useState, useMemo } from "react";
 import { useAuth } from "@/context/AuthContext";
@@ -10,19 +9,16 @@ import {
 import RequirePermission from "@/components/RequirePermission";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 
+// 🚀 Layered Architecture Hooks
+import { useClasses } from "@/hooks/useClasses";
+import apiClient from "@/lib/api/client";
+import { safeArray } from "@/lib/api/safeResponse";
+import { useGenerateReportCard } from "@/hooks/useReports";
+
 const fetchResults = async (params: Record<string, string>) => {
   const q = new URLSearchParams(params);
-  const res = await fetch(`/api/v1/results?${q}`);
-  if (!res.ok) throw new Error("Failed to fetch results");
-  const json = await res.json();
-  return json.data || [];
-};
-
-const fetchClasses = async () => {
-  const res = await fetch("/api/classes");
-  if (!res.ok) throw new Error("Failed to fetch classes");
-  const json = await res.json();
-  return json.data || [];
+  const res = await apiClient.get(`/results?${q}`);
+  return safeArray(res);
 };
 
 const TERMS = ["1st Term", "2nd Term", "Final Exams"];
@@ -33,34 +29,23 @@ export default function ResultsPage() {
   const [selectedSection, setSelectedSection] = useState("");
   const [selectedTerm, setSelectedTerm] = useState(TERMS[2]);
 
-  const { data: classesData = [] } = useQuery({
-    queryKey: ["classes", user?.tenantId],
-    queryFn: fetchClasses,
-    enabled: !!user?.tenantId,
-  });
+  // 1. Fetch Live Classes
+  const { data: classesData = [] } = useClasses();
+  const availableClasses = useMemo(() => Array.from(new Set(classesData.map((c: any) => c.classGrade))), [classesData]);
+  const availableSections = useMemo(() => classesData.filter((c: any) => c.classGrade === selectedClass).map((c: any) => c.sectionName || c.section), [classesData, selectedClass]);
 
-  // 🛡️ Fix: Explicitly type as string[]
-  const availableClasses = useMemo(() => {
-    const classes = classesData.map((c: any) => c.classGrade as string);
-    return Array.from(new Set(classes));
-  }, [classesData]);
-
-  const availableSections = useMemo(() => {
-    if (!selectedClass) return [] as string[];
-    return classesData
-      .filter((c: any) => c.classGrade === selectedClass)
-      .map((c: any) => (c.sectionName || c.section) as string);
-  }, [classesData, selectedClass]);
-
+  // 2. Fetch Results
   const { data: results = [], isLoading, error } = useQuery({
     queryKey: ["results", user?.tenantId, selectedClass, selectedSection, selectedTerm],
     queryFn: () => fetchResults({ classGrade: selectedClass, section: selectedSection, term: selectedTerm }),
     enabled: !!user?.tenantId && !!selectedClass && !!selectedSection && !!selectedTerm,
   });
 
+  // 3. Generate PDF Mutation
+  const generatePdfMutation = useGenerateReportCard();
+
   const handleGeneratePDF = (studentId: string) => {
-    const url = `/api/v1/reports/generate?studentId=${studentId}&term=${encodeURIComponent(selectedTerm)}`;
-    window.open(url, "_blank");
+    generatePdfMutation.mutate({ studentId, term: selectedTerm });
   };
 
   if (!user?.tenantId) return <div className="p-8 text-center">Loading...</div>;
@@ -79,7 +64,6 @@ export default function ResultsPage() {
           <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 block">Class</label>
           <select value={selectedClass} onChange={e => { setSelectedClass(e.target.value); setSelectedSection(""); }} className="w-full border border-gray-300 rounded-lg px-3 py-2 font-medium focus:ring-2 focus:ring-indigo-500 outline-none">
             <option value="">Select Class</option>
-            {/* 🛡️ Fix: Typed as string */}
             {availableClasses.map((c: string) => <option key={c} value={c}>Class {c}</option>)}
           </select>
         </div>
@@ -87,7 +71,6 @@ export default function ResultsPage() {
           <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 block">Section</label>
           <select value={selectedSection} onChange={e => setSelectedSection(e.target.value)} disabled={!selectedClass} className="w-full border border-gray-300 rounded-lg px-3 py-2 font-medium disabled:bg-gray-100 focus:ring-2 focus:ring-indigo-500 outline-none">
             <option value="">Select Section</option>
-            {/* 🛡️ Fix: Typed as string */}
             {availableSections.map((s: string) => <option key={s} value={s}>Section {s}</option>)}
           </select>
         </div>
@@ -135,8 +118,15 @@ export default function ResultsPage() {
                     </td>
                     <td className="px-6 py-4 text-right">
                       <RequirePermission permissions={[PERMISSIONS.exams.manage]}>
-                        <button onClick={() => handleGeneratePDF(row.studentId)} className="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition shadow-sm">
-                          <FileText size={14}/> Report Card
+                        <button 
+                          onClick={() => handleGeneratePDF(row.studentId)} 
+                          disabled={generatePdfMutation.isPending && generatePdfMutation.variables?.studentId === row.studentId}
+                          className="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition shadow-sm disabled:opacity-50"
+                        >
+                          {generatePdfMutation.isPending && generatePdfMutation.variables?.studentId === row.studentId ? 
+                            <Loader2 size={14} className="animate-spin"/> : <FileText size={14}/>
+                          }
+                          Report Card
                         </button>
                       </RequirePermission>
                     </td>
