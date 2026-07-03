@@ -5,6 +5,7 @@ import { safeArray } from "@/lib/api/safeResponse";
 import { QueryKeys } from "@/lib/api/queryKeys";
 import { useAuth } from "@/context/AuthContext";
 
+// 🔄 Fetch Fees by Month & Class
 export const useFees = (month: string, classGrade: string, section: string) => {
   const { user } = useAuth();
   const tenantId = user?.tenantId || "unknown";
@@ -20,6 +21,7 @@ export const useFees = (month: string, classGrade: string, section: string) => {
   });
 };
 
+// ✨ Save Fee
 export const useSaveFee = () => {
   const queryClient = useQueryClient();
   const { user } = useAuth();
@@ -38,6 +40,7 @@ export const useSaveFee = () => {
   });
 };
 
+// 🗑️ Delete Fee Record
 export const useDeleteFee = () => {
   const queryClient = useQueryClient();
   const { user } = useAuth();
@@ -48,8 +51,8 @@ export const useDeleteFee = () => {
       return apiClient.delete(`/fees?id=${id}`);
     },
     onSuccess: () => {
-      // چونکہ ہم بالکل exact params نہیں جانتے، اس لیے سارے Fees کا Cache ریفریش کر دو
       queryClient.invalidateQueries({ queryKey: ["fees", tenantId] });
+      queryClient.invalidateQueries({ queryKey: QueryKeys.dashboard(tenantId) });
     },
   });
 };
