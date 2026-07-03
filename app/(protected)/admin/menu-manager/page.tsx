@@ -36,9 +36,11 @@ export default function MenuManager() {
 
   useEffect(() => {
     const fetchMenu = async () => {
-      try {
+            try {
         const res = await apiClient.get("/menu");
-        setItems(res.items || res.data?.items || []);
+        // 🛡️ Fix: Use safeObject to handle Axios response safely
+        const data = safeObject(res);
+        setItems(data?.items || []);
       } catch (err) {
         console.error(err);
       } finally {
