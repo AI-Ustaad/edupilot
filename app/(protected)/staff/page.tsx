@@ -7,14 +7,14 @@ import {
 import RequirePermission from "@/components/RequirePermission";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 
-// 🚀 نئی Hooks Import کریں
+// 🚀 Layered Architecture Hooks
 import { useStaff, useDeleteStaff } from "@/hooks/useStaff";
 
 export default function StaffDirectoryPage() {
   // 1. Fetch Staff using Custom Hook
   const { data: staff = [], isLoading } = useStaff();
   
-  // 2. Delete Mutation
+  // 2. Delete Mutation (With Optimistic Update Built-in)
   const deleteMutation = useDeleteStaff();
 
   // Bulk Import states
@@ -166,7 +166,12 @@ export default function StaffDirectoryPage() {
                     <tr><td colSpan={4} className="p-8 text-center text-gray-400 font-medium">No staff members found.</td></tr>
                   ) : (
                     staff.map((s: any) => (
-                      <tr key={s.id} className="hover:bg-gray-50 transition">
+                      <tr 
+                        key={s.id} 
+                        className={`hover:bg-gray-50 transition ${
+                          deleteMutation.isPending && deleteMutation.variables === s.id ? 'opacity-50 pointer-events-none' : ''
+                        }`}
+                      >
                         <td className="p-4 font-bold text-gray-900">
                           <Link href={`/staff-profile?id=${s.id}`} className="hover:text-blue-600 hover:underline">
                             {s.personal?.fullName || s.fullName || "N/A"}
@@ -183,7 +188,7 @@ export default function StaffDirectoryPage() {
                             <button 
                               onClick={() => handleDelete(s.id)} 
                               className="text-red-500 hover:bg-red-50 p-2 rounded-lg transition disabled:opacity-50"
-                              disabled={deleteMutation.isPending && deleteMutation.variables === s.id}
+                              disabled={deleteMutation.isPending}
                             >
                               {deleteMutation.isPending && deleteMutation.variables === s.id ? 
                                 <Loader2 size={18} className="animate-spin"/> : <Trash2 size={18}/>
