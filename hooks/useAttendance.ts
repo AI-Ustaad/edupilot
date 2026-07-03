@@ -5,6 +5,7 @@ import { safeArray } from "@/lib/api/safeResponse";
 import { QueryKeys } from "@/lib/api/queryKeys";
 import { useAuth } from "@/context/AuthContext";
 
+// 🔄 Fetch Attendance by Class, Section, Date
 export const useAttendance = (classGrade: string, section: string, date: string) => {
   const { user } = useAuth();
   const tenantId = user?.tenantId || "unknown";
@@ -20,6 +21,7 @@ export const useAttendance = (classGrade: string, section: string, date: string)
   });
 };
 
+// ✨ Save Attendance
 export const useSaveAttendance = () => {
   const queryClient = useQueryClient();
   const { user } = useAuth();
@@ -30,7 +32,7 @@ export const useSaveAttendance = () => {
       return apiClient.post("/attendance", data);
     },
     onSuccess: (_data, variables) => {
-      // جب Attendance Save ہو، تو Dashboard اور اسی Date کی Attendance ریفریش ہو
+      // جب Attendance Save ہو، تو اسی Date کی Attendance اور Dashboard ریفریش ہو
       queryClient.invalidateQueries({
         queryKey: QueryKeys.attendance(tenantId, variables.classGrade, variables.section, variables.date)
       });
