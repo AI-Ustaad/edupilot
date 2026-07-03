@@ -1,103 +1,62 @@
 "use client";
-import { useState, useEffect } from "react";
-import { Loader2, Plus, Trash2, Eye } from "lucide-react";
+import { useState } from "react";
+import { Loader2, BookOpen, FileText, Video, ExternalLink } from "lucide-react";
+import RequirePermission from "@/components/RequirePermission";
+import { useClasses } from "@/hooks/useClasses";
+import { useSettings } from "@/hooks/useSettings";
+import { useSyllabus } from "@/hooks/useSyllabus";
 
-export default function AdminSyllabus() {
-  const [materials, setMaterials] = useState<any[]>([]);
-  const [classes, setClasses] = useState<string[]>([]);
-  const [subjects, setSubjects] = useState<string[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [form, setForm] = useState({ classGrade: "", subject: "", title: "", description: "", type: "pdf", fileUrl: "", linkUrl: "" });
-  const [submitting, setSubmitting] = useState(false);
+export default function StudentSyllabusPage() {
+  const [filterClass, setFilterClass] = useState("");
 
-  useEffect(() => {
-    fetch("/api/settings").then(res => res.json()).then(data => {
-      setClasses(data.classes || []);
-      setSubjects(data.subjects || []);
-    });
-    fetchMaterials();
-  }, []);
+  const { data: classesData = [] } = useClasses();
+  const { data: settings } = useSettings();
+  const subjects = settings?.subjects || [];
 
-  const fetchMaterials = async () => {
-    const res = await fetch("/api/syllabus");
-    const data = await res.json();
-    setMaterials(data);
-    setLoading(false);
+  const { data: materials = [], isLoading } = useSyllabus(filterClass);
+
+  const getIcon = (type: string) => {
+    if (type === "pdf") return <FileText size={18} />;
+    if (type === "video") return <Video size={18} />;
+    return <ExternalLink size={18} />;
   };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSubmitting(true);
-    const res = await fetch("/api/syllabus", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(form),
-    });
-    if (res.ok) {
-      setForm({ classGrade: "", subject: "", title: "", description: "", type: "pdf", fileUrl: "", linkUrl: "" });
-      fetchMaterials();
-    } else alert("Failed to add");
-    setSubmitting(false);
-  };
-
-  const deleteItem = async (id: string) => {
-    if (!confirm("Delete this material?")) return;
-    await fetch(`/api/syllabus/${id}`, { method: "DELETE" });
-    fetchMaterials();
-  };
-
-  if (loading) return <div className="p-8"><Loader2 className="animate-spin mx-auto" /></div>;
 
   return (
-    <div className="p-6 max-w-6xl mx-auto">
-      <h1 className="text-2xl font-black mb-6">Syllabus & Study Center</h1>
-      <div className="grid md:grid-cols-2 gap-8">
-        <div className="bg-white p-5 rounded-xl shadow">
-          <h2 className="text-xl font-bold mb-4">Add New Material</h2>
-          <form onSubmit={handleSubmit} className="space-y-3">
-            <select required value={form.classGrade} onChange={e => setForm({...form, classGrade: e.target.value})} className="w-full border p-2 rounded">
-              <option value="">Select Class</option>
-              {classes.map(c => <option key={c}>{c}</option>)}
-            </select>
-            <select required value={form.subject} onChange={e => setForm({...form, subject: e.target.value})} className="w-full border p-2 rounded">
-              <option value="">Select Subject</option>
-              {subjects.map(s => <option key={s}>{s}</option>)}
-            </select>
-            <input required placeholder="Title" value={form.title} onChange={e => setForm({...form, title: e.target.value})} className="w-full border p-2 rounded" />
-            <textarea placeholder="Description" rows={3} value={form.description} onChange={e => setForm({...form, description: e.target.value})} className="w-full border p-2 rounded" />
-            <select value={form.type} onChange={e => setForm({...form, type: e.target.value})} className="w-full border p-2 rounded">
-              <option value="pdf">PDF Document</option>
-              <option value="video">Video (YouTube/Vimeo)</option>
-              <option value="image">Image</option>
-              <option value="link">External Link</option>
-            </select>
-            {form.type !== "link" && <input placeholder="File URL (e.g., https://...)" value={form.fileUrl} onChange={e => setForm({...form, fileUrl: e.target.value})} className="w-full border p-2 rounded" />}
-            {form.type === "link" && <input placeholder="Link URL" value={form.linkUrl} onChange={e => setForm({...form, linkUrl: e.target.value})} className="w-full border p-2 rounded" />}
-            <button type="submit" disabled={submitting} className="bg-blue-600 text-gray-900 px-4 py-2 rounded flex items-center gap-2">
-              {submitting ? <Loader2 className="animate-spin" size={18} /> : <Plus size={18} />} Add Material
-            </button>
-          </form>
+    <RequirePermission permissions={["videoLectures.view" as any]}>
+      <div className="p-6 max-w-6xl mx-auto">
+        <h1 className="text-2xl font-black text-gray-900 mb-6 flex items-center gap-2"><BookOpen className="text-blue-600" /> Course Syllabus</h1>
+        
+        <div className="bg-white border border-gray-200 shadow-sm p-4 mb-6 flex flex-wrap gap-4 rounded-xl">
+          <select 
+            value={filterClass} 
+            onChange={e => setFilterClass(e.target.value)} 
+            className="bg-gray-50 border border-gray-300 rounded-xl p-2 text-gray-900 flex-1 outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="">All Classes</option>
+            {classesData.map((c: any) => (<option key={c.id} value={c.classGrade}>{c.classGrade}</option>))}
+          </select>
         </div>
-        <div className="bg-white p-5 rounded-xl shadow overflow-auto max-h-[600px]">
-          <h2 className="text-xl font-bold mb-4">Existing Materials</h2>
-          {materials.length === 0 ? <p>No materials added yet.</p> : (
-            <div className="space-y-3">
-              {materials.map(m => (
-                <div key={m.id} className="border rounded-lg p-3 flex justify-between items-center">
-                  <div>
-                    <p className="font-bold">{m.title}</p>
-                    <p className="text-sm text-slate-500">{m.classGrade} - {m.subject} ({m.type})</p>
-                  </div>
-                  <div className="flex gap-2">
-                    <a href={m.fileUrl || m.linkUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600"><Eye size={18} /></a>
-                    <button onClick={() => deleteItem(m.id)} className="text-red-500"><Trash2 size={18} /></button>
-                  </div>
-                </div>
-              ))}
+
+        {isLoading && <div className="text-center py-8"><Loader2 className="animate-spin mx-auto text-blue-600" size={32} /></div>}
+
+        {!isLoading && materials.length === 0 && (
+          <div className="bg-white border border-gray-200 rounded-xl text-center text-gray-500 py-12 font-medium">No syllabus materials found.</div>
+        )}
+
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {materials.map((m: any) => (
+            <div key={m.id} className="bg-white border border-gray-200 rounded-xl p-5 hover:shadow-md transition">
+              <div className="flex items-center gap-2 text-blue-600 mb-3 bg-blue-50 w-max px-3 py-1.5 rounded-lg border border-blue-100">
+                {getIcon(m.type)} <span className="text-xs uppercase font-black tracking-widest">{m.type}</span>
+              </div>
+              <h3 className="font-bold text-lg text-gray-900 leading-tight">{m.title}</h3>
+              <p className="text-xs text-gray-500 mb-3 font-bold uppercase tracking-wider mt-1">{m.classGrade} - {m.subject}</p>
+              <p className="text-sm text-gray-600 mb-4 line-clamp-2">{m.description}</p>
+              <a href={m.fileUrl || m.linkUrl} target="_blank" rel="noopener noreferrer" className="inline-block bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white px-4 py-2 rounded-lg text-sm font-bold transition">View Material →</a>
             </div>
-          )}
+          ))}
         </div>
       </div>
-    </div>
+    </RequirePermission>
   );
 }
