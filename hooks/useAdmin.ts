@@ -50,14 +50,35 @@ export const useUpdateAdmissionStatus = () => {
   const { user } = useAuth();
   const tenantId = user?.tenantId || "unknown";
   const { showToast } = useToast();
+
   return useMutation({
     mutationFn: async ({ id, status }: { id: string; status: string }) => 
-      apiClient.put(`/admissions/approve`, { studentId: id, status }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admissions", tenantId] });
-      showToast("Admission status updated.", "success");
+      apiClient.put("/admissions/approve", { studentId: id, status }),
+    
+    // 🚀 Optimistic Update: کلک کرتے ہی UI سے ہٹا دو
+    onMutate: async ({ id }) => {
+      await queryClient.cancelQueries({ queryKey: ["admissions", tenantId, "pending"] });
+      
+      const previousAdmissions = queryClient.getQueryData(["admissions", tenantId, "pending"]);
+      
+      queryClient.setQueryData(["admissions", tenantId, "pending"], (old: any[]) => 
+        old.filter((s: any) => s.id !== id)
+      );
+      
+      return { previousAdmissions };
     },
-    onError: () => showToast("Failed to update admission status.", "error"),
+    
+    onError: (err, variables, context) => {
+      // اگر Backend Fail ہو تو واپس لسٹ میں لے آو
+      queryClient.setQueryData(["admissions", tenantId, "pending"], context?.previousAdmissions);
+      showToast("Failed to update admission status.", "error");
+    },
+    
+    onSuccess: () => {
+      showToast("Admission status updated successfully.", "success");
+      // Backend کے ساتھ Sync کرنے کے لیے Refetch
+      queryClient.invalidateQueries({ queryKey: ["admissions", tenantId] });
+    },
   });
 };
 
