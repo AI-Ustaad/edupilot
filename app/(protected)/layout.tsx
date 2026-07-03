@@ -10,11 +10,15 @@ import { motion, AnimatePresence } from "framer-motion";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import MobileBottomNav from "@/components/MobileBottomNav";
 
-// 🚀 Global Search Import
+// 🚀 Enterprise Imports
 import GlobalSearch from "@/components/GlobalSearch";
-
+import NotificationsDropdown from "@/components/NotificationsDropdown";
+import { useRealtimeNotifications } from "@/hooks/useRealtimeNotifications";
+import { useRealtimeDashboard } from "@/hooks/useRealtimeDashboard";
 import { getFilteredMenu } from "@/lib/config/menu.config"; 
 import { ROLE_PERMISSIONS } from "@/lib/auth/roles"; 
+import apiClient from "@/lib/api/client";
+import { safeObject } from "@/lib/api/safeResponse";
 
 export default function ProtectedLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -27,6 +31,10 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
   const { user, loading: authLoading } = useAuth();
   const role = user?.role || "teacher";
 
+  // 🚀 Real-time Listeners (Live Notifications & Dashboard)
+  useRealtimeNotifications();
+  useRealtimeDashboard();
+
   // Initialize open groups
   useEffect(() => {
     const initialOpenGroups: Record<string, boolean> = {};
@@ -37,15 +45,14 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
     setIsLoaded(true);
   }, []);
 
-  // Fetch feature flags
+  // Fetch feature flags using Axios (Enterprise Pattern)
   useEffect(() => {
     if (!user?.tenantId) return;
     
-    // 🚀 FIX: API پاتھ میں 'v1' شامل کر دیا گیا ہے
-    fetch("/api/v1/admin/feature-flags")
-      .then(res => res.json())
-      .then(data => {
-        if (data.success) setFeatureFlags(data.data || {});
+    apiClient.get("/admin/feature-flags")
+      .then(res => {
+        const data = safeObject(res);
+        if (data && Object.keys(data).length > 0) setFeatureFlags(data);
       })
       .catch(console.error);
   }, [user?.tenantId]);
@@ -61,8 +68,7 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
   const handleLogout = async () => {
     try {
       await signOut(auth);
-      // 🚀 FIX: Logout API پاتھ میں 'v1' شامل کر دیا گیا ہے
-      await fetch("/api/v1/auth/logout", { method: "POST" });
+      await apiClient.post("/auth/logout"); // 🚀 Axios instead of fetch
       window.location.href = "/";
     } catch (error) {
       console.error("Logout error:", error);
@@ -116,17 +122,25 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
           isMobileMenuOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
         }`}
       >
-        {/* Logo Section */}
-        <div className="h-20 px-6 border-b border-gray-100 flex items-center gap-3 cursor-pointer shrink-0 hover:bg-gray-50 transition" onClick={() => router.push("/dashboard")}>
-          <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center shadow-md">
-            <ShieldCheck className="text-white w-6 h-6" />
+        {/* Logo Section & Notifications */}
+        <div className="h-20 px-6 border-b border-gray-100 flex items-center justify-between gap-3 shrink-0">
+          <div 
+            className="flex items-center gap-3 cursor-pointer hover:bg-gray-50 transition rounded-lg p-1 -ml-1"
+            onClick={() => router.push("/dashboard")}
+          >
+            <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center shadow-md">
+              <ShieldCheck className="text-white w-6 h-6" />
+            </div>
+            <div>
+              <span className="text-xl font-black bg-gradient-to-r from-gray-900 to-gray-600 bg-clip-text text-transparent">
+                EduPilot
+              </span>
+              <p className="text-[10px] text-gray-400 font-medium -mt-1">School Management</p>
+            </div>
           </div>
-          <div>
-            <span className="text-xl font-black bg-gradient-to-r from-gray-900 to-gray-600 bg-clip-text text-transparent">
-              EduPilot
-            </span>
-            <p className="text-[10px] text-gray-400 font-medium -mt-1">School Management</p>
-          </div>
+          
+          {/* 🚀 Live Notifications Bell Icon */}
+          <NotificationsDropdown />
         </div>
 
         {/* Language Switcher */}
