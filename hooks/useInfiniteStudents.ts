@@ -18,6 +18,7 @@ export const useInfiniteStudents = (limit: number = 20) => {
         totalPages: 10, // Assume 10 pages for now, or get from API headers
       };
     },
+    initialPageParam: 1, // 🛡️ Fix: initialPageParam لازمی ہے
     getNextPageParam: (lastPage) => {
       if (lastPage.nextPage <= lastPage.totalPages) return lastPage.nextPage;
       return undefined;
