@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Trash2, UserPlus, Upload, Loader2, FileText, AlertCircle } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
 
-// 🚀 Layered Architecture Hooks & Skeletons
+// 🚀 Layered Architecture Hooks & Components
 import { useStudents, useDeleteStudent } from "@/hooks/useStudents";
 import { TableSkeleton } from "@/components/Skeletons";
 import RequirePermission from "@/components/RequirePermission";
@@ -22,13 +22,13 @@ export default function StudentsPage() {
   // 1. Fetch Students using Custom Hook
   const { data: students = [], isLoading: isStudentsLoading, isError } = useStudents();
   
-  // 2. Delete Mutation
+  // 2. Delete Mutation (With Optimistic Update Built-in)
   const deleteMutation = useDeleteStudent();
 
   const handleDelete = (id: string) => {
     if (!confirm("Are you sure?")) return;
     deleteMutation.mutate(id, {
-      onSuccess: () => showToast("Student deleted.", "success")
+      onSuccess: () => showToast("Student deleted successfully.", "success")
     });
   };
 
