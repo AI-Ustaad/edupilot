@@ -8,6 +8,7 @@ import RequirePermission from "@/components/RequirePermission";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 import apiClient from "@/lib/api/client";
 import { useToast } from "@/components/ToastProvider";
+import { safeObject } from "@/lib/api/safeResponse";
 
 interface MenuItem {
   id: string;
