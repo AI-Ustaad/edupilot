@@ -1,28 +1,24 @@
 "use client";
 import React, { useState } from "react";
-import { useAuth } from "@/context/AuthContext";
 import { School, Plus, Trash2, Loader2, CheckCircle, Save, BookOpen, AlertCircle } from "lucide-react";
 import RequirePermission from "@/components/RequirePermission";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 
-// 🚀 نئی Layered Architecture کے Hooks Import کریں
+// 🚀 Layered Architecture Hooks
 import { useClasses, useCreateClass, useDeleteClass } from "@/hooks/useClasses";
 
 export default function ClassesManagementPage() {
-  const { user } = useAuth();
-  
-  // 1. Fetch Classes (Hook -> Service -> API)
+  // 1. Fetch Classes
   const { data: sections = [], isLoading } = useClasses();
   
-  // 2. Create Class Mutation
+  // 2. Mutations (With Built-in Optimistic Updates)
   const createMutation = useCreateClass();
+  const deleteMutation = useDeleteClass();
+
   const [newClass, setNewClass] = useState("");
   const [newSection, setNewSection] = useState("");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
-
-  // 3. Delete Class Mutation (With Optimistic Update Built-in)
-  const deleteMutation = useDeleteClass();
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
