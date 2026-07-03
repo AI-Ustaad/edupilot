@@ -1,103 +1,51 @@
-/* eslint-disable @next/next/no-img-element */
-/* eslint-disable jsx-a11y/alt-text */"use client";
+"use client";
 import { useState, useEffect } from "react";
+import { Loader2, CheckCircle } from "lucide-react";
+import RequirePermission from "@/components/RequirePermission";
+import { PERMISSIONS } from "@/lib/auth/permissions";
+import { useBranding, useUpdateBranding } from "@/hooks/useAdmin";
 
-const convertToBase64 = (file: File): Promise<string> => {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = (error) => reject(error);
-  });
-};
-
-export default function WhitelabelSettings() {
-  const [settings, setSettings] = useState({ logo: "", favicon: "", schoolName: "", primaryColor: "#3b82f6" });
-  const [loading, setLoading] = useState(false);
-  const [uploading, setUploading] = useState(false);
+export default function WhiteLabelPage() {
+  const { data: branding, isLoading } = useBranding();
+  const updateMutation = useUpdateBranding();
+  
+  const [form, setForm] = useState<any>({});
 
   useEffect(() => {
-    fetch("/api/settings/whitelabel")
-      .then(res => res.json())
-      .then(data => setSettings(data));
-  }, []);
+    if (branding) setForm(branding);
+  }, [branding]);
 
-  const save = async () => {
-    setLoading(true);
-    await fetch("/api/settings/whitelabel", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(settings),
-    });
-    setLoading(false);
-    alert("Saved! Refresh to see changes.");
-  };
-
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: "logo" | "favicon") => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setUploading(true);
-    try {
-      const base64 = await convertToBase64(file);
-      setSettings(prev => ({ ...prev, [type]: base64 }));
-    } catch (err) {
-      alert("Failed to convert image");
-    } finally {
-      setUploading(false);
-    }
-  };
+  if (isLoading) return <div className="flex h-96 items-center justify-center"><Loader2 className="animate-spin text-blue-600" size={32} /></div>;
 
   return (
-    <div className="p-6 max-w-2xl mx-auto">
-      <h1 className="text-2xl font-black mb-6">White Label Settings</h1>
-      <div className="space-y-4">
-        <div>
-          <label className="block font-bold mb-1">School Name</label>
-          <input
-            value={settings.schoolName}
-            onChange={e => setSettings({...settings, schoolName: e.target.value})}
-            className="w-full border p-2 rounded"
-          />
+    <RequirePermission permissions={[PERMISSIONS.settings.manage]}>
+      <div className="max-w-4xl mx-auto p-6 space-y-6">
+        <h1 className="text-2xl font-black text-gray-900">White‑label Settings</h1>
+        <p className="text-gray-500 text-sm">Customize your school portal&apos;s appearance and branding.</p>
+
+        <div className="bg-white p-8 rounded-2xl border border-gray-200 shadow-sm space-y-5">
+          <div>
+            <label className="block font-bold text-gray-800 mb-2">School Name</label>
+            <input type="text" value={form.schoolName || ""} onChange={(e) => setForm({ ...form, schoolName: e.target.value })} className="w-full p-3 border border-gray-300 bg-gray-50 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none" placeholder="e.g. EduPilot High School" />
+          </div>
+          <div>
+            <label className="block font-bold text-gray-800 mb-2">Logo URL</label>
+            <input type="text" value={form.logo || ""} onChange={(e) => setForm({ ...form, logo: e.target.value })} className="w-full p-3 border border-gray-300 bg-gray-50 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none" placeholder="https://example.com/logo.png" />
+          </div>
+          <div>
+            <label className="block font-bold text-gray-800 mb-2">Primary Color</label>
+            <div className="flex items-center gap-3">
+              <input type="color" value={form.primaryColor || "#3b82f6"} onChange={(e) => setForm({ ...form, primaryColor: e.target.value })} className="w-16 h-12 rounded-lg cursor-pointer border-0 p-0" />
+              <span className="text-gray-500 font-mono text-sm bg-gray-100 px-3 py-1 rounded-lg">{form.primaryColor || "#3b82f6"}</span>
+            </div>
+          </div>
+          <div className="pt-4 border-t border-gray-100">
+            <button onClick={() => updateMutation.mutate(form)} disabled={updateMutation.isPending} className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-bold disabled:opacity-50 flex items-center justify-center gap-2 w-full sm:w-auto transition-colors shadow-sm">
+              {updateMutation.isPending ? <Loader2 className="animate-spin" size={18} /> : <CheckCircle size={18} />} Save Branding
+            </button>
+          </div>
         </div>
-        <div>
-          <label className="block font-bold mb-1">Logo (image)</label>
-          <input
-            type="file"
-            accept="image/*"
-            onChange={e => handleImageUpload(e, "logo")}
-            disabled={uploading}
-            className="mb-2"
-          />
-          {settings.logo && (
-            <img src={settings.logo} alt="Logo" className="h-12 border rounded p-1" />
-          )}
-        </div>
-        <div>
-          <label className="block font-bold mb-1">Favicon (icon)</label>
-          <input
-            type="file"
-            accept="image/*"
-            onChange={e => handleImageUpload(e, "favicon")}
-            disabled={uploading}
-            className="mb-2"
-          />
-          {settings.favicon && (
-            <img src={settings.favicon} alt="Favicon" className="w-8 h-8 border rounded" />
-          )}
-        </div>
-        <div>
-          <label className="block font-bold mb-1">Primary Color</label>
-          <input
-            type="color"
-            value={settings.primaryColor}
-            onChange={e => setSettings({...settings, primaryColor: e.target.value})}
-            className="w-16 h-10 border rounded"
-          />
-        </div>
-        <button onClick={save} disabled={loading} className="bg-blue-600 text-gray-900 px-4 py-2 rounded">
-          Save Changes
-        </button>
       </div>
-    </div>
+    </RequirePermission>
   );
 }
