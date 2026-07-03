@@ -47,9 +47,12 @@ export default function ClassesManagementPage() {
     }
   };
 
-  // Group sections by class for display
+  // 🛡️ Robust Grouping Logic: Names ko trim kar ke group karna
   const groupedSections = sections.reduce((acc: any, section: any) => {
-    const cls = section.classGrade;
+    // classGrade ya name ko trim karein taake "10 " aur "10" same group mein aayen
+    const cls = String(section.classGrade || section.name || "").trim();
+    if (!cls) return acc; // Agar class name khali hai to skip karein
+    
     if (!acc[cls]) acc[cls] = [];
     acc[cls].push(section);
     return acc;
@@ -121,7 +124,7 @@ export default function ClassesManagementPage() {
                         deleteMutation.isPending && deleteMutation.variables === sec.id ? 'opacity-50' : ''
                       }`}
                     >
-                      <span className="font-bold text-gray-700 group-hover:text-blue-700">{sec.sectionName}</span>
+                      <span className="font-bold text-gray-700 group-hover:text-blue-700">{sec.sectionName || sec.section}</span>
                       <RequirePermission permissions={[PERMISSIONS.settings.manage]}>
                         <button 
                           onClick={() => handleDelete(sec.id)} 
