@@ -1,62 +1,37 @@
 "use client";
-import React, { useEffect, useState } from "react";
-import { Loader2, CheckCircle, XCircle, AlertCircle } from "lucide-react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { CheckCircle, XCircle, Loader2, AlertCircle } from "lucide-react";
 import RequirePermission from "@/components/RequirePermission";
 import { PERMISSIONS } from "@/lib/auth/permissions";
-
-interface LeaveRequest {
-  id: string;
-  teacherId: string;
-  startDate: string;
-  endDate: string;
-  reason: string;
-  status: string;
-  teacherName?: string;
-}
+import apiClient from "@/lib/api/client";
+import { safeArray } from "@/lib/api/safeResponse";
+import { useAuth } from "@/context/AuthContext";
+import { useToast } from "@/components/ToastProvider";
+import { TableSkeleton } from "@/components/Skeletons";
 
 export default function LeaveRequestsPage() {
-  const [leaves, setLeaves] = useState<LeaveRequest[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const { user } = useAuth();
+  const tenantId = user?.tenantId || "unknown";
+  const queryClient = useQueryClient();
+  const { showToast } = useToast();
 
-  useEffect(() => {
-    const fetchLeaves = async () => {
-      try {
-        const res = await fetch("/api/leave");
-        if (!res.ok) throw new Error("Failed to fetch leaves");
-        const json = await res.json();
-        setLeaves(json.data || []);
-      } catch (err: any) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchLeaves();
-  }, []);
+  const { data: leaves = [], isLoading, isError } = useQuery({
+    queryKey: ["leaves", tenantId],
+    queryFn: async () => safeArray(await apiClient.get("/leave")),
+  });
 
-  const approveLeave = async (id: string) => {
-    if (!confirm("Approve this leave request?")) return;
-    try {
-      const res = await fetch(`/api/leave/${id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "approved" }),
-      });
-      
-      if (res.ok) {
-        setLeaves(leaves.filter(l => l.id !== id));
-        alert("Leave approved successfully.");
-      } else {
-        alert("Failed to approve leave.");
-      }
-    } catch (err) {
-      alert("Network error.");
-    }
-  };
+  const updateStatusMutation = useMutation({
+    mutationFn: async ({ id, status }: { id: string; status: string }) => 
+      apiClient.put(`/leave/${id}`, { status }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["leaves", tenantId] });
+      showToast("Leave request updated.", "success");
+    },
+    onError: () => showToast("Failed to update leave request.", "error"),
+  });
 
-  if (loading) return <div className="p-8 flex justify-center h-[50vh] items-center"><Loader2 className="animate-spin text-blue-600" size={40} /></div>;
-  if (error) return <div className="p-8 text-center text-red-500 font-bold flex flex-col items-center gap-3"><AlertCircle size={32} /> {error}</div>;
+  if (isLoading) return <div className="p-8"><TableSkeleton rows={4} cols={2} /></div>;
+  if (isError) return <div className="p-8 text-center text-red-500 flex flex-col items-center gap-3"><AlertCircle size={32} /> Failed to load leave requests.</div>;
 
   return (
     <div className="p-6 max-w-4xl mx-auto space-y-6">
@@ -73,7 +48,7 @@ export default function LeaveRequestsPage() {
         </div>
       ) : (
         <div className="space-y-4">
-          {leaves.map(leave => (
+          {leaves.map((leave: any) => (
             <div key={leave.id} className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 hover:shadow-md transition">
               <div className="w-full">
                 <p className="font-black text-gray-900 text-lg">{leave.teacherName || "Unknown Staff"}</p>
@@ -83,18 +58,19 @@ export default function LeaveRequestsPage() {
                 <p className="text-sm text-gray-700 mt-3 bg-gray-50 p-3 rounded-xl border border-gray-100 italic">&quot;{leave.reason}&quot;</p>
               </div>
               
-              {/* 🛡️ Protected Action Buttons */}
               <RequirePermission permissions={[PERMISSIONS.staff.update]}>
                 <div className="flex gap-3 w-full sm:w-auto mt-4 sm:mt-0">
                   <button
-                    onClick={() => approveLeave(leave.id)}
-                    className="flex-1 sm:flex-none bg-green-600 hover:bg-green-700 text-white px-5 py-2.5 rounded-xl flex items-center justify-center gap-2 font-bold transition shadow-sm"
+                    onClick={() => updateStatusMutation.mutate({ id: leave.id, status: "approved" })}
+                    disabled={updateStatusMutation.isPending}
+                    className="flex-1 sm:flex-none bg-green-600 hover:bg-green-700 text-white px-5 py-2.5 rounded-xl flex items-center justify-center gap-2 font-bold transition shadow-sm disabled:opacity-50"
                   >
                     <CheckCircle size={18} /> Approve
                   </button>
                   <button
-                    onClick={() => alert("Leave rejection feature pending backend connection.")}
-                    className="flex-1 sm:flex-none bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 px-5 py-2.5 rounded-xl flex items-center justify-center gap-2 font-bold transition"
+                    onClick={() => updateStatusMutation.mutate({ id: leave.id, status: "rejected" })}
+                    disabled={updateStatusMutation.isPending}
+                    className="flex-1 sm:flex-none bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 px-5 py-2.5 rounded-xl flex items-center justify-center gap-2 font-bold transition disabled:opacity-50"
                   >
                     <XCircle size={18} /> Reject
                   </button>
