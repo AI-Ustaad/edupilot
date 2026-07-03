@@ -13,13 +13,16 @@ import { PERMISSIONS } from "@/lib/auth/permissions";
 // 🚀 Layered Architecture Hooks
 import { useClasses } from "@/hooks/useClasses";
 import { useStudents } from "@/hooks/useStudents";
+import { useSettings } from "@/hooks/useSettings";
 import { useMarks, useSaveMarks, useDeleteMark } from "@/hooks/useExams";
+import { useToast } from "@/components/ToastProvider";
 
 const EXAM_TERMS = ["1st Term", "2nd Term", "Final Exams", "Monthly Test", "Mock Exams", "SBA"];
 const norm = (str?: string) => (str || "").trim().toLowerCase();
 
 export default function ExamsAndMarksPage() {
   const { user } = useAuth();
+  const { showToast } = useToast();
   
   const [selectedTerm, setSelectedTerm] = useState(EXAM_TERMS[0]);
   const [selectedClass, setSelectedClass] = useState("");
@@ -29,26 +32,25 @@ export default function ExamsAndMarksPage() {
   const [marksEntry, setMarksEntry] = useState<Record<string, { obtained: string, total: string }>>({});
   const [savingRow, setSavingRow] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState("");
-  const [success, setSuccess] = useState(false);
 
   // 1. Fetch Live Classes
   const { data: classesData = [] } = useClasses();
   const availableClasses = useMemo(() => Array.from(new Set(classesData.map((c: any) => c.classGrade))), [classesData]);
   const availableSections = useMemo(() => classesData.filter((c: any) => c.classGrade === selectedClass).map((c: any) => c.sectionName || c.section), [classesData, selectedClass]);
   
-  // For now, subjects are hardcoded or fetched from settings. Assuming a static list or settings API.
-  // You can later create a useSettings() hook for this.
-  const subjects = ["Math", "Science", "English", "Urdu", "Computer"]; 
+  // 2. Fetch Live Subjects
+  const { data: settings } = useSettings();
+  const subjects = settings?.subjects || ["Math", "Science", "English", "Urdu", "Computer"];
 
-  // 2. Fetch Live Students
+  // 3. Fetch Live Students
   const { data: studentsData = [], isLoading: loadingStudents } = useStudents(
     selectedClass && selectedSection ? { classGrade: selectedClass, section: selectedSection } : undefined
   );
 
-  // 3. Fetch Existing Marks
+  // 4. Fetch Existing Marks
   const { data: allMarks = [], isLoading: loadingMarks } = useMarks(selectedClass, selectedSection, selectedTerm, selectedSubject);
 
-  // 4. Mutations
+  // 5. Mutations
   const saveMarkMutation = useSaveMarks();
   const deleteMarkMutation = useDeleteMark();
 
@@ -111,8 +113,7 @@ export default function ExamsAndMarksPage() {
         percentage: Number(percentage),
         grade: grade,
       });
-      setSuccess(true);
-      setTimeout(() => setSuccess(false), 3000);
+      showToast("Marks saved successfully!", "success");
     } catch (err) {
       setErrorMsg("Failed to save mark.");
     } finally {
@@ -145,8 +146,7 @@ export default function ExamsAndMarksPage() {
           grade: grade,
         });
       }));
-      setSuccess(true);
-      setTimeout(() => setSuccess(false), 3000);
+      showToast("All results published successfully!", "success");
     } catch (err) {
       setErrorMsg("Failed to bulk save marks.");
     }
@@ -181,7 +181,6 @@ export default function ExamsAndMarksPage() {
         </RequirePermission>
       </div>
 
-      {success && <div className="bg-green-50 text-green-700 p-4 rounded-xl flex items-center gap-3 border border-green-100 font-bold"><CheckCircle2 size={20}/> Marks saved successfully!</div>}
       {errorMsg && <div className="bg-red-50 text-red-600 p-4 rounded-xl flex items-center gap-3 border border-red-100 font-bold"><AlertCircle size={20}/> {errorMsg}</div>}
 
       {/* FILTER PANEL */}
