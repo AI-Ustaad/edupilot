@@ -118,9 +118,9 @@ export default function GlobalSearch() {
 
               {/* No Results */}
               {filteredStudents.length === 0 && filteredClasses.length === 0 && (
-                <div className="p-8 text-center text-gray-400 font-medium">
-                  No results found for "{searchTerm}"
-                </div>
+              <div className="p-8 text-center text-gray-400 font-medium">
+  No results found for &quot;{searchTerm}&quot;
+</div>
               )}
             </>
           )}
