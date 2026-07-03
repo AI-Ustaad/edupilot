@@ -1,167 +1,74 @@
 "use client";
-import { useEffect, useState } from "react";
-import { Loader2, Plus, Trash2 } from "lucide-react";
+import { useState } from "react";
+import { Loader2, Plus, CheckCircle } from "lucide-react";
 import RequirePermission from "@/components/RequirePermission";
 import { PERMISSIONS } from "@/lib/auth/permissions";
-
-// 🛡️ Safe Array Helper
-const safeArray = (data: any) => Array.isArray(data) ? data : (Array.isArray(data?.data) ? data.data : []);
-
-interface ClassItem {
-  name: string;
-  sections: string[];
-}
+import { useSettings, useUpdateSettings } from "@/hooks/useSettings";
 
 export default function SettingsPage() {
-  const [classes, setClasses] = useState<ClassItem[]>([]);
-  const [subjects, setSubjects] = useState<string[]>([]);
-  const [loading, setLoading] = useState(true);
-
+  const { data: settings, isLoading } = useSettings();
+  const updateMutation = useUpdateSettings();
+  
   const [newClass, setNewClass] = useState("");
-  const [newSection, setNewSection] = useState("");
-  const [selectedClass, setSelectedClass] = useState("");
   const [newSubject, setNewSubject] = useState("");
+  const [success, setSuccess] = useState("");
 
-  useEffect(() => {
-    fetch("/api/settings")
-      .then((res) => res.json())
-      .then((json) => {
-        setClasses(safeArray(json.data?.classes || json.classes));
-        setSubjects(safeArray(json.data?.subjects || json.subjects));
-      })
-      .catch(console.error)
-      .finally(() => setLoading(false));
-  }, []);
+  const classes = settings?.classes || [];
+  const subjects = settings?.subjects || [];
 
-  const addClass = () => {
+  const handleAddClass = () => {
     if (!newClass.trim()) return;
-    setClasses((prev) => [...prev, { name: newClass.trim(), sections: [] }]);
-    setNewClass("");
-  };
-
-  const addSection = () => {
-    if (!selectedClass || !newSection.trim()) return;
-    setClasses((prev) =>
-      prev.map((c) =>
-        c.name === selectedClass
-          ? { ...c, sections: [...c.sections, newSection.trim()] }
-          : c
-      )
+    updateMutation.mutate(
+      { classes: [...classes, { name: newClass.trim(), sections: [] }] },
+      { onSuccess: () => { setNewClass(""); setSuccess("Settings updated!"); setTimeout(()=>setSuccess(""), 3000);} }
     );
-    setNewSection("");
   };
 
-  const addSubject = () => {
+  const handleAddSubject = () => {
     if (!newSubject.trim()) return;
-    setSubjects((prev) => [...prev, newSubject.trim()]);
-    setNewSubject("");
-  };
-
-  const publishChanges = async () => {
-    await fetch("/api/settings", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ classes, subjects }),
-    });
-    alert("Settings published successfully!");
-  };
-
-  if (loading) {
-    return (
-      <div className="flex h-96 items-center justify-center">
-        <Loader2 className="animate-spin text-blue-600" size={32} />
-      </div>
+    updateMutation.mutate(
+      { subjects: [...subjects, newSubject.trim()] },
+      { onSuccess: () => { setNewSubject(""); setSuccess("Settings updated!"); setTimeout(()=>setSuccess(""), 3000);} }
     );
-  }
+  };
+
+  if (isLoading) return <div className="flex h-96 items-center justify-center"><Loader2 className="animate-spin text-blue-600" size={32} /></div>;
 
   return (
     <RequirePermission permissions={[PERMISSIONS.settings.manage]}>
       <div className="max-w-4xl mx-auto p-6 space-y-8">
         <h1 className="text-2xl font-black text-gray-900">System Configuration</h1>
+        {success && <div className="bg-green-50 text-green-700 p-4 rounded-xl flex items-center gap-2 font-bold border border-green-100"><CheckCircle size={20} /> {success}</div>}
 
         {/* Master Classes */}
         <div className="bg-white border border-gray-200 rounded-2xl p-6">
           <h2 className="font-bold text-lg mb-4">Master Classes</h2>
           <div className="flex gap-2 mb-4">
-            <input
-              placeholder="New class name"
-              value={newClass}
-              onChange={(e) => setNewClass(e.target.value)}
-              className="border border-gray-300 rounded-xl px-4 py-2 flex-1"
-            />
-            <button onClick={addClass} className="bg-green-600 text-white px-4 py-2 rounded-xl font-bold flex items-center gap-2">
-              <Plus size={18} /> Add
-            </button>
+            <input placeholder="New class name" value={newClass} onChange={(e) => setNewClass(e.target.value)} className="border border-gray-300 rounded-xl px-4 py-2 flex-1" />
+            <button onClick={handleAddClass} className="bg-green-600 text-white px-4 py-2 rounded-xl font-bold flex items-center gap-2"><Plus size={18} /> Add</button>
           </div>
           <ul className="space-y-2">
-            {classes.map((c) => (
+            {classes.map((c: any) => (
               <li key={c.name} className="flex justify-between items-center bg-gray-50 p-3 rounded-xl">
                 <span className="font-medium">{c.name}</span>
-                <span className="text-sm text-gray-500">
-                  {c.sections.length} sections
-                </span>
+                <span className="text-sm text-gray-500">{c.sections?.length || 0} sections</span>
               </li>
             ))}
           </ul>
-        </div>
-
-        {/* Sections */}
-        <div className="bg-white border border-gray-200 rounded-2xl p-6">
-          <h2 className="font-bold text-lg mb-4">Sections</h2>
-          <div className="flex gap-2 mb-4">
-            <select
-              value={selectedClass}
-              onChange={(e) => setSelectedClass(e.target.value)}
-              className="border border-gray-300 rounded-xl px-4 py-2"
-            >
-              <option value="">Select Class</option>
-              {classes.map((c) => (
-                <option key={c.name} value={c.name}>{c.name}</option>
-              ))}
-            </select>
-            <input
-              placeholder="New section name"
-              value={newSection}
-              onChange={(e) => setNewSection(e.target.value)}
-              className="border border-gray-300 rounded-xl px-4 py-2 flex-1"
-            />
-            <button onClick={addSection} className="bg-blue-600 text-white px-4 py-2 rounded-xl font-bold">
-              Add Section
-            </button>
-          </div>
         </div>
 
         {/* Subjects */}
         <div className="bg-white border border-gray-200 rounded-2xl p-6">
           <h2 className="font-bold text-lg mb-4">Subjects</h2>
           <div className="flex gap-2 mb-4">
-            <input
-              placeholder="New subject"
-              value={newSubject}
-              onChange={(e) => setNewSubject(e.target.value)}
-              className="border border-gray-300 rounded-xl px-4 py-2 flex-1"
-            />
-            <button onClick={addSubject} className="bg-indigo-600 text-white px-4 py-2 rounded-xl font-bold">
-              Add Subject
-            </button>
+            <input placeholder="New subject" value={newSubject} onChange={(e) => setNewSubject(e.target.value)} className="border border-gray-300 rounded-xl px-4 py-2 flex-1" />
+            <button onClick={handleAddSubject} className="bg-indigo-600 text-white px-4 py-2 rounded-xl font-bold">Add Subject</button>
           </div>
           <div className="flex flex-wrap gap-2">
-            {subjects.map((s) => (
-              <span key={s} className="bg-gray-100 px-3 py-1 rounded-full text-sm">
-                {s}
-              </span>
+            {subjects.map((s: string) => (
+              <span key={s} className="bg-gray-100 px-3 py-1 rounded-full text-sm">{s}</span>
             ))}
           </div>
-        </div>
-
-        {/* Publish Button */}
-        <div className="text-right">
-          <button
-            onClick={publishChanges}
-            className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-xl font-bold shadow-lg"
-          >
-            Publish Change
-          </button>
         </div>
       </div>
     </RequirePermission>
