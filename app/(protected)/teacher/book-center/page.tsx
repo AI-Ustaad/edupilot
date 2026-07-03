@@ -1,11 +1,10 @@
 "use client";
+import { useState } from "react";
 import { BookOpen, Search, Download, Loader2 } from "lucide-react";
 import RequirePermission from "@/components/RequirePermission";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 import { useBooks } from "@/hooks/useTeacher"; // یا useVideos جہاں books store ہوں
 import { TableSkeleton } from "@/components/Skeletons";
-
-export default class BookCenterPage {} // Remove this line
 
 export default function BookCenterPage() {
   const { data: books = [], isLoading } = useBooks();
@@ -67,5 +66,3 @@ export default function BookCenterPage() {
     </RequirePermission>
   );
 }
-
-// Note: Remove the `export default class BookCenterPage {}` line above if you copied it. Only keep the function export.
