@@ -47,7 +47,7 @@ export default function DashboardPage() {
     );
   }
 
-  // Safe Data Extraction (Guards against undefined)
+  // Safe Data Extraction
   const total = (data.todayAttendance?.present || 0) + (data.todayAttendance?.absent || 0);
   const attendancePercent = total > 0 ? ((data.todayAttendance.present / total) * 100).toFixed(0) : "0";
   
