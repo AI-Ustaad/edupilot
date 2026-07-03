@@ -1,70 +1,51 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { motion } from "framer-motion";
 import { Loader2, Sparkles, Clipboard, Check } from "lucide-react";
 import RequirePermission from "@/components/RequirePermission";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 
-// 🛡️ Safe Array Helper
-const safeArray = (data: any) => Array.isArray(data) ? data : (Array.isArray(data?.data) ? data.data : []);
+// 🚀 Layered Architecture Hooks
+import { useClasses } from "@/hooks/useClasses";
+import { useSettings } from "@/hooks/useSettings";
+import { useGenerateExamQuestions } from "@/hooks/useAI";
 
 export default function AIExamQuestionsPage() {
-  const [classes, setClasses] = useState<string[]>([]);
-  const [subjects, setSubjects] = useState<string[]>([]);
   const [className, setClassName] = useState("");
   const [subject, setSubject] = useState("");
   const [topic, setTopic] = useState("");
   const [difficulty, setDifficulty] = useState("Medium");
   const [examData, setExamData] = useState<any>(null);
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
-  const [dataLoading, setDataLoading] = useState(true);
 
-  useEffect(() => {
-    const fetchInitialData = async () => {
-      try {
-        const classesRes = await fetch("/api/classes");
-        const classesJson = await classesRes.json();
-        const classesData = safeArray(classesJson);
-        setClasses(Array.from(new Set(classesData.map((c: any) => c.classGrade as string))));
+  // 1. Fetch Live Classes & Subjects
+  const { data: classesData = [] } = useClasses();
+  const { data: settings } = useSettings();
+  const subjects = settings?.subjects || [];
 
-        const settingsRes = await fetch("/api/settings");
-        const settingsJson = await settingsRes.json();
-        setSubjects(safeArray(settingsJson.subjects || settingsJson.data?.subjects));
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setDataLoading(false);
-      }
-    };
-    fetchInitialData();
-  }, []);
+  // 2. AI Mutation Hook
+  const generateExamMutation = useGenerateExamQuestions();
 
   const generateExam = async () => {
     if (!className || !subject || !topic.trim()) {
       setError("Please fill all fields.");
       return;
     }
-    setLoading(true);
     setError("");
-    try {
-      const res = await fetch("/api/ai/exam-questions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ className, subject, topic, difficulty }),
-      });
-      const data = await res.json();
-      if (res.ok) {
-        setExamData(data);
-      } else {
-        setError(data.message || "Failed to generate questions");
+    setExamData(null);
+
+    generateExamMutation.mutate(
+      { className, subject, topic, difficulty },
+      {
+        onSuccess: (data) => {
+          setExamData(data);
+        },
+        onError: () => {
+          setError("Failed to generate questions. Please try again.");
+        }
       }
-    } catch (err) {
-      setError("Network error");
-    } finally {
-      setLoading(false);
-    }
+    );
   };
 
   const copyToClipboard = () => {
@@ -102,16 +83,16 @@ export default function AIExamQuestionsPage() {
       <div className="bg-white border border-gray-200 rounded-2xl p-6 grid grid-cols-1 md:grid-cols-2 gap-4 shadow-sm">
         <div>
           <label className="text-sm font-bold text-gray-700 mb-1 block">Class</label>
-          <select value={className} onChange={e => setClassName(e.target.value)} className={inputClass} disabled={dataLoading}>
-            <option value="">{dataLoading ? "Loading..." : "Select Class"}</option>
-            {classes.map((c) => <option key={c} value={c}>{c}</option>)}
+          <select value={className} onChange={e => setClassName(e.target.value)} className={inputClass} required>
+            <option value="">Select Class</option>
+            {classesData.map((c: any) => <option key={c.id} value={c.classGrade}>{c.classGrade}</option>)}
           </select>
         </div>
         <div>
           <label className="text-sm font-bold text-gray-700 mb-1 block">Subject</label>
-          <select value={subject} onChange={e => setSubject(e.target.value)} className={inputClass} disabled={dataLoading}>
-            <option value="">{dataLoading ? "Loading..." : "Select Subject"}</option>
-            {subjects.map((s) => <option key={s} value={s}>{s}</option>)}
+          <select value={subject} onChange={e => setSubject(e.target.value)} className={inputClass} required>
+            <option value="">Select Subject</option>
+            {subjects.map((s: string) => <option key={s} value={s}>{s}</option>)}
           </select>
         </div>
         <div>
@@ -126,9 +107,13 @@ export default function AIExamQuestionsPage() {
         </div>
 
         <RequirePermission permissions={[PERMISSIONS.exams.manage]}>
-          <button onClick={generateExam} disabled={loading} className="col-span-1 md:col-span-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition mt-2 disabled:opacity-50">
-            {loading ? <Loader2 className="animate-spin" size={18} /> : <Sparkles size={18} />}
-            {loading ? "Generating..." : "Generate Exam Questions"}
+          <button 
+            onClick={generateExam} 
+            disabled={generateExamMutation.isPending} 
+            className="col-span-1 md:col-span-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition mt-2 disabled:opacity-50"
+          >
+            {generateExamMutation.isPending ? <Loader2 className="animate-spin" size={18} /> : <Sparkles size={18} />}
+            {generateExamMutation.isPending ? "Generating..." : "Generate Exam Questions"}
           </button>
         </RequirePermission>
       </div>
@@ -147,11 +132,11 @@ export default function AIExamQuestionsPage() {
 
           <div>
             <h3 className="text-lg font-bold text-blue-600 mb-3">MCQs</h3>
-            {examData.mcqs.map((mcq: any, i: number) => (
+            {examData.mcqs?.map((mcq: any, i: number) => (
               <div key={i} className="mb-4 p-4 bg-gray-50 border border-gray-100 rounded-xl">
                 <p className="font-semibold text-gray-900">{i + 1}. {mcq.question}</p>
                 <ul className="ml-5 mt-2 space-y-1 text-gray-700">
-                  {mcq.options.map((opt: string, j: number) => <li key={j}>{opt}</li>)}
+                  {mcq.options?.map((opt: string, j: number) => <li key={j}>{opt}</li>)}
                 </ul>
                 <p className="text-sm text-green-600 font-bold mt-2">Correct: {mcq.correct}</p>
               </div>
@@ -160,7 +145,7 @@ export default function AIExamQuestionsPage() {
 
           <div>
             <h3 className="text-lg font-bold text-purple-600 mb-3">Short Answer Questions</h3>
-            {examData.shortAnswers.map((sa: any, i: number) => (
+            {examData.shortAnswers?.map((sa: any, i: number) => (
               <div key={i} className="mb-4 p-4 bg-gray-50 border border-gray-100 rounded-xl">
                 <p className="font-semibold text-gray-900">{i + 1}. {sa.question}</p>
                 <p className="text-gray-600 mt-2"><span className="font-bold">Model Answer:</span> {sa.modelAnswer}</p>
@@ -171,8 +156,8 @@ export default function AIExamQuestionsPage() {
           <div>
             <h3 className="text-lg font-bold text-orange-500 mb-3">Long Answer Question</h3>
             <div className="p-4 bg-gray-50 border border-gray-100 rounded-xl">
-              <p className="font-semibold text-gray-900">{examData.longAnswer.question}</p>
-              <p className="text-gray-600 mt-2"><span className="font-bold">Model Answer:</span> {examData.longAnswer.modelAnswer}</p>
+              <p className="font-semibold text-gray-900">{examData.longAnswer?.question}</p>
+              <p className="text-gray-600 mt-2"><span className="font-bold">Model Answer:</span> {examData.longAnswer?.modelAnswer}</p>
             </div>
           </div>
         </motion.div>
