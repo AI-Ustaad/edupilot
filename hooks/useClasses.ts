@@ -1,62 +1,84 @@
 // hooks/useClasses.ts
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { classService } from "@/services/class.service";
+import apiClient from "@/lib/api/client";
+import { safeArray } from "@/lib/api/safeResponse";
 import { QueryKeys } from "@/lib/api/queryKeys";
-import { useAuth } from "@/context/AuthContext"; // آپ کا موجودہ AuthContext
+import { useAuth } from "@/context/AuthContext";
 
-// 🔄 Fetch All Classes
 export const useClasses = () => {
   const { user } = useAuth();
   const tenantId = user?.tenantId || "unknown";
 
   return useQuery({
     queryKey: QueryKeys.classes(tenantId),
-    queryFn: () => classService.getAllClasses(),
+    queryFn: async () => {
+      const res = await apiClient.get("/classes");
+      return safeArray(res);
+    },
     enabled: !!tenantId && tenantId !== "unknown",
   });
 };
 
-// ✨ Create Class Mutation (With Auto Invalidation)
+// ✨ Optimistic Create
 export const useCreateClass = () => {
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const tenantId = user?.tenantId || "unknown";
 
   return useMutation({
-    mutationFn: (data: { classGrade: string; sectionName: string }) => 
-      classService.createClass(data),
-    onSuccess: () => {
+    mutationFn: async (data: { classGrade: string; sectionName: string }) => {
+      return apiClient.post("/classes", data);
+    },
+    onMutate: async (newClass) => {
+      await queryClient.cancelQueries({ queryKey: QueryKeys.classes(tenantId) });
+      const previousClasses = queryClient.getQueryData(QueryKeys.classes(tenantId));
+      
+      // Optimistically add to UI
+      queryClient.setQueryData(QueryKeys.classes(tenantId), (old: any[]) => [
+        ...old, 
+        { id: `temp-${Date.now()}`, classGrade: newClass.classGrade, sectionName: newClass.sectionName }
+      ]);
+      
+      return { previousClasses };
+    },
+    onError: (err, newClass, context) => {
+      // Rollback on error
+      queryClient.setQueryData(QueryKeys.classes(tenantId), context?.previousClasses);
+    },
+    onSettled: () => {
+      // Sync with server at the end
       queryClient.invalidateQueries({ queryKey: QueryKeys.classes(tenantId) });
     },
   });
 };
 
-// 🗑️ Delete Class Mutation (With Optimistic Update)
+// 🗑️ Optimistic Delete
 export const useDeleteClass = () => {
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const tenantId = user?.tenantId || "unknown";
 
   return useMutation({
-    mutationFn: (id: string) => classService.deleteClass(id),
+    mutationFn: async (id: string) => {
+      return apiClient.delete(`/classes?id=${id}`);
+    },
     onMutate: async (deletedId: string) => {
-      // 🚀 Optimistic Update: فوراً UI سے Remove کر دو
       await queryClient.cancelQueries({ queryKey: QueryKeys.classes(tenantId) });
-      
       const previousClasses = queryClient.getQueryData(QueryKeys.classes(tenantId));
       
-      queryClient.setQueryData(QueryKeys.classes(tenantId), (old: any[]) => {
-        return old.filter((c: any) => c.id !== deletedId);
-      });
+      // Optimistically remove from UI
+      queryClient.setQueryData(QueryKeys.classes(tenantId), (old: any[]) => 
+        old.filter((c: any) => c.id !== deletedId)
+      );
       
       return { previousClasses };
     },
-    onError: (err, _deletedId, context) => {
-      // ❌ Fail ہونے پر Rollback کر دو
+    onError: (err, deletedId, context) => {
+      // Rollback on error
       queryClient.setQueryData(QueryKeys.classes(tenantId), context?.previousClasses);
     },
     onSettled: () => {
-      // آخر میں Server سے Sync کر لو
+      // Sync with server at the end
       queryClient.invalidateQueries({ queryKey: QueryKeys.classes(tenantId) });
     },
   });
