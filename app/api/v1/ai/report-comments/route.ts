@@ -1,29 +1,26 @@
-export const dynamic = 'force-dynamic';
-import { withAuth, withTenant, withErrorHandler, withRateLimit } from "@/route-helpers";
-import { aiRateLimit } from "@/lib/ratelimit";
-import { ReportService } from "@/services/ai/report.service";
-import { createApiResponse } from "@/lib/response/apiResponse";
-import type { TenantContext } from "@/types/api";
+// app/api/v1/ai/report-comments/route.ts
+import { NextRequest, NextResponse } from "next/server";
+import { getSessionUser } from "@/lib/auth/auth-server";
+import { aiService } from "@/services/ai/ai.service";
+import * as Sentry from "@sentry/nextjs";
 
-export const POST = withErrorHandler(
-  withAuth(
-    withRateLimit(aiRateLimit)(
-      withTenant(async (req: Request, { tenantId }: TenantContext) => {
-        const { studentName, grade, subject, marks, attendance } = await req.json();
-        if (!studentName || !grade || !subject || marks == null || attendance == null) {
-          return createApiResponse(400, null, "Missing required fields");
-        }
+export const runtime = "nodejs";
 
-        const service = new ReportService();
-        const comment = await service.generateComment({
-          studentName,
-          grade,
-          subject,
-          marks,
-          attendance,
-        });
-        return createApiResponse(200, { comment });
-      })
-    )
-  )
-);
+export async function POST(req: NextRequest) {
+  try {
+    const user = await getSessionUser();
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    const body = await req.json();
+    if (!body.studentName || !body.subject) {
+      return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+    }
+
+    const result = await aiService.generateReportComments(body, user.tenantId, user.uid, user.role);
+    return NextResponse.json({ success: true, data: { comment: result } });
+
+  } catch (error: any) {
+    Sentry.captureException(error);
+    return NextResponse.json({ success: false, message: error.message }, { status: 500 });
+  }
+}
