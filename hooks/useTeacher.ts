@@ -1,4 +1,5 @@
 // hooks/useTeacher.ts
+import { useToast } from "@/components/ToastProvider"; // Top پر Import کریں
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import apiClient from "@/lib/api/client";
 import { safeArray } from "@/lib/api/safeResponse";
@@ -85,5 +86,46 @@ export const useRecordBehavior = () => {
     mutationFn: async (data: any) => apiClient.post("/behavior", data),
     onSuccess: () => showToast("Behavior recorded!", "success"),
     onError: () => showToast("Failed to record behavior.", "error"),
+  });
+};
+// 🗑️ Delete Assignment (With Optimistic Update & Undo)
+export const useDeleteAssignment = () => {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const tenantId = user?.tenantId || "unknown";
+  const { showToast } = useToast();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      return apiClient.delete(`/assignments/${id}`);
+    },
+    onMutate: async (deletedId: string) => {
+      await queryClient.cancelQueries({ queryKey: ["assignments", tenantId] });
+      
+      const previousAssignments = queryClient.getQueryData(["assignments", tenantId]);
+      
+      // Optimistically remove from UI
+      queryClient.setQueryData(["assignments", tenantId], (old: any[]) => 
+        old.filter((a: any) => a.id !== deletedId)
+      );
+      
+      return { previousAssignments };
+    },
+    onError: (err, deletedId, context) => {
+      // Rollback on error
+      queryClient.setQueryData(["assignments", tenantId], context?.previousAssignments);
+      showToast("Failed to delete assignment.", "error");
+    },
+    onSuccess: (_data, _deletedId, context) => {
+      // Show Toast with Undo option
+      showToast("Assignment deleted successfully.", "undo", () => {
+        // Undo Logic: Restore in UI
+        queryClient.setQueryData(["assignments", tenantId], context?.previousAssignments);
+        showToast("Assignment restored.", "success");
+      });
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["assignments", tenantId] });
+    },
   });
 };
