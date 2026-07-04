@@ -18,10 +18,10 @@ class AIService {
       // 2. Build Context
       const systemPrompt = await buildSystemPrompt(tenantId, role);
 
-      // 3. Prepare Messages
+      // 3. Prepare Messages (🛡️ Fix: String Casting)
       const messages: AIMessage[] = [
         { role: "system", content: systemPrompt },
-        { role: "user", content: safeQuestion }
+        { role: "user", content: String(safeQuestion) }
       ];
 
       // 4. Call Provider
