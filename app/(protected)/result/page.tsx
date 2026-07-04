@@ -195,13 +195,13 @@ export default function ResultsPage() {
 
                 <div className="grid grid-cols-2 gap-8 mt-12">
                   <div>
-                    <p className="text-xs text-gray-500 uppercase mb-2">Class Teacher's Remarks</p>
+                    <p className="text-xs text-gray-500 uppercase mb-2">Class Teacher&apos;s Remarks</p>
                     <div className="border-t-2 border-gray-300 pt-2 min-h-[60px]">
                       <p className="text-sm text-gray-700">{activeReport.marks?.[0]?.teacherComment || "Keep up the good work!"}</p>
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="text-xs text-gray-500 uppercase mb-2">Principal's Signature</p>
+                <p className="text-xs text-gray-500 uppercase mb-2">Principal&apos;s Signature</p>
                     <div className="border-t-2 border-gray-300 pt-2 min-h-[60px]"></div>
                   </div>
                 </div>
