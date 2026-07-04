@@ -45,6 +45,20 @@ export async function POST(req: Request) {
     const userDoc = await adminDb.collection("users").doc(uid).get();
     const userData = userDoc.data();
 
+    if (!userData) {
+      return NextResponse.json(
+        { success: false, error: "User profile not found in database." },
+        { status: 404 }
+      );
+    }
+
+    // 🚀 CRITICAL: Set Custom Claims for Real-time Security Rules
+    // یہ لائن Firebase Security Rules کو یہ بتائے گی کہ یہ یوزر کس Tenant سے تعلق رکھتا ہے
+    await adminAuth.setCustomUserClaims(uid, {
+      tenantId: userData.tenantId,
+      role: userData.role,
+    });
+
     // Session cookie بنائیں
     const expiresIn = 60 * 60 * 24 * 5 * 1000; // 5 days
     let sessionCookie: string;
