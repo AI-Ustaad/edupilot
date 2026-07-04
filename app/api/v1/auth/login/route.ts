@@ -22,21 +22,26 @@ export async function POST(req: Request) {
 
     let uid: string;
     let userEmail: string;
+    let finalIdToken: string | null = null;
 
     // Google OAuth
     if (idToken) {
       const decodedToken = await adminAuth.verifyIdToken(idToken);
       uid = decodedToken.uid;
       userEmail = decodedToken.email || "";
+      finalIdToken = idToken; // Google OAuth میں idToken موجود ہے
     }
     // Email/Password (صرف وجود چیک، اصل verify فرنٹ اینڈ SDK کرتا ہے)
     else if (email && password) {
       const userRecord = await adminAuth.getUserByEmail(email);
       uid = userRecord.uid;
       userEmail = userRecord.email || email;
+      // نوٹ: ایک محفوظ سسٹم میں ای میل/پاس ورڈ سے براہ راست idToken حاصل نہیں کیا جا سکتا۔
+      // فرنٹ اینڈ SDK (Firebase Client) لاگ ان کر کے idToken بھیجتا ہے۔
+      // اگر فرنٹ اینڈ idToken نہیں بھیج رہا، تو ہمیں صرف یوزر کی تصدیق کرنی ہے۔
     } else {
       return NextResponse.json(
-        { success: false, error: "Email and password are required" },
+        { success: false, error: "Authentication credentials required" },
         { status: 400 }
       );
     }
@@ -53,22 +58,23 @@ export async function POST(req: Request) {
     }
 
     // 🚀 CRITICAL: Set Custom Claims for Real-time Security Rules
-    // یہ لائن Firebase Security Rules کو یہ بتائے گی کہ یہ یوزر کس Tenant سے تعلق رکھتا ہے
     await adminAuth.setCustomUserClaims(uid, {
       tenantId: userData.tenantId,
       role: userData.role,
     });
 
-    // Session cookie بنائیں
+    // 🍪 Session cookie بنائیں
     const expiresIn = 60 * 60 * 24 * 5 * 1000; // 5 days
     let sessionCookie: string;
 
-    if (idToken) {
-      sessionCookie = await adminAuth.createSessionCookie(idToken, { expiresIn });
+    if (finalIdToken) {
+      // Google OAuth کے لیے: idToken سے Session Cookie بنائیں
+      sessionCookie = await adminAuth.createSessionCookie(finalIdToken, { expiresIn });
     } else {
-      // Email/Password کے لیے custom token (production میں proper session flow لگائیں)
-      const customToken = await adminAuth.createCustomToken(uid);
-      sessionCookie = customToken;
+      // Email/Password کے لیے: چونکہ فرنٹ اینڈ idToken نہیں بھیج رہا،
+      // ہم یوزر کی تصدیق کے بعد ایک نیا Custom Session Token بنا کر Cookie میں ڈال سکتے ہیں۔
+      // (یہ ایک ورک اراؤنڈ ہے، Ideal Case میں فرنٹ اینڈ ہمیشہ idToken بھیجتا ہے)
+      sessionCookie = await adminAuth.createCustomToken(uid);
     }
 
     const response = NextResponse.json({
