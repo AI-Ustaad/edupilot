@@ -1,27 +1,79 @@
 // app/api/v1/ai/chatbot/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { getSessionUser } from "@/lib/auth/auth-server";
-import { ChatbotService } from "@/services/ai/chatbot.service";
 
 export const runtime = "nodejs";
 
 export async function POST(req: NextRequest) {
   try {
+    // 1. Check Authentication
     const user = await getSessionUser();
-    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!user) {
+      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+    }
+
+    // 2. Check if Gemini API Key exists
+    if (!process.env.GEMINI_API_KEY) {
+      console.error("[AI Chatbot] GEMINI_API_KEY is missing in environment variables.");
+      return NextResponse.json(
+        { success: false, error: "AI Service is not configured. Please contact support." },
+        { status: 503 }
+      );
+    }
 
     const { question } = await req.json();
-    if (!question) return NextResponse.json({ error: "Question required" }, { status: 400 });
+    if (!question) {
+      return NextResponse.json({ success: false, error: "Question required" }, { status: 400 });
+    }
 
-    const service = new ChatbotService();
-    const answer = await service.respond(question);
+    // 3. Call Google Gemini API directly
+    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`;
     
+    const response = await fetch(geminiUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        system_instruction: {
+          parts: [
+            {
+              text: "You are EduPilot AI, a helpful school management assistant. Answer concisely and professionally."
+            }
+          ]
+        },
+        contents: [
+          {
+            role: "user",
+            parts: [{ text: question }]
+          }
+        ],
+        generationConfig: {
+          temperature: 0.7,
+        }
+      })
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error("[Gemini API Error]:", errorData);
+      return NextResponse.json(
+        { success: false, error: `AI Error: ${errorData.error?.message || 'Unknown error'}` },
+        { status: 500 }
+      );
+    }
+
+    const data = await response.json();
+    
+    // Gemini کا Response Structure وکھرا ہوتا ہے
+    const answer = data.candidates?.[0]?.content?.parts?.[0]?.text || "No response from AI.";
+
     return NextResponse.json({ success: true, data: { answer } });
 
   } catch (error: any) {
     console.error("[Chatbot API Error]:", error);
     return NextResponse.json(
-      { success: false, error: "AI Service Error: " + error.message },
+      { success: false, error: "Internal server error" },
       { status: 500 }
     );
   }
