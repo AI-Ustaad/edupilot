@@ -1,13 +1,20 @@
 "use client";
-import { Loader2, Plus, Eye, FileText } from "lucide-react";
+import { Loader2, Plus, Eye, FileText, Trash2 } from "lucide-react";
 import Link from "next/link";
 import RequirePermission from "@/components/RequirePermission";
 import { PERMISSIONS } from "@/lib/auth/permissions";
-import { useAssignments } from "@/hooks/useTeacher";
+import { useAssignments, useDeleteAssignment } from "@/hooks/useTeacher";
 import { TableSkeleton } from "@/components/Skeletons";
 
 export default function TeacherAssignmentsPage() {
   const { data: assignments = [], isLoading } = useAssignments();
+  const deleteMutation = useDeleteAssignment(); // 🚀 Delete Hook
+
+  const handleDelete = (id: string) => {
+    if (confirm("Are you sure?")) {
+      deleteMutation.mutate(id);
+    }
+  };
 
   if (isLoading) return <div className="p-8"><TableSkeleton rows={4} cols={4} /></div>;
 
@@ -33,19 +40,30 @@ export default function TeacherAssignmentsPage() {
                   <th className="p-4 font-bold uppercase tracking-wider text-xs">Title</th>
                   <th className="p-4 font-bold uppercase tracking-wider text-xs">Class / Section</th>
                   <th className="p-4 font-bold uppercase tracking-wider text-xs">Due Date</th>
-                  <th className="p-4 font-bold uppercase tracking-wider text-xs text-right">Submissions</th>
+                  <th className="p-4 font-bold uppercase tracking-wider text-xs text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {assignments.map((a: any) => (
-                  <tr key={a.id} className="hover:bg-gray-50 transition">
+                  <tr key={a.id} className={`hover:bg-gray-50 transition ${deleteMutation.isPending && deleteMutation.variables === a.id ? 'opacity-50' : ''}`}>
                     <td className="p-4 font-bold text-gray-900">{a.title}</td>
                     <td className="p-4 text-gray-600 font-medium">{a.classGrade} - {a.section}</td>
                     <td className="p-4 text-gray-500">{a.dueDate ? new Date(a.dueDate).toLocaleDateString() : "—"}</td>
                     <td className="p-4 text-right">
-                      <Link href={`/teacher/assignments/submissions?assignmentId=${a.id}`} className="inline-flex items-center gap-1 bg-blue-50 text-blue-700 px-3 py-1.5 rounded-lg text-sm font-bold hover:bg-blue-100 transition">
-                        <Eye size={16} /> View
-                      </Link>
+                      <div className="flex justify-end items-center gap-3">
+                        <Link href={`/teacher/assignments/submissions?assignmentId=${a.id}`} className="text-blue-600 hover:bg-blue-50 px-3 py-2 rounded-lg inline-flex items-center gap-1 text-sm font-bold border border-blue-100 transition">
+                          <Eye size={16} /> View
+                        </Link>
+                        <RequirePermission permissions={[PERMISSIONS.assignments.create]}>
+                          <button 
+                            onClick={() => handleDelete(a.id)} 
+                            className="text-red-500 hover:bg-red-50 p-2 rounded-lg transition disabled:opacity-50"
+                            disabled={deleteMutation.isPending}
+                          >
+                            {deleteMutation.isPending && deleteMutation.variables === a.id ? <Loader2 size={16} className="animate-spin"/> : <Trash2 size={16}/>}
+                          </button>
+                        </RequirePermission>
+                      </div>
                     </td>
                   </tr>
                 ))}
