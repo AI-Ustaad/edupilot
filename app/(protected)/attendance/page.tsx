@@ -8,16 +8,18 @@ import { PERMISSIONS } from "@/lib/auth/permissions";
 // 🚀 Layered Architecture Hooks
 import { useClasses } from "@/hooks/useClasses";
 import { useStudents } from "@/hooks/useStudents";
-import { useAttendance, useSaveAttendance } from "@/hooks/useAttendance";
+import { useRealtimeAttendance } from "@/hooks/useRealtimeAttendance"; // Live Hook
+import { useSaveAttendance } from "@/hooks/useAttendance"; // Save Mutation
+import { useToast } from "@/components/ToastProvider";
 
 export default function AttendancePage() {
   const { user } = useAuth();
+  const { showToast } = useToast();
   
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [selectedClass, setSelectedClass] = useState("");
   const [selectedSection, setSelectedSection] = useState("");
   const [entries, setEntries] = useState<Record<string, string>>({});
-  const [success, setSuccess] = useState(false);
 
   // 1. Fetch Live Classes
   const { data: classesData = [] } = useClasses();
@@ -29,8 +31,8 @@ export default function AttendancePage() {
     selectedClass && selectedSection ? { classGrade: selectedClass, section: selectedSection } : undefined
   );
 
-  // 3. Fetch Existing Attendance for the day
-  const { data: attendanceRecords = [] } = useAttendance(selectedClass, selectedSection, selectedDate);
+  // 3. 🚀 Fetch REAL-TIME Attendance for the day
+  const { data: attendanceRecords = [], isLoading: loadingAttendance } = useRealtimeAttendance(selectedClass, selectedSection, selectedDate);
 
   // 4. Save Mutation
   const saveMutation = useSaveAttendance();
@@ -49,10 +51,9 @@ export default function AttendancePage() {
           status,
         });
       }));
-      setSuccess(true);
-      setTimeout(() => setSuccess(false), 3000);
+      showToast("Attendance saved successfully!", "success");
     } catch (err) {
-      alert("Failed to save attendance.");
+      showToast("Failed to save attendance.", "error");
     }
   };
 
@@ -65,7 +66,13 @@ export default function AttendancePage() {
           <h1 className="text-2xl font-black text-gray-900 flex items-center gap-3">
             <Calendar className="text-blue-600"/> Daily Attendance
           </h1>
-          <p className="text-sm text-gray-500 mt-1">Mark and track student presence securely.</p>
+          <p className="text-sm text-gray-500 mt-1 flex items-center gap-2">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+            </span>
+            Live attendance updates enabled.
+          </p>
         </div>
         
         <RequirePermission permissions={[PERMISSIONS.attendance.mark]}>
@@ -79,8 +86,6 @@ export default function AttendancePage() {
           </button>
         </RequirePermission>
       </div>
-
-      {success && <div className="bg-green-50 text-green-700 p-3 rounded-lg flex items-center gap-2 font-bold border border-green-100"><CheckCircle2 size={18}/> Attendance saved successfully!</div>}
 
       {/* FILTERS - 100% Dynamic */}
       <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm flex flex-wrap gap-4">
@@ -115,7 +120,7 @@ export default function AttendancePage() {
           <Users size={18}/> Students
         </div>
         
-        {loadingStudents ? (
+        {loadingStudents || loadingAttendance ? (
           <div className="p-8 flex justify-center"><Loader2 className="animate-spin text-blue-500" size={32}/></div>
         ) : !selectedClass || !selectedSection ? (
           <div className="p-8 text-center text-gray-400 font-bold flex flex-col items-center gap-2">
@@ -129,6 +134,7 @@ export default function AttendancePage() {
         ) : (
           <div className="divide-y divide-gray-100">
             {students.map((student: any) => {
+              // 🚀 Real-time status check
               const existing = attendanceRecords.find((a: any) => a.studentId === student.id);
               const currentStatus = entries[student.id] || existing?.status || "Absent";
               
