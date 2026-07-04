@@ -1,7 +1,7 @@
 // app/api/v1/ai/chatbot/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { getSessionUser } from "@/lib/auth/auth-server";
-import { aiService } from "@/services/ai.service";
+import { aiService } from "@/services/ai/ai.service";
 import * as Sentry from "@sentry/nextjs";
 
 export const runtime = "nodejs";
