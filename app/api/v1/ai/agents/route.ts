@@ -2,22 +2,21 @@
 import { NextRequest, NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebase-admin";
 import { getSessionUser } from "@/lib/auth/auth-server";
-import { AgentService } from "@/services/ai/agent.service";
 
 export const runtime = "nodejs";
-
-const agentService = new AgentService();
 
 export async function POST(req: NextRequest) {
   try {
     const user = await getSessionUser();
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+    if (!process.env.GEMINI_API_KEY) {
+      return NextResponse.json({ error: "AI Service not configured." }, { status: 503 });
+    }
+
     const { agentType, context } = await req.json();
 
-    // 🤖 Principal Agent
     if (agentType === "principal") {
-      // ڈیٹا بیس سے اسکول کا اہم ڈیٹا جمع کریں
       const [studentsSnap, feesSnap, attendanceSnap] = await Promise.all([
         adminDb.collection("students").where("tenantId", "==", user.tenantId).get(),
         adminDb.collection("fees").where("tenantId", "==", user.tenantId).limit(100).get(),
@@ -28,18 +27,25 @@ export async function POST(req: NextRequest) {
         totalStudents: studentsSnap.size,
         feesSummary: feesSnap.docs.map(d => d.data()),
         attendanceSummary: attendanceSnap.docs.map(d => d.data()),
-        userQuery: context // پرنسپل کا سوال (Optional)
+        userQuery: context
       };
 
-      const insights = await agentService.principalAgent(schoolData);
-      return NextResponse.json({ success: true, data: insights });
-    }
+      const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`;
+      const systemPrompt = `You are the Principal Agent for EduPilot. Analyze school data and provide executive summary, risks, and recommendations.\nData: ${JSON.stringify(schoolData)}`;
 
-    // 🤖 Teacher Agent
-    if (agentType === "teacher") {
-      const { topic, classGrade, subject } = context;
-      const content = await agentService.teacherAgent(topic, classGrade, subject);
-      return NextResponse.json({ success: true, data: content });
+      const response = await fetch(geminiUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          system_instruction: { parts: [{ text: systemPrompt }] },
+          contents: [{ role: "user", parts: [{ text: "Provide insights." }] }]
+        })
+      });
+
+      const data = await response.json();
+      const insights = data.candidates?.[0]?.content?.parts?.[0]?.text || "No insights generated.";
+      
+      return NextResponse.json({ success: true, data: insights });
     }
 
     return NextResponse.json({ error: "Invalid agent type" }, { status: 400 });
