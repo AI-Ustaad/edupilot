@@ -22,7 +22,7 @@ export async function POST(req: Request) {
 
     let uid: string;
     let userEmail: string;
-    let finalIdToken: string | null = idToken || null;
+    let finalIdToken: string = idToken;
 
     // Google OAuth
     if (idToken) {
@@ -32,19 +32,17 @@ export async function POST(req: Request) {
     }
     // Email/Password (فرنٹ اینڈ SDK کے بغیر Direct Login)
     else if (email && password) {
-      // Firebase Admin SDK میں براہ راست Email/Password Verify کرنے کا کوئی طریقہ نہیں ہے۔
-      // اس لیے ہم یوزر کو Email سے تلاش کرتے ہیں۔
-      // (نوٹ: Ideal Enterprise اپروچ میں فرنٹ اینڈ ہمیشہ idToken بھیجتا ہے)
+      // چونکہ Firebase Admin SDK براہ راست پاس ورڈ Verify نہیں کرتا،
+      // ہم یوزر کو Email سے تلاش کرتے ہیں اور پھر ایک Custom Token بنا کر
+      // اسے Session Cookie کی طرح استعمال کرتے ہیں۔
+      // (نوٹ: یہ ایک Workaround ہے، Ideal Case میں فرنٹ اینڈ ہمیشہ idToken بھیجتا ہے)
       const userRecord = await adminAuth.getUserByEmail(email);
       uid = userRecord.uid;
       userEmail = userRecord.email || email;
       
-      // چونکہ ہمارے پاس idToken نہیں ہے، ہم ایک نیا Custom Token بنا کر اسے idToken کی طرح استعمال کریں گے
-      // تاکہ Session Cookie بن سکے۔ (یہ Enterprise Workaround ہے)
+      // اگر فرنٹ اینڈ نے idToken نہیں بھیجا، تو ہم backend پر ایک نیا Token بنا کر Cookie میں ڈالیں گے
       if (!finalIdToken) {
         finalIdToken = await adminAuth.createCustomToken(uid);
-        // نوٹ: createCustomToken سے بنے ٹوکن کو verifySessionCookie قبول نہیں کرتا۔
-        // لیکن ہم اسے Cookie میں ڈال کر /me API میں verifyIdToken سے چیک کریں گے۔
       }
     } else {
       return NextResponse.json(
@@ -80,7 +78,7 @@ export async function POST(req: Request) {
     } else {
       // Email/Password کے لیے: ہم Custom Token کو Cookie میں ڈال دیں گے
       // اور auth-server.ts میں اسے verifyIdToken سے چیک کریں گے۔
-      sessionCookie = finalIdToken as string;
+      sessionCookie = finalIdToken;
     }
 
     const response = NextResponse.json({
