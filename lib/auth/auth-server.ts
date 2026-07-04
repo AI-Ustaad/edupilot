@@ -15,7 +15,7 @@ export async function getSessionUser() {
     decodedToken = await adminAuth.verifySessionCookie(sessionCookie, true);
   } catch (e) {
     try {
-      // اگر Session Cookie نہیں ہے، تو Custom Token / ID Token کے طور پر Verify کریں (Email/Password کے لیے)
+      // اگر Session Cookie نہیں ہے، تو Custom Token کے طور پر Verify کریں (Email/Password کے لیے)
       decodedToken = await adminAuth.verifyIdToken(sessionCookie);
     } catch (err) {
       console.error("Session verification failed:", err);
@@ -25,63 +25,21 @@ export async function getSessionUser() {
 
   try {
     // 1. UID سے تلاش
-    let userDoc = await adminDb
-      .collection("users")
-      .doc(decodedToken.uid)
-      .get();
+    let userDoc = await adminDb.collection("users").doc(decodedToken.uid).get();
 
-    // 2. اگر UID document موجود نہیں تو email fallback (صرف read)
+    // 2. اگر UID document موجود نہیں تو email fallback
     if (!userDoc.exists && decodedToken.email) {
-      console.warn("UID migration fallback used", {
-        uid: decodedToken.uid,
-        email: decodedToken.email,
-      });
-
-      const snapshot = await adminDb
-        .collection("users")
-        .where("email", "==", decodedToken.email)
-        .get();
-
+      const snapshot = await adminDb.collection("users").where("email", "==", decodedToken.email).get();
       if (!snapshot.empty) {
-        // active document کو ترجیح دیں (migrated نہ ہو)
-        const activeDoc =
-          snapshot.docs.find((d) => d.data().status !== "migrated") ??
-          snapshot.docs[0];
-        userDoc = activeDoc;
+        userDoc = snapshot.docs[0];
       }
     }
 
-    // 3. اگر پھر بھی document نہ ملے → guest fallback
     if (!userDoc.exists) {
-      return {
-        uid: decodedToken.uid,
-        email: decodedToken.email,
-        role: "guest",
-        tenantId: null,
-        onboardingRequired: true,
-      };
+      return { uid: decodedToken.uid, email: decodedToken.email, role: "guest", tenantId: null, onboardingRequired: true };
     }
 
     const userData = userDoc.data() ?? {};
-
-    // 4. Tenant validation – non‑guest roles must have a tenant
-    if (
-      userData.role &&
-      userData.role !== "guest" &&
-      !GLOBAL_ROLES.has(userData.role) &&
-      !userData.tenantId
-    ) {
-      console.error(
-        `User ${decodedToken.uid} has role ${userData.role} but no tenantId – downgrading to guest.`
-      );
-      return {
-        uid: decodedToken.uid,
-        email: decodedToken.email,
-        role: "guest",
-        tenantId: null,
-        onboardingRequired: true,
-      };
-    }
 
     return {
       uid: decodedToken.uid,
