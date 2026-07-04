@@ -1,46 +1,112 @@
-import { AttendanceService } from "@/services/attendance.service";
-import { AttendanceRepository } from "@/repositories/attendance.repository";
-import { successResponse, errorResponse } from "@/lib/utils/api-response";
-import { withPermission } from "@/lib/auth/withPermission";
-import { PERMISSIONS } from "@/lib/auth/permissions";
+// app/api/v1/attendance/route.ts
+import { NextRequest, NextResponse } from "next/server";
+import { adminDb } from "@/lib/firebase-admin";
+import { getSessionUser } from "@/lib/auth/auth-server";
+import { executeWorkflows } from "@/lib/automation/workflow-engine";
 
-// Initialize Service with its Repository (Dependency Injection)
-const attendanceService = new AttendanceService(new AttendanceRepository());
+export const runtime = "nodejs";
 
-// 🟢 GET: Fetch Attendance (Protected by attendance.view)
-export const GET = withPermission(PERMISSIONS.attendance.view, async (req: Request, context: any) => {
+export async function POST(req: NextRequest) {
   try {
-    const tenantId = context.user.tenantId; // From auth middleware
-    const url = new URL(req.url);
-    const date = url.searchParams.get("date") || undefined;
-    const classGrade = url.searchParams.get("classGrade") || undefined;
-    const section = url.searchParams.get("section") || undefined;
-
-    const records = await attendanceService.listAttendance(tenantId, { date, classGrade, section });
-    return successResponse(records, "Attendance records fetched successfully");
-  } catch (error: any) {
-    return errorResponse(error.message || "Failed to fetch attendance records", 500);
-  }
-});
-
-// 🔵 POST: Mark Attendance (Protected by attendance.create)
-export const POST = withPermission(PERMISSIONS.attendance.create, async (req: Request, context: any) => {
-  try {
-    const tenantId = context.user.tenantId;
-    const userId = context.user.uid;
-    const body = await req.json();
-
-    // Check if it's a Bulk Attendance submission (Array) or Single Student (Object)
-    if (Array.isArray(body)) {
-      const result = await attendanceService.createBulk(body, tenantId, userId);
-      return successResponse(result, result.message, 201);
-    } else {
-      const record = await attendanceService.createSingle(body, tenantId, userId);
-      return successResponse(record, "Attendance marked successfully", 201);
+    const user = await getSessionUser();
+    if (!user) {
+      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
     }
+
+    const body = await req.json();
+    const { studentId, studentName, classGrade, section, date, status } = body;
+
+    if (!studentId || !date || !status) {
+      return NextResponse.json({ success: false, error: "Missing required fields" }, { status: 400 });
+    }
+
+    // 1. Attendance Record Save یا Update کریں
+    const attendanceRef = adminDb.collection("attendance").doc();
+    
+    await attendanceRef.set({
+      tenantId: user.tenantId,
+      studentId,
+      studentName: studentName || "",
+      classGrade: classGrade || "",
+      section: section || "",
+      date,
+      status,
+      createdBy: user.uid,
+      createdAt: new Date(),
+      deleted: false,
+    });
+
+    // 2. 🚀 Workflow Automation Trigger
+    // اگر سٹوڈنٹ Absent ہوا ہو، تو Parent کو Email بھیجیں
+    if (status === "Absent") {
+      
+      // سٹوڈنٹ کا ڈاکیومنٹ Fetch کریں تاکہ Parent کی Email مل سکے
+      const studentDoc = await adminDb.collection("students").doc(studentId).get();
+      const studentData = studentDoc.data();
+      
+      // سٹوڈنٹ کے ریکارڈ سے Parent کی Email Extract کریں
+      const parentEmail = studentData?.guardianEmail || studentData?.parentEmail || null;
+
+      // اگر Parent کی Email موجود ہو، تو Workflow Engine کو Trigger کریں
+      if (parentEmail) {
+        await executeWorkflows({
+          tenantId: user.tenantId,
+          trigger: "attendance.absent",
+          data: {
+            studentName: studentName || studentData?.fullName || "Student",
+            parentEmail: parentEmail,
+            date: date
+          }
+        });
+      }
+    }
+
+    return NextResponse.json({ 
+      success: true, 
+      message: "Attendance saved successfully",
+      data: { id: attendanceRef.id } 
+    });
+
   } catch (error: any) {
-    // Return 400 Bad Request for Validation Errors (Zod)
-    const status = error.message.includes("Validation") ? 400 : 500;
-    return errorResponse(error.message || "Failed to mark attendance", status);
+    console.error("[Attendance API Error]:", error);
+    return NextResponse.json(
+      { success: false, error: "Internal server error" },
+      { status: 500 }
+    );
   }
-});
+}
+
+// GET Request (اگر آپ کے پاس پہلے سے موجود ہو)
+export async function GET(req: NextRequest) {
+  try {
+    const user = await getSessionUser();
+    if (!user) {
+      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { searchParams } = new URL(req.url);
+    const classGrade = searchParams.get("classGrade");
+    const section = searchParams.get("section");
+    const date = searchParams.get("date");
+
+    if (!classGrade || !section || !date) {
+      return NextResponse.json({ success: false, error: "Missing query parameters" }, { status: 400 });
+    }
+
+    const snapshot = await adminDb.collection("attendance")
+      .where("tenantId", "==", user.tenantId)
+      .where("classGrade", "==", classGrade)
+      .where("section", "==", section)
+      .where("date", "==", date)
+      .where("deleted", "==", false)
+      .get();
+
+    const records = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+    return NextResponse.json({ success: true, data: records });
+
+  } catch (error: any) {
+    console.error("[Attendance GET API Error]:", error);
+    return NextResponse.json({ success: false, error: "Internal server error" }, { status: 500 });
+  }
+}
