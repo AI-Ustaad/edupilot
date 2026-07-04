@@ -8,9 +8,22 @@ export async function getSessionUser() {
   const sessionCookie = cookies().get("session")?.value;
   if (!sessionCookie) return null;
 
+  let decodedToken;
+  
   try {
-    const decodedToken = await adminAuth.verifySessionCookie(sessionCookie, true);
+    // پہلے یہ چیک کریں کہ یہ Session Cookie ہے (Google OAuth کے لیے)
+    decodedToken = await adminAuth.verifySessionCookie(sessionCookie, true);
+  } catch (e) {
+    try {
+      // اگر Session Cookie نہیں ہے، تو Custom Token / ID Token کے طور پر Verify کریں (Email/Password کے لیے)
+      decodedToken = await adminAuth.verifyIdToken(sessionCookie);
+    } catch (err) {
+      console.error("Session verification failed:", err);
+      return null;
+    }
+  }
 
+  try {
     // 1. UID سے تلاش
     let userDoc = await adminDb
       .collection("users")
@@ -78,7 +91,7 @@ export async function getSessionUser() {
       onboardingRequired: userData.onboardingRequired ?? false,
     };
   } catch (error) {
-    console.error("Session verification failed:", error);
+    console.error("Error fetching user data:", error);
     return null;
   }
 }
