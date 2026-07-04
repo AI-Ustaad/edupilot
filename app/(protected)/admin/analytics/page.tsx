@@ -1,7 +1,7 @@
 "use client";
 import { useQuery } from "@tanstack/react-query";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
-import { Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react"; // 🛡️ Fix: Loader2 lucide-react سے Import ہوگا
 import RequirePermission from "@/components/RequirePermission";
 import apiClient from "@/lib/api/client";
 import { safeObject } from "@/lib/api/safeResponse";
