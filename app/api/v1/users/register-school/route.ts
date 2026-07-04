@@ -1,128 +1,96 @@
-export const dynamic = 'force-dynamic';
-import { adminAuth, adminDb } from "@/lib/firebase-admin";
-import { cookies } from "next/headers";
-import { curriculumMap } from "@/lib/curriculum-data";
+// app/api/users/register-school/route.ts
+import { NextRequest, NextResponse } from "next/server";
+import { adminDb, adminAuth } from "@/lib/firebase-admin";
+import { getSessionUser } from "@/lib/auth/auth-server";
 
-export async function POST(req: Request) {
+export const runtime = "nodejs";
+
+export async function POST(req: NextRequest) {
   try {
-    const session = cookies().get("session")?.value;
-    if (!session) {
-      return new Response(JSON.stringify({ error: "No session" }), { status: 401 });
+    const user = await getSessionUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const decoded = await adminAuth.verifySessionCookie(session);
-    const uid = decoded.uid;
+    const body = await req.json();
+    const { schoolName, type, curriculum, classes, subjects } = body;
 
-    const {
-      schoolName,
-      schoolType = "federal",
-      schoolLevel = "primary",
-      staffList = [],
-      logoBase64,
-      bannerBase64,
-    } = await req.json();
-
-    if (!schoolName || !schoolName.trim()) {
-      return new Response(JSON.stringify({ error: "School name is required" }), { status: 400 });
+    if (!schoolName || !classes || !subjects) {
+      return NextResponse.json({ error: "Missing required setup data" }, { status: 400 });
     }
 
-    const tenantId = `school_${Math.random().toString(36).substr(2, 9)}`;
+    // 1. Tenant ID Determine کریں (اگر پہلے سے نہیں ہے تو UID استعمال کریں)
+    const tenantId = user.tenantId || `tenant_${user.uid}`;
+    
+    const batch = adminDb.batch();
 
-    // 1. tenant دستاویز
-    await adminDb.collection("tenants").doc(tenantId).set({
-      name: schoolName.trim(),
-      type: schoolType,
-      level: schoolLevel,
-      ownerId: uid,
+    // 2. User Document اپ ڈیٹ کریں (Admin Role اور Onboarding Complete)
+    const userRef = adminDb.collection("users").doc(user.uid);
+    batch.update(userRef, {
+      onboardingRequired: false,
+      role: "admin", // پہلا یوزر ہمیشہ Admin ہوگا
+      tenantId: tenantId,
+      updatedAt: new Date(),
+    });
+
+    // 3. Tenant (School) Document Create کریں
+    const tenantRef = adminDb.collection("tenants").doc(tenantId);
+    batch.set(tenantRef, {
+      name: schoolName,
+      type: type || "Private",
+      curriculum: curriculum || "custom",
+      ownerId: user.uid,
+      status: "active",
       createdAt: new Date(),
-    });
+    }, { merge: true });
 
-    // 2. صارف کے custom claims اور Firestore دستاویز
-    await adminAuth.setCustomUserClaims(uid, {
-      role: "admin",
-      tenantId,
-    });
+    // 4. Settings Document (Classes & Subjects) محفوظ کریں
+    const settingsRef = adminDb.collection("tenants").doc(tenantId).collection("settings").doc("config");
+    batch.set(settingsRef, {
+      classes: classes,
+      subjects: subjects,
+      updatedAt: new Date().toISOString()
+    }, { merge: true });
 
-    await adminDb.collection("users").doc(uid).set({
-      uid,
-      email: decoded.email,
-      role: "admin",
-      tenantId,
-      schoolName: schoolName.trim(),
-      onboardingCompleted: true,
-      createdAt: new Date(),
-    });
+    // 5. Sections Collection خودکار Popultate کریں (تاکہ ایڈمن فوراً سٹوڈنٹس ایڈ کر سکے)
+    const sectionsRef = adminDb.collection("sections");
+    
+    // پرانے سیکشنز ڈیلیٹ کریں (اگر دوبارہ سیٹ اپ کر رہا ہو)
+    const oldSections = await sectionsRef.where("tenantId", "==", tenantId).get();
+    oldSections.docs.forEach(doc => batch.delete(doc.ref));
 
-    // 3. برانڈنگ (لوگو، بینر)
-    await adminDb.collection("whitelabel").doc(tenantId).set({
-      schoolName: schoolName.trim(),
-      logo: logoBase64 || "",
-      banner: bannerBase64 || "",
-      primaryColor: "#FFB6B8",
-    });
-
-    // 4. اسکول کی سیٹنگز (curriculum data سے کلاسز اور مضامین)
-    const curriculum = curriculumMap[schoolType]?.[schoolLevel];
-    if (curriculum) {
-      const uniqueClasses = [...new Set(curriculum.classes)];
-      const uniqueSubjects = [...new Set(curriculum.subjects)];
-
-      await adminDb.collection("settings").doc(tenantId).set({
-        classes: uniqueClasses,
-        subjects: uniqueSubjects,
-        sections: [],
-        periods: [],
-        schoolType,
-        schoolLevel,
-        curriculumLoadedAt: new Date(),
-      });
-
-      const batch = adminDb.batch();
-      for (const cls of uniqueClasses) {
-        const ref = adminDb.collection("sections").doc();
-        batch.set(ref, {
-          classGrade: cls,
-          sectionName: "A",
-          incharge: "",
-          tenantId,
-          createdAt: new Date(),
+    // ہر کلاس کے لیے ڈیفالٹ سیکشن "A" بنا دیں
+    classes.forEach((cls: any) => {
+      if (cls.name) {
+        const newSecRef = sectionsRef.doc();
+        batch.set(newSecRef, {
+          tenantId: tenantId,
+          classGrade: cls.name,
+          sectionName: "A", // ڈیفالٹ سیکشن
+          createdAt: new Date().toISOString()
         });
       }
-      await batch.commit();
-    } else {
-      await adminDb.collection("settings").doc(tenantId).set({
-        classes: [],
-        subjects: [],
-        sections: [],
-        periods: [],
-        schoolType,
-        schoolLevel,
-      });
-    }
-
-    // 5. اسٹاف کی ضروریات
-    if (staffList.length > 0) {
-      await adminDb.collection("staff_requirements").doc(tenantId).set({
-        requirements: staffList,
-        updatedAt: new Date(),
-      });
-    }
-
-    // ─── 6. مفت آزمائش (14 دن) ────────────────────────────
-    const trialDays = 14; // جتنے دن چاہیں
-    const trialEndsAt = new Date();
-    trialEndsAt.setDate(trialEndsAt.getDate() + trialDays);
-
-    await adminDb.collection("subscriptions").doc(tenantId).set({
-      planId: "free",           // آزمائش کے دوران فری پلان
-      status: "active",
-      trialEndsAt: trialEndsAt,
-      createdAt: new Date(),
     });
 
-    return new Response(JSON.stringify({ success: true, tenantId }), { status: 200 });
-  } catch (err: any) {
-    console.error("Onboarding error:", err);
-    return new Response(JSON.stringify({ error: err.message || "Server error" }), { status: 500 });
+    // 6. Batch Commit کریں
+    await batch.commit();
+
+    // 7. 🚀 Custom Claims سیٹ کریں (تاکہ Firebase Security Rules فوراً کام کریں)
+    await adminAuth.setCustomUserClaims(user.uid, {
+      tenantId: tenantId,
+      role: "admin",
+    });
+
+    return NextResponse.json({ 
+      success: true, 
+      message: "School setup completed successfully" 
+    });
+
+  } catch (error: any) {
+    console.error("Register School API Error:", error);
+    return NextResponse.json({ 
+      success: false, 
+      error: "Internal server error during setup" 
+    }, { status: 500 });
   }
 }
