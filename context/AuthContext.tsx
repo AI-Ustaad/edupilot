@@ -1,5 +1,7 @@
 "use client";
 import { createContext, useContext, useEffect, useState } from "react";
+import apiClient from "@/lib/api/client";
+import { safeObject } from "@/lib/api/safeResponse";
 
 type UserType = {
   uid: string;
@@ -9,10 +11,7 @@ type UserType = {
   onboardingRequired?: boolean;
 };
 
-const AuthContext = createContext<{ user: UserType | null; loading: boolean }>({
-  user: null,
-  loading: true,
-});
+const AuthContext = createContext<{ user: UserType | null; loading: boolean }>({ user: null, loading: true });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<UserType | null>(null);
@@ -21,16 +20,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     async function loadUser() {
       try {
-        // FIXED: /api/v1/auth/me — v1 path صحیح ہے
-        const res = await fetch("/api/v1/auth/me", {
-          credentials: "include",
-          cache: "no-store",
-        });
-        if (!res.ok) {
-          setUser(null);
-          return;
-        }
-        const userData = await res.json();
+        const res = await apiClient.get("/auth/me");
+        const userData = safeObject(res);
         setUser(userData);
       } catch {
         setUser(null);
