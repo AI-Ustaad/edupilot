@@ -1,52 +1,28 @@
 "use client";
 import { createContext, useContext, useEffect, useState } from "react";
-import { useAuth } from "./AuthContext";
+import apiClient from "@/lib/api/client";
+import { safeObject } from "@/lib/api/safeResponse";
+import { useAuth } from "@/context/AuthContext";
 
-interface Branding {
-  schoolName?: string;
-  logo?: string;
-  primaryColor?: string;
-  customDomain?: string;
-}
-
-const BrandingContext = createContext<Branding>({});
+const BrandingContext = createContext<any>(null);
 
 export function BrandingProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
-  const [branding, setBranding] = useState<Branding>({});
+  const [branding, setBranding] = useState<any>(null);
 
   useEffect(() => {
     if (!user?.tenantId) return;
     
-    // 🚀 FIX: API پاتھ کو v1 کیا گیا ہے اور سیکیورٹی کے لیے credentials: "include" کا اضافہ کیا گیا ہے۔
-    fetch("/api/v1/settings/whitelabel", { credentials: "include" })
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.success && data.data) {
-          const b = data.data;
-          setBranding(b);
-
-          // رنگ کو CSS متغیر میں محفوظ کریں
-          if (b.primaryColor) {
-            document.documentElement.style.setProperty(
-              "--brand-primary",
-              b.primaryColor
-            );
-          }
-          // لوگو کا URL (اگر ہو)
-          if (b.logo) {
-            document.documentElement.style.setProperty(
-              "--brand-logo",
-              `url(${b.logo})`
-            );
-          }
-        }
+    apiClient.get("/settings/whitelabel")
+      .then(res => {
+        const data = safeObject(res);
+        setBranding(data);
       })
-      .catch(console.error);
+      .catch(() => setBranding(null));
   }, [user?.tenantId]);
 
   return (
-    <BrandingContext.Provider value={branding}>
+    <BrandingContext.Provider value={{ branding, setBranding }}>
       {children}
     </BrandingContext.Provider>
   );
