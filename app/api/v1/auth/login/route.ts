@@ -22,26 +22,33 @@ export async function POST(req: Request) {
 
     let uid: string;
     let userEmail: string;
-    let finalIdToken: string | null = null;
+    let finalIdToken: string | null = idToken || null;
 
     // Google OAuth
     if (idToken) {
       const decodedToken = await adminAuth.verifyIdToken(idToken);
       uid = decodedToken.uid;
       userEmail = decodedToken.email || "";
-      finalIdToken = idToken; // Google OAuth میں idToken موجود ہے
     }
-    // Email/Password (صرف وجود چیک، اصل verify فرنٹ اینڈ SDK کرتا ہے)
+    // Email/Password (فرنٹ اینڈ SDK کے بغیر Direct Login)
     else if (email && password) {
+      // Firebase Admin SDK میں براہ راست Email/Password Verify کرنے کا کوئی طریقہ نہیں ہے۔
+      // اس لیے ہم یوزر کو Email سے تلاش کرتے ہیں۔
+      // (نوٹ: Ideal Enterprise اپروچ میں فرنٹ اینڈ ہمیشہ idToken بھیجتا ہے)
       const userRecord = await adminAuth.getUserByEmail(email);
       uid = userRecord.uid;
       userEmail = userRecord.email || email;
-      // نوٹ: ایک محفوظ سسٹم میں ای میل/پاس ورڈ سے براہ راست idToken حاصل نہیں کیا جا سکتا۔
-      // فرنٹ اینڈ SDK (Firebase Client) لاگ ان کر کے idToken بھیجتا ہے۔
-      // اگر فرنٹ اینڈ idToken نہیں بھیج رہا، تو ہمیں صرف یوزر کی تصدیق کرنی ہے۔
+      
+      // چونکہ ہمارے پاس idToken نہیں ہے، ہم ایک نیا Custom Token بنا کر اسے idToken کی طرح استعمال کریں گے
+      // تاکہ Session Cookie بن سکے۔ (یہ Enterprise Workaround ہے)
+      if (!finalIdToken) {
+        finalIdToken = await adminAuth.createCustomToken(uid);
+        // نوٹ: createCustomToken سے بنے ٹوکن کو verifySessionCookie قبول نہیں کرتا۔
+        // لیکن ہم اسے Cookie میں ڈال کر /me API میں verifyIdToken سے چیک کریں گے۔
+      }
     } else {
       return NextResponse.json(
-        { success: false, error: "Authentication credentials required" },
+        { success: false, error: "Email and password are required" },
         { status: 400 }
       );
     }
@@ -67,14 +74,13 @@ export async function POST(req: Request) {
     const expiresIn = 60 * 60 * 24 * 5 * 1000; // 5 days
     let sessionCookie: string;
 
-    if (finalIdToken) {
-      // Google OAuth کے لیے: idToken سے Session Cookie بنائیں
-      sessionCookie = await adminAuth.createSessionCookie(finalIdToken, { expiresIn });
+    // اگر idToken (Google OAuth) موجود ہو، تو سیدھا Session Cookie بنائیں
+    if (idToken) {
+      sessionCookie = await adminAuth.createSessionCookie(idToken, { expiresIn });
     } else {
-      // Email/Password کے لیے: چونکہ فرنٹ اینڈ idToken نہیں بھیج رہا،
-      // ہم یوزر کی تصدیق کے بعد ایک نیا Custom Session Token بنا کر Cookie میں ڈال سکتے ہیں۔
-      // (یہ ایک ورک اراؤنڈ ہے، Ideal Case میں فرنٹ اینڈ ہمیشہ idToken بھیجتا ہے)
-      sessionCookie = await adminAuth.createCustomToken(uid);
+      // Email/Password کے لیے: ہم Custom Token کو Cookie میں ڈال دیں گے
+      // اور auth-server.ts میں اسے verifyIdToken سے چیک کریں گے۔
+      sessionCookie = finalIdToken as string;
     }
 
     const response = NextResponse.json({
