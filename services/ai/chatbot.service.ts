@@ -19,14 +19,16 @@ export class ChatbotService {
       });
 
       if (!response.ok) {
-        throw new Error(`AI API Error: ${response.statusText}`);
+        const errorData = await response.json();
+        console.error("[AI API Error]:", errorData);
+        throw new Error(errorData.error?.message || "AI Service is unavailable.");
       }
 
       const data = await response.json();
       return data.choices[0].message.content;
     } catch (error: any) {
       console.error("Chatbot Service Error:", error);
-      throw new Error("AI Service is currently unavailable.");
+      throw new Error("AI Service is currently unavailable. Check API Key.");
     }
   }
 }
