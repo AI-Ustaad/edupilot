@@ -1,23 +1,26 @@
-export const dynamic = 'force-dynamic';
-import { withAuth, withTenant, withErrorHandler, withRateLimit } from "@/route-helpers";
-import { aiRateLimit } from "@/lib/ratelimit";
-import { BookCenterService } from "@/services/ai/book-center.service";
-import { createApiResponse } from "@/lib/response/apiResponse";
-import type { TenantContext } from "@/types/api";
+// app/api/v1/ai/smart-book-center/route.ts
+import { NextRequest, NextResponse } from "next/server";
+import { getSessionUser } from "@/lib/auth/auth-server";
+import { aiService } from "@/services/ai/ai.service";
+import * as Sentry from "@sentry/nextjs";
 
-export const POST = withErrorHandler(
-  withAuth(
-    withRateLimit(aiRateLimit)(
-      withTenant(async (req: Request, { tenantId }: TenantContext) => {
-        const { query, grade, type } = await req.json();
-        if (!query || !type) {
-          return createApiResponse(400, null, "Missing query or type");
-        }
+export const runtime = "nodejs";
 
-        const service = new BookCenterService();
-        const result = await service.process({ query, grade, type });
-        return createApiResponse(200, { result });
-      })
-    )
-  )
-);
+export async function POST(req: NextRequest) {
+  try {
+    const user = await getSessionUser();
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    const body = await req.json();
+    if (!body.query) {
+      return NextResponse.json({ error: "Query required" }, { status: 400 });
+    }
+
+    const result = await aiService.smartBookCenter(body, user.tenantId, user.uid, user.role);
+    return NextResponse.json({ success: true, data: { result } });
+
+  } catch (error: any) {
+    Sentry.captureException(error);
+    return NextResponse.json({ success: false, message: error.message }, { status: 500 });
+  }
+}
