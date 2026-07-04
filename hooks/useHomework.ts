@@ -1,8 +1,37 @@
-// hooks/useHomework.ts میں یہ Hook Add کریں
+// hooks/useHomework.ts
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import apiClient from "@/lib/api/client";
+import { safeArray } from "@/lib/api/safeResponse";
+import { useAuth } from "@/context/AuthContext";
+import { useToast } from "@/components/ToastProvider";
 
-import { useToast } from "@/components/ToastProvider"; // Top پر Import کریں
+// 1. 🔄 Fetch All Homework
+export const useHomework = () => {
+  const { user } = useAuth();
+  const tenantId = user?.tenantId || "unknown";
+  return useQuery({
+    queryKey: ["homework", tenantId],
+    queryFn: async () => safeArray(await apiClient.get("/homework")),
+  });
+};
 
-// 🗑️ Delete Homework (With Optimistic Update & Undo)
+// 2. ✨ Create Homework
+export const useCreateHomework = () => {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const tenantId = user?.tenantId || "unknown";
+  const { showToast } = useToast();
+  return useMutation({
+    mutationFn: async (data: any) => apiClient.post("/homework", data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["homework", tenantId] });
+      showToast("Homework posted successfully!", "success");
+    },
+    onError: () => showToast("Failed to post homework.", "error"),
+  });
+};
+
+// 3. 🗑️ Delete Homework (With Optimistic Update & Undo)
 export const useDeleteHomework = () => {
   const queryClient = useQueryClient();
   const { user } = useAuth();
@@ -36,7 +65,6 @@ export const useDeleteHomework = () => {
         // Undo Logic: Restore in UI
         queryClient.setQueryData(["homework", tenantId], context?.previousHomework);
         showToast("Homework restored.", "success");
-        // Note: Backend restoration needs a specific API, currently we just restore UI.
       });
     },
     onSettled: () => {
