@@ -56,7 +56,7 @@ export default function ReportCommentsPage() {
         <FileText size={32} className="text-green-600" />
         <div>
           <h1 className="text-2xl font-black text-gray-900">AI Report Comments</h1>
-          <p className="text-gray-500 text-sm">Generate personalized remarks and save them directly to the student's profile.</p>
+         <p className="text-gray-500 text-sm">Generate personalized remarks and save them directly to the student profile.</p>
         </div>
       </div>
 
