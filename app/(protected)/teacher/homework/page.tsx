@@ -1,11 +1,11 @@
 "use client";
 import { useState } from "react";
-import { Loader2, Send, Calendar, CheckCircle } from "lucide-react";
+import { Loader2, Send, Calendar, CheckCircle, Trash2 } from "lucide-react";
 import RequirePermission from "@/components/RequirePermission";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 import { useClasses } from "@/hooks/useClasses";
 import { useSettings } from "@/hooks/useSettings";
-import { useHomework, useCreateHomework } from "@/hooks/useHomework";
+import { useHomework, useCreateHomework, useDeleteHomework } from "@/hooks/useHomework";
 
 export default function TeacherHomeworkPage() {
   const [title, setTitle] = useState("");
@@ -22,6 +22,7 @@ export default function TeacherHomeworkPage() {
   
   const { data: assignments = [], isLoading: listLoading } = useHomework();
   const createMutation = useCreateHomework();
+  const deleteMutation = useDeleteHomework(); // 🚀 Delete Hook
 
   const availableSections = classes.filter((c: any) => c.classGrade === classGrade).map((c: any) => c.sectionName || c.section);
 
@@ -37,6 +38,12 @@ export default function TeacherHomeworkPage() {
         }
       }
     );
+  };
+
+  const handleDelete = (id: string) => {
+    if (confirm("Are you sure?")) {
+      deleteMutation.mutate(id);
+    }
   };
 
   return (
@@ -77,16 +84,27 @@ export default function TeacherHomeworkPage() {
         ) : (
           <div className="grid gap-4">
             {assignments.map((a: any) => (
-              <div key={a.id} className="bg-white border rounded-xl p-5 hover:shadow-md transition">
-                <div className="flex justify-between items-start mb-2">
-                  <h3 className="font-bold text-lg text-gray-900">{a.title}</h3>
-                  {a.dueDate && <span className="bg-red-50 text-red-600 text-xs font-bold px-2 py-1 rounded-full border border-red-100 flex items-center gap-1"><Calendar size={12}/> Due: {a.dueDate}</span>}
+              <div key={a.id} className={`bg-white border rounded-xl p-5 hover:shadow-md transition flex justify-between items-start ${deleteMutation.isPending && deleteMutation.variables === a.id ? 'opacity-50' : ''}`}>
+                <div>
+                  <div className="flex justify-between items-start mb-2">
+                    <h3 className="font-bold text-lg text-gray-900">{a.title}</h3>
+                    {a.dueDate && <span className="bg-red-50 text-red-600 text-xs font-bold px-2 py-1 rounded-full border border-red-100 flex items-center gap-1"><Calendar size={12}/> Due: {a.dueDate}</span>}
+                  </div>
+                  <div className="flex gap-2 mb-3">
+                    <span className="bg-blue-50 text-blue-700 text-xs font-bold px-2 py-0.5 rounded-md border border-blue-100">{a.classGrade} - {a.section}</span>
+                    <span className="bg-purple-50 text-purple-700 text-xs font-bold px-2 py-0.5 rounded-md border border-purple-100">{a.subject}</span>
+                  </div>
+                  <p className="text-sm text-gray-600">{a.description}</p>
                 </div>
-                <div className="flex gap-2 mb-3">
-                  <span className="bg-blue-50 text-blue-700 text-xs font-bold px-2 py-0.5 rounded-md border border-blue-100">{a.classGrade} - {a.section}</span>
-                  <span className="bg-purple-50 text-purple-700 text-xs font-bold px-2 py-0.5 rounded-md border border-purple-100">{a.subject}</span>
-                </div>
-                <p className="text-sm text-gray-600">{a.description}</p>
+                <RequirePermission permissions={[PERMISSIONS.homework.create]}>
+                  <button 
+                    onClick={() => handleDelete(a.id)} 
+                    className="text-red-500 hover:bg-red-50 p-2 rounded-lg transition disabled:opacity-50"
+                    disabled={deleteMutation.isPending}
+                  >
+                    {deleteMutation.isPending && deleteMutation.variables === a.id ? <Loader2 size={16} className="animate-spin"/> : <Trash2 size={16}/>}
+                  </button>
+                </RequirePermission>
               </div>
             ))}
           </div>
