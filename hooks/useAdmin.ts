@@ -185,3 +185,33 @@ export const usePromoteStudents = () => {
     onError: () => showToast("Failed to promote students.", "error"),
   });
 };
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+
+// 🚀 Feature Flags Hook
+export const useFeatureFlags = () => {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: ["featureFlags", user?.tenantId],
+    queryFn: async () => safeObject(await apiClient.get("/admin/feature-flags")),
+    enabled: !!user?.tenantId,
+  });
+};
+
+// 🚀 Toggle Feature Flag Mutation
+export const useToggleFeatureFlag = () => {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const { showToast } = useToast();
+  
+  return useMutation({
+    mutationFn: async (data: { feature: string; enabled: boolean }) => {
+      return apiClient.post("/admin/feature-flags", data);
+    },
+    onSuccess: () => {
+      // 🚀 یہ لائن Sidebar کو خود بخول اپڈیٹ کرنے کا حکم دے گی
+      queryClient.invalidateQueries({ queryKey: ["featureFlags", user?.tenantId] });
+      showToast("Feature updated successfully!", "success");
+    },
+    onError: () => showToast("Failed to update feature.", "error"),
+  });
+};
