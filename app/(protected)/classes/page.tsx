@@ -6,14 +6,11 @@ import { PERMISSIONS } from "@/lib/auth/permissions";
 import { useClasses, useCreateClass, useDeleteClass } from "@/hooks/useClasses";
 import { useToast } from "@/components/ToastProvider";
 
-// 🛡️ Enterprise Dropdown Options
-const STANDARD_SECTIONS = ["A", "B", "C", "D", "Morning", "Evening", "Girls", "Boys"];
-
 // 🛡️ Natural Sorting Logic (Prep, Class 1, Class 2, Class 10)
 const sortClasses = (a: any, b: any) => {
   const nameA = String(a.classGrade || a.name || "").toLowerCase();
   const nameB = String(b.classGrade || b.name || "").toLowerCase();
-  
+
   // Extract numbers from strings like "Class 10" -> 10
   const numA = parseInt(nameA.replace(/[^0-9]/g, ""), 10);
   const numB = parseInt(nameB.replace(/[^0-9]/g, ""), 10);
@@ -64,7 +61,7 @@ export default function ClassesManagementPage() {
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newClass || !newSection) {
-      setError("Please select both Class and Section.");
+      setError("Please enter both Class and Section.");
       return;
     }
 
@@ -119,30 +116,25 @@ export default function ClassesManagementPage() {
           <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
             <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2"><Plus size={20} className="text-blue-500"/> Add New Section</h3>
             <form onSubmit={handleAdd} className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {/* Class Dropdown (From Settings) */}
-              <select 
+              {/* Class Input Field (Admin can type their own class name) */}
+              <input 
+                type="text"
+                placeholder="Enter Class Name (e.g., Class 4)"
                 value={newClass} 
                 onChange={e => setNewClass(e.target.value)} 
                 className="bg-gray-50 border border-gray-300 rounded-xl px-4 py-3 font-medium outline-none focus:ring-2 focus:ring-blue-500"
                 required
-              >
-                <option value="">Select Class</option>
-                {/* Assuming classes are fetched or hardcoded for now. In real app, this comes from Settings */}
-                {["Prep", "Class 1", "Class 2", "Class 3", "Class 4", "Class 5", "Class 6", "Class 7", "Class 8", "Class 9", "Class 10"].map(c => (
-                  <option key={c} value={c}>{c}</option>
-                ))}
-              </select>
+              />
 
-              {/* Section Dropdown (Standardized) */}
-              <select 
+              {/* Section Input Field (Admin can type their own section name) */}
+              <input 
+                type="text"
+                placeholder="Enter Section Name (e.g., A, Morning)"
                 value={newSection} 
                 onChange={e => setNewSection(e.target.value)} 
                 className="bg-gray-50 border border-gray-300 rounded-xl px-4 py-3 font-medium outline-none focus:ring-2 focus:ring-blue-500"
                 required
-              >
-                <option value="">Select Section</option>
-                {STANDARD_SECTIONS.map(s => <option key={s} value={s}>Section {s}</option>)}
-              </select>
+              />
               
               <button 
                 type="submit" 
