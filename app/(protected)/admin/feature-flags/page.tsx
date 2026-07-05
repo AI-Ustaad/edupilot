@@ -1,33 +1,51 @@
 "use client";
 import { useState, useEffect } from "react";
-import { Loader2, ToggleLeft, ToggleRight } from "lucide-react";
+import { motion } from "framer-motion";
+import { Loader2, ToggleLeft, ToggleRight, Sparkles, BookOpen, DollarSign, Bus, Bot } from "lucide-react";
 import RequirePermission from "@/components/RequirePermission";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 import apiClient from "@/lib/api/client";
+import { safeObject } from "@/lib/api/safeResponse";
 import { useToast } from "@/components/ToastProvider";
+import { CardSkeleton } from "@/components/ui/skeleton/CardSkeleton";
 
-const FEATURE_FLAGS = [
-  { key: "transport", label: "Bus Tracking" },
-  { key: "aiTimetable", label: "AI Timetable" },
-  { key: "aiAssistant", label: "AI Chatbot" },
-  { key: "aiExamGenerator", label: "AI Exam Generator" },
-  { key: "videoLectures", label: "Video Lectures" },
-  { key: "behavior", label: "Behavior Points" },
-  { key: "skills", label: "Skills" },
-  { key: "chat", label: "Chat" },
-  { key: "assignments", label: "Assignments" },
-  { key: "homework", label: "Homework" },
-  { key: "quizzes", label: "Quizzes" },
-  { key: "lessonPlans", label: "Lesson Plans" },
-  { key: "bookCenter", label: "Book Center" },
-  { key: "examCenter", label: "Exam Center" },
-  { key: "admissions", label: "Admissions" },
-  { key: "parents", label: "Parents" },
-  { key: "leaveRequests", label: "Leave Requests" },
-  { key: "advancedAnalytics", label: "Advanced Analytics" },
+// Enterprise Feature Flag Definitions
+const FEATURE_GROUPS = [
+  {
+    title: "Academic & Learning",
+    icon: BookOpen,
+    color: "text-blue-600",
+    features: [
+      { key: "assignments", label: "Assignments Module", description: "Allow teachers to create and grade assignments." },
+      { key: "homework", label: "Homework Module", description: "Daily homework tracking and submission." },
+      { key: "quizzes", label: "Quizzes & Tests", description: "Online quiz creation and auto-grading." },
+      { key: "lessonPlans", label: "Lesson Planner", description: "Curriculum and daily lesson planning tools." },
+      { key: "bookCenter", label: "Digital Book Center", description: "Upload and share PDFs and reading materials." },
+    ]
+  },
+  {
+    title: "Finance & Operations",
+    icon: DollarSign,
+    color: "text-green-600",
+    features: [
+      { key: "onlinePayments", label: "Online Fee Collection", description: "Enable Stripe/Card payments for fees." },
+      { key: "transport", label: "Transport Module", description: "Bus tracking and route management." },
+      { key: "leaveRequests", label: "Leave Requests", description: "Staff can apply for leaves digitally." },
+    ]
+  },
+  {
+    title: "Artificial Intelligence",
+    icon: Bot,
+    color: "text-purple-600",
+    features: [
+      { key: "aiAssistant", label: "AI Chatbot", description: "General AI assistant for teachers and admins." },
+      { key: "aiExamGenerator", label: "AI Exam Generator", description: "Auto-generate MCQs and subjective questions." },
+      { key: "aiTimetable", label: "AI Timetable", description: "Smart timetable scheduling with conflict resolution." },
+    ]
+  }
 ];
 
-export default function FeatureFlagsPage() {
+export default function EnterpriseFeatureFlagsPage() {
   const [flags, setFlags] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState<string | null>(null);
@@ -37,7 +55,8 @@ export default function FeatureFlagsPage() {
     const fetchFlags = async () => {
       try {
         const res = await apiClient.get("/admin/feature-flags");
-        setFlags(res.data || res || {});
+        const data = safeObject(res);
+        setFlags(data);
       } catch (err) {
         console.error(err);
       } finally {
@@ -60,31 +79,62 @@ export default function FeatureFlagsPage() {
     }
   };
 
-  if (loading) return <div className="flex h-96 items-center justify-center"><Loader2 className="animate-spin text-blue-600" size={32} /></div>;
+  if (loading) return (
+    <div className="p-6 space-y-8">
+      <h1 className="text-2xl font-black text-gray-900">Feature Flags</h1>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <CardSkeleton /><CardSkeleton /><CardSkeleton /><CardSkeleton />
+      </div>
+    </div>
+  );
 
   return (
     <RequirePermission permissions={[PERMISSIONS.settings.manage]}>
-      <div className="max-w-4xl mx-auto p-6 space-y-6">
-        <h1 className="text-2xl font-black text-gray-900">Feature Flags</h1>
-        <p className="text-sm text-gray-500">Enable or disable features for this school. Changes affect the sidebar immediately.</p>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {FEATURE_FLAGS.map((f) => {
-            const enabled = flags[f.key] !== false;
-            return (
-              <div key={f.key} className="bg-white border border-gray-200 rounded-xl p-5 flex items-center justify-between shadow-sm">
-                <span className="font-semibold text-gray-900">{f.label}</span>
-                <button
-                  onClick={() => toggle(f.key, enabled)}
-                  disabled={updating === f.key}
-                  className={`p-2 rounded-lg transition ${enabled ? "text-green-600 hover:bg-green-50" : "text-gray-400 hover:bg-gray-100"}`}
-                >
-                  {updating === f.key ? <Loader2 className="animate-spin" size={24} /> : enabled ? <ToggleRight size={32} /> : <ToggleLeft size={32} />}
-                </button>
-              </div>
-            );
-          })}
+      <div className="max-w-6xl mx-auto p-6 space-y-8">
+        <div>
+          <h1 className="text-2xl font-black text-gray-900">Feature Flags</h1>
+          <p className="text-sm text-gray-500">Enable or disable modules and features for your school in real-time.</p>
         </div>
+
+        {FEATURE_GROUPS.map((group) => (
+          <div key={group.title} className="space-y-4">
+            <h2 className={`text-lg font-bold flex items-center gap-2 ${group.color}`}>
+              <group.icon size={22} /> {group.title}
+            </h2>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {group.features.map((f) => {
+                const enabled = flags[f.key] !== false; // Default true if not set
+                return (
+                  <motion.div
+                    key={f.key}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className={`bg-white border rounded-2xl p-5 flex items-start justify-between shadow-sm transition-all ${enabled ? 'border-blue-200 ring-1 ring-blue-50' : 'border-gray-200'}`}
+                  >
+                    <div className="flex-1 mr-4">
+                      <p className="font-bold text-gray-900">{f.label}</p>
+                      <p className="text-xs text-gray-500 mt-1">{f.description}</p>
+                    </div>
+                    <button
+                      onClick={() => toggle(f.key, enabled)}
+                      disabled={updating === f.key}
+                      className={`mt-1 p-2 rounded-lg transition ${enabled ? "text-blue-600 hover:bg-blue-50" : "text-gray-400 hover:bg-gray-100"}`}
+                    >
+                      {updating === f.key ? (
+                        <Loader2 className="animate-spin" size={28} />
+                      ) : enabled ? (
+                        <ToggleRight size={32} />
+                      ) : (
+                        <ToggleLeft size={32} />
+                      )}
+                    </button>
+                  </motion.div>
+                );
+              })}
+            </div>
+          </div>
+        ))}
       </div>
     </RequirePermission>
   );
