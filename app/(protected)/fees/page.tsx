@@ -134,7 +134,7 @@ export default function FeesPage() {
           <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 block">Class</label>
           <select value={selectedClass} onChange={(e) => { setSelectedClass(e.target.value); setSelectedSection(""); }} className="w-full border border-gray-300 rounded-lg px-3 py-2 font-medium">
             <option value="">All Classes</option>
-            {availableClasses.map((c) => <option key={c} value={c}>Class {c}</option>)}
+            {availableClasses.map((c: string) => <option key={c} value={c}>Class {c}</option>)}
           </select>
         </div>
         <div className="flex-1 min-w-[150px]">
