@@ -1,10 +1,11 @@
 // hooks/useClasses.ts
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import apiClient from "@/lib/api/client";
-import { safeArray } from "@/lib/api/safeResponse";
 import { QueryKeys } from "@/lib/api/queryKeys";
 import { useAuth } from "@/context/AuthContext";
+import { useToast } from "@/components/ToastProvider";
 
+// 🔄 Fetch All Classes (Crash-Proof)
 export const useClasses = () => {
   const { user } = useAuth();
   const tenantId = user?.tenantId || "unknown";
@@ -12,14 +13,21 @@ export const useClasses = () => {
   return useQuery({
     queryKey: QueryKeys.classes(tenantId),
     queryFn: async () => {
-      const res = await apiClient.get("/classes");
-      return safeArray(res);
+      try {
+        const res = await apiClient.get("/classes");
+        let data = Array.isArray(res) ? res : (res?.data || []);
+        if (!Array.isArray(data)) data = [];
+        return data;
+      } catch (error) {
+        console.error("Failed to fetch classes:", error);
+        return [];
+      }
     },
     enabled: !!tenantId && tenantId !== "unknown",
   });
 };
 
-// ✨ Optimistic Create
+// ✨ Create Class (With Optimistic Update)
 export const useCreateClass = () => {
   const queryClient = useQueryClient();
   const { user } = useAuth();
@@ -52,7 +60,7 @@ export const useCreateClass = () => {
   });
 };
 
-// 🗑️ Optimistic Delete
+// 🗑️ Delete Class (With Optimistic Update)
 export const useDeleteClass = () => {
   const queryClient = useQueryClient();
   const { user } = useAuth();
