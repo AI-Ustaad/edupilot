@@ -1,244 +1,220 @@
 "use client";
 import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { useAuth } from "@/context/AuthContext";
-import { Loader2, Camera, Upload, Plus, Trash2, Save, UserPlus, FileText } from "lucide-react";
-import Image from "next/image";
-import { useToast } from "@/components/ToastProvider";
+import Link from "next/link";
+import {
+  Loader2, Plus, Trash2, Users, Upload, FileSpreadsheet, X, CheckCircle2, AlertTriangle,
+} from "lucide-react";
+import RequirePermission from "@/components/RequirePermission";
+import { PERMISSIONS } from "@/lib/auth/permissions";
 
-// 🚀 Hooks
-import { useCreateStaff } from "@/hooks/useStaff";
+// 🚀 Layered Architecture Hooks & Skeletons
+import { useStaff, useDeleteStaff } from "@/hooks/useStaff";
+import { TableSkeleton } from "@/components/Skeletons";
 
-const Input = ({ label, ...props }: { label: string } & React.InputHTMLAttributes<HTMLInputElement>) => (
-  <div><label className="block text-sm font-medium text-gray-700 mb-1">{label}</label><input {...props} className="w-full p-2 border rounded-xl" /></div>
-);
-const Select = ({ label, options, ...props }: { label: string; options: string[] } & React.SelectHTMLAttributes<HTMLSelectElement>) => (
-  <div><label className="block text-sm font-medium text-gray-700 mb-1">{label}</label><select {...props} className="w-full p-2 border rounded-xl bg-white">{options.map((opt) => <option key={opt} value={opt}>{opt}</option>)}</select></div>
-);
-const Section = ({ title, children }: { title: string; children: React.ReactNode }) => (
-  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-white p-6 rounded-2xl border border-gray-200"><h3 className="col-span-2 font-bold text-lg text-gray-800">{title}</h3>{children}</div>
-);
+export default function StaffDirectoryPage() {
+  // 1. Fetch Staff using Custom Hook
+  const { data: staff = [], isLoading } = useStaff();
+  
+  // 2. Delete Mutation (With Optimistic Update Built-in)
+  const deleteMutation = useDeleteStaff();
 
-export default function AddStaffPage() {
-  const router = useRouter();
-  const { user } = useAuth();
-  const createMutation = useCreateStaff();
-  const { showToast } = useToast();
+  // Bulk Import states
+  const [showBulkModal, setShowBulkModal] = useState(false);
+  const [bulkFile, setBulkFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [bulkMessage, setBulkMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
-  const [activeTab, setActiveTab] = useState(0);
-  const [error, setError] = useState("");
-  const [ocrUploading, setOcrUploading] = useState(false);
-
-  const [form, setForm] = useState<any>({
-    personal: { fullName: "", fatherName: "", cnic: "", dob: "", gender: "Male", bloodGroup: "", nationality: "", religion: "", maritalStatus: "Single", photo: "" },
-    contact: { mobile: "", whatsapp: "", email: "", currentAddress: "", permanentAddress: "", city: "", province: "", country: "", postalCode: "" },
-    professional: { personnelNo: "", employeeId: "", designation: "", department: "", role: "", employmentType: "", joiningDate: "", confirmationDate: "", experience: "", qualification: "" },
-    payroll: { basicSalary: 0, allowances: [{ name: "", amount: 0 }], deductions: [{ name: "", amount: 0 }], grossSalary: 0, bankName: "", accountNumber: "", iban: "", salaryPaymentMethod: "" },
-    education: [] as any[],
-    academic: { subjects: [] as string[], classesAssigned: [] as string[], timetable: "", sectionAssignment: "", classTeacher: false },
-    emergency: { name: "", relation: "", phone: "", alternatePhone: "" },
-    documents: { cnicFront: "", cnicBack: "", degreeCertificates: [] as string[], experienceCertificates: [] as string[], appointmentLetter: "", contract: "", cv: "" },
-  });
-
-  const handleChange = (section: string, field: string, value: any) => {
-    setForm((prev: any) => ({ ...prev, [section]: { ...prev[section], [field]: value } }));
+  const handleDelete = async (id: string) => {
+    if (!confirm("Are you sure you want to remove this staff member?")) return;
+    deleteMutation.mutate(id);
   };
 
-  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => handleChange("personal", "photo", reader.result as string);
-      reader.readAsDataURL(file);
-    }
-  };
-
-  // 🚀 OCR Upload Handler for Auto-Fill
-  const handleOCRUpload = async () => {
-    const input = document.createElement("input");
-    input.type = "file";
-    input.accept = "image/*,application/pdf,.docx";
-    input.onchange = async (e: any) => {
-      const file = e.target.files[0];
-      if (!file) return;
-      
-      setOcrUploading(true);
-      const formData = new FormData();
-      formData.append("file", file);
-      
-      try {
-        // Call Staff OCR API
-        const res = await fetch("/api/v1/staff/ocr", { method: "POST", body: formData });
-        const result = await res.json();
-        
-        if (res.ok && result.success && result.data) {
-          const extracted = result.data;
-          // Auto-Fill the form with extracted data
-          setForm((prev: any) => ({
-            ...prev,
-            personal: {
-              ...prev.personal,
-              fullName: extracted.fullName || prev.personal.fullName,
-              cnic: extracted.cnic || prev.personal.cnic,
-              photo: extracted.photoBase64 || prev.personal.photo
-            },
-            contact: {
-              ...prev.contact,
-              mobile: extracted.phone || prev.contact.mobile,
-            },
-            professional: {
-              ...prev.professional,
-              designation: extracted.designation || prev.professional.designation,
-              joiningDate: extracted.joiningDate || prev.professional.joiningDate,
-            }
-          }));
-          showToast("Data extracted successfully! Please verify the fields.", "success");
-          setActiveTab(0); // Switch to Basic Info tab to show filled data
-        } else {
-          showToast(result.error || "Failed to extract data from document.", "error");
-        }
-      } catch (err) {
-        showToast("OCR processing failed.", "error");
-      } finally {
-        setOcrUploading(false);
-      }
-    };
-    input.click();
-  };
-
-  const calcNetPay = () => {
-    const basic = form.payroll.basicSalary || 0;
-    const allowances = form.payroll.allowances.reduce((sum: number, a: any) => sum + (a.amount || 0), 0);
-    const deductions = form.payroll.deductions.reduce((sum: number, d: any) => sum + (d.amount || 0), 0);
-    return basic + allowances - deductions;
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!form.personal.fullName) {
-      setError("Full Name is required.");
+  // Bulk Import handler
+  const handleBulkUpload = async () => {
+    if (!bulkFile) {
+      setBulkMessage({ type: "error", text: "Please select a file first." });
       return;
     }
-    setError("");
-    createMutation.mutate(
-      { ...form, tenantId: user?.tenantId, createdBy: user?.uid },
-      { onSuccess: () => router.push("/staff") }
-    );
+    setUploading(true);
+    setBulkMessage(null);
+    try {
+      const formData = new FormData();
+      formData.append("file", bulkFile);
+
+      const res = await fetch("/api/v1/staff/bulk", {
+        method: "POST",
+        body: formData,
+      });
+
+      const json = await res.json();
+      if (json.success) {
+        setBulkMessage({ type: "success", text: `✅ ${json.count} staff members imported successfully!` });
+        setTimeout(() => {
+          setShowBulkModal(false);
+          setBulkFile(null);
+          setBulkMessage(null);
+        }, 2000);
+      } else {
+        setBulkMessage({ type: "error", text: json.message || "Import failed." });
+      }
+    } catch (err) {
+      setBulkMessage({ type: "error", text: "Network error. Please try again." });
+    } finally {
+      setUploading(false);
+    }
   };
 
-  const tabs = [
-    { label: "Basic Info" },
-    { label: "Professional" },
-    { label: "Financial" },
-    { label: "Documents" }
-  ];
+  if (isLoading) {
+    return (
+      <div className="max-w-6xl mx-auto p-6 space-y-6">
+        <div className="flex justify-between items-center">
+          <h1 className="text-2xl font-black text-gray-900 flex items-center gap-2">
+            <Users className="text-blue-600"/> Staff Directory
+          </h1>
+        </div>
+        <TableSkeleton rows={6} cols={4} />
+      </div>
+    );
+  }
 
   return (
-    <div className="max-w-4xl mx-auto p-6 space-y-6">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <h1 className="text-2xl font-black text-gray-900 flex items-center gap-2">
-          <UserPlus className="text-blue-600" /> Add New Staff Member
-        </h1>
-        
-        {/* 🚀 OCR Auto-Fill Button */}
-        <button 
-          onClick={handleOCRUpload} 
-          disabled={ocrUploading}
-          className="bg-purple-600 hover:bg-purple-700 text-white px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 transition disabled:opacity-50 shadow-sm"
-        >
-          {ocrUploading ? <Loader2 className="animate-spin" size={18} /> : <FileText size={18} />}
-          {ocrUploading ? "Extracting Data..." : "Upload Document (OCR)"}
-        </button>
-      </div>
-
-      {error && <div className="bg-red-50 text-red-700 p-3 rounded-xl font-bold">{error}</div>}
-
-      <div className="flex gap-1 border-b border-gray-200">
-        {tabs.map((tab, idx) => (
-          <button
-            key={idx}
-            onClick={() => setActiveTab(idx)}
-            className={`flex-1 py-2 font-bold text-sm uppercase tracking-wider rounded-t-lg transition ${
-              activeTab === idx ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
-
-      <form onSubmit={handleSubmit}>
-        {/* TAB 0: Basic Info */}
-        {activeTab === 0 && (
-          <Section title="Personal Information">
-            <div className="col-span-2 flex items-center gap-4">
-              <div className="relative">
-                {form.personal.photo ? (
-                  <Image src={form.personal.photo} alt="Staff Photo" width={96} height={96} className="w-24 h-24 rounded-full object-cover" />
-                ) : (
-                  <div className="w-24 h-24 rounded-full bg-gray-200 flex items-center justify-center"><Camera size={32} className="text-gray-400" /></div>
-                )}
-                <label className="absolute bottom-0 right-0 bg-blue-600 text-white p-1 rounded-full cursor-pointer">
-                  <Upload size={14} />
-                  <input type="file" accept="image/*" onChange={handlePhotoUpload} className="hidden" />
-                </label>
-              </div>
-              <Input label="Full Name *" value={form.personal.fullName} onChange={e => handleChange("personal", "fullName", e.target.value)} required />
-            </div>
-            <Input label="Father Name" value={form.personal.fatherName} onChange={e => handleChange("personal", "fatherName", e.target.value)} />
-            <Input label="CNIC" value={form.personal.cnic} onChange={e => handleChange("personal", "cnic", e.target.value)} />
-            <Select label="Gender" value={form.personal.gender} onChange={e => handleChange("personal", "gender", e.target.value)} options={["Male", "Female", "Other"]} />
-            <Input label="Mobile" value={form.contact.mobile} onChange={e => handleChange("contact", "mobile", e.target.value)} />
-            <Input label="Email" value={form.contact.email} onChange={e => handleChange("contact", "email", e.target.value)} />
-          </Section>
-        )}
-        
-        {/* TAB 1: Professional */}
-        {activeTab === 1 && (
-          <Section title="Professional Information">
-            <Input label="Personnel No *" value={form.professional.personnelNo} onChange={e => handleChange("professional", "personnelNo", e.target.value)} required />
-            <Input label="Designation *" value={form.professional.designation} onChange={e => handleChange("professional", "designation", e.target.value)} required />
-            <Input label="Department" value={form.professional.department} onChange={e => handleChange("professional", "department", e.target.value)} />
-            <Input label="Joining Date" type="date" value={form.professional.joiningDate} onChange={e => handleChange("professional", "joiningDate", e.target.value)} />
-          </Section>
-        )}
-
-        {/* TAB 2: Financial */}
-        {activeTab === 2 && (
-          <Section title="Payroll & Financial">
-            <Input label="Basic Salary" type="number" value={form.payroll.basicSalary} onChange={e => handleChange("payroll", "basicSalary", parseFloat(e.target.value) || 0)} />
-            <Input label="Bank Name" value={form.payroll.bankName} onChange={e => handleChange("payroll", "bankName", e.target.value)} />
-            <Input label="Account Number" value={form.payroll.accountNumber} onChange={e => handleChange("payroll", "accountNumber", e.target.value)} />
-            <Select label="Payment Method" value={form.payroll.salaryPaymentMethod} onChange={e => handleChange("payroll", "salaryPaymentMethod", e.target.value)} options={["Bank Transfer", "Cash", "Cheque"]} />
-            <div className="col-span-2 p-4 bg-gray-50 rounded-xl"><span className="font-bold text-lg">Net Pay: Rs. {calcNetPay().toLocaleString()}</span></div>
-          </Section>
-        )}
-
-        {/* TAB 3: Documents */}
-        {activeTab === 3 && (
-          <Section title="Documents Upload">
-            <div className="col-span-2"><label className="block text-sm font-medium text-gray-700 mb-1">CNIC Front (URL)</label><input value={form.documents.cnicFront} onChange={e => handleChange("documents", "cnicFront", e.target.value)} className="w-full p-2 border rounded-xl" /></div>
-            <div className="col-span-2"><label className="block text-sm font-medium text-gray-700 mb-1">CV (URL)</label><input value={form.documents.cv} onChange={e => handleChange("documents", "cv", e.target.value)} className="w-full p-2 border rounded-xl" /></div>
-          </Section>
-        )}
-
-        <div className="mt-6 flex gap-4">
-          {activeTab > 0 && (
-            <button type="button" onClick={() => setActiveTab(activeTab - 1)} className="w-full bg-gray-200 text-gray-700 px-8 py-3 rounded-xl font-bold">
-              Back
-            </button>
-          )}
-          {activeTab < 3 ? (
-             <button type="button" onClick={() => setActiveTab(activeTab + 1)} className="w-full bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-xl font-bold">
-               Next
-             </button>
-          ) : (
-            <button type="submit" disabled={createMutation.isPending} className="w-full bg-green-600 hover:bg-green-700 text-white px-8 py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition disabled:opacity-50">
-              {createMutation.isPending ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />} Save Staff Record
-            </button>
-          )}
+    <RequirePermission permissions={[PERMISSIONS.staff.view]}>
+      <div className="max-w-6xl mx-auto p-6 space-y-6">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div>
+            <h1 className="text-2xl font-black text-gray-900 flex items-center gap-2">
+              <Users className="text-blue-600"/> Staff Directory
+            </h1>
+            <p className="text-gray-500 text-sm">Manage teachers and administrative staff.</p>
+          </div>
+          <div className="flex gap-2">
+            <RequirePermission permissions={[PERMISSIONS.staff.create]}>
+              <Link
+                href="/staff/add"
+                className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 transition"
+              >
+                <Plus size={18} /> Add Staff
+              </Link>
+              <button
+                onClick={() => setShowBulkModal(true)}
+                className="bg-white border border-blue-600 text-blue-600 hover:bg-blue-50 px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 transition"
+              >
+                <FileSpreadsheet size={18} /> Bulk Import
+              </button>
+            </RequirePermission>
+          </div>
         </div>
-      </form>
-    </div>
+
+        {/* Bulk Import Modal */}
+        {showBulkModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+            <div className="bg-white w-full max-w-md mx-4 rounded-2xl shadow-xl p-6 relative">
+              <button
+                onClick={() => { setShowBulkModal(false); setBulkFile(null); setBulkMessage(null); }}
+                className="absolute top-3 right-3 text-gray-400 hover:text-gray-700"
+              >
+                <X size={20} />
+              </button>
+              <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                <Upload size={20} /> Bulk Import Staff
+              </h2>
+              <p className="text-sm text-gray-500 mb-4">
+                Upload an Excel file (.xlsx) containing staff records. The file must have columns: <strong>Full Name, Email, Phone, Designation, Personnel No</strong>.
+              </p>
+              <div className="mb-4">
+                <input
+                  type="file"
+                  accept=".xlsx,.xls"
+                  onChange={(e) => {
+                    setBulkFile(e.target.files?.[0] || null);
+                    setBulkMessage(null);
+                  }}
+                  className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                />
+              </div>
+              {bulkMessage && (
+                <div className={`flex items-center gap-2 p-3 rounded-xl text-sm font-bold mb-3 ${
+                  bulkMessage.type === "success" ? "bg-green-50 text-green-700" : "bg-red-50 text-red-600"
+                }`}>
+                  {bulkMessage.type === "success" ? <CheckCircle2 size={18} /> : <AlertTriangle size={18} />}
+                  {bulkMessage.text}
+                </div>
+              )}
+              <div className="flex justify-end gap-3">
+                <button
+                  onClick={() => { setShowBulkModal(false); setBulkFile(null); setBulkMessage(null); }}
+                  className="px-4 py-2 rounded-xl border border-gray-300 text-gray-700 font-bold hover:bg-gray-50 transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleBulkUpload}
+                  disabled={uploading || !bulkFile}
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl font-bold flex items-center gap-2 transition disabled:opacity-50"
+                >
+                  {uploading ? <Loader2 className="animate-spin" size={16} /> : <Upload size={16} />}
+                  {uploading ? "Uploading..." : "Upload & Import"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Staff Table or Skeleton */}
+        <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm">
+              <thead className="bg-gray-50 border-b border-gray-200">
+                <tr>
+                  <th className="p-4 font-bold text-gray-600">Name</th>
+                  <th className="p-4 font-bold text-gray-600">Role</th>
+                  <th className="p-4 font-bold text-gray-600">Email</th>
+                  <th className="p-4 font-bold text-right text-gray-600">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {staff.length === 0 ? (
+                  <tr><td colSpan={4} className="p-8 text-center text-gray-400 font-medium">No staff members found.</td></tr>
+                ) : (
+                  staff.map((s: any) => (
+                    <tr 
+                      key={s.id} 
+                      className={`hover:bg-gray-50 transition ${
+                        deleteMutation.isPending && deleteMutation.variables === s.id ? 'opacity-50 pointer-events-none' : ''
+                      }`}
+                    >
+                      <td className="p-4 font-bold text-gray-900">
+                        <Link href={`/staff-profile?id=${s.id}`} className="hover:text-blue-600 hover:underline">
+                          {s.personal?.fullName || s.fullName || "N/A"}
+                        </Link>
+                      </td>
+                      <td className="p-4">
+                        <span className="bg-blue-50 text-blue-700 border border-blue-100 px-3 py-1 rounded-full text-xs font-bold uppercase">
+                          {s.professional?.designation || s.role || "Staff"}
+                        </span>
+                      </td>
+                      <td className="p-4 text-gray-600 font-medium">{s.contact?.email || s.email || "N/A"}</td>
+                      <td className="p-4 text-right">
+                        <RequirePermission permissions={[PERMISSIONS.staff.delete]}>
+                          <button 
+                            onClick={() => handleDelete(s.id)} 
+                            className="text-red-500 hover:bg-red-50 p-2 rounded-lg transition disabled:opacity-50"
+                            disabled={deleteMutation.isPending}
+                          >
+                            {deleteMutation.isPending && deleteMutation.variables === s.id ? 
+                              <Loader2 size={18} className="animate-spin"/> : <Trash2 size={18}/>
+                            }
+                          </button>
+                        </RequirePermission>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </RequirePermission>
   );
 }
