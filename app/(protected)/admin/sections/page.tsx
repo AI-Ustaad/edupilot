@@ -34,8 +34,8 @@ export default function SectionsPage() {
               <p className="text-gray-500 mb-4">Create new master classes or edit existing ones.</p>
               {isLoading ? <p>Loading classes...</p> : (
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  {Array.from(new Set(classes.map((c: any) => c.classGrade))).map(cls => (
-                    <div key={cls} className="bg-gray-50 border border-gray-200 rounded-xl p-3 text-center font-bold text-gray-700">
+                  {Array.from(new Set(classes.map((c: any) => c.classGrade as string))).map((cls: string) => (
+  <div key={cls} className="bg-gray-50 border border-gray-200 rounded-xl p-3 text-center font-bold text-gray-700">
                       Class {cls}
                     </div>
                   ))}
