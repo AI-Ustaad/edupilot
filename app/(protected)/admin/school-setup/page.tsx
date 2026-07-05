@@ -14,24 +14,24 @@ export default function SchoolSetupWizard() {
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
 
-  // Form State
   const [schoolType, setSchoolType] = useState<"Private" | "Government" | "Madrissa">("Private");
   const [curriculumId, setCurriculumId] = useState<string>("federal");
   const [selectedLevels, setSelectedLevels] = useState<string[]>([]);
 
+  // If Govt -> Only Federal & Punjab. If Madrissa -> Only Wifaq. If Private -> All + Custom
   const availableCurriculums = CURRICULUMS.filter(c => {
-    if (schoolType === "Madrissa") return c.id === "wifaq";
-    if (schoolType === "Government") return c.id === "federal" || c.id === "punjab"; // Assuming punjab exists or will be added
-    return true; // Private can choose any
+    if (schoolType === "Government") return c.id === "federal" || c.id === "punjab";
+    if (schoolType === "Madrissa") return false; // Madrissa logic can be added later if data exists
+    return true; 
   });
 
-  const availableLevels = schoolType === "Madrissa" 
-    ? [{ key: "madrissa", label: "Madrissa Levels" }]
-    : [
-        { key: "primary", label: "Primary (Prep - Class 5)" },
-        { key: "elementary", label: "Elementary (Class 6 - 8)" },
-        { key: "high", label: "Secondary (Class 9 - 10)" }
-      ];
+  const availableLevels = [
+    { key: "early_childhood", label: "Early Childhood (Play Group - Prep)" },
+    { key: "primary", label: "Primary (Class 1 - 5)" },
+    { key: "middle", label: "Middle (Class 6 - 8)" },
+    { key: "secondary", label: "Secondary (Class 9 - 10)" },
+    { key: "higher_secondary", label: "Higher Secondary (Class 11 - 12)" }
+  ];
 
   const handleApply = async () => {
     setLoading(true);
@@ -66,7 +66,7 @@ export default function SchoolSetupWizard() {
         subjects: Array.from(subjectsToCreate) 
       });
 
-      showToast("School setup completed successfully!", "success");
+      showToast("School setup completed successfully! Syllabus updated.", "success");
       setTimeout(() => router.push("/settings"), 2000);
 
     } catch (err) {
@@ -85,7 +85,6 @@ export default function SchoolSetupWizard() {
           <p className="text-gray-500 text-sm mt-1">Automatically configure Classes and Subjects based on your school type.</p>
         </div>
 
-        {/* Step 1: School Type */}
         {step === 1 && (
           <div className="bg-white p-8 rounded-2xl border shadow-sm space-y-6">
             <h2 className="text-lg font-bold">Step 1: Select School Type</h2>
@@ -95,7 +94,7 @@ export default function SchoolSetupWizard() {
                   key={type}
                   onClick={() => { 
                     setSchoolType(type as any); 
-                    setCurriculumId(type === "Madrissa" ? "wifaq" : "federal");
+                    setCurriculumId(type === "Government" ? "punjab" : "federal");
                     setSelectedLevels([]);
                   }}
                   className={`p-6 rounded-xl border-2 font-bold transition ${schoolType === type ? 'border-blue-600 bg-blue-50 text-blue-600' : 'border-gray-200 text-gray-600 hover:border-gray-300'}`}
@@ -110,17 +109,17 @@ export default function SchoolSetupWizard() {
           </div>
         )}
 
-        {/* Step 2: Curriculum & Levels */}
         {step === 2 && (
           <div className="bg-white p-8 rounded-2xl border shadow-sm space-y-6">
             <h2 className="text-lg font-bold">Step 2: Curriculum & Levels</h2>
             
             <div>
-              <label className="text-sm font-bold text-gray-700 block mb-2">Education Board / System</label>
+              <label className="text-sm font-bold text-gray-700 block mb-2">Education Board</label>
               <select 
                 value={curriculumId} 
                 onChange={(e) => setCurriculumId(e.target.value)}
                 className="w-full p-4 rounded-xl border-2 border-gray-200 focus:border-blue-500 outline-none"
+                disabled={availableCurriculums.length === 0}
               >
                 {availableCurriculums.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                 {schoolType === "Private" && <option value="custom">Custom / Private Board</option>}
@@ -129,7 +128,7 @@ export default function SchoolSetupWizard() {
 
             <div>
               <label className="text-sm font-bold text-gray-700 block mb-2">Levels Offered</label>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {availableLevels.map((level) => (
                   <button
                     key={level.key}
