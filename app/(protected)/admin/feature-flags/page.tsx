@@ -1,12 +1,9 @@
 "use client";
-import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Loader2, ToggleLeft, ToggleRight, Sparkles, BookOpen, DollarSign, Bus, Bot } from "lucide-react";
+import { Loader2, ToggleLeft, ToggleRight, BookOpen, DollarSign, Bot } from "lucide-react";
 import RequirePermission from "@/components/RequirePermission";
 import { PERMISSIONS } from "@/lib/auth/permissions";
-import apiClient from "@/lib/api/client";
-import { safeObject } from "@/lib/api/safeResponse";
-import { useToast } from "@/components/ToastProvider";
+import { useFeatureFlags, useToggleFeatureFlag } from "@/hooks/useAdmin";
 import { CardSkeleton } from "@/components/ui/skeleton/CardSkeleton";
 
 // Enterprise Feature Flag Definitions
@@ -46,40 +43,10 @@ const FEATURE_GROUPS = [
 ];
 
 export default function EnterpriseFeatureFlagsPage() {
-  const [flags, setFlags] = useState<Record<string, boolean>>({});
-  const [loading, setLoading] = useState(true);
-  const [updating, setUpdating] = useState<string | null>(null);
-  const { showToast } = useToast();
+  const { data: flags = {}, isLoading } = useFeatureFlags();
+  const toggleMutation = useToggleFeatureFlag();
 
-  useEffect(() => {
-    const fetchFlags = async () => {
-      try {
-        const res = await apiClient.get("/admin/feature-flags");
-        const data = safeObject(res);
-        setFlags(data);
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchFlags();
-  }, []);
-
-  const toggle = async (feature: string, current: boolean) => {
-    setUpdating(feature);
-    try {
-      await apiClient.post("/admin/feature-flags", { feature, enabled: !current });
-      setFlags(prev => ({ ...prev, [feature]: !current }));
-      showToast("Feature updated successfully!", "success");
-    } catch (err) {
-      showToast("Failed to update feature.", "error");
-    } finally {
-      setUpdating(null);
-    }
-  };
-
-  if (loading) return (
+  if (isLoading) return (
     <div className="p-6 space-y-8">
       <h1 className="text-2xl font-black text-gray-900">Feature Flags</h1>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -87,6 +54,10 @@ export default function EnterpriseFeatureFlagsPage() {
       </div>
     </div>
   );
+
+  const handleToggle = (feature: string, current: boolean) => {
+    toggleMutation.mutate({ feature, enabled: !current });
+  };
 
   return (
     <RequirePermission permissions={[PERMISSIONS.settings.manage]}>
@@ -105,6 +76,8 @@ export default function EnterpriseFeatureFlagsPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {group.features.map((f) => {
                 const enabled = flags[f.key] !== false; // Default true if not set
+                const isUpdating = toggleMutation.isPending && toggleMutation.variables?.feature === f.key;
+                
                 return (
                   <motion.div
                     key={f.key}
@@ -117,11 +90,11 @@ export default function EnterpriseFeatureFlagsPage() {
                       <p className="text-xs text-gray-500 mt-1">{f.description}</p>
                     </div>
                     <button
-                      onClick={() => toggle(f.key, enabled)}
-                      disabled={updating === f.key}
+                      onClick={() => handleToggle(f.key, enabled)}
+                      disabled={isUpdating}
                       className={`mt-1 p-2 rounded-lg transition ${enabled ? "text-blue-600 hover:bg-blue-50" : "text-gray-400 hover:bg-gray-100"}`}
                     >
-                      {updating === f.key ? (
+                      {isUpdating ? (
                         <Loader2 className="animate-spin" size={28} />
                       ) : enabled ? (
                         <ToggleRight size={32} />
