@@ -23,6 +23,13 @@ import {
   Send,
   Star,
   PlusCircle,
+  // 🚀 New Enterprise Icons
+  Building2,
+  ShieldCheck,
+  Lock,
+  History,
+  ToggleRight,
+  Palette,
 } from "lucide-react";
 
 export interface MenuItemDef {
@@ -302,38 +309,66 @@ const ALL_MENU_GROUPS: MenuGroupDef[] = [
       },
     ],
   },
-  // ── Admin Tools ───────────────────────────
+  // ── 🚀 ENTERPRISE ADMIN TOOLS ───────────────
   {
     title: "Admin Tools",
     icon: Settings,
     key: "adminTools",
     items: [
       {
-        id: "settings",
-        name: "Settings",
-        icon: Settings,
-        path: "/settings",
+        id: "general-settings",
+        name: "General Settings",
+        icon: Building2,
+        path: "/settings/general",
         requiredPermission: "settings.manage",
       },
       {
-        id: "users",
-        name: "Users & Roles",
-        icon: Users,
+        id: "users-identity",
+        name: "Users & Identity",
+        icon: ShieldCheck,
         path: "/admin/users",
-        requiredPermission: "staff.view",
+        requiredPermission: "settings.manage",
       },
       {
-        id: "audit-logs",
-        name: "Audit Logs",
-        icon: FileText,
+        id: "security-center",
+        name: "Security Center",
+        icon: Lock,
+        path: "/admin/security",
+        requiredPermission: "settings.manage",
+      },
+      {
+        id: "audit-center",
+        name: "Audit Center",
+        icon: History,
         path: "/admin/audit",
         requiredPermission: "audit.view",
       },
       {
+        id: "feature-flags",
+        name: "Feature Flags",
+        icon: ToggleRight,
+        path: "/admin/feature-flags",
+        requiredPermission: "settings.manage",
+      },
+      {
+        id: "billing",
+        name: "Subscription",
+        icon: CreditCard,
+        path: "/settings/billing",
+        requiredPermission: "billing.view",
+      },
+      {
         id: "whitelabel",
         name: "White Label",
-        icon: Settings,
+        icon: Palette,
         path: "/settings/whitelabel",
+        requiredPermission: "settings.manage",
+      },
+      {
+        id: "curriculum-settings",
+        name: "Classes & Subjects",
+        icon: BookOpen,
+        path: "/settings",
         requiredPermission: "settings.manage",
       },
     ],
