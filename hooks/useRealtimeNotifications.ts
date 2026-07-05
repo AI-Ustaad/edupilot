@@ -1,10 +1,9 @@
 // hooks/useRealtimeNotifications.ts
 import { useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { collection, query, where, onSnapshot, orderBy } from "firebase/firestore";
-import { db } from "@/lib/firebase"; // آپ کا Firebase Client Instance
+import { collection, query, where, onSnapshot } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 import { useAuth } from "@/context/AuthContext";
-import { QueryKeys } from "@/lib/api/queryKeys";
 import { useToast } from "@/components/ToastProvider";
 
 export const useRealtimeNotifications = () => {
@@ -15,31 +14,37 @@ export const useRealtimeNotifications = () => {
   useEffect(() => {
     if (!user?.tenantId) return;
 
-    // Notifications Collection کا Query
+    // 🛡️ orderBy ہٹا دیا گیا ہے تاکہ Index کی ضرورت نہ پڑے
     const q = query(
       collection(db, "notifications"),
-      where("tenantId", "==", user.tenantId),
-      orderBy("createdAt", "desc")
+      where("tenantId", "==", user.tenantId)
     );
 
-    // 🔄 Real-time Listener
     const unsubscribe = onSnapshot(q, (snapshot) => {
+      // ڈیٹا نکالیں اور Memory میں Sort کریں
       const notifications = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       
-      // React Query Cache کو فوراً اپڈیٹ کریں
+      // createdAt کے مطابق Sort کرنا (نیا سب سے اوپر)
+      notifications.sort((a: any, b: any) => {
+        const timeA = a.createdAt?.seconds || 0;
+        const timeB = b.createdAt?.seconds || 0;
+        return timeB - timeA;
+      });
+
+      // React Query Cache کو اپ ڈیٹ کریں
       queryClient.setQueryData(["notifications", user.tenantId], notifications);
       
-      // اگر کوئی نیا پیغام آئے تو Toast دکھائیں
+      // نیا پیغام آئے تو Toast دکھائیں
       snapshot.docChanges().forEach((change) => {
         if (change.type === "added" && change.doc.data().createdAt?.seconds > Date.now() / 1000 - 5) {
           showToast(change.doc.data().message, "info");
         }
       });
     }, (error) => {
-      console.error("Realtime notifications error:", error);
+      // اگر پھر بھی Permission کی Error آئے تو خاموش رہیں (Console میں دکھائیں)
+      console.error("Realtime notifications error:", error.message);
     });
 
-    // Component Unmount ہونے پر Listener بند کر دیں
     return () => unsubscribe();
   }, [user?.tenantId, queryClient, showToast]);
 };
