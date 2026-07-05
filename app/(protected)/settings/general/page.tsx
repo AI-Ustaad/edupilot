@@ -24,7 +24,7 @@ export default function GeneralSettingsPage() {
       <div className="max-w-4xl mx-auto p-6 space-y-8">
         <div>
           <h1 className="text-2xl font-black text-gray-900">General Settings</h1>
-          <p className="text-gray-500 text-sm mt-1">Configure your school's fundamental details and localization.</p>
+         <p className="text-gray-500 text-sm mt-1">Configure your school&apos;s fundamental details and localization.</p>
         </div>
 
         {/* School Profile Section */}
