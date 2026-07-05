@@ -88,7 +88,7 @@ export default function EnterpriseWhiteLabelPage() {
               <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2 border-b pb-2">
                 <Globe size={20} className="text-green-600" /> Custom Domain
               </h2>
-              <p className="text-xs text-gray-500">Point your school's domain to EduPilot. (Requires DNS configuration)</p>
+             <p className="text-xs text-gray-500">Point your school&apos;s domain to EduPilot. (Requires DNS configuration)</p>
               <input type="text" value={form.customDomain || ""} onChange={(e) => setForm({ ...form, customDomain: e.target.value })} className={inputClass} placeholder="portal.yourschool.com" />
               <button className="w-full bg-gray-100 text-gray-500 font-bold py-2 rounded-xl text-sm cursor-not-allowed">Verify Domain</button>
             </div>
