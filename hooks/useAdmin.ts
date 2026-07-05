@@ -38,11 +38,8 @@ export const usePendingAdmissions = () => {
   return useQuery({
     queryKey: ["admissions", tenantId, "pending"],
     queryFn: async () => {
-      // تمام سٹوڈنٹس Fetch کریں
       const res = await apiClient.get("/students");
       const allStudents = safeArray(res);
-      
-      // 🛡️ Client-side Filter: صرف وہ سٹوڈنٹس رکھیں جن کا Status pending ہے یا خالی ہے
       return allStudents.filter((s: any) => !s.admissionStatus || s.admissionStatus === "pending");
     },
     enabled: !!tenantId && tenantId !== "unknown",
@@ -58,29 +55,20 @@ export const useUpdateAdmissionStatus = () => {
   return useMutation({
     mutationFn: async ({ id, status }: { id: string; status: string }) => 
       apiClient.put("/admissions/approve", { studentId: id, status }),
-    
-    // 🚀 Optimistic Update: کلک کرتے ہی UI سے ہٹا دو
     onMutate: async ({ id }) => {
       await queryClient.cancelQueries({ queryKey: ["admissions", tenantId, "pending"] });
-      
       const previousAdmissions = queryClient.getQueryData(["admissions", tenantId, "pending"]);
-      
       queryClient.setQueryData(["admissions", tenantId, "pending"], (old: any[]) => 
         old.filter((s: any) => s.id !== id)
       );
-      
       return { previousAdmissions };
     },
-    
     onError: (err, variables, context) => {
-      // اگر Backend Fail ہو تو واپس لسٹ میں لے آو
       queryClient.setQueryData(["admissions", tenantId, "pending"], context?.previousAdmissions);
       showToast("Failed to update admission status.", "error");
     },
-    
     onSuccess: () => {
       showToast("Admission status updated successfully.", "success");
-      // Backend کے ساتھ Sync کرنے کے لیے Refetch
       queryClient.invalidateQueries({ queryKey: ["admissions", tenantId] });
     },
   });
@@ -185,9 +173,8 @@ export const usePromoteStudents = () => {
     onError: () => showToast("Failed to promote students.", "error"),
   });
 };
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
-// 🚀 Feature Flags Hook
+// 8. 🚀 Feature Flags Hook
 export const useFeatureFlags = () => {
   const { user } = useAuth();
   return useQuery({
@@ -208,7 +195,6 @@ export const useToggleFeatureFlag = () => {
       return apiClient.post("/admin/feature-flags", data);
     },
     onSuccess: () => {
-      // 🚀 یہ لائن Sidebar کو خود بخول اپڈیٹ کرنے کا حکم دے گی
       queryClient.invalidateQueries({ queryKey: ["featureFlags", user?.tenantId] });
       showToast("Feature updated successfully!", "success");
     },
