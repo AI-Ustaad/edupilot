@@ -1,4 +1,4 @@
-// lib/data/curriculums.ts
+// lib/curriculum-data.ts (اور lib/data/curriculums.ts)
 
 export interface Subject {
   name: string;
@@ -56,5 +56,10 @@ export const CURRICULUMS: Curriculum[] = [
       ]
     }
   }
-  // یہاں آپ مستقبل میں Punjab اور Cambridge کا ڈیٹا Add کر سکتے ہیں
 ];
+
+// 🚀 Export a Map for older API routes compatibility
+export const curriculumMap: Record<string, Curriculum> = CURRICULUMS.reduce((map, curr) => {
+  map[curr.id] = curr;
+  return map;
+}, {} as Record<string, Curriculum>);
