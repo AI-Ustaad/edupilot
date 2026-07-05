@@ -1,19 +1,16 @@
 // app/api/v1/staff/ocr/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { getSessionUser } from "@/lib/auth/auth-server";
-import { createWorker } from "tesseract.js";
 
 export const runtime = "nodejs";
 
 export async function POST(req: NextRequest) {
   try {
-    // 1. Auth Check
     const user = await getSessionUser();
     if (!user) {
       return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
     }
 
-    // 2. Get File from FormData
     const formData = await req.formData();
     const file = formData.get("file") as File;
     
@@ -21,36 +18,50 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: "No file provided" }, { status: 400 });
     }
 
-    // 3. Convert File to Buffer
+    // Check if API Key is configured
+    const apiKey = process.env.GOOGLE_VISION_API_KEY;
+    if (!apiKey) {
+      return NextResponse.json({ success: false, error: "Google Vision API Key not configured." }, { status: 500 });
+    }
+
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
+    const base64Image = buffer.toString('base64');
 
-    // 4. Run OCR (Tesseract.js)
-    const worker = await createWorker("eng");
-    const { data } = await worker.recognize(buffer);
-    await worker.terminate();
+    // 🚀 Call Google Cloud Vision API (Takes 1-2 seconds)
+    const visionRes = await fetch(`https://vision.googleapis.com/v1/images:annotate?key=${apiKey}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        requests: [{
+          image: { content: base64Image },
+          features: [{ type: "DOCUMENT_TEXT_DETECTION" }] // Better for documents than TEXT_DETECTION
+        }]
+      })
+    });
+
+    const visionData = await visionRes.json();
     
-    const extractedText = data.text;
+    if (!visionData.responses || !visionData.responses[0]) {
+      throw new Error("No response from Google Vision");
+    }
 
-    // 5. Extract Fields using Regex (Basic Auto-Fill Logic)
+    const extractedText = visionData.responses[0].fullTextAnnotation?.text || "";
+
+    // 5. Extract Fields using Regex
     const extract = (regex: RegExp) => {
       const match = extractedText.match(regex);
       return match ? match[1].trim() : "";
     };
 
     const fullName = extract(/(?:Name|Full Name)\s*[:\-]?\s*([A-Za-z\s\.]+)/i);
-    const cnic = extract(/(?:CNIC|B-Form|C\.N\.I\.C)\s*[:\-]?\s*([0-9\-]{8,15})/i);
+    const cnic = extract(/(?:CNIC|B-Form)\s*[:\-]?\s*([0-9\-]{8,15})/i);
     const phone = extract(/(?:Phone|Mobile|Cell)\s*[:\-]?\s*([0-9\+\-\s]{11,15})/i);
     const designation = extract(/(?:Designation|Post|Role)\s*[:\-]?\s*([A-Za-z\s\.]+)/i);
-    const joiningDate = extract(/(?:Joining Date|Date of Joining)\s*[:\-]?\s*([0-9\/\-]{8,10})/i);
 
-    // 6. Convert Image to Base64 for Photo Preview (if it's an image)
-    let photoBase64 = null;
-    if (file.type.startsWith('image/')) {
-      photoBase64 = `data:${file.type};base64,${buffer.toString('base64')}`;
-    }
+    // Convert Image to Base64 for Photo Preview
+    const photoBase64 = `data:${file.type};base64,${base64Image}`;
 
-    // 7. Return Extracted Data
     return NextResponse.json({
       success: true,
       data: {
@@ -58,16 +69,15 @@ export async function POST(req: NextRequest) {
         cnic,
         phone,
         designation,
-        joiningDate,
         photoBase64,
-        rawText: extractedText // For debugging if needed
+        rawText: extractedText
       }
     });
 
   } catch (error: any) {
     console.error("[Staff OCR API Error]:", error);
     return NextResponse.json(
-      { success: false, error: "Failed to process document. Please ensure it is a clear image or PDF." },
+      { success: false, error: "Failed to process document." },
       { status: 500 }
     );
   }
