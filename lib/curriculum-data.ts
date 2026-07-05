@@ -57,7 +57,6 @@ export const CURRICULUMS: Curriculum[] = [
     }
   }
 ];
- Export a Map for older API routes compatibility
 export const curriculumMap: Record<string, Curriculum> = CURRICULUMS.reduce((map, curr) => {
   map[curr.id] = curr;
   return map;
