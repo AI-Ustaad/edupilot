@@ -23,13 +23,14 @@ import {
   Send,
   Star,
   PlusCircle,
-  // 🚀 New Enterprise Icons
+  // 🚀 Enterprise Admin Tools Icons
   Building2,
   ShieldCheck,
   Lock,
   History,
   ToggleRight,
   Palette,
+  School,
 } from "lucide-react";
 
 export interface MenuItemDef {
@@ -315,6 +316,13 @@ const ALL_MENU_GROUPS: MenuGroupDef[] = [
     icon: Settings,
     key: "adminTools",
     items: [
+      {
+        id: "school-setup",
+        name: "School Setup Wizard",
+        icon: School,
+        path: "/admin/school-setup",
+        requiredPermission: "settings.manage",
+      },
       {
         id: "general-settings",
         name: "General Settings",
