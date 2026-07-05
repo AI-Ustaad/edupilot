@@ -11,6 +11,7 @@ import { useStudents, useDeleteStudent } from "@/hooks/useStudents";
 import { TableSkeleton } from "@/components/Skeletons";
 import RequirePermission from "@/components/RequirePermission";
 import { PERMISSIONS } from "@/lib/auth/permissions";
+const students = Array.isArray(studentsData) ? studentsData : [];
 import { useToast } from "@/components/ToastProvider";
 
 export default function StudentsPage() {
