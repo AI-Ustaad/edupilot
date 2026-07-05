@@ -4,15 +4,12 @@ import { Loader2, AlertTriangle, User, Mail, Phone, MapPin, Calendar, Users, Boo
 import RequirePermission from "@/components/RequirePermission";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 import Image from "next/image";
-
-// 🚀 Layered Architecture Hook
 import { useStudent360 } from "@/hooks/useStudents";
 
 export default function Student360Page() {
   const params = useParams();
   const studentId = params?.id as string;
 
-  // 1. Fetch Student 360 Data using Custom Hook
   const { data, isLoading, isError, error } = useStudent360(studentId);
 
   if (isLoading) {
@@ -34,14 +31,16 @@ export default function Student360Page() {
     );
   }
 
-  // Extract Data Safely
+  // 🛡️ Extract Data Safely (Crash-Proof)
   const student = data?.student || data;
-  const attendance = data?.attendance || [];
   const risk = data?.risk || {};
   
-  const present = attendance.filter((a: any) => a.status === "Present").length;
-  const absent = attendance.filter((a: any) => a.status === "Absent").length;
-  const late = attendance.filter((a: any) => a.status === "Late").length;
+  // 🛡️ FIX: Ensure attendance is ALWAYS an array
+  const attendance = Array.isArray(data?.attendance) ? data.attendance : [];
+  
+  const present = attendance.filter((a: any) => a.status === "Present").length || 0;
+  const absent = attendance.filter((a: any) => a.status === "Absent").length || 0;
+  const late = attendance.filter((a: any) => a.status === "Late").length || 0;
   
   const attendanceStats = {
     percentage: risk?.breakdown?.attendance || 0,
