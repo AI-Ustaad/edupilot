@@ -4,11 +4,11 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { Loader2, Camera, Upload, Plus, Trash2, Save, UserPlus, FileText } from "lucide-react";
 import Image from "next/image";
+import { createWorker } from "tesseract.js"; // 🚀 Client-Side OCR
+import { useCreateStaff } from "@/hooks/useStaff";
 import { useToast } from "@/components/ToastProvider";
 
-// 🚀 Hooks
-import { useCreateStaff } from "@/hooks/useStaff";
-
+// Reusable UI Components
 const Input = ({ label, ...props }: { label: string } & React.InputHTMLAttributes<HTMLInputElement>) => (
   <div><label className="block text-sm font-medium text-gray-700 mb-1">{label}</label><input {...props} className="w-full p-2 border rounded-xl" /></div>
 );
@@ -53,7 +53,7 @@ export default function AddStaffPage() {
     }
   };
 
-  // 🚀 OCR Upload Handler for Auto-Fill
+  // 🚀 Client-Side OCR Upload Handler (Fast & No Server Load)
   const handleOCRUpload = async () => {
     const input = document.createElement("input");
     input.type = "file";
@@ -63,42 +63,67 @@ export default function AddStaffPage() {
       if (!file) return;
       
       setOcrUploading(true);
-      const formData = new FormData();
-      formData.append("file", file);
+      showToast("Extracting data in browser... Please wait.", "info");
       
       try {
-        // Call Staff OCR API
-        const res = await fetch("/api/v1/staff/ocr", { method: "POST", body: formData });
-        const result = await res.json();
+        let extractedText = "";
         
-        if (res.ok && result.success && result.data) {
-          const extracted = result.data;
-          // Auto-Fill the form with extracted data
-          setForm((prev: any) => ({
-            ...prev,
-            personal: {
-              ...prev.personal,
-              fullName: extracted.fullName || prev.personal.fullName,
-              cnic: extracted.cnic || prev.personal.cnic,
-              photo: extracted.photoBase64 || prev.personal.photo
-            },
-            contact: {
-              ...prev.contact,
-              mobile: extracted.phone || prev.contact.mobile,
-            },
-            professional: {
-              ...prev.professional,
-              designation: extracted.designation || prev.professional.designation,
-              joiningDate: extracted.joiningDate || prev.professional.joiningDate,
-            }
-          }));
-          showToast("Data extracted successfully! Please verify the fields.", "success");
-          setActiveTab(0); // Switch to Basic Info tab to show filled data
+        // If it's an image, run Tesseract.js in the browser
+        if (file.type.startsWith('image/')) {
+          const worker = await createWorker("eng");
+          const { data } = await worker.recognize(file);
+          await worker.terminate();
+          extractedText = data.text;
+          
+          // Convert to Base64 for Preview
+          const reader = new FileReader();
+          reader.onloadend = () => handleChange("personal", "photo", reader.result as string);
+          reader.readAsDataURL(file);
         } else {
-          showToast(result.error || "Failed to extract data from document.", "error");
+          // For PDF/Docx, fallback to server API
+          const formData = new FormData();
+          formData.append("file", file);
+          const res = await fetch("/api/v1/staff/ocr", { method: "POST", body: formData });
+          const result = await res.json();
+          if (result.success) {
+            extractedText = result.data.rawText || "";
+          } else {
+            throw new Error("OCR failed on server");
+          }
         }
+
+        // Auto-Fill Logic (Regex to extract Name, CNIC, etc.)
+        const extract = (regex: RegExp) => {
+          const match = extractedText.match(regex);
+          return match ? match[1].trim() : "";
+        };
+
+        const fullName = extract(/(?:Name|Full Name)\s*[:\-]?\s*([A-Za-z\s\.]+)/i);
+        const cnic = extract(/(?:CNIC|B-Form)\s*[:\-]?\s*([0-9\-]{8,15})/i);
+        const phone = extract(/(?:Phone|Mobile|Cell)\s*[:\-]?\s*([0-9\+\-\s]{11,15})/i);
+        const designation = extract(/(?:Designation|Post|Role)\s*[:\-]?\s*([A-Za-z\s\.]+)/i);
+
+        setForm((prev: any) => ({
+          ...prev,
+          personal: {
+            ...prev.personal,
+            fullName: fullName || prev.personal.fullName,
+            cnic: cnic || prev.personal.cnic,
+          },
+          contact: {
+            ...prev.contact,
+            mobile: phone || prev.contact.mobile,
+          },
+          professional: {
+            ...prev.professional,
+            designation: designation || prev.professional.designation,
+          }
+        }));
+
+        showToast("Data extracted successfully! Please verify.", "success");
+        setActiveTab(0); // Switch to Basic Info tab
       } catch (err) {
-        showToast("OCR processing failed.", "error");
+        showToast("Failed to extract data. Try a clearer image.", "error");
       } finally {
         setOcrUploading(false);
       }
