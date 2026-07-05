@@ -1,10 +1,10 @@
 "use client";
 import { useState, useEffect } from "react";
-import { Loader2, CheckCircle, Palette, Globe } from "lucide-react";
+import { Loader2, CheckCircle, Palette, Globe, Image as ImageIcon } from "lucide-react"; // 🛡️ Fix: ImageIcon added
 import RequirePermission from "@/components/RequirePermission";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 import { useBranding, useUpdateBranding } from "@/hooks/useAdmin";
-import ImageUpload from "@/components/ui/ImageUpload"; // 🚀 Import Upload Component
+import ImageUpload from "@/components/ui/ImageUpload";
 
 export default function EnterpriseWhiteLabelPage() {
   const { data: branding, isLoading } = useBranding();
