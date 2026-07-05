@@ -1,4 +1,4 @@
-// lib/curriculum-data.ts
+// lib/curriculum-data.ts (اور lib/data/curriculums.ts)
 
 export interface Subject {
   name: string;
@@ -6,7 +6,7 @@ export interface Subject {
 }
 
 export interface ClassLevel {
-  name: string;
+  name: string; // e.g., "Class 1", "Prep", "Mutawassitah"
   subjects: Subject[];
 }
 
@@ -57,6 +57,8 @@ export const CURRICULUMS: Curriculum[] = [
     }
   }
 ];
+
+// 🚀 Export a Map for older API routes compatibility
 export const curriculumMap: Record<string, Curriculum> = CURRICULUMS.reduce((map, curr) => {
   map[curr.id] = curr;
   return map;
