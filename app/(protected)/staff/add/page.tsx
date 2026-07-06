@@ -7,7 +7,7 @@ import Image from "next/image";
 import { useCreateStaff } from "@/hooks/useStaff";
 import { useToast } from "@/components/ToastProvider";
 
-// 🚀 Reusable UI Components
+// Reusable UI Components
 const Input = ({ label, ...props }: { label: string } & React.InputHTMLAttributes<HTMLInputElement>) => (
   <div><label className="block text-sm font-medium text-gray-700 mb-1">{label}</label><input {...props} className="w-full p-2 border rounded-xl" /></div>
 );
@@ -18,7 +18,7 @@ const Section = ({ title, children }: { title: string; children: React.ReactNode
   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-white p-6 rounded-2xl border border-gray-200"><h3 className="col-span-2 font-bold text-lg text-gray-800">{title}</h3>{children}</div>
 );
 
-// 🚀 Reusable Document/Image Upload Component
+// Reusable Document/Image Upload Component
 const DocumentUpload = ({ label, value, onChange }: { label: string; value: string; onChange: (val: string) => void }) => {
   const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -101,7 +101,7 @@ export default function AddStaffPage() {
     }
   };
 
-  // 🚀 Fast Server-Side OCR Handler
+  // 🚀 Fast Server-Side OCR Handler (Google Gemini API)
   const handleOCRUpload = async () => {
     const input = document.createElement("input");
     input.type = "file";
@@ -120,9 +120,13 @@ export default function AddStaffPage() {
         const res = await fetch("/api/v1/staff/ocr", { method: "POST", body: formData });
         const result = await res.json();
         
+        // 🛠️ Debugging: See what AI returned in Browser Console (F12)
+        console.log("AI Extracted Data:", result.data);
+
         if (res.ok && result.success && result.data) {
-          const ex = result.data;
+          const ex = result.data; // Extracted data object
           
+          // 🛡️ Fix: Map all fields correctly to the form state
           setForm((prev: any) => ({
             ...prev,
             personal: {
@@ -132,6 +136,10 @@ export default function AddStaffPage() {
               cnic: ex.cnic || prev.personal.cnic,
               dob: ex.dob || prev.personal.dob,
               photo: ex.photoBase64 || prev.personal.photo
+            },
+            contact: {
+              ...prev.contact,
+              mobile: ex.phone || prev.contact.mobile,
             },
             professional: {
               ...prev.professional,
@@ -195,6 +203,7 @@ export default function AddStaffPage() {
           <UserPlus className="text-blue-600" /> Add New Staff Member
         </h1>
         
+        {/* 🚀 OCR Auto-Fill Button */}
         <button 
           onClick={handleOCRUpload} 
           disabled={ocrUploading}
