@@ -7,7 +7,7 @@ import Image from "next/image";
 import { useCreateStaff } from "@/hooks/useStaff";
 import { useToast } from "@/components/ToastProvider";
 
-// Reusable UI Components
+// 🚀 Reusable UI Components
 const Input = ({ label, ...props }: { label: string } & React.InputHTMLAttributes<HTMLInputElement>) => (
   <div><label className="block text-sm font-medium text-gray-700 mb-1">{label}</label><input {...props} className="w-full p-2 border rounded-xl" /></div>
 );
@@ -17,6 +17,49 @@ const Select = ({ label, options, ...props }: { label: string; options: string[]
 const Section = ({ title, children }: { title: string; children: React.ReactNode }) => (
   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-white p-6 rounded-2xl border border-gray-200"><h3 className="col-span-2 font-bold text-lg text-gray-800">{title}</h3>{children}</div>
 );
+
+// 🚀 Reusable Document/Image Upload Component
+const DocumentUpload = ({ label, value, onChange }: { label: string; value: string; onChange: (val: string) => void }) => {
+  const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => onChange(reader.result as string);
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const isImage = value.startsWith('data:image');
+  
+  return (
+    <div>
+      <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
+      <div className="relative border-2 border-dashed border-gray-300 rounded-xl p-4 flex items-center justify-center h-32 hover:border-blue-500 transition">
+        <input type="file" accept="image/*,application/pdf,.docx" onChange={handleFile} className="absolute inset-0 opacity-0 cursor-pointer" />
+        {value ? (
+          isImage ? (
+            <Image src={value} alt={label} layout="fill" objectFit="contain" className="p-2" />
+          ) : (
+            <div className="flex flex-col items-center text-gray-600">
+              <FileText size={24} />
+              <span className="text-xs mt-1">File Selected</span>
+            </div>
+          )
+        ) : (
+          <div className="flex flex-col items-center text-gray-400">
+            <Upload size={24} />
+            <span className="text-xs mt-1">Click to Upload</span>
+          </div>
+        )}
+      </div>
+      {value && (
+        <button type="button" onClick={() => onChange("")} className="text-xs text-red-500 mt-1 flex items-center gap-1">
+          <Trash2 size={12} /> Remove
+        </button>
+      )}
+    </div>
+  );
+};
 
 export default function AddStaffPage() {
   const router = useRouter();
@@ -36,7 +79,13 @@ export default function AddStaffPage() {
     education: [] as any[],
     academic: { subjects: [] as string[], classesAssigned: [] as string[], timetable: "", sectionAssignment: "", classTeacher: false },
     emergency: { name: "", relation: "", phone: "", alternatePhone: "" },
-    documents: { cnicFront: "", cnicBack: "", degreeCertificates: [] as string[], experienceCertificates: [] as string[], appointmentLetter: "", contract: "", cv: "" },
+    documents: { 
+      cnicFront: "", 
+      cnicBack: "", 
+      degree: "", 
+      experienceCert: "", 
+      cv: "" 
+    },
   });
 
   const handleChange = (section: string, field: string, value: any) => {
@@ -52,7 +101,7 @@ export default function AddStaffPage() {
     }
   };
 
-  // 🚀 Fast Server-Side OCR Handler (Google Vision API)
+  // 🚀 Fast Server-Side OCR Handler
   const handleOCRUpload = async () => {
     const input = document.createElement("input");
     input.type = "file";
@@ -62,35 +111,39 @@ export default function AddStaffPage() {
       if (!file) return;
       
       setOcrUploading(true);
-      showToast("Extracting data via Google Vision...", "info");
+      showToast("Extracting data via OCR...", "info");
       
       try {
         const formData = new FormData();
         formData.append("file", file);
         
-        // Call our Fast Backend API
         const res = await fetch("/api/v1/staff/ocr", { method: "POST", body: formData });
         const result = await res.json();
         
         if (res.ok && result.success && result.data) {
-          const extracted = result.data;
+          const ex = result.data;
           
-          // Auto-Fill the form with extracted data
           setForm((prev: any) => ({
             ...prev,
             personal: {
               ...prev.personal,
-              fullName: extracted.fullName || prev.personal.fullName,
-              cnic: extracted.cnic || prev.personal.cnic,
-              photo: extracted.photoBase64 || prev.personal.photo
-            },
-            contact: {
-              ...prev.contact,
-              mobile: extracted.phone || prev.contact.mobile,
+              fullName: ex.fullName || prev.personal.fullName,
+              fatherName: ex.fatherName || prev.personal.fatherName,
+              cnic: ex.cnic || prev.personal.cnic,
+              dob: ex.dob || prev.personal.dob,
+              photo: ex.photoBase64 || prev.personal.photo
             },
             professional: {
               ...prev.professional,
-              designation: extracted.designation || prev.professional.designation,
+              designation: ex.designation || prev.professional.designation,
+              personnelNo: ex.personnelNo || prev.professional.personnelNo,
+            },
+            payroll: {
+              ...prev.payroll,
+              basicSalary: ex.basicSalary ? parseFloat(ex.basicSalary) : prev.payroll.basicSalary,
+              grossSalary: ex.grossPay ? parseFloat(ex.grossPay) : prev.payroll.grossSalary,
+              bankName: ex.bankName || prev.payroll.bankName,
+              accountNumber: ex.accountNumber || prev.payroll.accountNumber,
             }
           }));
           
@@ -142,7 +195,6 @@ export default function AddStaffPage() {
           <UserPlus className="text-blue-600" /> Add New Staff Member
         </h1>
         
-        {/* 🚀 OCR Auto-Fill Button */}
         <button 
           onClick={handleOCRUpload} 
           disabled={ocrUploading}
@@ -189,6 +241,7 @@ export default function AddStaffPage() {
             </div>
             <Input label="Father Name" value={form.personal.fatherName} onChange={e => handleChange("personal", "fatherName", e.target.value)} />
             <Input label="CNIC" value={form.personal.cnic} onChange={e => handleChange("personal", "cnic", e.target.value)} />
+            <Input label="Date of Birth" type="date" value={form.personal.dob} onChange={e => handleChange("personal", "dob", e.target.value)} />
             <Select label="Gender" value={form.personal.gender} onChange={e => handleChange("personal", "gender", e.target.value)} options={["Male", "Female", "Other"]} />
             <Input label="Mobile" value={form.contact.mobile} onChange={e => handleChange("contact", "mobile", e.target.value)} />
             <Input label="Email" value={form.contact.email} onChange={e => handleChange("contact", "email", e.target.value)} />
@@ -216,12 +269,16 @@ export default function AddStaffPage() {
           </Section>
         )}
 
-        {/* TAB 3: Documents */}
+        {/* TAB 3: Documents (Upload All Formats) */}
         {activeTab === 3 && (
-          <Section title="Documents Upload">
-            <div className="col-span-2"><label className="block text-sm font-medium text-gray-700 mb-1">CNIC Front (URL)</label><input value={form.documents.cnicFront} onChange={e => handleChange("documents", "cnicFront", e.target.value)} className="w-full p-2 border rounded-xl" /></div>
-            <div className="col-span-2"><label className="block text-sm font-medium text-gray-700 mb-1">CV (URL)</label><input value={form.documents.cv} onChange={e => handleChange("documents", "cv", e.target.value)} className="w-full p-2 border rounded-xl" /></div>
-          </Section>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-white p-6 rounded-2xl border border-gray-200">
+            <h3 className="col-span-2 font-bold text-lg text-gray-800">Credentials & Documents</h3>
+            <DocumentUpload label="CNIC Front" value={form.documents.cnicFront} onChange={(val) => handleChange("documents", "cnicFront", val)} />
+            <DocumentUpload label="CNIC Back" value={form.documents.cnicBack} onChange={(val) => handleChange("documents", "cnicBack", val)} />
+            <DocumentUpload label="Final Degree" value={form.documents.degree} onChange={(val) => handleChange("documents", "degree", val)} />
+            <DocumentUpload label="Experience Certificate" value={form.documents.experienceCert} onChange={(val) => handleChange("documents", "experienceCert", val)} />
+            <DocumentUpload label="CV / Resume" value={form.documents.cv} onChange={(val) => handleChange("documents", "cv", val)} />
+          </div>
         )}
 
         <div className="mt-6 flex gap-4">
