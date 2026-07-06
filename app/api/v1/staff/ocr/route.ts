@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
     let extractedText = "";
     let photoBase64 = null;
 
-    // 1. Extract Text (Image via Google Vision, PDF via pdf-parse)
+    // 1. Extract Text (Hybrid: Image vs PDF)
     if (file.type.startsWith('image/')) {
       const apiKey = process.env.GOOGLE_VISION_API_KEY;
       if (!apiKey) {
@@ -47,15 +47,24 @@ export async function POST(req: NextRequest) {
       const visionData = await visionRes.json();
       if (visionData.error) {
         console.error("[Staff OCR] Google Vision Error:", visionData.error);
-        return NextResponse.json({ success: false, error: "Failed to read image." }, { status: 500 });
+        return NextResponse.json({ success: false, error: "Failed to read image via Google Vision." }, { status: 500 });
       }
       
       extractedText = visionData?.responses?.[0]?.fullTextAnnotation?.text || "";
       photoBase64 = `data:${file.type};base64,${base64Image}`;
 
     } else if (file.type === 'application/pdf') {
-      const pdfData = await pdfParse(buffer);
-      extractedText = pdfData.text;
+      // 🛡️ Bulletproof PDF Parsing
+      try {
+        const pdfData = await pdfParse(buffer);
+        extractedText = pdfData.text;
+      } catch (pdfError) {
+        console.error("[Staff OCR] PDF Parse Error:", pdfError);
+        return NextResponse.json({ 
+          success: false, 
+          error: "Failed to extract text from PDF. It might be a scanned image inside a PDF. Please upload an image (JPG/PNG) instead." 
+        }, { status: 400 });
+      }
       
     } else {
       return NextResponse.json({ 
