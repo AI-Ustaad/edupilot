@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
     let extractedText = "";
     let photoBase64 = null;
 
-    // 1. Extract Text (Hybrid: Image vs PDF)
+    // 1. Extract Text (Image via Google Vision, PDF via pdf-parse)
     if (file.type.startsWith('image/')) {
       const apiKey = process.env.GOOGLE_VISION_API_KEY;
       if (!apiKey) {
@@ -47,24 +47,15 @@ export async function POST(req: NextRequest) {
       const visionData = await visionRes.json();
       if (visionData.error) {
         console.error("[Staff OCR] Google Vision Error:", visionData.error);
-        return NextResponse.json({ success: false, error: "Failed to read image via Google Vision." }, { status: 500 });
+        return NextResponse.json({ success: false, error: "Failed to read image." }, { status: 500 });
       }
       
       extractedText = visionData?.responses?.[0]?.fullTextAnnotation?.text || "";
       photoBase64 = `data:${file.type};base64,${base64Image}`;
 
     } else if (file.type === 'application/pdf') {
-      // 🛡️ Bulletproof PDF Parsing
-      try {
-        const pdfData = await pdfParse(buffer);
-        extractedText = pdfData.text;
-      } catch (pdfError) {
-        console.error("[Staff OCR] PDF Parse Error:", pdfError);
-        return NextResponse.json({ 
-          success: false, 
-          error: "Failed to extract text from PDF. It might be a scanned image inside a PDF. Please upload an image (JPG/PNG) instead." 
-        }, { status: 400 });
-      }
+      const pdfData = await pdfParse(buffer);
+      extractedText = pdfData.text;
       
     } else {
       return NextResponse.json({ 
@@ -80,7 +71,12 @@ export async function POST(req: NextRequest) {
     // 2. 🚀 Use Google Gemini AI to parse and structure the extracted text
     const geminiApiKey = process.env.GEMINI_API_KEY;
     if (!geminiApiKey) {
-      return NextResponse.json({ success: false, error: "AI Service not configured (Missing GEMINI_API_KEY)." }, { status: 503 });
+      // Fallback if Gemini Key is missing: Return raw text so user can copy-paste
+      return NextResponse.json({ 
+        success: true, 
+        data: { fullName: "", cnic: "", designation: "", photoBase64, rawText: extractedText },
+        message: "AI Service not configured. Showing raw text."
+      });
     }
 
     const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`;
@@ -94,11 +90,11 @@ export async function POST(req: NextRequest) {
     - fullName
     - fatherName
     - cnic
-    - dob (Date of Birth, format: YYYY-MM-DD if possible)
+    - dob
     - designation
     - personnelNo
-    - bps (Basic Pay Scale number)
-    - basicSalary (number only, no commas or text)
+    - bps
+    - basicSalary (number only)
     - grossPay (number only)
     - netPay (number only)
     - accountNumber
@@ -109,15 +105,14 @@ export async function POST(req: NextRequest) {
     ${extractedText}
     ---
     
-    Respond ONLY with the JSON object. Do not include any markdown formatting or extra text.`;
+    Respond ONLY with the JSON object.`;
 
     const geminiRes = await fetch(geminiUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        system_instruction: { parts: [{ text: "You are a helpful HR assistant that only outputs JSON." }] },
         contents: [{ role: "user", parts: [{ text: prompt }] }],
-        generationConfig: { temperature: 0.1, response_mime_type: "application/json" }
+        generationConfig: { temperature: 0.1 }
       })
     });
 
@@ -125,17 +120,30 @@ export async function POST(req: NextRequest) {
 
     if (geminiData.error) {
       console.error("[Staff OCR] Gemini API Error:", geminiData.error);
-      return NextResponse.json({ success: false, error: "AI failed to structure the data." }, { status: 500 });
+      // Fallback: Return raw text instead of crashing
+      return NextResponse.json({ 
+        success: true, 
+        data: { fullName: "", cnic: "", designation: "", photoBase64, rawText: extractedText },
+        message: "AI failed to structure data. Showing raw text."
+      });
     }
 
-    // 3. Parse Gemini JSON Response
+    // 3. Parse Gemini JSON Response Safely
     let structuredData: any = {};
     try {
-      const aiText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
-      structuredData = JSON.parse(aiText);
+      let aiText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
+      
+      // 🛡️ Robust JSON Extraction (in case Gemini wraps it in markdown ```json ... ```)
+      const jsonMatch = aiText.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        structuredData = JSON.parse(jsonMatch[0]);
+      } else {
+        structuredData = JSON.parse(aiText);
+      }
     } catch (parseError) {
       console.error("[Staff OCR] Failed to parse Gemini JSON:", parseError);
-      return NextResponse.json({ success: false, error: "AI returned invalid format." }, { status: 500 });
+      // Fallback: Return raw text if JSON parsing fails
+      structuredData = { fullName: "", cnic: "", designation: "", rawText: extractedText };
     }
 
     // Add photoBase64 if it was an image
