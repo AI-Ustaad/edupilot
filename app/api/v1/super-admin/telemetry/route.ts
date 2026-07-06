@@ -5,6 +5,7 @@ import { TelemetryService } from "@/services/telemetry.service";
 import * as Sentry from "@sentry/nextjs";
 
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic"; // 🛡️ Force dynamic rendering because it uses cookies
 
 export async function GET() {
   try {
