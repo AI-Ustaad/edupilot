@@ -25,9 +25,8 @@ export async function POST(req: NextRequest) {
     let extractedText = "";
     let photoBase64 = null;
 
-    // 🚀 Hybrid Logic: Image vs PDF
+    // 1. Extract Text (Image via Google Vision, PDF via pdf-parse)
     if (file.type.startsWith('image/')) {
-      // CASE 1: It's an Image -> Use Google Vision API
       const apiKey = process.env.GOOGLE_VISION_API_KEY;
       if (!apiKey) {
         return NextResponse.json({ success: false, error: "Image OCR not configured (Missing Google Vision Key)." }, { status: 503 });
@@ -55,67 +54,88 @@ export async function POST(req: NextRequest) {
       photoBase64 = `data:${file.type};base64,${base64Image}`;
 
     } else if (file.type === 'application/pdf') {
-      // CASE 2: It's a PDF -> Use pdf-parse
       const pdfData = await pdfParse(buffer);
       extractedText = pdfData.text;
       
     } else {
       return NextResponse.json({ 
         success: false, 
-        error: "Unsupported file type. Please upload an Image (JPG, PNG) or a PDF file." 
+        error: "Unsupported file type. Please upload an Image or a PDF file." 
       }, { status: 400 });
     }
 
-    if (!extractedText) {
-      return NextResponse.json({ success: true, data: { fullName: "", cnic: "", phone: "", designation: "", photoBase64, rawText: "" }, message: "No text found in document." });
+    if (!extractedText || extractedText.trim().length < 10) {
+      return NextResponse.json({ success: true, data: { fullName: "", cnic: "", phone: "", designation: "", photoBase64, rawText: "" }, message: "No readable text found in document." });
     }
 
-    // 🚀 Enterprise Regex Patterns for Salary Slips
-    const extract = (regex: RegExp) => {
-      const match = extractedText.match(regex);
-      return match ? match[1].trim() : "";
-    };
+    // 2. 🚀 Use Google Gemini AI to parse and structure the extracted text
+    const geminiApiKey = process.env.GEMINI_API_KEY;
+    if (!geminiApiKey) {
+      return NextResponse.json({ success: false, error: "AI Service not configured (Missing GEMINI_API_KEY)." }, { status: 503 });
+    }
 
-    const fullName = extract(/(?:Payee Name|Name of Mr|Name)\s*[:\-]?\s*([A-Za-z\s\.]+?)(?=\s*(?:d\/w\/s|CNIC|Father|Personnel|Designation|$))/i) 
-                  || extract(/(?:Payee Name|Name)\s*[:\-]?\s*([A-Za-z\s\.]+)/i);
-                  
-    const fatherName = extract(/(?:d\/w\/s of|Father Name|Father)\s*[:\-]?\s*([A-Za-z\s\.]+?)(?=\s*(?:CNIC|Personnel|NTN|Date|$))/i);
-    const cnic = extract(/(?:CNIC|C\.N\.I\.C|Identity)\s*[:\-]?\s*([0-9\-]{8,15})/i);
-    const dob = extract(/(?:Date of Birth|D\.O\.B|DOB)\s*[:\-]?\s*([0-9\.\-\/]{8,10})/i);
-    const personnelNo = extract(/(?:Personnel Number|Personnel No|P\.No|Emp ID|Employee ID)\s*[:\-]?\s*([0-9A-Za-z\-]{4,15})/i);
-    const designation = extract(/(?:Designation|Post|Grade|Role)\s*[:\-]?\s*([A-Za-z\s\.\(\)]+?)(?=\s*(?:DDO|0000|Payroll|Pay\s|Scale|$))/i);
-    const bps = extract(/(?:BPS|Scale|Pay Scale)\s*[:\-]?\s*(\d{1,2})/i);
-
-    const basicSalaryStr = extract(/(?:Basic Pay|Basic Salary|0001 Basic Pay)\s*[:\-]?\s*(?:Rs\.?\s*)?([0-9,]+)/i);
-    const basicSalary = basicSalaryStr ? basicSalaryStr.replace(/,/g, '') : "";
+    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`;
     
-    const netPayStr = extract(/(?:Net Pay|Net Salary|Net Amount)\s*[:\-]?\s*(?:Rs\.?\s*)?\(?(Rs\.?\s*)?([0-9,]+)/i);
-    const netPay = netPayStr ? netPayStr.replace(/,/g, '') : "";
+    const prompt = `You are an expert HR data extraction assistant. 
+    Analyze the following text extracted from a staff member's salary slip, CNIC, or CV.
+    Extract the following fields and return them STRICTLY as a JSON object. 
+    If a field is not found, return an empty string ("") for that field.
     
-    const grossPayStr = extract(/(?:Gross Pay|Gross Salary)\s*[:\-]?\s*(?:Rs\.?\s*)?\(?(Rs\.?\s*)?([0-9,]+)/i);
-    const grossPay = grossPayStr ? grossPayStr.replace(/,/g, '') : "";
+    Fields to extract:
+    - fullName
+    - fatherName
+    - cnic
+    - dob (Date of Birth, format: YYYY-MM-DD if possible)
+    - designation
+    - personnelNo
+    - bps (Basic Pay Scale number)
+    - basicSalary (number only, no commas or text)
+    - grossPay (number only)
+    - netPay (number only)
+    - accountNumber
+    - bankName
 
-    const accountNumber = extract(/(?:Account Number|A\/C No|Account No)\s*[:\-]?\s*([0-9\-]{8,20})/i);
-    const bankName = extract(/(?:Bank Details|Bank Name)\s*[:\-]?\s*([A-Za-z\s\.]+?)(?=\s*(?:Branch|$))/i);
+    Text to analyze:
+    ---
+    ${extractedText}
+    ---
+    
+    Respond ONLY with the JSON object. Do not include any markdown formatting or extra text.`;
+
+    const geminiRes = await fetch(geminiUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        system_instruction: { parts: [{ text: "You are a helpful HR assistant that only outputs JSON." }] },
+        contents: [{ role: "user", parts: [{ text: prompt }] }],
+        generationConfig: { temperature: 0.1, response_mime_type: "application/json" }
+      })
+    });
+
+    const geminiData = await geminiRes.json();
+
+    if (geminiData.error) {
+      console.error("[Staff OCR] Gemini API Error:", geminiData.error);
+      return NextResponse.json({ success: false, error: "AI failed to structure the data." }, { status: 500 });
+    }
+
+    // 3. Parse Gemini JSON Response
+    let structuredData: any = {};
+    try {
+      const aiText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
+      structuredData = JSON.parse(aiText);
+    } catch (parseError) {
+      console.error("[Staff OCR] Failed to parse Gemini JSON:", parseError);
+      return NextResponse.json({ success: false, error: "AI returned invalid format." }, { status: 500 });
+    }
+
+    // Add photoBase64 if it was an image
+    structuredData.photoBase64 = photoBase64;
+    structuredData.rawText = extractedText;
 
     return NextResponse.json({
       success: true,
-      data: {
-        fullName,
-        fatherName,
-        cnic,
-        dob,
-        designation,
-        personnelNo,
-        bps,
-        basicSalary,
-        netPay,
-        grossPay,
-        accountNumber,
-        bankName,
-        photoBase64,
-        rawText: extractedText
-      }
+      data: structuredData
     });
 
   } catch (error: any) {
