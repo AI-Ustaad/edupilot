@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSessionUser } from "@/lib/auth/auth-server";
 
 export const runtime = "nodejs";
+export const maxDuration = 60; // 🛡️ Allow up to 60 seconds for large files
 
 export async function POST(req: NextRequest) {
   try {
@@ -18,8 +19,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: "No file provided" }, { status: 400 });
     }
 
-    // 🛡️ Check file size before processing (Vercel limit is 4.5MB)
-    if (file.size > 4000000) { // 4 MB limit to be safe
+    // 🛡️ Vercel Serverless limit is 4.5MB for request body
+    if (file.size > 4000000) {
       return NextResponse.json({ 
         success: false, 
         error: "File is too large. Maximum size is 4MB." 
@@ -38,23 +39,10 @@ export async function POST(req: NextRequest) {
     const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`;
     
     const prompt = `You are a strict HR data extraction system. 
-    Analyze the attached document (which may be a salary slip, CNIC, or CV).
-    Extract the following fields and return them STRICTLY as a JSON object. 
-    If a field is not found, return an empty string "".
-    
+    Analyze the attached document (salary slip, CNIC, or CV).
+    Extract fields and return STRICTLY as a JSON object. If not found, return "".
     {
-      "fullName": "",
-      "fatherName": "",
-      "cnic": "",
-      "dob": "",
-      "designation": "",
-      "personnelNo": "",
-      "bps": "",
-      "basicSalary": "",
-      "grossPay": "",
-      "netPay": "",
-      "accountNumber": "",
-      "bankName": ""
+      "fullName": "", "fatherName": "", "cnic": "", "dob": "", "designation": "", "personnelNo": "", "bps": "", "basicSalary": "", "grossPay": "", "netPay": "", "accountNumber": "", "bankName": ""
     }`;
 
     // 🚀 Send file directly to Gemini (Supports both Images and PDFs natively)
@@ -83,14 +71,23 @@ export async function POST(req: NextRequest) {
       })
     });
 
-    const geminiData = await geminiRes.json();
+    // 🛡️ Safely read the response text first
+    const responseText = await geminiRes.text();
 
-    if (!geminiRes.ok || geminiData.error) {
-      console.error("[Staff OCR] Gemini API Error:", geminiData.error);
+    if (!geminiRes.ok) {
+      console.error("[Staff OCR] Gemini API Error Response:", responseText);
       return NextResponse.json({ 
         success: false, 
-        error: "AI Service Error: " + (geminiData?.error?.message || "Failed to process document.")
+        error: "AI failed to process the document. Please try a clearer file." 
       }, { status: 500 });
+    }
+
+    let geminiData;
+    try {
+      geminiData = JSON.parse(responseText);
+    } catch (e) {
+      console.error("[Staff OCR] Failed to parse Gemini response as JSON:", responseText);
+      return NextResponse.json({ success: false, error: "AI returned invalid response." }, { status: 500 });
     }
 
     let structuredData: any = {};
@@ -98,7 +95,7 @@ export async function POST(req: NextRequest) {
       const aiText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
       structuredData = JSON.parse(aiText);
     } catch (parseError) {
-      console.error("[Staff OCR] Failed to parse Gemini JSON:", parseError);
+      console.error("[Staff OCR] Failed to parse Gemini JSON output:", parseError);
       return NextResponse.json({ success: false, error: "AI returned invalid format." }, { status: 500 });
     }
 
