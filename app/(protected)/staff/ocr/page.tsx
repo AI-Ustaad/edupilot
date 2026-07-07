@@ -111,10 +111,10 @@ export default function StaffOCRPage() {
               <div className="text-center p-2">
                 <Upload size={32} className="mx-auto text-gray-400" />
                 <p className="text-sm font-medium text-gray-500 mt-1">Click to upload</p>
-                <p className="text-xs text-gray-400">PNG, JPG, PDF, DOCX</p>
+                <p className="text-xs text-gray-400">PNG, JPG, WEBP, PDF</p>
               </div>
             )}
-            <input type="file" accept="image/*,application/pdf,.docx" onChange={handleFileChange} className="hidden" />
+            <input type="file" accept="image/*,application/pdf" onChange={handleFileChange} className="hidden" />
           </label>
           <button 
             onClick={handleExtract} 

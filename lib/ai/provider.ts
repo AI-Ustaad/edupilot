@@ -13,7 +13,7 @@ export interface AIResponse {
 
 class GeminiProvider {
   private apiKey: string;
-  private model: string = "gemini-1.5-flash";
+  private model: string = "gemini-2.0-flash";
 
   constructor() {
     this.apiKey = process.env.GEMINI_API_KEY || "";

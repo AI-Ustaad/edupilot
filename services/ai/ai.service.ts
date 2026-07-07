@@ -20,7 +20,7 @@ class AIService {
       throw error;
     } finally {
       await logAIUsage({
-        tenantId, userId, route: routeName, model: "gemini-1.5-flash",
+        tenantId, userId, route: routeName, model: "gemini-2.0-flash",
         tokensUsed, durationMs: Date.now() - startTime, success
       });
     }
