@@ -6,6 +6,7 @@ import { Loader2, Camera, Upload, Plus, Trash2, Save, UserPlus, FileText } from 
 import Image from "next/image";
 import { useCreateStaff } from "@/hooks/useStaff";
 import { useToast } from "@/components/ToastProvider";
+import { mapOCRToStaffForm } from "@/lib/ocr/mappers/staff.mapper";
 
 // Reusable UI Components
 const Input = ({ label, ...props }: { label: string } & React.InputHTMLAttributes<HTMLInputElement>) => (
@@ -124,35 +125,13 @@ export default function AddStaffPage() {
         console.log("AI Extracted Data:", result.data);
 
         if (res.ok && result.success && result.data) {
-          const ex = result.data; // Extracted data object
-          
-          // 🛡️ Fix: Map all fields correctly to the form state
+          const { staffFormData } = mapOCRToStaffForm(result.data);
           setForm((prev: any) => ({
             ...prev,
-            personal: {
-              ...prev.personal,
-              fullName: ex.fullName || prev.personal.fullName,
-              fatherName: ex.fatherName || prev.personal.fatherName,
-              cnic: ex.cnic || prev.personal.cnic,
-              dob: ex.dob || prev.personal.dob,
-              photo: ex.photoBase64 || prev.personal.photo
-            },
-            contact: {
-              ...prev.contact,
-              mobile: ex.phone || prev.contact.mobile,
-            },
-            professional: {
-              ...prev.professional,
-              designation: ex.designation || prev.professional.designation,
-              personnelNo: ex.personnelNo || prev.professional.personnelNo,
-            },
-            payroll: {
-              ...prev.payroll,
-              basicSalary: ex.basicSalary ? parseFloat(ex.basicSalary) : prev.payroll.basicSalary,
-              grossSalary: ex.grossPay ? parseFloat(ex.grossPay) : prev.payroll.grossSalary,
-              bankName: ex.bankName || prev.payroll.bankName,
-              accountNumber: ex.accountNumber || prev.payroll.accountNumber,
-            }
+            personal: { ...prev.personal, ...staffFormData.personal },
+            contact: { ...prev.contact, ...staffFormData.contact },
+            professional: { ...prev.professional, ...staffFormData.professional },
+            payroll: { ...prev.payroll, ...staffFormData.payroll },
           }));
           
           showToast("Data extracted successfully! Please verify.", "success");

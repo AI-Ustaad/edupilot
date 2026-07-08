@@ -6,6 +6,8 @@ import { Loader2, Camera, Upload, Trash2, Save, UserPlus, FileText } from "lucid
 import Image from "next/image";
 import { useCreateStaff } from "@/hooks/useStaff";
 import { useToast } from "@/components/ToastProvider";
+import { mapOCRToStaffForm } from "@/lib/ocr/mappers/staff.mapper";
+import type { StaffFormData, OCRMetaData } from "@/lib/ocr/mappers/staff.mapper";
 
 const Input = ({ label, ...props }: { label: string } & React.InputHTMLAttributes<HTMLInputElement>) => (
   <div><label className="block text-sm font-medium text-gray-700 mb-1">{label}</label><input {...props} className="w-full p-2 border rounded-xl" /></div>
@@ -61,16 +63,7 @@ const DocumentUpload = ({ label, value, onChange }: { label: string; value: stri
   );
 };
 
-export interface StaffFormData {
-  personal: any;
-  contact: any;
-  professional: any;
-  payroll: any;
-  education: any[];
-  academic: any;
-  emergency: any;
-  documents: any;
-}
+
 
 export function useStaffForm() {
   const router = useRouter();
@@ -86,8 +79,7 @@ export function useStaffForm() {
     personal: { fullName: "", fatherName: "", cnic: "", dob: "", gender: "Male", bloodGroup: "", nationality: "", religion: "", maritalStatus: "Single", photo: "" },
     contact: { mobile: "", whatsapp: "", email: "", currentAddress: "", permanentAddress: "", city: "", province: "", country: "", postalCode: "" },
     professional: { personnelNo: "", employeeId: "", designation: "", department: "", role: "", employmentType: "", joiningDate: "", confirmationDate: "", experience: "", qualification: "" },
-    payroll: { basicSalary: 0, allowances: [{ name: "", amount: 0 }], deductions: [{ name: "", amount: 0 }], grossSalary: 0, bankName: "", accountNumber: "", iban: "", salaryPaymentMethod: "" },
-    education: [],
+    payroll: { basicSalary: 0, allowances: [], deductions: [], grossSalary: 0, bankName: "", accountNumber: "", iban: "", salaryPaymentMethod: "" },
     academic: { subjects: [], classesAssigned: [], timetable: "", sectionAssignment: "", classTeacher: false },
     emergency: { name: "", relation: "", phone: "", alternatePhone: "" },
     documents: { cnicFront: "", cnicBack: "", degree: "", experienceCert: "", cv: "" },
@@ -114,13 +106,13 @@ export function useStaffForm() {
         const res = await fetch("/api/v1/staff/ocr", { method: "POST", body: formData });
         const result = await res.json();
         if (res.ok && result.success && result.data) {
-          const ex = result.data;
+          const { staffFormData } = mapOCRToStaffForm(result.data);
           setForm((prev) => ({
             ...prev,
-            personal: { ...prev.personal, fullName: ex.fullName || prev.personal.fullName, fatherName: ex.fatherName || prev.personal.fatherName, cnic: ex.cnic || prev.personal.cnic, dob: ex.dob || prev.personal.dob, photo: ex.photoBase64 || prev.personal.photo },
-            contact: { ...prev.contact, mobile: ex.phone || prev.contact.mobile },
-            professional: { ...prev.professional, designation: ex.designation || prev.professional.designation, personnelNo: ex.personnelNo || prev.professional.personnelNo },
-            payroll: { ...prev.payroll, basicSalary: ex.basicSalary ? parseFloat(ex.basicSalary) : prev.payroll.basicSalary, grossSalary: ex.grossPay ? parseFloat(ex.grossPay) : prev.payroll.grossSalary, bankName: ex.bankName || prev.payroll.bankName, accountNumber: ex.accountNumber || prev.payroll.accountNumber },
+            personal: { ...prev.personal, ...staffFormData.personal },
+            contact: { ...prev.contact, ...staffFormData.contact },
+            professional: { ...prev.professional, ...staffFormData.professional },
+            payroll: { ...prev.payroll, ...staffFormData.payroll },
           }));
           showToast("Data extracted successfully! Please verify.", "success");
           setActiveTab(0);

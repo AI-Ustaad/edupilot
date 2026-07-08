@@ -7,6 +7,7 @@ import { Upload, Loader2, FileText, Image as ImageIcon, UserPlus, AlertCircle, C
 // 🚀 Hooks
 import { useCreateStaff } from "@/hooks/useStaff";
 import { useToast } from "@/components/ToastProvider";
+import { mapOCRToStaffForm } from "@/lib/ocr/mappers/staff.mapper";
 
 export default function StaffOCRPage() {
   const router = useRouter();
@@ -38,7 +39,8 @@ export default function StaffOCRPage() {
       const json = await res.json();
       
       if (res.ok && json.success) {
-        setExtractedData(json.data);
+        const { staffFormData } = mapOCRToStaffForm(json.data);
+        setExtractedData(staffFormData);
         showToast("Data extracted successfully!", "success");
       } else {
         setError(json.error || "Extraction failed.");
@@ -55,29 +57,12 @@ export default function StaffOCRPage() {
 
     // 🚀 Comprehensive Payload Mapping
     const payload = {
-      personal: { 
-        fullName: extractedData.fullName || "", 
-        fatherName: extractedData.fatherName || "",
-        cnic: extractedData.cnic || "", 
-        dob: extractedData.dob || "",
-        photo: extractedData.photoBase64 || "" // If image was uploaded, it acts as photo too
-      },
-      contact: {
-        mobile: extractedData.phone || ""
-      },
-      professional: { 
-        designation: extractedData.designation || "", 
-        personnelNo: extractedData.personnelNo || "",
-        joiningDate: extractedData.joiningDate || "" 
-      },
-      payroll: { 
-        basicSalary: extractedData.basicSalary ? parseFloat(extractedData.basicSalary) : 0, 
-        grossSalary: extractedData.grossPay ? parseFloat(extractedData.grossPay) : 0,
-        bankName: extractedData.bankName || "", 
-        accountNumber: extractedData.accountNumber || "" 
-      },
-      tenantId: user?.tenantId, 
-      createdBy: user?.uid, 
+      personal: extractedData.personal,
+      contact: extractedData.contact,
+      professional: extractedData.professional,
+      payroll: extractedData.payroll,
+      tenantId: user?.tenantId,
+      createdBy: user?.uid,
       admissionMethod: "ocr",
     };
 
@@ -135,16 +120,16 @@ export default function StaffOCRPage() {
           </h2>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-            <div className="bg-gray-50 p-3 rounded-lg"><span className="font-bold text-gray-700 block mb-1">Full Name</span> {extractedData.fullName || "N/A"}</div>
-            <div className="bg-gray-50 p-3 rounded-lg"><span className="font-bold text-gray-700 block mb-1">Father Name</span> {extractedData.fatherName || "N/A"}</div>
-            <div className="bg-gray-50 p-3 rounded-lg"><span className="font-bold text-gray-700 block mb-1">CNIC</span> {extractedData.cnic || "N/A"}</div>
-            <div className="bg-gray-50 p-3 rounded-lg"><span className="font-bold text-gray-700 block mb-1">Date of Birth</span> {extractedData.dob || "N/A"}</div>
-            <div className="bg-gray-50 p-3 rounded-lg"><span className="font-bold text-gray-700 block mb-1">Designation</span> {extractedData.designation || "N/A"}</div>
-            <div className="bg-gray-50 p-3 rounded-lg"><span className="font-bold text-gray-700 block mb-1">Personnel No</span> {extractedData.personnelNo || "N/A"}</div>
-            <div className="bg-gray-50 p-3 rounded-lg"><span className="font-bold text-gray-700 block mb-1">Basic Salary</span> Rs. {extractedData.basicSalary || "0"}</div>
-            <div className="bg-gray-50 p-3 rounded-lg"><span className="font-bold text-gray-700 block mb-1">Gross Pay</span> Rs. {extractedData.grossPay || "0"}</div>
-            <div className="bg-gray-50 p-3 rounded-lg"><span className="font-bold text-gray-700 block mb-1">Bank Name</span> {extractedData.bankName || "N/A"}</div>
-            <div className="bg-gray-50 p-3 rounded-lg"><span className="font-bold text-gray-700 block mb-1">Account Number</span> {extractedData.accountNumber || "N/A"}</div>
+            <div className="bg-gray-50 p-3 rounded-lg"><span className="font-bold text-gray-700 block mb-1">Full Name</span> {extractedData.personal.fullName || "N/A"}</div>
+            <div className="bg-gray-50 p-3 rounded-lg"><span className="font-bold text-gray-700 block mb-1">Father Name</span> {extractedData.personal.fatherName || "N/A"}</div>
+            <div className="bg-gray-50 p-3 rounded-lg"><span className="font-bold text-gray-700 block mb-1">CNIC</span> {extractedData.personal.cnic || "N/A"}</div>
+            <div className="bg-gray-50 p-3 rounded-lg"><span className="font-bold text-gray-700 block mb-1">Date of Birth</span> {extractedData.personal.dob || "N/A"}</div>
+            <div className="bg-gray-50 p-3 rounded-lg"><span className="font-bold text-gray-700 block mb-1">Designation</span> {extractedData.professional.designation || "N/A"}</div>
+            <div className="bg-gray-50 p-3 rounded-lg"><span className="font-bold text-gray-700 block mb-1">Personnel No</span> {extractedData.professional.personnelNo || "N/A"}</div>
+            <div className="bg-gray-50 p-3 rounded-lg"><span className="font-bold text-gray-700 block mb-1">Basic Salary</span> Rs. {extractedData.payroll.basicSalary || "0"}</div>
+            <div className="bg-gray-50 p-3 rounded-lg"><span className="font-bold text-gray-700 block mb-1">Gross Pay</span> Rs. {extractedData.payroll.grossSalary || "0"}</div>
+            <div className="bg-gray-50 p-3 rounded-lg"><span className="font-bold text-gray-700 block mb-1">Bank Name</span> {extractedData.payroll.bankName || "N/A"}</div>
+            <div className="bg-gray-50 p-3 rounded-lg"><span className="font-bold text-gray-700 block mb-1">Account Number</span> {extractedData.payroll.accountNumber || "N/A"}</div>
           </div>
 
           <button 
