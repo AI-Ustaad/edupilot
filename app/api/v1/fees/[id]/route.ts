@@ -1,17 +1,10 @@
 export const dynamic = 'force-dynamic';
-import { invalidateCache } from "@/lib/cache";
 import { withAuth, withTenant, withErrorHandler } from "@/route-helpers";
-import { createApiResponse } from "@/lib/response/apiResponse";
+import { createSuccessResponse, createErrorResponse } from "@/lib/api/response";
 import { FeesService } from "@/services/fees.service";
-import { FeesRepository } from "@/repositories/fees.repository";
-import { logAction } from "@/lib/audit";
 import { withPermission } from '@/lib/auth/rbac';
 import { PERMISSIONS } from '@/lib/auth/permissions';
-
-interface WithTenantContext {
-  tenantId: string;
-  user: { uid: string; email: string; role: string; tenantId: string; };
-}
+import type { TenantContext } from "@/types/api";
 
 function getIdFromUrl(req: Request): string {
   const url = new URL(req.url);
@@ -22,14 +15,12 @@ function getIdFromUrl(req: Request): string {
 export const GET = withErrorHandler(
   withAuth(
     withTenant(
-      withPermission(PERMISSIONS.fees.view)(async (req: Request, { tenantId }: WithTenantContext) => {
+      withPermission(PERMISSIONS.fees.view)(async (req: Request, { tenantId }: TenantContext) => {
         const id = getIdFromUrl(req);
-        const service = new FeesService(new FeesRepository());
+        const service = new FeesService();
         const fee = await service.getFeeById(id, tenantId);
-    await invalidateCache(`dashboard:${tenantId}`);
-        if (!fee) return createApiResponse(404, null, "Fee record not found");
-    await invalidateCache(`dashboard:${tenantId}`);
-        return createApiResponse(200, fee);
+        if (!fee) return createErrorResponse(404, "Fee record not found");
+        return createSuccessResponse(fee);
       })
     )
   )
@@ -38,13 +29,12 @@ export const GET = withErrorHandler(
 export const PUT = withErrorHandler(
   withAuth(
     withTenant(
-      withPermission(PERMISSIONS.fees.update)(async (req: Request, { tenantId, user }: WithTenantContext) => {
+      withPermission(PERMISSIONS.fees.update)(async (req: Request, { tenantId, user }: TenantContext) => {
         const id = getIdFromUrl(req);
         const body = await req.json();
-        const service = new FeesService(new FeesRepository());
-        await service.updateFee(id, body, tenantId);
-    await invalidateCache(`dashboard:${tenantId}`);
-        return createApiResponse(200, null, "Fee record updated successfully");
+        const service = new FeesService();
+        await service.updateFee(id, body, tenantId, user.uid);
+        return createSuccessResponse(null, { message: "Fee record updated successfully" });
       })
     )
   )
@@ -53,24 +43,15 @@ export const PUT = withErrorHandler(
 export const DELETE = withErrorHandler(
   withAuth(
     withTenant(
-      withPermission(PERMISSIONS.fees.delete)(async (req: Request, { tenantId, user }: WithTenantContext) => {
+      withPermission(PERMISSIONS.fees.delete)(async (req: Request, { tenantId, user }: TenantContext) => {
         const id = getIdFromUrl(req);
-        const service = new FeesService(new FeesRepository());
+        const service = new FeesService();
         const fee = await service.getFeeById(id, tenantId);
-    await invalidateCache(`dashboard:${tenantId}`);
-        if (!fee) return createApiResponse(404, null, "Fee record not found");
-        await service.deleteFee(id, tenantId);
-        await logAction({
-          action: "FEE_DELETED",
-          userId: user.uid,
-          tenantId,
-          entityId: id,
-          entityType: "fee",
-          metadata: { studentName: (fee as any).studentName, amount: (fee as any).amountPaid },
-        });
-    await invalidateCache(`dashboard:${tenantId}`);
-        return createApiResponse(200, null, "Fee record deleted successfully");
+        if (!fee) return createErrorResponse(404, "Fee record not found");
+        await service.deleteFee(id, tenantId, user.uid);
+        return createSuccessResponse(null, { message: "Fee record deleted successfully" });
       })
     )
   )
 );
+

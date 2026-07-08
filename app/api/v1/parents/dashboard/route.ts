@@ -1,9 +1,7 @@
 export const dynamic = 'force-dynamic';
 import { withAuth, withTenant, withErrorHandler } from "@/route-helpers";
-import { createApiResponse } from "@/lib/response/apiResponse";
+import { createSuccessResponse } from "@/lib/api/response";
 import { ParentsService } from "@/services/parents.service";
-import { ParentsRepository } from "@/repositories/parents.repository";
-import { StudentRepository } from "@/repositories/student.repository";
 import { AttendanceService } from "@/services/attendance.service";
 import { AttendanceRepository } from "@/repositories/attendance.repository";
 import { FeesService } from "@/services/fees.service";
@@ -16,7 +14,7 @@ export const GET = withErrorHandler(
   withAuth(
     withTenant(
       withPermission(PERMISSIONS.parents.view)(async (req: Request, { tenantId, user }: TenantContext) => {
-        const parentService = new ParentsService(new ParentsRepository(), new StudentRepository());
+        const parentService = new ParentsService();
         const children = await parentService.getChildren(user.uid, tenantId);
         const childIds = children.map(c => c.id);
 
@@ -42,7 +40,7 @@ export const GET = withErrorHandler(
           recentFee: feesResults[index]?.data?.[0] || null,
         }));
 
-        return createApiResponse(200, dashboardData);
+        return createSuccessResponse(dashboardData);
       })
     )
   )

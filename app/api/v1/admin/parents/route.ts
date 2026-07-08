@@ -1,31 +1,44 @@
 export const dynamic = 'force-dynamic';
-import { adminAuth, adminDb } from "@/lib/firebase-admin";
-import { withAuth, withTenant, withErrorHandler, withRole } from "@/route-helpers";
-import { createApiResponse } from "@/lib/response/apiResponse";
+import { adminAuth } from "@/lib/firebase-admin";
+import { withAuth, withTenant, withErrorHandler } from "@/route-helpers";
+import { createSuccessResponse, createErrorResponse } from "@/lib/api/response";
+import { ParentsService } from "@/services/parents.service";
+import { CreateParentSchema } from "@/validators/parent";
 import type { TenantContext } from "@/types/api";
 
 export const POST = withErrorHandler(
   withAuth(
     withTenant(
-      withRole(["admin"])(async (req: Request, { tenantId }: TenantContext) => {
-        const { email, password, fullName, phone, studentIds } = await req.json();
-        if (!email || !password || !studentIds?.length) {
-          return createApiResponse(400, null, "Missing fields");
+      async (req: Request, { tenantId, user }: TenantContext) => {
+        const body = await req.json();
+
+        const parsed = CreateParentSchema.safeParse(body);
+        if (!parsed.success) {
+          return createErrorResponse(400, "Validation failed", parsed.error.errors);
         }
 
-        const newUser = await adminAuth.createUser({ email, password });
-        await adminAuth.setCustomUserClaims(newUser.uid, { role: "parent", tenantId });
+        const { email, password, fullName, phone, studentIds } = parsed.data;
 
-        await adminDb.collection("parents").doc(newUser.uid).set({
-          fullName, email,
-          phone: phone || "",
-          studentIds,
+        // Create Firebase Auth User
+        let newUser;
+        try {
+          newUser = await adminAuth.createUser({ email, password });
+          await adminAuth.setCustomUserClaims(newUser.uid, { role: "parent", tenantId });
+        } catch (err: any) {
+          return createErrorResponse(400, err.message || "Failed to create auth user");
+        }
+
+        // Save parent document via service
+        const service = new ParentsService();
+        await service.createParent(
+          { email, fullName, phone, studentIds },
           tenantId,
-          createdAt: new Date(),
-        });
+          user.uid
+        );
 
-        return createApiResponse(201, { uid: newUser.uid });
-      })
+        return createSuccessResponse({ uid: newUser.uid }, { message: "Parent created successfully" });
+      }
     )
   )
 );
+

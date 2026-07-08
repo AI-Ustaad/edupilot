@@ -1,29 +1,60 @@
 // lib/validation/index.ts
 // FIXED: نام والے conflicts ختم — ہر schema کا الگ namespace export ہوتا ہے
 
-// Student schemas — اصل نام رہنے دیں (سب سے زیادہ استعمال ہوتے ہیں)
+// Student schemas — from validators/student/ (canonical)
 export {
-  createStudentSchema,
-  updateStudentSchema,
-} from "./student.schema";
+  CreateStudentSchema,
+  UpdateStudentSchema,
+  BulkImportRowSchema,
+  BulkImportFileSchema,
+  OCRFileSchema,
+  OCRExtractedSchema,
+} from "../../validators/student";
 export type {
   CreateStudentInput,
   UpdateStudentInput,
-} from "./student.schema";
+} from "../../validators/student";
 
-// Staff schemas — alias کے ساتھ تاکہ student schema سے ٹکراؤ نہ ہو
+// Fees schemas — from validators/fees/ (canonical)
 export {
-  createStaffSchema as CreateStaffSchema,
-  updateSchema as UpdateStaffSchema,
-  createStaffSchema,
-  updateSchema,
-} from "./staff.schema";
+  CreateFeeSchema,
+  UpdateFeeSchema,
+} from "../../validators/fees";
+export type {
+  CreateFeeInput,
+  UpdateFeeInput,
+} from "../../validators/fees";
 
-// Fees schemas
-export * from "./fees.schema";
+// Attendance schemas — from validators/attendance/ (canonical)
+export {
+  MarkAttendanceSchema,
+  BulkAttendanceSchema,
+  GetAttendanceQuerySchema,
+} from "../../validators/attendance";
+export type {
+  MarkAttendanceInput,
+} from "../../validators/attendance";
 
-// Attendance schemas
-export * from "./attendance.schema";
+// Marks schemas — from validators/marks/ (canonical)
+export {
+  SaveMarkSchema,
+  BulkPublishSchema,
+  SkillsSchema,
+  GetMarksQuerySchema,
+} from "../../validators/marks";
+export type {
+  SaveMarkInput,
+  BulkPublishInput,
+  SkillsInput,
+} from "../../validators/marks";
+
+// Timetable schemas — from validators/timetable/ (canonical)
+export {
+  CreateTimetableEntrySchema,
+} from "../../validators/timetable";
+export type {
+  CreateTimetableEntryInput,
+} from "../../validators/timetable";
 
 // Video lecture schemas
 export * from "./video-lecture.schema";

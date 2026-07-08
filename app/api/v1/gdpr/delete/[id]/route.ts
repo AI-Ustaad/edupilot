@@ -1,8 +1,7 @@
 export const dynamic = 'force-dynamic';
 import { withAuth, withTenant, withErrorHandler } from "@/route-helpers";
 import { createApiResponse } from "@/lib/response/apiResponse";
-import { StudentService } from "@/services/student.service";
-import { StudentRepository } from "@/repositories/student.repository";
+import { StudentService } from "@/services/StudentService";
 import { AttendanceService } from "@/services/attendance.service";
 import { AttendanceRepository } from "@/repositories/attendance.repository";
 import { FeesService } from "@/services/fees.service";
@@ -24,8 +23,8 @@ export const DELETE = withErrorHandler(
       withPermission(PERMISSIONS.students.delete)(async (req: Request, { tenantId, user }: TenantContext) => {
         const id = getIdFromUrl(req);
 
-        const studentService = new StudentService(new StudentRepository());
-        const student = await studentService.getStudentById(id, tenantId);
+                const studentService = new StudentService();
+        const student = await studentService.getById(tenantId, id);
         if (!student) return createApiResponse(404, null, "Student not found");
 
         // Delete attendance records
@@ -45,7 +44,7 @@ export const DELETE = withErrorHandler(
         }
 
         // Finally delete the student
-        await studentService.deleteStudent(id, tenantId);  // soft delete
+        await studentService.delete(tenantId, id, user.uid);
 
         await logAction({
           action: "GDPR_DELETION",

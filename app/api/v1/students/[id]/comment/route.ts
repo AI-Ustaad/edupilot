@@ -1,33 +1,34 @@
 // app/api/v1/students/[id]/comment/route.ts
-import { NextRequest, NextResponse } from "next/server";
-import { adminDb } from "@/lib/firebase-admin";
-import { getSessionUser } from "@/lib/auth/auth-server";
+import { withErrorHandler, withAuth, withTenant } from "@/route-helpers";
+import { withPermission } from "@/lib/auth/rbac";
+import { PERMISSIONS } from "@/lib/auth/permissions";
+import { StudentService } from "@/services/StudentService";
+import { createSuccessResponse, createErrorResponse } from "@/lib/api/response";
+import type { TenantContext } from "@/types/api";
 
 export const runtime = "nodejs";
 
-export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
-  try {
-    const user = await getSessionUser();
-    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+export const PUT = withErrorHandler(
+  withAuth(
+    withTenant(
+      withPermission(PERMISSIONS.students.update)(async (req: Request, { tenantId, user }: TenantContext) => {
+        const url = new URL(req.url);
+        const studentId = url.pathname.split("/").pop() || "";
 
-    const { comment } = await req.json();
-    const studentId = params.id;
+        if (!studentId) {
+          return createErrorResponse(400, "Student ID is required");
+        }
 
-    if (!comment) {
-      return NextResponse.json({ error: "Comment is required" }, { status: 400 });
-    }
+        const { comment } = await req.json();
+        if (!comment) {
+          return createErrorResponse(400, "Comment is required");
+        }
 
-    // سٹوڈنٹ کے ڈاکیومنٹ میں کمنٹ محفوظ کریں
-    await adminDb.collection("students").doc(studentId).update({
-      teacherComment: comment,
-      updatedAt: new Date(),
-      updatedBy: user.uid,
-    });
+        const service = new StudentService();
+        await service.addComment(tenantId, studentId, comment, user.uid);
 
-    return NextResponse.json({ success: true, message: "Comment saved successfully" });
-
-  } catch (error: any) {
-    console.error("Save Comment API Error:", error);
-    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
-  }
-}
+        return createSuccessResponse(null, { message: "Comment saved successfully" });
+      })
+    )
+  )
+);

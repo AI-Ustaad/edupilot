@@ -1,9 +1,7 @@
 export const dynamic = 'force-dynamic';
 import { withAuth, withTenant, withErrorHandler } from "@/route-helpers";
-import { createApiResponse } from "@/lib/response/apiResponse";
+import { createSuccessResponse } from "@/lib/api/response";
 import { ParentsService } from "@/services/parents.service";
-import { ParentsRepository } from "@/repositories/parents.repository";
-import { StudentRepository } from "@/repositories/student.repository";
 import { FeesService } from "@/services/fees.service";
 import { FeesRepository } from "@/repositories/fees.repository";
 import type { TenantContext } from "@/types/api";
@@ -17,9 +15,9 @@ export const GET = withErrorHandler(
         const url = new URL(req.url);
         const studentId = url.searchParams.get('studentId');
 
-        const parentService = new ParentsService(new ParentsRepository(), new StudentRepository());
+        const parentService = new ParentsService();
         const childIds = await parentService.getChildIds(user.uid, tenantId);
-        if (childIds.length === 0) return createApiResponse(200, []);
+        if (childIds.length === 0) return createSuccessResponse([]);
 
         const feesService = new FeesService(new FeesRepository());
         let allFees: any[] = [];
@@ -30,7 +28,7 @@ export const GET = withErrorHandler(
         if (studentId) {
           allFees = allFees.filter(f => f.studentId === studentId);
         }
-        return createApiResponse(200, allFees);
+        return createSuccessResponse(allFees);
       })
     )
   )

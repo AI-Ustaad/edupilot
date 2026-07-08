@@ -1,15 +1,12 @@
-export const dynamic = 'force-dynamic';
-import { invalidateCache } from "@/lib/cache";
-// app/api/staff/[id]/route.ts
+export const dynamic = "force-dynamic";
+
 import { withAuth, withTenant, withErrorHandler } from "@/route-helpers";
 import { createApiResponse } from "@/lib/response/apiResponse";
-import { StaffService } from "@/services/staff.service";
-import { StaffRepository } from "@/repositories/staff.repository";
-import { logAction } from "@/lib/audit";
+import { StaffService } from "@/services/StaffService";
 import { withPermission } from "@/lib/auth/rbac";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 
-interface WithTenantContext {
+interface Context {
   tenantId: string;
   user: {
     uid: string;
@@ -29,15 +26,10 @@ export const GET = withErrorHandler(
   withAuth(
     withTenant(
       withPermission(PERMISSIONS.staff.view)(
-        async (req: Request, { tenantId }: WithTenantContext) => {
+        async (req: Request, { tenantId }: Context) => {
           const id = getIdFromUrl(req);
           const service = new StaffService();
           const staff = await service.getById(tenantId, id);
-          if (!staff) {
-    await invalidateCache(`dashboard:${tenantId}`);
-            return createApiResponse(404, null, "Staff not found");
-          }
-    await invalidateCache(`dashboard:${tenantId}`);
           return createApiResponse(200, staff);
         }
       )
@@ -49,12 +41,11 @@ export const PUT = withErrorHandler(
   withAuth(
     withTenant(
       withPermission(PERMISSIONS.staff.update)(
-        async (req: Request, { tenantId, user }: WithTenantContext) => {
+        async (req: Request, { tenantId, user }: Context) => {
           const id = getIdFromUrl(req);
           const body = await req.json();
           const service = new StaffService();
-          await service.update(tenantId, id, body);
-    await invalidateCache(`dashboard:${tenantId}`);
+          await service.update(tenantId, id, body, user.uid);
           return createApiResponse(200, null, "Staff updated successfully");
         }
       )
@@ -66,31 +57,14 @@ export const DELETE = withErrorHandler(
   withAuth(
     withTenant(
       withPermission(PERMISSIONS.staff.delete)(
-        async (req: Request, { tenantId, user }: WithTenantContext) => {
+        async (req: Request, { tenantId, user }: Context) => {
           const id = getIdFromUrl(req);
           const service = new StaffService();
-          const staff = await service.getById(tenantId, id);
-          if (!staff) {
-    await invalidateCache(`dashboard:${tenantId}`);
-            return createApiResponse(404, null, "Staff not found");
-          }
-
-          await service.delete(tenantId, id);
-
-          // Audit log
-          await logAction({
-            action: "STAFF_DELETED",
-            userId: user.uid,
-            tenantId,
-            entityId: id,
-            entityType: "staff",
-            metadata: { name: staff.personal?.fullName },
-          });
-
-    await invalidateCache(`dashboard:${tenantId}`);
+          await service.delete(tenantId, id, user.uid);
           return createApiResponse(200, null, "Staff deleted successfully");
         }
       )
     )
   )
 );
+

@@ -3,6 +3,39 @@ export interface Student {
   id: string;
   fullName: string;
   fatherName?: string;
+  motherName?: string;
+  classGrade: string;
+  section: string;
+  rollNumber: number;
+  cnic?: string;
+  dateOfBirth?: string;
+  gender?: string;
+  religion?: string;
+  phone?: string;
+  email?: string;
+  address?: string;
+  tenantId: string;
+  createdBy?: string;
+  updatedBy?: string;
+  teacherComment?: string;
+  admissionStatus?: string;
+  admissionNumber?: string;
+  admissionMethod?: string;
+  academicYear?: string;
+  previousClass?: string;
+  previousSection?: string;
+  promotedAt?: Date;
+  promotedBy?: string;
+  deleted?: boolean;
+  deletedAt?: Date;
+  createdAt: Date;
+  updatedAt?: Date;
+}
+// types/student.ts
+export interface Student {
+  id: string;
+  fullName: string;
+  fatherName?: string;
   classGrade: string;
   section: string;
   rollNumber: number;

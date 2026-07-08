@@ -1,16 +1,13 @@
 // repositories/attendance.repository.ts
 import { BaseRepository } from "./base.repository";
-import { Attendance } from "@/types/attendance";
+import type { Attendance } from "@/types/attendance";
+import type { IAttendanceRepository } from "@/interfaces/IAttendanceRepository";
 
-export class AttendanceRepository extends BaseRepository<Attendance> {
+export class AttendanceRepository extends BaseRepository<Attendance> implements IAttendanceRepository {
   constructor() {
     super("attendance");
   }
 
-  /**
-   * فلٹرز کے ساتھ حاضری کے ریکارڈ لاتا ہے۔
-   * date, classGrade, section میں سے کوئی بھی دیا جا سکتا ہے۔
-   */
   async findWithFilters(
     tenantId: string,
     filters?: {
@@ -35,5 +32,13 @@ export class AttendanceRepository extends BaseRepository<Attendance> {
 
     const snapshot = await query.get();
     return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Attendance));
+  }
+
+  getDb() {
+    return this.db;
+  }
+
+  getCollectionName() {
+    return this.collectionName;
   }
 }

@@ -1,37 +1,41 @@
 export const dynamic = 'force-dynamic';
-import { adminDb } from "@/lib/firebase-admin";
+import { withAuth, withTenant, withErrorHandler } from "@/route-helpers";
+import { createApiResponse } from "@/lib/api/response";
+import { withPermission } from "@/lib/auth/rbac";
+import { PERMISSIONS } from "@/lib/auth/permissions";
+import { MarksService } from "@/services/marks.service";
 import { sendEmail } from "@/lib/email";
-import { withAuth, withTenant, withErrorHandler, withRole } from "@/route-helpers";
-import { createApiResponse } from "@/lib/response/apiResponse";
 import type { TenantContext } from "@/types/api";
+
+const marksService = new MarksService();
 
 export const POST = withErrorHandler(
   withAuth(
     withTenant(
-      withRole(["admin"])(async (req: Request, { tenantId }: TenantContext) => {
+      withPermission(PERMISSIONS.marks.manage)(async (req: Request, { tenantId }: TenantContext) => {
         const { classGrade, section, term } = await req.json();
         if (!classGrade || !section || !term) {
           return createApiResponse(400, null, "Missing parameters");
         }
 
-        const studentsSnap = await adminDb
-          .collection("students")
+        const students = await marksService.listMarks(tenantId, { classGrade, section, term });
+        const studentIds = [...new Set(students.map(m => m.studentId))];
+
+        const db = (marksService as any).repo.getDb();
+        const studentsSnap = await db.collection("students")
           .where("tenantId", "==", tenantId)
-          .where("classGrade", "==", classGrade)
-          .where("section", "==", section)
+          .where("__name__", "in", studentIds.slice(0, 30))
           .get();
 
-        const students = studentsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })) as any[];
         let emailsSent = 0;
-
-        for (const student of students) {
-          const parentEmail = student.parentEmail || student.parent_email || student.email;
+        for (const doc of studentsSnap.docs) {
+          const s = doc.data();
+          const parentEmail = s.parentEmail || s.parent_email;
           if (parentEmail) {
-            const studentName = student.fullName || student.name || "Your child";
             await sendEmail(
               parentEmail,
               `Exam Results Published - ${term}`,
-              `<p>Dear Parent,</p><p>Results for <strong>${studentName}</strong> in <strong>${term}</strong> are now available.</p>`
+              `<p>Dear Parent,</p><p>Results for <strong>${s.fullName || s.name || "Your child"}</strong> in <strong>${term}</strong> are now available.</p>`
             );
             emailsSent++;
           }

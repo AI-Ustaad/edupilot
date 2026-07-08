@@ -1,115 +1,93 @@
-export const dynamic = 'force-dynamic';
-export const runtime = 'nodejs';
+export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
 
-import { NextResponse } from "next/server";
-import { adminDb } from "@/lib/firebase-admin";
-import { FieldValue } from "firebase-admin/firestore";
 import { withErrorHandler, withAuth, withTenant } from "@/route-helpers";
 import { withPermission } from "@/lib/auth/rbac";
 import { PERMISSIONS } from "@/lib/auth/permissions";
-import { logAction } from "@/lib/audit";
+import { createApiResponse } from "@/lib/response/apiResponse";
+import { StaffService } from "@/services/StaffService";
+import { AppError } from "@/errors/AppError";
 import type { TenantContext } from "@/types/api";
-import * as XLSX from 'xlsx';
+import * as XLSX from "xlsx";
+import { FieldValue } from "firebase-admin/firestore";
+import { adminDb } from "@/lib/firebase-admin";
 
 export const POST = withErrorHandler(
   withAuth(
     withTenant(
-      withPermission(PERMISSIONS.staff.update)(async (req: Request, { tenantId, user }: TenantContext) => {
-        try {
-          // 1. Get file from FormData
+      withPermission(PERMISSIONS.staff.update)(
+        async (req: Request, { tenantId, user }: TenantContext) => {
           const formData = await req.formData();
-          const file = formData.get('file') as File;
+          const file = formData.get("file") as File;
 
           if (!file) {
-            return NextResponse.json({ success: false, message: "No file provided" }, { status: 400 });
+            return createApiResponse(400, null, "No file provided");
           }
 
-          // 2. Convert File to Buffer
           const arrayBuffer = await file.arrayBuffer();
-          const buffer = Buffer.from(arrayBuffer);
+          const buffer = Buffer.from(new Uint8Array(arrayBuffer));
 
-          // 3. Parse Excel with xlsx (server-side only)
-          const workbook = XLSX.read(buffer, { type: 'buffer' });
+          const workbook = XLSX.read(buffer, { type: "buffer" });
           const sheetName = workbook.SheetNames[0];
           const worksheet = workbook.Sheets[sheetName];
           const jsonData = XLSX.utils.sheet_to_json(worksheet);
 
-          const staffMembers: any[] = [];
+          const service = new StaffService();
+          const results: any[] = [];
           const errors: string[] = [];
 
-          // 4. Parse rows
-          jsonData.forEach((row: any, index: number) => {
-            const fullName = row['Full Name'] || row['fullName'] || row['Name'];
-            const email = row['Email'] || row['email'];
-            const phone = row['Phone'] || row['phone'];
-            const designation = row['Designation'] || row['designation'];
-            const personnelNo = row['Personnel No'] || row['personnelNo'];
+          for (const row of jsonData as any[]) {
+            const fullName = row["Full Name"] || row["fullName"] || row["Name"];
+            const email = row["Email"] || row["email"];
 
-            if (!fullName) {
-              errors.push(`Row ${index + 2}: Full Name is required`);
-              return;
+            if (!fullName || String(fullName).trim().length < 2) {
+              errors.push(`Invalid row: Full Name is required`);
+              continue;
             }
 
-            staffMembers.push({
-              personal: { 
-                fullName, 
-                email: email || "", 
-                phone: phone || "" 
-              },
-              professional: { 
-                designation: designation || "Teacher", 
-                personnelNo: personnelNo || "" 
-              },
-              tenantId,
-              createdAt: FieldValue.serverTimestamp(),
-              createdBy: user.uid,
-              deleted: false,
-            });
-          });
-
-          if (errors.length > 0) {
-            return NextResponse.json({ success: false, message: "Validation errors", errors }, { status: 400 });
+            try {
+              const id = await service.create(
+                {
+                  personal: {
+                    fullName: String(fullName).trim(),
+                    email: email || "",
+                  },
+                  professional: {
+                    designation: row["Designation"] || row["designation"] || "Teacher",
+                    personnelNo: row["Personnel No"] || row["personnelNo"] || "",
+                  },
+                  admissionMethod: "bulk",
+                },
+                tenantId,
+                user.uid
+              );
+              results.push({ success: true, id, fullName });
+            } catch (err: any) {
+              errors.push(err.message);
+              results.push({ success: false, fullName, error: err.message });
+            }
           }
 
-          if (staffMembers.length === 0) {
-            return NextResponse.json({ success: false, message: "No valid staff records found" }, { status: 400 });
-          }
-
-          // 5. Batch write to Firestore
-          const batch = adminDb.batch();
-          let count = 0;
-
-          for (const staff of staffMembers) {
-            const docRef = adminDb.collection("staff").doc();
-            batch.set(docRef, staff);
-            count++;
-          }
-
-          await batch.commit();
-
-          // 6. Audit log
-          await logAction({
-            action: "staff.bulk_create",
+          // Audit log
+          const auditRef = adminDb.collection("logs").doc();
+          await auditRef.set({
+            action: "staff.bulk_import",
             userId: user.uid,
             tenantId,
             entityType: "staff",
-            metadata: { count, fileName: file.name },
+            metadata: { total: jsonData.length, success: results.filter((r) => r.success).length, errors: errors.length },
+            createdAt: FieldValue.serverTimestamp(),
           });
 
-          return NextResponse.json({ 
-            success: true, 
-            count, 
-            message: `Successfully imported ${count} staff members` 
+          return createApiResponse(201, {
+            imported: results.filter((r) => r.success).length,
+            failed: errors.length,
+            results,
+            errors,
           });
-
-        } catch (error: any) {
-          console.error("Bulk Upload Error:", error);
-          return NextResponse.json({ 
-            success: false, 
-            message: "Failed to process Excel file. Ensure it is a valid .xlsx format." 
-          }, { status: 500 });
         }
-      })
+      )
     )
   )
 );
+

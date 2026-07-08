@@ -1,7 +1,7 @@
 // services/dashboard.service.ts
-import { StudentService } from "./student.service";
+import { StudentService } from "./StudentService";
 import { StudentRepository } from "@/repositories/student.repository";
-import { StaffService } from "./staff.service";
+import { StaffService } from "./StaffService";
 import { StaffRepository } from "@/repositories/staff.repository";
 import { FeesService } from "./fees.service";
 import { FeesRepository } from "@/repositories/fees.repository";
@@ -37,12 +37,12 @@ export class DashboardService {
         allStudents,
         recentPayments,
       ] = await Promise.all([
-        this.studentService.countStudents(tenantId),
-        this.staffService.countStaff(tenantId),
+        this.studentService.count(tenantId),
+        this.staffService.count(tenantId),
         this.feesService.getTotalRevenue(tenantId),
         this.attendanceService.getTodayAttendance(tenantId),
         this.attendanceService.getWeeklyAttendanceTrend(tenantId),
-        this.studentService.listStudents(tenantId, 1, 9999),
+        this.studentService.paginate(tenantId, 1, 9999),
         this.feesService.getRecentPayments(tenantId, 5),
       ]);
 

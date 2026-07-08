@@ -1,0 +1,16 @@
+// interfaces/IAttendanceRepository.ts
+import { Attendance } from "@/types/attendance";
+import type { Firestore } from "firebase-admin/firestore";
+
+export interface IAttendanceRepository {
+  findAll(tenantId: string): Promise<(Attendance & { id: string })[]>;
+  findById(id: string, tenantId: string): Promise<(Attendance & { id: string }) | null>;
+  findWithFilters(tenantId: string, filters?: { date?: string; classGrade?: string; section?: string }): Promise<Attendance[]>;
+  create(data: Omit<Attendance, "id" | "createdAt" | "updatedAt">, tenantId: string): Promise<string>;
+  update(id: string, data: Partial<Attendance>, tenantId: string): Promise<void>;
+  delete(id: string, tenantId: string): Promise<void>;
+  count(tenantId: string): Promise<number>;
+  exists(id: string, tenantId: string): Promise<boolean>;
+  getDb(): Firestore;
+  getCollectionName(): string;
+}

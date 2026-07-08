@@ -1,3 +1,4 @@
+// validators/attendance/AttendanceValidator.ts
 import { z } from "zod";
 
 export const MarkAttendanceSchema = z.object({
@@ -11,6 +12,8 @@ export const MarkAttendanceSchema = z.object({
     errorMap: () => ({ message: "Status must be Present, Absent, or Leave" }),
   }),
 });
+
+export type MarkAttendanceInput = z.infer<typeof MarkAttendanceSchema>;
 
 export const BulkAttendanceSchema = z.array(MarkAttendanceSchema).min(1, "At least one attendance record required");
 

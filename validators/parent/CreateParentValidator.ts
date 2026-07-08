@@ -1,0 +1,12 @@
+// validators/parent/CreateParentValidator.ts
+import { z } from "zod";
+
+export const CreateParentSchema = z.object({
+  email: z.string().email("Valid email is required"),
+  password: z.string().min(6, "Password must be at least 6 characters"),
+  fullName: z.string().min(1, "Full name is required"),
+  phone: z.string().optional().default(""),
+  studentIds: z.array(z.string()).min(1, "At least one student ID is required"),
+});
+
+export type CreateParentInput = z.infer<typeof CreateParentSchema>;

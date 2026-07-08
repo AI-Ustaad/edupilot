@@ -1,83 +1,61 @@
 // app/api/v1/students/[id]/route.ts
-import { NextRequest, NextResponse } from "next/server";
-import { adminDb } from "@/lib/firebase-admin";
-import { getSessionUser } from "@/lib/auth/auth-server";
+import { withErrorHandler, withAuth, withTenant } from "@/route-helpers";
+import { withPermission } from "@/lib/auth/rbac";
+import { PERMISSIONS } from "@/lib/auth/permissions";
+import { StudentService } from "@/services/StudentService";
+import { createSuccessResponse, createErrorResponse } from "@/lib/api/response";
+import type { TenantContext } from "@/types/api";
 
 export const dynamic = 'force-dynamic';
 
-export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
-  try {
-    const user = await getSessionUser();
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const studentId = params.id;
-    if (!studentId) {
-      return NextResponse.json({ error: "Student ID is required" }, { status: 400 });
-    }
-
-    const docRef = adminDb.collection("students").doc(studentId);
-    const docSnap = await docRef.get();
-
-    if (!docSnap.exists) {
-      return NextResponse.json({ error: "Student not found in DB" }, { status: 404 });
-    }
-
-    const studentData = docSnap.data() as any;
-
-    if (studentData.tenantId !== user.tenantId) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-
-    return NextResponse.json({
-      success: true,
-      data: { id: docSnap.id, ...studentData }
-    });
-
-  } catch (error: any) {
-    console.error("[GET /students/[id]] Error:", error);
-    return NextResponse.json(
-      { error: error.message || "Internal Server Error" },
-      { status: 500 }
-    );
-  }
+function getId(req: Request): string {
+  const url = new URL(req.url);
+  return url.pathname.split("/").pop() || "";
 }
 
-export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
-  try {
-    const user = await getSessionUser();
-    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+export const GET = withErrorHandler(
+  withAuth(
+    withTenant(
+      withPermission(PERMISSIONS.students.view)(async (req: Request, { tenantId }: TenantContext) => {
+        const id = getId(req);
+        if (!id) return createErrorResponse(400, "Student ID is required");
 
-    const studentId = params.id;
-    const body = await req.json();
+        const service = new StudentService();
+        const student = await service.getById(tenantId, id);
+        return createSuccessResponse(student);
+      })
+    )
+  )
+);
 
-    await adminDb.collection("students").doc(studentId).update({
-      ...body,
-      updatedAt: new Date(),
-    });
+export const PUT = withErrorHandler(
+  withAuth(
+    withTenant(
+      withPermission(PERMISSIONS.students.update)(async (req: Request, { tenantId, user }: TenantContext) => {
+        const id = getId(req);
+        if (!id) return createErrorResponse(400, "Student ID is required");
 
-    return NextResponse.json({ success: true, message: "Student updated" });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
-  }
-}
+        const body = await req.json();
+        const service = new StudentService();
+        const updated = await service.update(tenantId, id, body, user.uid);
+        return createSuccessResponse(updated, { message: "Student updated" });
+      })
+    )
+  )
+);
 
-export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
-  try {
-    const user = await getSessionUser();
-    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+export const DELETE = withErrorHandler(
+  withAuth(
+    withTenant(
+      withPermission(PERMISSIONS.students.delete)(async (req: Request, { tenantId, user }: TenantContext) => {
+        const id = getId(req);
+        if (!id) return createErrorResponse(400, "Student ID is required");
 
-    const studentId = params.id;
-    
-    // Soft delete (recommended)
-    await adminDb.collection("students").doc(studentId).update({
-      deleted: true,
-      deletedAt: new Date(),
-    });
+        const service = new StudentService();
+        await service.delete(tenantId, id, user.uid);
+        return createSuccessResponse(null, { message: "Student deleted" });
+      })
+    )
+  )
+);
 
-    return NextResponse.json({ success: true, message: "Student deleted" });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
-  }
-}
