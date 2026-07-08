@@ -1,8 +1,16 @@
-// lib/ocr/mappers/staff.mapper.ts
+// lib/mappers/staff.mapper.ts
 // OCR → StaffForm mapper: extracts primitive values from enterprise OCR objects
 // NEVER bind raw OCRConfidence objects ({ value, confidence, needsReview }) to form inputs
 
-import { OCRConfidence } from "@/types/ocr";
+import {
+  toDateInputFormat,
+  extractPrimitive,
+  extractConfidence,
+  extractNeedsReview,
+  getConfidenceLabel,
+  toNumber,
+  OCRMetaData,
+} from "./shared";
 
 // ─── Staff Form Data Types ───────────────────────────────────────────────────
 
@@ -10,13 +18,13 @@ export interface StaffFormPersonal {
   fullName: string;
   fatherName: string;
   cnic: string;
-  dob: string; // yyyy-MM-dd for <input type="date">
+  dob: string;
   gender: string;
   bloodGroup: string;
   nationality: string;
   religion: string;
   maritalStatus: string;
-  photo: string; // base64 or URL
+  photo: string;
 }
 
 export interface StaffFormContact {
@@ -38,16 +46,10 @@ export interface StaffFormProfessional {
   department: string;
   role: string;
   employmentType: string;
-  joiningDate: string; // yyyy-MM-dd for <input type="date">
+  joiningDate: string;
   confirmationDate: string;
   experience: string;
   qualification: string;
-}
-
-export interface StaffFormPayrollAllowances {
-  houseRent: number;
-  medical: number;
-  transport: number;
 }
 
 export interface StaffFormPayroll {
@@ -94,126 +96,19 @@ export interface StaffFormData {
   documents: StaffFormDocuments;
 }
 
-// ─── OCR Metadata Types ──────────────────────────────────────────────────────
-
-export interface OCRConfidenceInfo {
-  value: number; // 0.0 – 1.0
-  label: "High" | "Medium" | "Low";
-}
-
-export interface OCRFieldMeta {
-  confidence: OCRConfidenceInfo;
-  needsReview: boolean;
-}
-
-/** Maps each OCR field name to its confidence metadata */
-export type OCRMetaData = Record<string, OCRFieldMeta>;
-
-// ─── Date Helpers ────────────────────────────────────────────────────────────
-
-/** Converts various date string formats to yyyy-MM-dd for <input type="date"> */
-function toDateInputFormat(value: string): string {
-  if (!value) return "";
-
-  // Already yyyy-MM-dd
-  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
-
-  // dd-MM-yyyy or dd/MM/yyyy or dd.MM.yyyy
-  const match = value.match(/^(\d{2})[-/.](\d{2})[-/.](\d{4})$/);
-  if (match) {
-    const [, day, month, year] = match;
-    return `${year}-${month}-${day}`;
-  }
-
-  // yyyy/MM/dd or yyyy.MM.dd
-  const match2 = value.match(/^(\d{4})[-/.](\d{2})[-/.](\d{2})$/);
-  if (match2) {
-    const [, year, month, day] = match2;
-    return `${year}-${month}-${day}`;
-  }
-
-  // MM/dd/yyyy (US format) - heuristic: only convert if month ≤ 12 and day > 12
-  const match3 = value.match(/^(\d{2})[-/](\d{2})[-/](\d{4})$/);
-  if (match3) {
-    const [, m, d, y] = match3;
-    const monthNum = parseInt(m, 10);
-    const dayNum = parseInt(d, 10);
-    // If month is valid (1-12) and day is clearly a day (>12 and ≤31), assume MM/dd/yyyy
-    if (monthNum >= 1 && monthNum <= 12 && dayNum > 12 && dayNum <= 31) {
-      return `${y}-${m}-${d}`;
-    }
-    // Otherwise assume dd/MM/yyyy
-    return `${y}-${m}-${d}`;
-  }
-
-  // Fallback: try JS Date parsing
-  const parsed = new Date(value);
-  if (!isNaN(parsed.getTime())) {
-    return parsed.toISOString().split("T")[0];
-  }
-
-  return value;
-}
-
-// ─── OCR Field Detection ─────────────────────────────────────────────────────
-
-function isOCRField(value: unknown): value is OCRConfidence {
-  return (
-    value !== null &&
-    typeof value === "object" &&
-    "value" in value &&
-    "confidence" in value &&
-    "needsReview" in value
-  );
-}
-
-function extractPrimitive(field: unknown): any {
-  if (isOCRField(field)) return field.value;
-  return field;
-}
-
-function extractConfidence(field: unknown): number | null {
-  if (isOCRField(field)) return field.confidence;
-  return null;
-}
-
-function extractNeedsReview(field: unknown): boolean | null {
-  if (isOCRField(field)) return field.needsReview;
-  return null;
-}
-
-function getConfidenceLabel(score: number): "High" | "Medium" | "Low" {
-  if (score >= 0.8) return "High";
-  if (score >= 0.6) return "Medium";
-  return "Low";
-}
-
-// ─── Float / Number Extraction ───────────────────────────────────────────────
-
-function toNumber(val: unknown): number {
-  if (typeof val === "number") return val;
-  if (typeof val === "string") {
-    const cleaned = val.replace(/[^0-9.]/g, "");
-    const n = parseFloat(cleaned);
-    return isNaN(n) ? 0 : n;
-  }
-  return 0;
-}
-
 // ─── Mapper ──────────────────────────────────────────────────────────────────
 
 const DATE_FIELDS = new Set(["dob", "joiningDate", "confirmationDate"]);
-const IMAGE_FIELDS = new Set(["photo", "photoBase64"]);
 
 /**
  * Maps a raw OCR API response (with OCRConfidence objects) to:
  *  1. StaffFormData with primitive values only (no [object Object])
  *  2. OCRMetaData with confidence info per field
  *
- * Usage in form OCR handler:
+ * Usage:
  *   const { staffFormData, ocrMetadata } = mapOCRToStaffForm(result.data);
- *   setForm(staffFormData);            // Binds to inputs
- *   setOcrMeta(ocrMetadata);           // For confidence indicators
+ *   setForm(staffFormData);
+ *   setOcrMeta(ocrMetadata);
  */
 export function mapOCRToStaffForm(
   ocrResponse: Record<string, unknown>
@@ -224,7 +119,6 @@ export function mapOCRToStaffForm(
   const raw: Record<string, any> = ocrResponse ?? {};
   const metadata: OCRMetaData = {};
 
-  // Helper: extract primitive value AND record metadata
   const resolve = (key: string): any => {
     const field = raw[key];
     const primitive = extractPrimitive(field);
@@ -233,22 +127,13 @@ export function mapOCRToStaffForm(
 
     if (confidence !== null) {
       metadata[key] = {
-        confidence: {
-          value: confidence,
-          label: getConfidenceLabel(confidence),
-        },
+        confidence: { value: confidence, label: getConfidenceLabel(confidence) },
         needsReview: needsReview ?? false,
       };
     }
 
-    // Date conversion
     if (DATE_FIELDS.has(key) && typeof primitive === "string") {
       return toDateInputFormat(primitive);
-    }
-
-    // Handle image fields (already base64 strings, not OCR objects)
-    if (IMAGE_FIELDS.has(key)) {
-      return primitive ?? "";
     }
 
     return primitive ?? "";
@@ -262,10 +147,7 @@ export function mapOCRToStaffForm(
 
     if (confidence !== null) {
       metadata[key] = {
-        confidence: {
-          value: confidence,
-          label: getConfidenceLabel(confidence),
-        },
+        confidence: { value: confidence, label: getConfidenceLabel(confidence) },
         needsReview: needsReview ?? false,
       };
     }
@@ -273,7 +155,6 @@ export function mapOCRToStaffForm(
     return toNumber(primitive);
   };
 
-  // Resolve photoBase64 at the top level (it's a primitive in the OCR response)
   const photoBase64Value = raw.photoBase64 ?? "";
 
   const staffFormData: StaffFormData = {

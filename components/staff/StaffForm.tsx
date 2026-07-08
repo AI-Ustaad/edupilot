@@ -6,8 +6,9 @@ import { Loader2, Camera, Upload, Trash2, Save, UserPlus, FileText } from "lucid
 import Image from "next/image";
 import { useCreateStaff } from "@/hooks/useStaff";
 import { useToast } from "@/components/ToastProvider";
-import { mapOCRToStaffForm } from "@/lib/ocr/mappers/staff.mapper";
-import type { StaffFormData, OCRMetaData } from "@/lib/ocr/mappers/staff.mapper";
+import { mapOCRToStaffForm } from "@/lib/mappers/staff.mapper";
+import type { StaffFormData } from "@/lib/mappers/staff.mapper";
+import type { OCRMetaData } from "@/lib/mappers/shared";
 
 const Input = ({ label, ...props }: { label: string } & React.InputHTMLAttributes<HTMLInputElement>) => (
   <div><label className="block text-sm font-medium text-gray-700 mb-1">{label}</label><input {...props} className="w-full p-2 border rounded-xl" /></div>

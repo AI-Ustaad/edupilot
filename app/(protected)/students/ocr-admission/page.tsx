@@ -16,6 +16,7 @@ import {
 // 🚀 Layered Architecture Hooks
 import { useCreateStudent } from "@/hooks/useStudents";
 import { useToast } from "@/components/ToastProvider";
+import { mapOCRToStudentForm } from "@/lib/mappers/student.mapper";
 
 export default function OCRAdmissionPage() {
   const router = useRouter();
@@ -71,7 +72,8 @@ export default function OCRAdmissionPage() {
       
       const json = await res.json();
       if (res.ok && json.success) {
-        setExtractedData(json.data);
+        const { studentFormData } = mapOCRToStudentForm(json.data);
+        setExtractedData(studentFormData);
         showToast("Data extracted successfully!", "success");
       } else {
         setError(json.message || "OCR extraction failed.");

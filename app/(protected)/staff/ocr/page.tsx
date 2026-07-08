@@ -7,7 +7,7 @@ import { Upload, Loader2, FileText, Image as ImageIcon, UserPlus, AlertCircle, C
 // 🚀 Hooks
 import { useCreateStaff } from "@/hooks/useStaff";
 import { useToast } from "@/components/ToastProvider";
-import { mapOCRToStaffForm } from "@/lib/ocr/mappers/staff.mapper";
+import { mapOCRToStaffForm } from "@/lib/mappers/staff.mapper";
 
 export default function StaffOCRPage() {
   const router = useRouter();

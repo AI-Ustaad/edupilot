@@ -6,7 +6,7 @@ import { Loader2, Camera, Upload, Plus, Trash2, Save, UserPlus, FileText } from 
 import Image from "next/image";
 import { useCreateStaff } from "@/hooks/useStaff";
 import { useToast } from "@/components/ToastProvider";
-import { mapOCRToStaffForm } from "@/lib/ocr/mappers/staff.mapper";
+import { mapOCRToStaffForm } from "@/lib/mappers/staff.mapper";
 
 // Reusable UI Components
 const Input = ({ label, ...props }: { label: string } & React.InputHTMLAttributes<HTMLInputElement>) => (
