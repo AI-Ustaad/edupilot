@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic';
 import { createWorker } from "tesseract.js";
 import { withAuth, withTenant, withErrorHandler, withRole } from "@/route-helpers";
-import { createApiResponse } from "@/lib/response/apiResponse";
+import { createSuccessResponse, createErrorResponse, createApiResponse } from "@/lib/api/response";
 import type { TenantContext } from "@/types/api";
 
 function bufferToBase64(buffer: Buffer, mimeType = "image/jpeg"): string {
@@ -43,7 +43,7 @@ export const POST = withErrorHandler(
       withRole(["admin"])(async (req: Request, { tenantId }: TenantContext) => {
         const formData = await req.formData();
         const file = formData.get("file") as File;
-        if (!file) return createApiResponse(400, null, "No file provided");
+        if (!file) return createErrorResponse(400, "No file provided");
 
         const bytes = await file.arrayBuffer();
         const buffer = Buffer.from(bytes);
@@ -68,17 +68,17 @@ export const POST = withErrorHandler(
           const result = await mammoth.extractRawText({ buffer });
           extractedText = result.value;
         } else {
-          return createApiResponse(400, null, "Unsupported file type");
+          return createErrorResponse(400, "Unsupported file type");
         }
 
         if (!extractedText || extractedText.trim().length < 20) {
-          return createApiResponse(400, null, "Could not extract enough text");
+          return createErrorResponse(400, "Could not extract enough text");
         }
 
         const extractedData = extractStudentFields(extractedText);
         if (photoBase64) (extractedData as any).photoBase64 = photoBase64;
 
-        return createApiResponse(200, { success: true, data: extractedData });
+        return createSuccessResponse({ success: true, data: extractedData });
       })
     )
   )

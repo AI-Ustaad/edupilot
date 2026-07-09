@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic';
 import { adminDb } from "@/lib/firebase-admin";
 import { withAuth, withTenant, withErrorHandler } from "@/route-helpers";
-import { createApiResponse } from "@/lib/response/apiResponse";
+import { createSuccessResponse, createErrorResponse, createApiResponse } from "@/lib/api/response";
 import type { TenantContext } from "@/types/api";
 
 export const GET = withErrorHandler(
@@ -10,9 +10,9 @@ export const GET = withErrorHandler(
       const id = new URL(req.url).pathname.split("/").pop() || "";
       const doc = await adminDb.collection("quizzes").doc(id).get();
       if (!doc.exists) {
-        return createApiResponse(404, null, "Quiz not found");
+        return createErrorResponse(404, "Quiz not found");
       }
-      return createApiResponse(200, { id: doc.id, ...doc.data() });
+      return createSuccessResponse({ id: doc.id, ...doc.data() });
     })
   )
 );

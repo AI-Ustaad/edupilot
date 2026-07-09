@@ -1,10 +1,10 @@
 export const dynamic = 'force-dynamic';
-// app/api/jobs/fee-reminder/route.ts
 import { NextResponse } from 'next/server';
 import { FeesService } from '@/services/fees.service';
 import { FeesRepository } from '@/repositories/fees.repository';
 import { sendEmail } from '@/lib/email';
 import { adminDb } from '@/lib/firebase-admin';
+import { logger } from '@/lib/logger/logger';
 
 export async function GET(req: Request) {
   try {
@@ -35,7 +35,7 @@ export async function GET(req: Request) {
 
     return NextResponse.json({ success: true, processed: totalProcessed });
   } catch (error: any) {
-    console.error('Fee reminder job failed:', error);
+    logger.error('Fee reminder job failed:', { metadata: { error } });
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

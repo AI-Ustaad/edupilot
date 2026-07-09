@@ -1,6 +1,6 @@
 export const dynamic = 'force-dynamic';
 import { withAuth, withTenant, withErrorHandler } from "@/route-helpers";
-import { createApiResponse } from "@/lib/response/apiResponse";
+import { createSuccessResponse, createErrorResponse, createApiResponse } from "@/lib/api/response";
 import { BusService } from "@/services/bus.service";
 import { BusRepository } from "@/repositories/bus.repository";
 import { logAction } from "@/lib/audit";
@@ -31,9 +31,9 @@ export const GET = withErrorHandler(
         const service = new BusService(new BusRepository());
         const bus = await service.getById(id, tenantId);
         if (!bus) {
-          return createApiResponse(404, null, "Bus not found");
+          return createErrorResponse(404, "Bus not found");
         }
-        return createApiResponse(200, bus);
+        return createSuccessResponse(bus);
       })
     )
   )
@@ -47,7 +47,7 @@ export const PUT = withErrorHandler(
         const body = await req.json();
         const service = new BusService(new BusRepository());
         await service.update(id, body, tenantId);
-        return createApiResponse(200, null, "Bus updated successfully");
+        return createSuccessResponse(null, { message: "Bus updated successfully" });
       })
     )
   )
@@ -61,7 +61,7 @@ export const DELETE = withErrorHandler(
         const service = new BusService(new BusRepository());
         const bus = await service.getById(id, tenantId);
         if (!bus) {
-          return createApiResponse(404, null, "Bus not found");
+          return createErrorResponse(404, "Bus not found");
         }
 
         await service.delete(id, tenantId);
@@ -76,7 +76,7 @@ export const DELETE = withErrorHandler(
           metadata: { busNumber: bus.busNumber },
         });
 
-        return createApiResponse(200, null, "Bus deleted successfully");
+        return createSuccessResponse(null, { message: "Bus deleted successfully" });
       })
     )
   )

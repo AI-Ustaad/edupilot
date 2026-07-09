@@ -5,7 +5,7 @@ import { adminDb } from "@/lib/firebase-admin";
 import { withErrorHandler, withAuth, withTenant } from "@/route-helpers";
 import { withPermission } from "@/lib/auth/rbac";
 import { PERMISSIONS } from "@/lib/auth/permissions";
-import { createApiResponse } from "@/lib/response/apiResponse";
+import { createSuccessResponse, createErrorResponse, createApiResponse } from "@/lib/api/response";
 
 export const POST = withErrorHandler(
   withAuth(
@@ -22,7 +22,7 @@ export const POST = withErrorHandler(
           updatedAt: new Date(),
         }, { merge: true });
         
-        return NextResponse.json(createApiResponse(200, null, "Activated"));
+        return createSuccessResponse(null, { message: "Activated" });
       })
     )
   )

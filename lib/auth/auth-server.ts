@@ -1,5 +1,6 @@
 // lib/auth/auth-server.ts
 import { adminAuth, adminDb } from "@/lib/firebase-admin";
+import { logger } from "@/lib/logger/logger";
 
 const GLOBAL_ROLES = new Set(["superAdmin", "support", "system"]);
 
@@ -18,7 +19,7 @@ export async function getSessionUser() {
       // اگر Session Cookie نہیں ہے، تو Custom Token کے طور پر Verify کریں (Email/Password کے لیے)
       decodedToken = await adminAuth.verifyIdToken(sessionCookie);
     } catch (err) {
-      console.error("Session verification failed:", err);
+      logger.error("Session verification failed:", { metadata: { error: err } });
       return null;
     }
   }
@@ -49,7 +50,7 @@ export async function getSessionUser() {
       onboardingRequired: userData.onboardingRequired ?? false,
     };
   } catch (error) {
-    console.error("Error fetching user data:", error);
+    logger.error("Error fetching user data:", { metadata: { error } });
     return null;
   }
 }

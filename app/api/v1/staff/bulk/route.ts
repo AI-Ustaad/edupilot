@@ -4,7 +4,7 @@ export const runtime = "nodejs";
 import { withErrorHandler, withAuth, withTenant } from "@/route-helpers";
 import { withPermission } from "@/lib/auth/rbac";
 import { PERMISSIONS } from "@/lib/auth/permissions";
-import { createApiResponse } from "@/lib/response/apiResponse";
+import { createSuccessResponse, createErrorResponse, createApiResponse } from "@/lib/api/response";
 import { StaffService } from "@/services/StaffService";
 import { AppError } from "@/errors/AppError";
 import type { TenantContext } from "@/types/api";
@@ -21,7 +21,7 @@ export const POST = withErrorHandler(
           const file = formData.get("file") as File;
 
           if (!file) {
-            return createApiResponse(400, null, "No file provided");
+            return createErrorResponse(400, "No file provided");
           }
 
           const arrayBuffer = await file.arrayBuffer();

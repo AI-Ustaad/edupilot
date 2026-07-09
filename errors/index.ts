@@ -7,5 +7,3 @@ export * from "./ForbiddenError";
 export * from "./OCRException";
 export * from "./ProviderException";
 export * from "./RepositoryException";
-// errors/index.ts
-export * from "./AppError";

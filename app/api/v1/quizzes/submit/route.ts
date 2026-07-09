@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic';
 import { adminDb } from "@/lib/firebase-admin";
 import { withAuth, withTenant, withErrorHandler } from "@/route-helpers";
-import { createApiResponse } from "@/lib/response/apiResponse";
+import { createSuccessResponse, createErrorResponse, createApiResponse } from "@/lib/api/response";
 import type { TenantContext } from "@/types/api";
 
 export const POST = withErrorHandler(
@@ -9,13 +9,13 @@ export const POST = withErrorHandler(
     withTenant(async (req: Request, { tenantId, user }: TenantContext) => {
       const { quizId, studentId, studentName, answers } = await req.json();
       if (!quizId || !studentId || !answers || !Array.isArray(answers)) {
-        return createApiResponse(400, null, "Missing required fields");
+        return createErrorResponse(400, "Missing required fields");
       }
 
       // کوئز لوڈ کریں
       const quizDoc = await adminDb.collection("quizzes").doc(quizId).get();
       if (!quizDoc.exists) {
-        return createApiResponse(404, null, "Quiz not found");
+        return createErrorResponse(404, "Quiz not found");
       }
       const quiz = quizDoc.data();
       const questions = quiz?.questions || [];

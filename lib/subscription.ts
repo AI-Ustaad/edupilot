@@ -1,28 +1,22 @@
-// lib/subscription.ts
 import { adminDb } from "@/lib/firebase-admin";
+import { PLANS } from "@/lib/config/subscription-plans";
 
 export interface PlanLimits {
   students: number;
   staff: number;
 }
 
-const PLAN_LIMITS: Record<string, PlanLimits> = {
-  free: { students: 50, staff: 10 },
-  basic: { students: 500, staff: 50 },
-  pro: { students: 2000, staff: 200 },
-  enterprise: { students: 999999, staff: 999999 },
-};
-
 export async function getTenantSubscription(tenantId: string) {
   const subDoc = await adminDb.collection("subscriptions").doc(tenantId).get();
   if (!subDoc.exists) {
-    return { planId: "free", status: "active", limits: PLAN_LIMITS.free };
+    return { planId: "free", status: "active", limits: { students: PLANS.free.maxStudents, staff: PLANS.free.maxStaff } };
   }
   const subData = subDoc.data() as any;
+  const plan = PLANS[subData.planId] || PLANS.free;
   return {
     planId: subData.planId || "free",
     status: subData.status || "active",
-    limits: PLAN_LIMITS[subData.planId] || PLAN_LIMITS.free,
+    limits: { students: plan.maxStudents, staff: plan.maxStaff },
   };
 }
 
@@ -36,7 +30,6 @@ export async function getTenantUsage(tenantId: string) {
   };
 }
 
-// یہ فنکشن Check کرے گا کہ نیا سٹوڈنٹ Add ہو سکتا ہے یا نہیں
 export async function canAddStudent(tenantId: string): Promise<{ allowed: boolean; message?: string }> {
   const { limits } = await getTenantSubscription(tenantId);
   const { studentsUsed } = await getTenantUsage(tenantId);
@@ -45,6 +38,19 @@ export async function canAddStudent(tenantId: string): Promise<{ allowed: boolea
     return {
       allowed: false,
       message: `You have reached the student limit (${limits.students}) of your plan. Please upgrade your plan to add more students.`
+    };
+  }
+  return { allowed: true };
+}
+
+export async function canAddStaff(tenantId: string): Promise<{ allowed: boolean; message?: string }> {
+  const { limits } = await getTenantSubscription(tenantId);
+  const { staffUsed } = await getTenantUsage(tenantId);
+  
+  if (staffUsed >= limits.staff) {
+    return {
+      allowed: false,
+      message: `You have reached the staff limit (${limits.staff}) of your plan. Please upgrade your plan to add more staff.`
     };
   }
   return { allowed: true };

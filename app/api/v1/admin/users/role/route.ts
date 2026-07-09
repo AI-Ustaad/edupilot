@@ -5,7 +5,7 @@ import { adminAuth, adminDb } from "@/lib/firebase-admin";
 import { withErrorHandler, withAuth, withTenant } from "@/route-helpers";
 import { withPermission } from "@/lib/auth/rbac";
 import { PERMISSIONS } from "@/lib/auth/permissions";
-import { createApiResponse } from "@/lib/response/apiResponse";
+import { createSuccessResponse, createErrorResponse, createApiResponse } from "@/lib/api/response";
 
 export const POST = withErrorHandler(
   withAuth(
@@ -15,13 +15,13 @@ export const POST = withErrorHandler(
         const { uid, role } = await req.json();
         
         if (!uid || !["admin", "teacher", "accountant"].includes(role)) {
-          return NextResponse.json(createApiResponse(400, null, "Invalid input"), { status: 400 });
+          return createErrorResponse(400, "Invalid input");
         }
 
         await adminAuth.setCustomUserClaims(uid, { role, tenantId });
         await adminDb.collection("users").doc(uid).update({ role, updatedAt: new Date() });
 
-        return NextResponse.json(createApiResponse(200, null, "Role updated successfully"));
+        return createSuccessResponse(null, { message: "Role updated successfully" });
       })
     )
   )

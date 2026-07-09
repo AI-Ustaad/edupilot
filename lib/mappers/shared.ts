@@ -28,36 +28,43 @@ export function toDateInputFormat(value: string): string {
   // Already yyyy-MM-dd
   if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
 
-  // dd-MM-yyyy or dd/MM/yyyy or dd.MM.yyyy
-  const match = value.match(/^(\d{2})[-/.](\d{2})[-/.](\d{4})$/);
-  if (match) {
-    const [, day, month, year] = match;
-    return `${year}-${month}-${day}`;
+  // Match two-digit separators: any of - / .
+  const sepMatch = value.match(/^(\d{2})([-/.])(\d{2})\2(\d{4})$/);
+  if (sepMatch) {
+    const [, a, , b, year] = sepMatch;
+    const aNum = parseInt(a, 10);
+    const bNum = parseInt(b, 10);
+
+    // Heuristic to detect dd/MM/yyyy vs MM/dd/yyyy:
+    // - If first part > 12 → must be day (dd/MM)
+    // - If second part > 12 → must be day (MM/dd, US format)
+    // - Both ≤ 12 → default to dd/MM (European)
+    if (aNum > 12) {
+      // dd/MM/yyyy
+      return `${year}-${b}-${a}`;
+    } else if (bNum > 12) {
+      // MM/dd/yyyy (US format)
+      return `${year}-${a}-${b}`;
+    }
+    // Both ≤ 12 → ambiguous, default to dd/MM/yyyy
+    return `${year}-${b}-${a}`;
   }
 
   // yyyy/MM/dd or yyyy.MM.dd
-  const match2 = value.match(/^(\d{4})[-/.](\d{2})[-/.](\d{2})$/);
+  const match2 = value.match(/^(\d{4})[-/.]?(\d{2})[-/.]?(\d{2})$/);
   if (match2) {
     const [, year, month, day] = match2;
     return `${year}-${month}-${day}`;
   }
 
-  // MM/dd/yyyy (US format) - heuristic: only convert if month ≤ 12 and day > 12
-  const match3 = value.match(/^(\d{2})[-/](\d{2})[-/](\d{4})$/);
-  if (match3) {
-    const [, m, d, y] = match3;
-    const monthNum = parseInt(m, 10);
-    const dayNum = parseInt(d, 10);
-    if (monthNum >= 1 && monthNum <= 12 && dayNum > 12 && dayNum <= 31) {
-      return `${y}-${m}-${d}`;
-    }
-    return `${y}-${m}-${d}`;
-  }
-
   // Fallback: try JS Date parsing
   const parsed = new Date(value);
   if (!isNaN(parsed.getTime())) {
-    return parsed.toISOString().split("T")[0];
+    // Use local time methods to preserve the intended date
+    const y = parsed.getFullYear();
+    const m = String(parsed.getMonth() + 1).padStart(2, "0");
+    const d = String(parsed.getDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;
   }
 
   return value;
@@ -101,8 +108,28 @@ export function getConfidenceLabel(score: number): "High" | "Medium" | "Low" {
 export function toNumber(val: unknown): number {
   if (typeof val === "number") return val;
   if (typeof val === "string") {
-    const cleaned = val.replace(/[^0-9.]/g, "");
-    const n = parseFloat(cleaned);
+    // Remove commas and spaces (thousand separators)
+    const cleaned = val.replace(/[,\s]/g, "");
+    // Find the last dot — potential decimal separator
+    const dotIndex = cleaned.lastIndexOf(".");
+    // Only treat as decimal if digit on both sides of the dot
+    const hasValidDecimal =
+      dotIndex > 0 &&
+      /\d/.test(cleaned[dotIndex - 1]) &&
+      /\d/.test(cleaned.substring(dotIndex + 1) || "");
+
+    const allDigits = cleaned.replace(/[^0-9]/g, "");
+    if (allDigits.length === 0) return 0;
+
+    if (hasValidDecimal) {
+      const beforeDot = cleaned.substring(0, dotIndex);
+      const digitsBeforeDot = beforeDot.replace(/[^0-9]/g, "") || "0";
+      const decPart = cleaned.substring(dotIndex + 1).replace(/[^0-9]/g, "");
+      const n = parseFloat(digitsBeforeDot + "." + decPart);
+      return isNaN(n) ? 0 : n;
+    }
+
+    const n = parseFloat(allDigits);
     return isNaN(n) ? 0 : n;
   }
   return 0;

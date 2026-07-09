@@ -7,13 +7,14 @@ import { adminDb } from "@/lib/firebase-admin";
 import { renderToBuffer } from "@react-pdf/renderer";
 import { ReportCardTemplate } from "@/lib/pdf/ReportCardTemplate";
 import React from "react";
-import { getStorage } from "firebase-admin/storage"; // ☁️ Firebase Storage Import
+import { getStorage } from "firebase-admin/storage";
+import { logger } from "@/lib/logger/logger";
 
 export async function runReportWorker(data: any) {
   const { tenantId, jobId, studentIds, term } = data;
   const total = studentIds.length;
 
-  console.log(`👷‍♂️ [Worker] Starting report generation for Job: ${jobId}`);
+  logger.info(`Worker: Starting report generation for Job: ${jobId}`);
   
   try {
     // جاب کا اسٹیٹس 'processing' کر دیں
@@ -96,13 +97,13 @@ export async function runReportWorker(data: any) {
     
     // 100% مکمل!
     await JobService.updateProgress(tenantId, jobId, total, total, "completed");
-    console.log(`✅ [Worker] Reports successfully generated for Job: ${jobId}`);
+    logger.info(`Worker: Reports successfully generated for Job: ${jobId}`);
     
     // Event Bus کو بتائیں تاکہ اگر کوئی نوٹیفکیشن بھیجنا ہو تو وہ چلا جائے
     eventBus.publish(EVENTS.REPORT_GENERATED, { tenantId, jobId });
 
   } catch (error: any) {
-    console.error(`❌ [Worker] Failed Job ${jobId}:`, error);
+    logger.error(`Worker: Failed Job ${jobId}:`, { metadata: { error: error.message } });
     await JobService.failJob(tenantId, jobId, error.message);
     throw error; 
   }

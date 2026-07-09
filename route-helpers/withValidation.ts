@@ -1,6 +1,6 @@
 // middleware/withValidation.ts
 import { z } from "zod";
-import { createApiResponse } from "@/lib/response/apiResponse";
+import { createErrorResponse } from "@/lib/api/response";
 
 export function withValidation(schema: z.ZodSchema) {
   return (handler: Function) => async (req: Request, context?: any) => {
@@ -11,9 +11,9 @@ export function withValidation(schema: z.ZodSchema) {
       return handler(req, { ...context, validated });
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return createApiResponse(400, null, "Validation failed", error.errors);
+        return createErrorResponse(400, "Validation failed", error.errors);
       }
-      return createApiResponse(400, null, "Invalid request body");
+      return createErrorResponse(400, "Invalid request body");
     }
   };
 }

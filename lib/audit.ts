@@ -1,6 +1,7 @@
 // lib/audit.ts
 import { adminDb } from "@/lib/firebase-admin";
-import { FieldValue } from "firebase-admin/firestore"; // ✅ Correct import for newer firebase-admin versions
+import { FieldValue } from "firebase-admin/firestore";
+import { logger } from "@/lib/logger/logger";
 
 export async function logAction({
   action,
@@ -29,6 +30,6 @@ export async function logAction({
     });
   } catch (err) {
     // Fail silently so it doesn't break the main user action
-    console.error("Audit log failed:", err);
+    logger.error("Audit log failed:", { metadata: { error: err } });
   }
 }

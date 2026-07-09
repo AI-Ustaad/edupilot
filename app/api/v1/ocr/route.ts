@@ -1,14 +1,14 @@
 export const dynamic = 'force-dynamic';
 import { withAuth, withTenant, withErrorHandler } from "@/route-helpers";
-import { createApiResponse } from "@/lib/response/apiResponse";
+import { createSuccessResponse, createErrorResponse, createApiResponse } from "@/lib/api/response";
 import type { TenantContext } from "@/types/api";
 
 export const POST = withErrorHandler(
   withAuth(
     withTenant(async (req: Request, { tenantId }: TenantContext) => {
       const { image, documentType } = await req.json();
-      if (!image) return createApiResponse(400, null, "No file");
-      if (documentType !== "salary_slip") return createApiResponse(400, null, "Unsupported type");
+      if (!image) return createErrorResponse(400, "No file");
+      if (documentType !== "salary_slip") return createErrorResponse(400, "Unsupported type");
 
       const extractedData = {
         fullName: "John Doe",
@@ -18,7 +18,7 @@ export const POST = withErrorHandler(
         allowances: [{ name: "Basic Pay", amount: 18910 }],
         deductions: [{ name: "GPF", amount: 3340 }],
       };
-      return createApiResponse(200, extractedData);
+      return createSuccessResponse(extractedData);
     })
   )
 );

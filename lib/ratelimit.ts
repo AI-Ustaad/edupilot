@@ -1,6 +1,7 @@
 // lib/ratelimit.ts
 import { Ratelimit } from "@upstash/ratelimit";
 import { Redis } from "@upstash/redis";
+import { logger } from "@/lib/logger/logger";
 
 let redis: Redis | null = null;
 if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
@@ -30,7 +31,7 @@ export async function checkAuthRateLimit() {
     const result = await authRateLimit.limit("login");
     return { success: result.success, reset: result.reset };
   } catch (error) {
-    console.error("Rate limiter error:", error);
+    logger.error("Rate limiter error:", { metadata: { error } });
     return { success: true, reset: 0 };
   }
 }

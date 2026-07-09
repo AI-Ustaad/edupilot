@@ -5,6 +5,7 @@ import { withPermission } from "@/lib/auth/rbac";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 import { MarksService } from "@/services/marks.service";
 import { sendEmail } from "@/lib/email";
+import { logger } from "@/lib/logger/logger";
 import type { TenantContext } from "@/types/api";
 
 const marksService = new MarksService();
@@ -40,7 +41,7 @@ export const POST = withErrorHandler(
             parent.email,
             `Exam Results Published - ${term}`,
             `<p>Dear Parent,</p><p>Results for <strong>${parent.studentName}</strong> in <strong>${term}</strong> are now available.</p>`
-          ).catch(console.error);
+          ).catch((err) => logger.error("Failed to send results email:", { metadata: { error: err } }));
         }
 
         return createApiResponse(200, {

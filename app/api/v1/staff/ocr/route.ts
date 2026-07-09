@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSessionUser } from "@/lib/auth/auth-server";
 import { OCRService } from "@/services/OCRService";
 import { AppError } from "@/errors/AppError";
+import { logger } from "@/lib/logger/logger";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -56,16 +57,18 @@ export async function POST(req: NextRequest) {
       needsReview: result.humanReviewRequired,
     };
 
-    console.log({
-      tenant: user.tenantId,
-      user: user.uid,
-      provider: result.providerUsed,
-      model: result.modelUsed,
-      mime: file.type,
-      size: file.size,
-      confidence: result.overallConfidence,
-      needsReview: result.humanReviewRequired,
-      processingTime: result.processingTimeMs,
+    logger.ocr("Staff OCR processed", {
+      tenantId: user.tenantId,
+      userId: user.uid,
+      metadata: {
+        provider: result.providerUsed,
+        model: result.modelUsed,
+        mime: file.type,
+        size: file.size,
+        confidence: result.overallConfidence,
+        needsReview: result.humanReviewRequired,
+        processingTime: result.processingTimeMs,
+      },
     });
 
     return NextResponse.json({
@@ -92,7 +95,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    console.error("[Staff OCR] Error:", error);
+    logger.error("[Staff OCR] Error:", { metadata: { error: error.message } });
     return NextResponse.json(
       { success: false, error: "Failed to process document", processingTime },
       { status: 500 }

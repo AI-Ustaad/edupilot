@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic';
 import { adminStorage } from "@/lib/firebase-admin";
 import { withAuth, withTenant, withErrorHandler } from "@/route-helpers";
-import { createApiResponse } from "@/lib/response/apiResponse";
+import { createSuccessResponse, createErrorResponse, createApiResponse } from "@/lib/api/response";
 import type { TenantContext } from "@/types/api";
 
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp", "application/pdf"];
@@ -12,12 +12,12 @@ export const POST = withErrorHandler(
     withTenant(async (req: Request, { tenantId }: TenantContext) => {
       const formData = await req.formData();
       const file = formData.get("file") as File;
-      if (!file) return createApiResponse(400, null, "No file provided");
+      if (!file) return createErrorResponse(400, "No file provided");
       if (!ALLOWED_TYPES.includes(file.type)) {
-        return createApiResponse(400, null, "Invalid file type. Allowed: JPEG, PNG, GIF, WebP, PDF");
+        return createErrorResponse(400, "Invalid file type. Allowed: JPEG, PNG, GIF, WebP, PDF");
       }
       if (file.size > MAX_SIZE) {
-        return createApiResponse(400, null, "File too large. Maximum 5 MB");
+        return createErrorResponse(400, "File too large. Maximum 5 MB");
       }
 
       const buffer = Buffer.from(await file.arrayBuffer());
@@ -28,7 +28,7 @@ export const POST = withErrorHandler(
       await fileRef.makePublic();
 
       const publicUrl = `https://storage.googleapis.com/${bucket.name}/${fileName}`;
-      return createApiResponse(200, { url: publicUrl });
+      return createSuccessResponse({ url: publicUrl });
     })
   )
 );

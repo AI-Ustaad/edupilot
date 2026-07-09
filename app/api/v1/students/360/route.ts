@@ -5,6 +5,7 @@ import { adminDb } from "@/lib/firebase-admin";
 import { withErrorHandler, withAuth, withTenant } from "@/route-helpers";
 import { withPermission } from "@/lib/auth/rbac";
 import { PERMISSIONS } from "@/lib/auth/permissions";
+import { logger } from "@/lib/logger/logger";
 import type { TenantContext } from "@/types/api";
 
 export const runtime = 'nodejs';
@@ -51,7 +52,7 @@ export const GET = withErrorHandler(
             },
           });
         } catch (error: any) {
-          console.error("Student 360 Error:", error);
+          logger.error("Student 360 Error:", { metadata: { error } });
           return NextResponse.json({ success: false, error: "Internal Server Error" }, { status: 500 });
         }
       })

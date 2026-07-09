@@ -1,7 +1,8 @@
 export const dynamic = 'force-dynamic';
 import { adminDb } from "@/lib/firebase-admin";
 import { withAuth, withTenant, withErrorHandler } from "@/route-helpers";
-import { createApiResponse } from "@/lib/response/apiResponse";
+import { createSuccessResponse, createErrorResponse, createApiResponse } from "@/lib/api/response";
+import { logger } from "@/lib/logger/logger";
 import type { TenantContext } from "@/types/api";
 
 export const GET = withErrorHandler(
@@ -41,10 +42,10 @@ export const GET = withErrorHandler(
             }
           }
 
-          return createApiResponse(200, riskStudents);
+          return createSuccessResponse(riskStudents);
           
         } catch (error: any) {
-          console.error("Risk API Error:", error);
+          logger.error("Risk API Error:", { metadata: { error } });
           // اگر کوئی بھی Error آئے تو خالی Array Return کر دیں تاکہ Dashboard Crash نہ ہو
           return createApiResponse(200, []); 
         }

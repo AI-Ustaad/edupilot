@@ -40,7 +40,7 @@ export interface StudentFormData {
 
 // ─── Mapper ──────────────────────────────────────────────────────────────────
 
-const DATE_FIELDS = new Set(["dob", "dateOfBirth"]);
+const DATE_FIELDS = new Set(["dob", "dateOfBirth", "DOB"]);
 
 /**
  * Maps a raw OCR/API response (may contain OCRConfidence objects or primitive values) to:

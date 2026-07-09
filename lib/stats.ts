@@ -1,5 +1,5 @@
-// lib/stats.ts
 import { adminDb } from "@/lib/firebase-admin";
+import { logger } from "@/lib/logger/logger";
 
 export async function updateTenantStats(
   tenantId: string, 
@@ -9,12 +9,10 @@ export async function updateTenantStats(
   const statsRef = adminDb.collection("tenants").doc(tenantId).collection("dashboard").doc("stats");
   
   try {
-    // Race Conditions سے بچنے کے لیے Transaction کا استعمال
     await adminDb.runTransaction(async (transaction) => {
       const doc = await transaction.get(statsRef);
       
       if (!doc.exists) {
-        // اگر ڈاکومنٹ موجود نہیں تو نیا بنائیں
         transaction.set(statsRef, {
           students: type === 'students' ? amount : 0,
           staff: type === 'staff' ? amount : 0,
@@ -22,7 +20,6 @@ export async function updateTenantStats(
           updatedAt: new Date().toISOString()
         });
       } else {
-        // محفوظ طریقے سے موجودہ ویلیو میں اضافہ یا کمی کریں
         const currentData = doc.data() || {};
         const currentValue = currentData[type] || 0;
         
@@ -33,9 +30,9 @@ export async function updateTenantStats(
       }
     });
     
-    console.log(`Transaction successful: ${type} updated by ${amount} for tenant ${tenantId}`);
+    logger.info(`Transaction successful: ${type} updated by ${amount} for tenant ${tenantId}`);
   } catch (error) {
-    console.error("Transaction failed:", error);
-    throw error; // تاکہ کال کرنے والی API کو بھی ایرر کا پتہ چل سکے
+    logger.error("Transaction failed:", { metadata: { error } });
+    throw error;
   }
 }

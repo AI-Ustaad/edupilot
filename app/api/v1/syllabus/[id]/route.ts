@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic';
 import { adminDb } from "@/lib/firebase-admin";
 import { withAuth, withTenant, withErrorHandler, withRole } from "@/route-helpers";
-import { createApiResponse } from "@/lib/response/apiResponse";
+import { createSuccessResponse, createErrorResponse, createApiResponse } from "@/lib/api/response";
 import type { TenantContext } from "@/types/api";
 
 function getId(req: Request): string {
@@ -13,7 +13,7 @@ export const DELETE = withErrorHandler(
     withTenant(
       withRole(["admin"])(async (req: Request, { tenantId }: TenantContext) => {
         await adminDb.collection("syllabus").doc(getId(req)).delete();
-        return createApiResponse(200, null, "Deleted");
+        return createSuccessResponse(null, { message: "Deleted" });
       })
     )
   )
@@ -28,7 +28,7 @@ export const PUT = withErrorHandler(
           ...body,
           updatedAt: new Date(),
         });
-        return createApiResponse(200, null, "Updated");
+        return createSuccessResponse(null, { message: "Updated" });
       })
     )
   )

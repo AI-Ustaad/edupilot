@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic';
 import { adminDb, adminStorage } from "@/lib/firebase-admin";
 import { withAuth, withTenant, withErrorHandler } from "@/route-helpers";
-import { createApiResponse } from "@/lib/response/apiResponse";
+import { createSuccessResponse, createErrorResponse, createApiResponse } from "@/lib/api/response";
 import type { TenantContext } from "@/types/api";
 import { getSessionUser } from "@/lib/auth/auth-server";
 
@@ -15,7 +15,7 @@ export const POST = withErrorHandler(
       const studentName = formData.get("studentName") as string;
 
       if (!file || !assignmentId || !studentId) {
-        return createApiResponse(400, null, "Missing required fields");
+        return createErrorResponse(400, "Missing required fields");
       }
 
       // فائل Firebase Storage میں اپ لوڈ کریں
@@ -50,7 +50,7 @@ export const GET = withErrorHandler(
       const { searchParams } = new URL(req.url);
       const assignmentId = searchParams.get("assignmentId");
       if (!assignmentId) {
-        return createApiResponse(400, null, "assignmentId is required");
+        return createErrorResponse(400, "assignmentId is required");
       }
       const snapshot = await adminDb
         .collection("submissions")
@@ -59,7 +59,7 @@ export const GET = withErrorHandler(
         .orderBy("createdAt", "desc")
         .get();
       const data = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-      return createApiResponse(200, data);
+      return createSuccessResponse(data);
     })
   )
 );

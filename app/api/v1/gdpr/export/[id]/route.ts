@@ -1,6 +1,6 @@
 export const dynamic = 'force-dynamic';
 import { withAuth, withTenant, withErrorHandler } from "@/route-helpers";
-import { createApiResponse } from "@/lib/response/apiResponse";
+import { createSuccessResponse, createErrorResponse, createApiResponse } from "@/lib/api/response";
 import { StudentService } from "@/services/StudentService";
 import { AttendanceService } from "@/services/attendance.service";
 import { AttendanceRepository } from "@/repositories/attendance.repository";
@@ -23,7 +23,7 @@ export const GET = withErrorHandler(
         const id = getIdFromUrl(req);
                 const studentService = new StudentService();
         const student = await studentService.getById(tenantId, id);
-        if (!student) return createApiResponse(404, null, "Student not found");
+        if (!student) return createErrorResponse(404, "Student not found");
 
         const attendanceService = new AttendanceService(new AttendanceRepository());
         const allAttendance = await attendanceService.listAttendance(tenantId);
@@ -41,7 +41,7 @@ export const GET = withErrorHandler(
           fees: studentFees,
         };
 
-        return createApiResponse(200, exportData);
+        return createSuccessResponse(exportData);
       })
     )
   )

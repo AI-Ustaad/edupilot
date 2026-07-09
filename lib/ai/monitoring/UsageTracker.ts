@@ -1,6 +1,7 @@
 // lib/ai/monitoring/UsageTracker.ts
 import { adminDb } from "@/lib/firebase-admin";
 import { FieldValue } from "firebase-admin/firestore";
+import { logger } from "@/lib/logger/logger";
 
 export interface UsageRecord {
   tenantId: string;
@@ -24,7 +25,7 @@ export class UsageTracker {
         timestamp: FieldValue.serverTimestamp(),
       });
     } catch (err) {
-      console.error("[UsageTracker] Failed to record usage:", err);
+      logger.error("[UsageTracker] Failed to record usage:", { metadata: { error: err } });
     }
   }
 
@@ -48,7 +49,7 @@ export class UsageTracker {
       const snapshot = await query.get();
       return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
     } catch (err) {
-      console.error("[UsageTracker] Failed to query usage:", err);
+      logger.error("[UsageTracker] Failed to query usage:", { metadata: { error: err } });
       return [];
     }
   }

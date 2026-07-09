@@ -1,0 +1,205 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function getUserRole() {
+      return getUserData().role;
+    }
+
+    function getUserTenantId() {
+      return getUserData().tenantId;
+    }
+
+    function isTenantMember(tenantId) {
+      return isAuthenticated() && getUserTenantId() == tenantId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && getUserRole() == 'admin';
+    }
+
+    function isSuperAdmin() {
+      return isAuthenticated() && getUserRole() == 'super_admin';
+    }
+
+    function isStaff() {
+      return isAuthenticated() && (getUserRole() == 'admin' || getUserRole() == 'teacher' || getUserRole() == 'staff');
+    }
+
+    // Users collection - users can read their own data, admins can read tenant users
+    match /users/{userId} {
+      allow read: if isAuthenticated() && (request.auth.uid == userId || isTenantMember(getUserData().tenantId));
+      allow write: if isAuthenticated() && (request.auth.uid == userId || isAdmin() || isSuperAdmin());
+    }
+
+    // Tenants collection - only admins and super admins
+    match /tenants/{tenantId} {
+      allow read: if isTenantMember(tenantId);
+      allow write: if isSuperAdmin();
+
+      match /settings/{docId} {
+        allow read: if isTenantMember(tenantId);
+        allow write: if isTenantMember(tenantId) && (isAdmin() || isSuperAdmin());
+      }
+
+      match /dashboard/{docId} {
+        allow read: if isTenantMember(tenantId);
+        allow write: if isTenantMember(tenantId) && (isAdmin() || isSuperAdmin());
+      }
+    }
+
+    // Students collection - tenant-scoped
+    match /students/{studentId} {
+      allow read: if isTenantMember(resource.data.tenantId);
+      allow create: if isAuthenticated() && isStaff() && request.resource.data.tenantId == getUserTenantId();
+      allow update, delete: if isAuthenticated() && isStaff() && resource.data.tenantId == getUserTenantId();
+
+      match /timeline/{docId} {
+        allow read: if isTenantMember(get(/databases/$(database)/documents/students/$(studentId)).data.tenantId);
+        allow write: if isAuthenticated() && isStaff();
+      }
+    }
+
+    // Staff collection - tenant-scoped
+    match /staff/{staffId} {
+      allow read: if isTenantMember(resource.data.tenantId);
+      allow create: if isAuthenticated() && isAdmin() && request.resource.data.tenantId == getUserTenantId();
+      allow update, delete: if isAuthenticated() && isAdmin() && resource.data.tenantId == getUserTenantId();
+    }
+
+    // Attendance - tenant-scoped
+    match /attendance/{docId} {
+      allow read: if isTenantMember(resource.data.tenantId);
+      allow write: if isAuthenticated() && isStaff() && request.resource.data.tenantId == getUserTenantId();
+    }
+
+    // Fees - tenant-scoped
+    match /fees/{feeId} {
+      allow read: if isTenantMember(resource.data.tenantId);
+      allow write: if isAuthenticated() && (isAdmin() || getUserRole() == 'finance') && request.resource.data.tenantId == getUserTenantId();
+    }
+
+    // Marks - tenant-scoped
+    match /marks/{markId} {
+      allow read: if isTenantMember(resource.data.tenantId);
+      allow write: if isAuthenticated() && isStaff() && request.resource.data.tenantId == getUserTenantId();
+    }
+
+    // Classes - tenant-scoped
+    match /classes/{classId} {
+      allow read: if isTenantMember(resource.data.tenantId);
+      allow write: if isAuthenticated() && isStaff() && request.resource.data.tenantId == getUserTenantId();
+    }
+
+    // Sections - tenant-scoped
+    match /sections/{sectionId} {
+      allow read: if isTenantMember(resource.data.tenantId);
+      allow write: if isAuthenticated() && (isAdmin() || isSuperAdmin()) && request.resource.data.tenantId == getUserTenantId();
+    }
+
+    // Subscriptions - tenant-scoped
+    match /subscriptions/{tenantId} {
+      allow read: if isTenantMember(tenantId);
+      allow write: if isSuperAdmin();
+    }
+
+    // Logs - audit trail, admin only
+    match /logs/{logId} {
+      allow read: if isAuthenticated() && (isAdmin() || isSuperAdmin());
+      allow write: if isAuthenticated();
+    }
+
+    // Chat messages - tenant-scoped
+    match /chat_messages/{messageId} {
+      allow read: if isTenantMember(resource.data.tenantId);
+      allow write: if isAuthenticated() && isStaff() && request.resource.data.tenantId == getUserTenantId();
+    }
+
+    // Syllabus - tenant-scoped
+    match /syllabus/{docId} {
+      allow read: if isTenantMember(resource.data.tenantId);
+      allow write: if isAuthenticated() && isStaff() && request.resource.data.tenantId == getUserTenantId();
+    }
+
+    // Homework - tenant-scoped
+    match /homework/{docId} {
+      allow read: if isTenantMember(resource.data.tenantId);
+      allow write: if isAuthenticated() && isStaff() && request.resource.data.tenantId == getUserTenantId();
+    }
+
+    // Video lectures - tenant-scoped
+    match /video_lectures/{docId} {
+      allow read: if isTenantMember(resource.data.tenantId);
+      allow write: if isAuthenticated() && isStaff() && request.resource.data.tenantId == getUserTenantId();
+    }
+
+    // Buses - tenant-scoped
+    match /buses/{busId} {
+      allow read: if isTenantMember(resource.data.tenantId);
+      allow write: if isAuthenticated() && isStaff() && request.resource.data.tenantId == getUserTenantId();
+    }
+
+    // Behavior - tenant-scoped
+    match /behavior/{docId} {
+      allow read: if isTenantMember(resource.data.tenantId);
+      allow write: if isAuthenticated() && isStaff() && request.resource.data.tenantId == getUserTenantId();
+    }
+
+    // Books - tenant-scoped
+    match /books/{bookId} {
+      allow read: if isTenantMember(resource.data.tenantId);
+      allow write: if isAuthenticated() && isStaff() && request.resource.data.tenantId == getUserTenantId();
+    }
+
+    // Ledger - tenant-scoped
+    match /ledger/{docId} {
+      allow read: if isTenantMember(resource.data.tenantId);
+      allow write: if isAuthenticated() && (isAdmin() || getUserRole() == 'finance') && request.resource.data.tenantId == getUserTenantId();
+    }
+
+    // Admit cards - tenant-scoped
+    match /admit_cards/{docId} {
+      allow read: if isTenantMember(resource.data.tenantId);
+      allow write: if isAuthenticated() && isStaff() && request.resource.data.tenantId == getUserTenantId();
+    }
+
+    // Leave requests - tenant-scoped
+    match /leave_requests/{docId} {
+      allow read: if isTenantMember(resource.data.tenantId);
+      allow write: if isAuthenticated() && isStaff() && request.resource.data.tenantId == getUserTenantId();
+    }
+
+    // Exams - tenant-scoped
+    match /exams/{examId} {
+      allow read: if isTenantMember(resource.data.tenantId);
+      allow write: if isAuthenticated() && isStaff() && request.resource.data.tenantId == getUserTenantId();
+    }
+
+    // Quizzes - tenant-scoped
+    match /quizzes/{quizId} {
+      allow read: if isTenantMember(resource.data.tenantId);
+      allow write: if isAuthenticated() && isStaff() && request.resource.data.tenantId == getUserTenantId();
+    }
+
+    // Assignments - tenant-scoped
+    match /assignments/{assignmentId} {
+      allow read: if isTenantMember(resource.data.tenantId);
+      allow write: if isAuthenticated() && isStaff() && request.resource.data.tenantId == getUserTenantId();
+    }
+
+    // Default deny - any collection not explicitly matched above
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

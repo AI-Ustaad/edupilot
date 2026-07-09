@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic';
 import { adminDb } from "@/lib/firebase-admin";
 import { withAuth, withTenant, withErrorHandler, withRole } from "@/route-helpers";
-import { createApiResponse } from "@/lib/response/apiResponse";
+import { createSuccessResponse, createErrorResponse, createApiResponse } from "@/lib/api/response";
 import type { TenantContext } from "@/types/api";
 
 export const DELETE = withErrorHandler(
@@ -11,12 +11,12 @@ export const DELETE = withErrorHandler(
         const { searchParams } = new URL(req.url);
         const studentId = searchParams.get("id");
         if (!studentId) {
-          return createApiResponse(400, null, "Student ID is required");
+          return createErrorResponse(400, "Student ID is required");
         }
 
         const studentDoc = await adminDb.collection("students").doc(studentId).get();
         if (!studentDoc.exists || studentDoc.data()?.tenantId !== tenantId) {
-          return createApiResponse(404, null, "Student not found");
+          return createErrorResponse(404, "Student not found");
         }
 
         const collections = ["attendance", "marks", "fees", "submissions", "quiz_submissions"];
@@ -47,7 +47,7 @@ export const DELETE = withErrorHandler(
           createdAt: new Date(),
         });
 
-        return createApiResponse(200, null, "Student and all related data deleted successfully");
+        return createSuccessResponse(null, { message: "Student and all related data deleted successfully" });
       })
     )
   )

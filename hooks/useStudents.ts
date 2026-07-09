@@ -5,6 +5,7 @@ import { safeArray, safeObject } from "@/lib/api/safeResponse";
 import { QueryKeys } from "@/lib/api/queryKeys";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/components/ToastProvider";
+import { logger } from "@/lib/logger/logger";
 
 // 1. 🔄 Fetch All Students (Crash-Proof)
 export const useStudents = (params?: { classGrade?: string; section?: string }) => {
@@ -25,7 +26,7 @@ export const useStudents = (params?: { classGrade?: string; section?: string }) 
         
         return data;
       } catch (error) {
-        console.error("Failed to fetch students:", error);
+        logger.error("Failed to fetch students:", { metadata: { error } });
         return [];
       }
     },

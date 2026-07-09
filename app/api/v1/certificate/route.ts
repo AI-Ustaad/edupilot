@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic';
 import { adminDb } from "@/lib/firebase-admin";
 import { withAuth, withTenant, withErrorHandler, withRole } from "@/route-helpers";
-import { createApiResponse } from "@/lib/response/apiResponse";
+import { createSuccessResponse, createErrorResponse, createApiResponse } from "@/lib/api/response";
 import type { TenantContext } from "@/types/api";
 import jsPDF from "jspdf";
 
@@ -13,10 +13,10 @@ export const GET = withErrorHandler(
         const studentId = searchParams.get("studentId");
         const type = searchParams.get("type") || "degree";
 
-        if (!studentId) return createApiResponse(400, null, "Missing studentId");
+        if (!studentId) return createErrorResponse(400, "Missing studentId");
 
         const studentDoc = await adminDb.collection("students").doc(studentId).get();
-        if (!studentDoc.exists) return createApiResponse(404, null, "Student not found");
+        if (!studentDoc.exists) return createErrorResponse(404, "Student not found");
         const student = studentDoc.data();
 
         const doc = new jsPDF();

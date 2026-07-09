@@ -1,6 +1,8 @@
+import { logger } from "@/lib/logger/logger";
+
 export function withLogging(handler: Function) {
   return async (req: Request, context: any) => {
-    console.log(`API Call: ${req.method} ${req.url}`);
+    logger.api(`API Call: ${req.method} ${req.url}`);
     return handler(req, context);
   };
 }

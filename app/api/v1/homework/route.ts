@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic';
 // app/api/v1/homework/route.ts
 import { withAuth, withTenant, withErrorHandler, withRole } from "@/route-helpers";
-import { createApiResponse } from "@/lib/response/apiResponse";
+import { createSuccessResponse, createErrorResponse, createApiResponse } from "@/lib/api/response";
 import { HomeworkService } from "@/services/homework.service";
 import { HomeworkRepository } from "@/repositories/homework.repository";
 import type { TenantContext } from "@/types/api";
@@ -11,7 +11,7 @@ export const GET = withErrorHandler(
     withTenant(async (req: Request, { tenantId }: TenantContext) => {
       const service = new HomeworkService(new HomeworkRepository());
       const list = await service.listHomework(tenantId);
-      return createApiResponse(200, list);
+      return createSuccessResponse(list);
     })
   )
 );

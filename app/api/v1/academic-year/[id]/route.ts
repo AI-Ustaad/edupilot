@@ -3,7 +3,7 @@ export const dynamic = 'force-dynamic';
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebase-admin";
 import { withAuth, withTenant, withErrorHandler } from "@/route-helpers";
-import { createApiResponse } from "@/lib/response/apiResponse";
+import { createSuccessResponse, createErrorResponse, createApiResponse } from "@/lib/api/response";
 
 export const GET = withAuth(
   withTenant(
@@ -28,9 +28,7 @@ export const GET = withAuth(
         );
       }
 
-      return NextResponse.json(
-        createApiResponse(200, "Academic year retrieved", { id: doc.id, ...doc.data() })
-      );
+      return createSuccessResponse({ id: doc.id, ...doc.data() }, { message: "Academic year retrieved" });
     })
   )
 );

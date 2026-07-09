@@ -3,6 +3,7 @@
 import { eventBus } from "@/lib/events/event-bus";
 import { EVENTS } from "@/lib/events/event-types";
 import { adminDb } from "@/lib/firebase-admin";
+import { logger } from "@/lib/logger/logger";
 
 export function registerNotificationSubscriber() {
   // 🎧 ایونٹ کو سنیں: جیسے ہی رپورٹس بن جائیں!
@@ -41,9 +42,9 @@ export function registerNotificationSubscriber() {
           createdAt: new Date().toISOString(),
         });
 
-      console.log(`✅ [Notification Subscriber] Sent completion alert to user: ${userId}`);
+      logger.info(`Notification: Sent completion alert to user: ${userId}`);
     } catch (error) {
-      console.error("❌ [Notification Subscriber] Failed to send notification:", error);
+      logger.error("Notification: Failed to send notification:", { metadata: { error } });
     }
   });
 }

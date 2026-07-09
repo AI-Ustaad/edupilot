@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic';
 import { adminDb } from "@/lib/firebase-admin";
 import { withAuth, withTenant, withErrorHandler, withRole } from "@/route-helpers";
-import { createApiResponse } from "@/lib/response/apiResponse";
+import { createSuccessResponse, createErrorResponse, createApiResponse } from "@/lib/api/response";
 import type { TenantContext } from "@/types/api";
 
 export const GET = withErrorHandler(
@@ -19,7 +19,7 @@ export const POST = withErrorHandler(
       withRole(["admin"])(async (req: Request, { tenantId }: TenantContext) => {
         const addons = await req.json();
         await adminDb.collection("addons").doc(tenantId).set(addons, { merge: true });
-        return createApiResponse(200, null, "Addons updated");
+        return createSuccessResponse(null, { message: "Addons updated" });
       })
     )
   )

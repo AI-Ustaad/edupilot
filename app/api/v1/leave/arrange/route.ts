@@ -1,7 +1,8 @@
 export const dynamic = 'force-dynamic';
 import { adminDb } from "@/lib/firebase-admin";
 import { withAuth, withTenant, withErrorHandler, withRole } from "@/route-helpers";
-import { createApiResponse } from "@/lib/response/apiResponse";
+import { createSuccessResponse, createErrorResponse } from "@/lib/api/response";
+import { logger } from "@/lib/logger/logger";
 import type { TenantContext } from "@/types/api";
 
 export const POST = withErrorHandler(
@@ -19,9 +20,9 @@ export const POST = withErrorHandler(
 
         const teacherDoc = await adminDb.collection("staff").doc(substituteTeacherId).get();
         const teacherName = teacherDoc.data()?.personal?.fullName || "Teacher";
-        console.log(`[Notification] ${teacherName} assigned covering duty: ${JSON.stringify(arrangedPeriods)}`);
+        logger.info(`Notification: ${teacherName} assigned covering duty`, { metadata: { arrangedPeriods } });
 
-        return createApiResponse(200, null, "Arrangement saved");
+        return createSuccessResponse(null, { message: "Arrangement saved" });
       })
     )
   )

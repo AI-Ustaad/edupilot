@@ -2,6 +2,7 @@
 import { NextResponse } from "next/server";
 import { adminAuth, adminDb } from "@/lib/firebase-admin";
 import { checkAuthRateLimit } from "@/lib/ratelimit";
+import { logger } from "@/lib/logger/logger";
 
 export const runtime = "nodejs";
 
@@ -101,7 +102,7 @@ export async function POST(req: Request) {
 
     return response;
   } catch (error: any) {
-    console.error("Login API Error:", error);
+    logger.error("Login API Error:", { metadata: { error: error.message, code: error.code } });
 
     if (error.code === "auth/user-not-found" || error.code === "auth/invalid-email") {
       return NextResponse.json(

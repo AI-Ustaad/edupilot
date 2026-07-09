@@ -1,4 +1,5 @@
 import { Client } from "@upstash/qstash";
+import { logger } from "@/lib/logger/logger";
 
 let qstash: Client | null = null;
 
@@ -21,7 +22,7 @@ export class Queue {
     const client = getQstash();
 
     if (!client) {
-      console.warn("QSTASH_TOKEN missing.");
+      logger.warn("QSTASH_TOKEN missing.");
       return;
     }
 

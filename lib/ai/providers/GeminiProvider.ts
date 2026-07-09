@@ -2,6 +2,7 @@
 import { AIProvider, AIProviderResponse } from "@/interfaces/IAIGateway";
 import { AIProviderConfig } from "@/types/ocr";
 import { ProviderException } from "@/errors/AppError";
+import { logger } from "@/lib/logger/logger";
 
 export class GeminiProvider implements AIProvider {
   public readonly name = "gemini";
@@ -84,7 +85,7 @@ export class GeminiProvider implements AIProvider {
         const responseText = await res.text();
 
         if (!res.ok) {
-          console.warn(`[GeminiProvider] API error (attempt ${attempt + 1}):`, responseText);
+          logger.warn(`[GeminiProvider] API error (attempt ${attempt + 1}):`, { metadata: { response: responseText } });
           const isRetryable = /429|500|502|503|504/.test(String(res.status));
           if (isRetryable && attempt < this.config.maxRetries - 1) {
             await this.delay(1000 * (attempt + 1));
@@ -134,13 +135,13 @@ export class GeminiProvider implements AIProvider {
         if (error instanceof ProviderException) throw error;
         if (error.name === "AbortError") {
           if (attempt < this.config.maxRetries - 1) {
-            console.warn(`[GeminiProvider] Timeout (attempt ${attempt + 1}), retrying...`);
+            logger.warn(`[GeminiProvider] Timeout (attempt ${attempt + 1}), retrying...`);
             continue;
           }
           throw new ProviderException("AI request timed out after retries");
         }
         if (attempt < this.config.maxRetries - 1) {
-          console.warn(`[GeminiProvider] Request failed (attempt ${attempt + 1}):`, error.message);
+          logger.warn(`[GeminiProvider] Request failed (attempt ${attempt + 1}):`, { metadata: { error: error.message } });
           await this.delay(1000 * (attempt + 1));
           continue;
         }

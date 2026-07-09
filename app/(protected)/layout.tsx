@@ -12,6 +12,7 @@ import MobileBottomNav from "@/components/MobileBottomNav";
 
 // 🚀 Enterprise Imports
 import GlobalSearch from "@/components/GlobalSearch";
+import { logger } from "@/lib/logger/logger";
 import NotificationsDropdown from "@/components/NotificationsDropdown";
 import { useRealtimeNotifications } from "@/hooks/useRealtimeNotifications";
 import { useRealtimeDashboard } from "@/hooks/useRealtimeDashboard";
@@ -71,7 +72,7 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
       await apiClient.post("/auth/logout"); // 🚀 Axios instead of fetch
       window.location.href = "/";
     } catch (error) {
-      console.error("Logout error:", error);
+      logger.error("Logout error:", { metadata: { error } });
     }
   };
 

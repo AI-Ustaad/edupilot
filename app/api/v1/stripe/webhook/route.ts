@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebase-admin";
 import Stripe from "stripe";
+import { logger } from "@/lib/logger/logger";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: "2023-10-16",
@@ -19,7 +20,7 @@ export async function POST(req: NextRequest) {
       process.env.STRIPE_WEBHOOK_SECRET!
     );
   } catch (error: any) {
-    console.error(`Webhook Error: ${error.message}`);
+    logger.error("Webhook Error:", { metadata: { error: error.message } });
     return NextResponse.json({ error: `Webhook Error: ${error.message}` }, { status: 400 });
   }
 
@@ -42,7 +43,7 @@ export async function POST(req: NextRequest) {
             updatedAt: new Date(),
           }, { merge: true });
           
-          console.log(`[Stripe] Tenant ${tenantId} upgraded to ${planId}`);
+          logger.info(`Tenant ${tenantId} upgraded to ${planId}`);
         }
         break;
       }
@@ -83,19 +84,19 @@ export async function POST(req: NextRequest) {
             updatedAt: new Date(),
           }, { merge: true });
           
-          console.log(`[Stripe] Tenant ${tenantId} subscription canceled. Downgraded to free.`);
+          logger.info(`Tenant ${tenantId} subscription canceled. Downgraded to free.`);
         }
         break;
       }
 
       default:
         // Unhandled event type
-        console.log(`Unhandled event type ${event.type}`);
+        logger.info(`Unhandled event type ${event.type}`);
     }
 
     return NextResponse.json({ received: true });
   } catch (error: any) {
-    console.error(`[Stripe Webhook Processing Error]: ${error.message}`);
+    logger.error("Stripe Webhook Processing Error:", { metadata: { error: error.message } });
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }

@@ -1,7 +1,7 @@
 export const dynamic = "force-dynamic";
 
 import { withAuth, withTenant, withErrorHandler } from "@/route-helpers";
-import { createApiResponse } from "@/lib/response/apiResponse";
+import { createSuccessResponse, createErrorResponse, createApiResponse } from "@/lib/api/response";
 import { StaffService } from "@/services/StaffService";
 import { withPermission } from "@/lib/auth/rbac";
 import { PERMISSIONS } from "@/lib/auth/permissions";
@@ -30,7 +30,7 @@ export const GET = withErrorHandler(
           const id = getIdFromUrl(req);
           const service = new StaffService();
           const staff = await service.getById(tenantId, id);
-          return createApiResponse(200, staff);
+          return createSuccessResponse(staff);
         }
       )
     )
@@ -46,7 +46,7 @@ export const PUT = withErrorHandler(
           const body = await req.json();
           const service = new StaffService();
           await service.update(tenantId, id, body, user.uid);
-          return createApiResponse(200, null, "Staff updated successfully");
+          return createSuccessResponse(null, { message: "Staff updated successfully" });
         }
       )
     )
@@ -61,7 +61,7 @@ export const DELETE = withErrorHandler(
           const id = getIdFromUrl(req);
           const service = new StaffService();
           await service.delete(tenantId, id, user.uid);
-          return createApiResponse(200, null, "Staff deleted successfully");
+          return createSuccessResponse(null, { message: "Staff deleted successfully" });
         }
       )
     )

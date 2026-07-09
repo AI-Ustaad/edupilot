@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic';
 import { createWorker } from "tesseract.js";
 import { withAuth, withTenant, withErrorHandler } from "@/route-helpers";
-import { createApiResponse } from "@/lib/response/apiResponse";
+import { createSuccessResponse, createErrorResponse, createApiResponse } from "@/lib/api/response";
 import type { TenantContext } from "@/types/api";
 
 function base64ToBuffer(base64: string): Buffer {
@@ -31,8 +31,8 @@ export const POST = withErrorHandler(
   withAuth(
     withTenant(async (req: Request, { tenantId }: TenantContext) => {
       const { image, documentType } = await req.json();
-      if (!image) return createApiResponse(400, null, "No file");
-      if (documentType !== "salary_slip") return createApiResponse(400, null, "Unsupported type");
+      if (!image) return createErrorResponse(400, "No file");
+      if (documentType !== "salary_slip") return createErrorResponse(400, "Unsupported type");
 
       const buffer = base64ToBuffer(image);
       let extractedText = "";
@@ -61,7 +61,7 @@ export const POST = withErrorHandler(
       extractedText = data.text;
 
       const extractedData = extractSalaryFields(extractedText);
-      return createApiResponse(200, extractedData);
+      return createSuccessResponse(extractedData);
     })
   )
 );

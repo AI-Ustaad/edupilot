@@ -4,6 +4,7 @@
 import { eventBus } from "@/lib/events/event-bus";
 import { EVENTS } from "@/lib/events/event-types";
 import { adminDb } from "@/lib/firebase-admin";
+import { logger } from "@/lib/logger/logger";
 
 export function registerAuditSubscriber() {
   // 🎧 Listen for STUDENT_CREATED event
@@ -25,9 +26,9 @@ export function registerAuditSubscriber() {
           systemAction: true, 
         });
 
-      console.log(`✅ [Audit Subscriber] Successfully logged creation of student: ${studentId}`);
+      logger.info(`Audit: Successfully logged creation of student: ${studentId}`);
     } catch (error) {
-      console.error("❌ [Audit Subscriber] Failed to log event:", error);
+      logger.error("Audit: Failed to log event:", { metadata: { error } });
     }
   });
 }

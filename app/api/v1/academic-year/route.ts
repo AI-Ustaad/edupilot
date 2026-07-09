@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic';
 import { adminDb } from "@/lib/firebase-admin";
 import { withAuth, withTenant, withErrorHandler, withRole } from "@/route-helpers";
-import { createApiResponse } from "@/lib/response/apiResponse";
+import { createSuccessResponse, createErrorResponse, createApiResponse } from "@/lib/api/response";
 import type { TenantContext } from "@/types/api";
 
 export const GET = withErrorHandler(
@@ -13,7 +13,7 @@ export const GET = withErrorHandler(
         .orderBy("startDate", "desc")
         .get();
       const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as any[];
-      return createApiResponse(200, data);
+      return createSuccessResponse(data);
     })
   )
 );
@@ -25,7 +25,7 @@ export const POST = withErrorHandler(
         const body = await req.json();
         const { name, startDate, endDate, isCurrent } = body;
         if (!name || !startDate || !endDate) {
-          return createApiResponse(400, null, "Missing fields");
+          return createErrorResponse(400, "Missing fields");
         }
 
         if (isCurrent) {

@@ -1,6 +1,7 @@
 // services/AuditService.ts
 import { adminDb } from "@/lib/firebase-admin";
 import { FieldValue } from "firebase-admin/firestore";
+import { logger } from "@/lib/logger/logger";
 
 export interface AuditLogEntry {
   action: string;
@@ -19,7 +20,7 @@ export class AuditService {
         createdAt: FieldValue.serverTimestamp(),
       });
     } catch (err) {
-      console.error("[AuditService] Failed to write audit log:", err);
+      logger.error("[AuditService] Failed to write audit log:", { metadata: { error: err } });
     }
   }
 
@@ -40,7 +41,7 @@ export class AuditService {
       const snapshot = await query.get();
       return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
     } catch (err) {
-      console.error("[AuditService] Failed to query audit logs:", err);
+      logger.error("[AuditService] Failed to query audit logs:", { metadata: { error: err } });
       return [];
     }
   }

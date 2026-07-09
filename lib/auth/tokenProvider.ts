@@ -1,5 +1,6 @@
 // lib/auth/tokenProvider.ts
 import { getAuth } from "firebase/auth";
+import { logger } from "@/lib/logger/logger";
 
 export interface TokenProvider {
   getAccessToken(forceRefresh?: boolean): Promise<string | null>;
@@ -16,7 +17,7 @@ export const firebaseTokenProvider: TokenProvider = {
       }
       return null;
     } catch (error) {
-      console.error("[TokenProvider] Error getting token:", error);
+      logger.error("[TokenProvider] Error getting token:", { metadata: { error } });
       return null;
     }
   },

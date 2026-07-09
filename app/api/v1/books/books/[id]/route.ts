@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic';
 import { adminDb, adminStorage } from "@/lib/firebase-admin";
 import { withAuth, withTenant, withErrorHandler, withRole } from "@/route-helpers";
-import { createApiResponse } from "@/lib/response/apiResponse";
+import { createSuccessResponse, createErrorResponse, createApiResponse } from "@/lib/api/response";
 import type { TenantContext } from "@/types/api";
 
 export const PUT = withErrorHandler(
@@ -14,7 +14,7 @@ export const PUT = withErrorHandler(
           ...body,
           updatedAt: new Date(),
         });
-        return createApiResponse(200, { success: true });
+        return createSuccessResponse({ success: true });
       })
     )
   )
@@ -26,7 +26,7 @@ export const DELETE = withErrorHandler(
       withRole(["admin"])(async (req: Request, { tenantId }: TenantContext) => {
         const id = new URL(req.url).pathname.split("/").pop() || "";
         await adminDb.collection("books").doc(id).delete();
-        return createApiResponse(200, { success: true });
+        return createSuccessResponse({ success: true });
       })
     )
   )

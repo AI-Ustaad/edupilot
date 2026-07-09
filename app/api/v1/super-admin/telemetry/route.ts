@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { getSessionUser } from "@/lib/auth/auth-server";
 import { TelemetryService } from "@/services/telemetry.service";
 import * as Sentry from "@sentry/nextjs";
+import { logger } from "@/lib/logger/logger";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic"; // 🛡️ Force dynamic rendering because it uses cookies
@@ -21,7 +22,7 @@ export async function GET() {
 
   } catch (error: any) {
     Sentry.captureException(error);
-    console.error("Telemetry API Error:", error);
+    logger.error("Telemetry API Error:", { metadata: { error: error.message } });
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }

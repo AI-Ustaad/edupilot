@@ -1,6 +1,6 @@
 export const dynamic = 'force-dynamic';
 import { withAuth, withTenant, withErrorHandler, withRole } from "@/route-helpers";
-import { createApiResponse } from "@/lib/response/apiResponse";
+import { createSuccessResponse, createErrorResponse, createApiResponse } from "@/lib/api/response";
 import { VideoLectureService } from "@/services/video-lecture.service";
 import { VideoLectureRepository } from "@/repositories/video-lecture.repository";
 import type { TenantContext } from "@/types/api";
@@ -13,7 +13,7 @@ export const GET = withErrorHandler(
       withPermission(PERMISSIONS.videoLectures.view)(async (req: Request, { tenantId }: TenantContext) => {
         const service = new VideoLectureService(new VideoLectureRepository());
         const lectures = await service.listAll(tenantId);
-        return createApiResponse(200, lectures);
+        return createSuccessResponse(lectures);
       })
     )
   )

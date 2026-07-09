@@ -7,6 +7,7 @@ import Image from "next/image";
 import { useCreateStaff } from "@/hooks/useStaff";
 import { useToast } from "@/components/ToastProvider";
 import { mapOCRToStaffForm } from "@/lib/mappers/staff.mapper";
+import { logger } from "@/lib/logger/logger";
 
 // Reusable UI Components
 const Input = ({ label, ...props }: { label: string } & React.InputHTMLAttributes<HTMLInputElement>) => (
@@ -121,8 +122,7 @@ export default function AddStaffPage() {
         const res = await fetch("/api/v1/staff/ocr", { method: "POST", body: formData });
         const result = await res.json();
         
-        // 🛠️ Debugging: See what AI returned in Browser Console (F12)
-        console.log("AI Extracted Data:", result.data);
+        logger.info("AI Extracted Data:", { metadata: { data: result.data } });
 
         if (res.ok && result.success && result.data) {
           const { staffFormData } = mapOCRToStaffForm(result.data);

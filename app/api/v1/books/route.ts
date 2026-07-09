@@ -10,7 +10,7 @@ import { withPermission } from "@/lib/auth/withPermission";  // آپ کی currie
 import { PERMISSIONS } from "@/lib/auth/permissions";
 
 import { adminDb } from "@/lib/firebase-admin";
-import { createApiResponse } from "@/lib/response/apiResponse";
+import { createSuccessResponse, createErrorResponse, createApiResponse } from "@/lib/api/response";
 
 import type { TenantContext } from "@/types/api";
 
@@ -21,7 +21,7 @@ export const GET = withErrorHandler(
         PERMISSIONS.bookCenter.view,
         async (req: Request, { tenantId }: TenantContext) => {
           if (!tenantId) {
-            return createApiResponse(401, null, "Tenant not found");
+            return createErrorResponse(401, "Tenant not found");
           }
 
           const url = new URL(req.url);
@@ -36,7 +36,7 @@ export const GET = withErrorHandler(
 
           const snapshot = await query.get();
           const books = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-          return createApiResponse(200, books);
+          return createSuccessResponse(books);
         }
       )
     )

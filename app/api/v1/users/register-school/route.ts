@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { adminDb, adminAuth } from "@/lib/firebase-admin";
 import { getSessionUser } from "@/lib/auth/auth-server";
+import { logger } from "@/lib/logger/logger";
 
 export const runtime = "nodejs";
 
@@ -87,7 +88,7 @@ export async function POST(req: NextRequest) {
     });
 
   } catch (error: any) {
-    console.error("Register School API Error:", error);
+    logger.error("Register School API Error:", { metadata: { error: error.message } });
     return NextResponse.json({ 
       success: false, 
       error: "Internal server error during setup" 

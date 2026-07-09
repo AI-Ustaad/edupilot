@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic';
 import { adminDb } from "@/lib/firebase-admin";
 import { withAuth, withTenant, withErrorHandler, withRole } from "@/route-helpers";
-import { createApiResponse } from "@/lib/response/apiResponse";
+import { createSuccessResponse, createErrorResponse, createApiResponse } from "@/lib/api/response";
 import type { TenantContext } from "@/types/api";
 import jsPDF from "jspdf";
 
@@ -11,7 +11,7 @@ export const POST = withErrorHandler(
       withRole(["admin"])(async (req: Request, { tenantId }: TenantContext) => {
         const { classGrade, section, examTerm, schoolName } = await req.json();
         if (!classGrade || !section || !examTerm) {
-          return createApiResponse(400, null, "Missing fields");
+          return createErrorResponse(400, "Missing fields");
         }
 
         const studentsSnap = await adminDb
@@ -22,7 +22,7 @@ export const POST = withErrorHandler(
           .get();
 
         if (studentsSnap.empty) {
-          return createApiResponse(404, null, "No students found");
+          return createErrorResponse(404, "No students found");
         }
 
         const students = studentsSnap.docs.map(d => ({ id: d.id, ...d.data() })) as any[];

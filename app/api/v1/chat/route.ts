@@ -5,7 +5,7 @@ import { adminDb } from "@/lib/firebase-admin";
 import { withErrorHandler, withAuth, withTenant } from "@/route-helpers";
 import { withPermission } from "@/lib/auth/rbac";
 import { PERMISSIONS } from "@/lib/auth/permissions";
-import { createApiResponse } from "@/lib/response/apiResponse";
+import { createSuccessResponse, createErrorResponse, createApiResponse } from "@/lib/api/response";
 
 export const GET = withErrorHandler(
   withAuth(
@@ -24,7 +24,7 @@ export const GET = withErrorHandler(
         const snapshot = await query.get();
         const messages = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
         
-        return NextResponse.json(createApiResponse(200, messages));
+        return createSuccessResponse(messages);
       })
     )
   )
@@ -38,7 +38,7 @@ export const POST = withErrorHandler(
         const { teacherId, parentId, text } = await req.json();
         
         if (!teacherId || !parentId || !text || !text.trim()) {
-          return NextResponse.json(createApiResponse(400, null, "Missing fields"), { status: 400 });
+          return createErrorResponse(400, "Missing fields");
         }
         
         const ref = await adminDb.collection("chat_messages").add({
@@ -51,7 +51,7 @@ export const POST = withErrorHandler(
           createdAt: new Date(),
         });
         
-        return NextResponse.json(createApiResponse(201, { id: ref.id }));
+        return createApiResponse(201, { id: ref.id });
       })
     )
   )

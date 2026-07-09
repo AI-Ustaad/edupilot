@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebase-admin";
 import { getSessionUser } from "@/lib/auth/auth-server";
+import { logger } from "@/lib/logger/logger";
 
 export const runtime = "nodejs";
 
@@ -23,7 +24,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({ success: true, data: docSnap.data() });
   } catch (error: any) {
-    console.error("Feature Flags GET Error:", error);
+    logger.error("Feature Flags GET Error:", { metadata: { error: error.message } });
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }
@@ -53,7 +54,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: true, message: "Feature flag updated successfully" });
 
   } catch (error: any) {
-    console.error("Feature Flags POST Error:", error);
+    logger.error("Feature Flags POST Error:", { metadata: { error: error.message } });
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }

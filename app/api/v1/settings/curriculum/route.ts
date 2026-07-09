@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebase-admin";
 import { getSessionUser } from "@/lib/auth/auth-server";
+import { logger } from "@/lib/logger/logger";
 
 export const runtime = "nodejs";
 
@@ -62,7 +63,7 @@ export async function POST(req: NextRequest) {
     });
 
   } catch (error: any) {
-    console.error("Curriculum Apply Error:", error);
+    logger.error("Curriculum Apply Error:", { metadata: { error: error.message } });
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

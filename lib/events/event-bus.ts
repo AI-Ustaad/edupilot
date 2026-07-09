@@ -1,6 +1,7 @@
 // lib/events/event-bus.ts
 
 import { EventType } from "./event-types";
+import { logger } from "@/lib/logger/logger";
 
 type EventHandler = (payload: any) => Promise<void> | void;
 
@@ -30,7 +31,7 @@ class EventBus {
       .then((results) => {
         results.forEach((res, index) => {
           if (res.status === "rejected") {
-            console.error(`[EventBus] Error in handler ${index} for event ${event}:`, res.reason);
+            logger.error(`[EventBus] Error in handler ${index} for event ${event}:`, { metadata: { error: res.reason } });
           }
         });
       });

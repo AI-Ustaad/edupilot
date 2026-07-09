@@ -1,7 +1,7 @@
 export const dynamic = "force-dynamic";
 
 import { withAuth, withTenant, withErrorHandler, withRateLimit } from "@/route-helpers";
-import { createApiResponse } from "@/lib/response/apiResponse";
+import { createSuccessResponse, createErrorResponse, createApiResponse } from "@/lib/api/response";
 import { StaffService } from "@/services/StaffService";
 import { AppError, SubscriptionLimitException } from "@/errors/AppError";
 import { standardRateLimit } from "@/lib/ratelimit";

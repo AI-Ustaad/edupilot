@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { collection, query, where, onSnapshot } from "firebase/firestore";
 import { db } from "@/lib/firebase"; // آپ کا Firebase Client Instance
 import { useAuth } from "@/context/AuthContext";
+import { logger } from "@/lib/logger/logger";
 
 export const useRealtimeAttendance = (classGrade: string, section: string, date: string) => {
   const { user } = useAuth();
@@ -33,7 +34,7 @@ export const useRealtimeAttendance = (classGrade: string, section: string, date:
       setRecords(data);
       setIsLoading(false);
     }, (error) => {
-      console.error("Realtime attendance error:", error);
+      logger.error("Realtime attendance error:", { metadata: { error } });
       setIsLoading(false);
     });
 

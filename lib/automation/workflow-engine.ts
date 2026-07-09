@@ -1,5 +1,6 @@
 // lib/automation/workflow-engine.ts
 import { sendEmail } from "@/lib/email";
+import { logger } from "@/lib/logger/logger";
 
 // یہ تمام Triggers ہیں جو سسٹم میں ہو سکتے ہیں
 export type WorkflowTrigger = 
@@ -32,7 +33,7 @@ export async function executeWorkflows(context: WorkflowContext) {
              <p>If this is unexpected, please contact the school administration.</p>
              <br><p>Regards,<br>EduPilot Administration</p>`
           );
-          console.log(`[Workflow] Absence email sent to ${data.parentEmail}`);
+          logger.info(`Workflow: Absence email sent to ${data.parentEmail}`);
         }
         break;
 
@@ -47,7 +48,7 @@ export async function executeWorkflows(context: WorkflowContext) {
              <p>Thank you for your prompt payment.</p>
              <br><p>Regards,<br>EduPilot Accounts Department</p>`
           );
-          console.log(`[Workflow] Fee receipt email sent to ${data.parentEmail}`);
+          logger.info(`Workflow: Fee receipt email sent to ${data.parentEmail}`);
         }
         break;
 
@@ -60,7 +61,7 @@ export async function executeWorkflows(context: WorkflowContext) {
         break;
     }
   } catch (error) {
-    console.error(`[Workflow Engine] Error executing workflow for ${trigger}:`, error);
+    logger.error(`Workflow Engine: Error executing workflow for ${trigger}:`, { metadata: { error } });
     // Engine کو Crash نہیں ہونے دیا جائے گا، باقی سسٹم کام کرتا رہے گا
   }
 }

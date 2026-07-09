@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic';
 import { adminDb } from "@/lib/firebase-admin";
 import { withAuth, withTenant, withErrorHandler } from "@/route-helpers";
-import { createApiResponse } from "@/lib/response/apiResponse";
+import { createSuccessResponse, createErrorResponse, createApiResponse } from "@/lib/api/response";
 import type { TenantContext } from "@/types/api";
 
 export const GET = withErrorHandler(
@@ -10,7 +10,7 @@ export const GET = withErrorHandler(
       const { searchParams } = new URL(req.url);
       const quizId = searchParams.get("quizId");
       if (!quizId) {
-        return createApiResponse(400, null, "quizId is required");
+        return createErrorResponse(400, "quizId is required");
       }
 
       const snapshot = await adminDb
@@ -21,7 +21,7 @@ export const GET = withErrorHandler(
         .get();
 
       const data = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-      return createApiResponse(200, data);
+      return createSuccessResponse(data);
     })
   )
 );

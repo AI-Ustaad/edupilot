@@ -2,6 +2,7 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
 import * as Sentry from "@sentry/nextjs";
 import { firebaseTokenProvider } from "@/lib/auth/tokenProvider";
+import { logger } from "@/lib/logger/logger";
 
 // 🚀 Enterprise Axios Instance
 const apiClient = axios.create({
@@ -34,7 +35,7 @@ apiClient.interceptors.request.use(
       }
       
     } catch (err) {
-      console.error("[API Client] Interceptor Error:", err);
+      logger.error("[API Client] Interceptor Error:", { metadata: { error: err } });
     }
     return config;
   },
@@ -65,7 +66,7 @@ apiClient.interceptors.response.use(
             throw new Error("No user found for token refresh");
           }
         } catch (refreshError) {
-          console.error("[API Client] Token Refresh Failed. Logging out.");
+          logger.error("[API Client] Token Refresh Failed. Logging out.");
           if (typeof window !== "undefined") {
             window.location.href = "/login";
           }

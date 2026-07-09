@@ -1,6 +1,6 @@
 export const dynamic = 'force-dynamic';
 import { withAuth, withTenant, withErrorHandler, withRole } from "@/route-helpers";
-import { createApiResponse } from "@/lib/response/apiResponse";
+import { createSuccessResponse, createErrorResponse, createApiResponse } from "@/lib/api/response";
 import { BusService } from "@/services/bus.service";
 import { BusRepository } from "@/repositories/bus.repository";
 import type { TenantContext } from "@/types/api";
@@ -13,7 +13,7 @@ export const GET = withErrorHandler(
       withPermission(PERMISSIONS.analytics.view)(async (req: Request, { tenantId }: TenantContext) => {
         const service = new BusService(new BusRepository());
         const buses = await service.getAll(tenantId);
-        return createApiResponse(200, buses);
+        return createSuccessResponse(buses);
       })
     )
   )
