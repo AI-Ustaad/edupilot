@@ -24,7 +24,7 @@
     "@upstash/redis": "^1.38.0",
     "firebase": "^10.8.1",
     "firebase-admin": "^13.10.0",
-    "framer-motion": "^10.16.4",
+    "framer-motion": "^12.42.2",
     "html2canvas": "^1.4.1",
     "jspdf": "^2.5.2",
     "jspdf-autotable": "^3.8.0",
