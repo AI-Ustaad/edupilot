@@ -22,8 +22,8 @@ function extractSalaryFields(text: string) {
     doj: normalized.match(/(?:Joining Date|DOJ)[:\s]*([0-9\/\-]+)/i)?.[1] || "",
     bankName: normalized.match(/(?:Bank)[:\s]*([A-Za-z\s]+)/i)?.[1]?.trim() || "",
     accountNo: normalized.match(/(?:Account No|A\/C)[:\s]*([0-9\-]+)/i)?.[1] || "",
-    allowances: [{ name: "Basic Pay", amount: 50000 }],
-    deductions: [{ name: "GPF", amount: 5000 }],
+    allowances: [],
+    deductions: [],
   };
 }
 
@@ -50,8 +50,8 @@ export const POST = withErrorHandler(
           doj: "2020-01-01",
           bankName: "UBL",
           accountNo: "123456789",
-          allowances: [{ name: "Basic Pay", amount: 50000 }],
-          deductions: [{ name: "GPF", amount: 5000 }],
+          allowances: [],
+          deductions: [],
         });
       }
 

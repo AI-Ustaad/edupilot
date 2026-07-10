@@ -51,7 +51,7 @@ export class StaffService {
    */
   private sanitizePayload(data: any): any {
     const isEmpty = (val: any): boolean =>
-      val === undefined || val === null || val === "";
+      val === undefined || val === null || val === "" || val === 0;
 
     const isObjectEmpty = (obj: any): boolean =>
       typeof obj === "object" && obj !== null && !(obj instanceof Date) && !Array.isArray(obj)

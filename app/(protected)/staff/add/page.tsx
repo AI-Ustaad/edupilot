@@ -77,7 +77,7 @@ export default function AddStaffPage() {
     personal: { fullName: "", fatherName: "", cnic: "", dob: "", gender: "Male", bloodGroup: "", nationality: "", religion: "", maritalStatus: "Single", photo: "" },
     contact: { mobile: "", whatsapp: "", email: "", currentAddress: "", permanentAddress: "", city: "", province: "", country: "", postalCode: "" },
     professional: { personnelNo: "", employeeId: "", designation: "", department: "", role: "", employmentType: "", joiningDate: "", confirmationDate: "", experience: "", qualification: "" },
-    payroll: { basicSalary: 0, allowances: [{ name: "", amount: 0 }], deductions: [{ name: "", amount: 0 }], grossSalary: 0, bankName: "", accountNumber: "", iban: "", salaryPaymentMethod: "" },
+    payroll: { basicSalary: 0, allowances: [], deductions: [], grossSalary: 0, bankName: "", accountNumber: "", iban: "", salaryPaymentMethod: "" },
     education: [] as any[],
     academic: { subjects: [] as string[], classesAssigned: [] as string[], timetable: "", sectionAssignment: "", classTeacher: false },
     emergency: { name: "", relation: "", phone: "", alternatePhone: "" },
@@ -162,8 +162,12 @@ export default function AddStaffPage() {
       return;
     }
     setError("");
+    const payload = { ...form, tenantId: user?.tenantId, createdBy: user?.uid };
+    logger.info("[AddStaff] Submitting payload", {
+      metadata: { payroll: payload.payroll, allowances: payload.payroll?.allowances, deductions: payload.payroll?.deductions },
+    });
     createMutation.mutate(
-      { ...form, tenantId: user?.tenantId, createdBy: user?.uid },
+      payload,
       { onSuccess: () => router.push("/staff") }
     );
   };
