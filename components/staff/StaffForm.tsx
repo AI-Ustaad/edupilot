@@ -131,9 +131,26 @@ export function useStaffForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.personal.fullName) {
-      setError("Full Name is required.");
+    // Client-side validation for all required fields
+    if (!form.personal.fullName || form.personal.fullName.trim().length < 2) {
+      setError("Full Name is required (min 2 characters).");
       return;
+    }
+    if (!form.professional.personnelNo || form.professional.personnelNo.trim() === "") {
+      setError("Personnel Number is required.");
+      return;
+    }
+    if (!form.professional.designation || form.professional.designation.trim() === "") {
+      setError("Designation is required.");
+      return;
+    }
+    // Validate email format if provided
+    if (form.contact.email && form.contact.email.trim() !== "") {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(form.contact.email)) {
+        setError("Please enter a valid email address.");
+        return;
+      }
     }
     setError("");
     createMutation.mutate({ ...form, tenantId: user?.tenantId, createdBy: user?.uid } as any, {

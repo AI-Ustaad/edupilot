@@ -17,7 +17,7 @@ export const CreateStaffSchema = z.object({
   contact: z.object({
     mobile: z.string().optional(),
     whatsapp: z.string().optional(),
-    email: z.string().email().optional().or(z.literal("")),
+    email: z.union([z.string().email(), z.literal("")]).optional(),
     currentAddress: z.string().optional(),
     permanentAddress: z.string().optional(),
     city: z.string().optional(),

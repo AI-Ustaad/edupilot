@@ -43,19 +43,52 @@ export class StaffService {
     return staff;
   }
 
+  /**
+   * Sanitize form payload: convert empty strings to undefined for optional fields.
+   * Forms send "" for all empty inputs; Zod treats "" as a value (not undefined),
+   * so optional fields with "" fail type-specific validators (email, url, enum, etc.)
+   */
+  private sanitizePayload(data: any): any {
+    const clean = (obj: any): any => {
+      if (obj === null || obj === undefined) return obj;
+      if (Array.isArray(obj)) return obj.map(clean);
+      if (typeof obj === "object" && !(obj instanceof Date)) {
+        const cleaned: any = {};
+        for (const [key, value] of Object.entries(obj)) {
+          if (value === "") {
+            cleaned[key] = undefined;
+          } else if (typeof value === "object" && value !== null && !(value instanceof Date)) {
+            cleaned[key] = clean(value);
+          } else {
+            cleaned[key] = value;
+          }
+        }
+        return cleaned;
+      }
+      return obj;
+    };
+    return clean(data);
+  }
+
   async create(
     data: any,
     tenantId: string,
     userId: string
   ): Promise<string> {
-    const validation = this.validation.validate(CreateStaffSchema, data);
+    // Sanitize payload: convert empty strings to undefined before validation
+    const sanitized = this.sanitizePayload(data);
+
+    const validation = this.validation.validate(CreateStaffSchema, sanitized);
     if (!validation.success) {
+      logger.warn("[StaffService] Validation failed", {
+        metadata: { errors: validation.errors, payload: sanitized },
+      });
       throw new ValidationError("Validation failed", validation.errors);
     }
 
     // Check for duplicate email
-    if (data.contact?.email) {
-      const existing = await this.repository.findByEmail(tenantId, data.contact.email);
+    if (validation.data?.contact?.email) {
+      const existing = await this.repository.findByEmail(tenantId, validation.data.contact.email);
       if (existing) {
         throw new BusinessError("A staff member with this email already exists");
       }
@@ -65,13 +98,13 @@ export class StaffService {
       ...validation.data,
       tenantId,
       createdBy: userId,
-      admissionMethod: data.admissionMethod || "manual",
+      admissionMethod: sanitized.admissionMethod || "manual",
     };
 
     const id = await this.repository.create(docData as any, tenantId);
 
     logger.info("[StaffService] Staff created", {
-      metadata: { staffId: id, tenantId, userId, fullName: data.personal?.fullName },
+      metadata: { staffId: id, tenantId, userId, fullName: validation.data?.personal?.fullName },
     });
 
     await this.audit.log({
@@ -80,7 +113,7 @@ export class StaffService {
       tenantId,
       entityId: id,
       entityType: "staff",
-      metadata: { fullName: data.personal?.fullName },
+      metadata: { fullName: validation.data?.personal?.fullName },
     });
 
     return id;
@@ -95,8 +128,14 @@ export class StaffService {
     // Verify existence
     await this.getById(tenantId, id);
 
-    const validation = this.validation.validate(UpdateStaffSchema, data);
+    // Sanitize payload: convert empty strings to undefined before validation
+    const sanitized = this.sanitizePayload(data);
+
+    const validation = this.validation.validate(UpdateStaffSchema, sanitized);
     if (!validation.success) {
+      logger.warn("[StaffService] Update validation failed", {
+        metadata: { errors: validation.errors, staffId: id, tenantId },
+      });
       throw new ValidationError("Validation failed", validation.errors);
     }
 

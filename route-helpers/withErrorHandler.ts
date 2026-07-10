@@ -31,7 +31,7 @@ export function withErrorHandler(handler: Function) {
             success: false,
             message: error.message,
             data: null,
-            errors: error.details ? [error.details] : null,
+            errors: error.details || null,
             code: error.code,
             traceId: `trace_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
             timestamp: new Date().toISOString(),
