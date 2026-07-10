@@ -56,6 +56,26 @@ export type {
   CreateTimetableEntryInput,
 } from "../../validators/timetable";
 
+// Teacher schemas — from validators/teacher/ (canonical)
+export {
+  CreateAssignmentSchema,
+  UpdateAssignmentSchema,
+  CreateLessonPlanSchema,
+  UpdateLessonPlanSchema,
+  CreateBookSchema,
+  UpdateBookSchema,
+  RecordBehaviorSchema,
+} from "../../validators/teacher";
+export type {
+  CreateAssignmentInput,
+  UpdateAssignmentInput,
+  CreateLessonPlanInput,
+  UpdateLessonPlanInput,
+  CreateBookInput,
+  UpdateBookInput,
+  RecordBehaviorInput,
+} from "../../validators/teacher";
+
 // Video lecture schemas
 export * from "./video-lecture.schema";
 

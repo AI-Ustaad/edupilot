@@ -1,9 +1,10 @@
 export const dynamic = 'force-dynamic';
-import { adminDb, adminStorage } from "@/lib/firebase-admin";
 import { withAuth, withTenant, withErrorHandler } from "@/route-helpers";
 import { createSuccessResponse, createErrorResponse, createApiResponse } from "@/lib/api/response";
+import { AssignmentService } from "@/services/assignment.service";
 import type { TenantContext } from "@/types/api";
-import { getSessionUser } from "@/lib/auth/auth-server";
+
+const assignmentService = new AssignmentService();
 
 export const POST = withErrorHandler(
   withAuth(
@@ -18,28 +19,19 @@ export const POST = withErrorHandler(
         return createErrorResponse(400, "Missing required fields");
       }
 
-      // فائل Firebase Storage میں اپ لوڈ کریں
-      const buffer = Buffer.from(await file.arrayBuffer());
-      const fileName = `${tenantId}/submissions/${assignmentId}/${studentId}_${Date.now()}_${file.name}`;
-      const bucket = adminStorage.bucket();
-      const fileRef = bucket.file(fileName);
-      await fileRef.save(buffer, { contentType: file.type });
-      await fileRef.makePublic();
-      const fileUrl = `https://storage.googleapis.com/${bucket.name}/${fileName}`;
+      const fileUrl = await assignmentService.uploadSubmissionFile(file, tenantId, assignmentId, studentId);
 
-      // Firestore میں سبمیشن ریکارڈ
-      const submissionRef = await adminDb.collection("submissions").add({
+      const submissionId = await assignmentService.submitAssignment(
         assignmentId,
         studentId,
-        studentName: studentName || "Unknown",
+        studentName || "Unknown",
         fileUrl,
-        fileName: file.name,
-        submittedBy: user.uid,
+        file.name,
         tenantId,
-        createdAt: new Date(),
-      });
+        user.uid
+      );
 
-      return createApiResponse(201, { id: submissionRef.id, fileUrl });
+      return createApiResponse(201, { id: submissionId, fileUrl });
     })
   )
 );
@@ -52,13 +44,7 @@ export const GET = withErrorHandler(
       if (!assignmentId) {
         return createErrorResponse(400, "assignmentId is required");
       }
-      const snapshot = await adminDb
-        .collection("submissions")
-        .where("assignmentId", "==", assignmentId)
-        .where("tenantId", "==", tenantId)
-        .orderBy("createdAt", "desc")
-        .get();
-      const data = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+      const data = await assignmentService.getSubmissions(assignmentId, tenantId);
       return createSuccessResponse(data);
     })
   )

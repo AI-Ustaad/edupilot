@@ -62,7 +62,9 @@ export const CreateStaffSchema = z.object({
   documents: z.object({
     cnicFront: z.string().optional(),
     cnicBack: z.string().optional(),
+    degree: z.string().optional(),
     degreeCertificates: z.array(z.string()).optional(),
+    experienceCert: z.string().optional(),
     experienceCertificates: z.array(z.string()).optional(),
     appointmentLetter: z.string().optional(),
     contract: z.string().optional(),

@@ -12,6 +12,7 @@ import {
   SubscriptionLimitException,
 } from "@/errors/AppError";
 import { PaginatedResult } from "@/types/api";
+import { logger } from "@/lib/logger/logger";
 
 export class StaffService {
   private repository: IStaffRepository;
@@ -54,7 +55,7 @@ export class StaffService {
 
     // Check for duplicate email
     if (data.contact?.email) {
-      const existing = await this.repository.findByEmail?.(tenantId, data.contact.email);
+      const existing = await this.repository.findByEmail(tenantId, data.contact.email);
       if (existing) {
         throw new BusinessError("A staff member with this email already exists");
       }
@@ -68,6 +69,10 @@ export class StaffService {
     };
 
     const id = await this.repository.create(docData as any, tenantId);
+
+    logger.info("[StaffService] Staff created", {
+      metadata: { staffId: id, tenantId, userId, fullName: data.personal?.fullName },
+    });
 
     await this.audit.log({
       action: "staff.created",
