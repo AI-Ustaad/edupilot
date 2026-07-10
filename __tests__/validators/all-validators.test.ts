@@ -152,6 +152,101 @@ describe("CreateStaffSchema", () => {
     });
     expect(result.payroll).toBeUndefined();
   });
+
+  it("accepts empty allowances array", () => {
+    const result = CreateStaffSchema.parse({
+      personal: { fullName: "John Doe" },
+      contact: {},
+      professional: { personnelNo: "1", designation: "T" },
+      payroll: { allowances: [] },
+    });
+    expect(result.payroll?.allowances).toEqual([]);
+  });
+
+  it("accepts empty deductions array", () => {
+    const result = CreateStaffSchema.parse({
+      personal: { fullName: "John Doe" },
+      contact: {},
+      professional: { personnelNo: "1", designation: "T" },
+      payroll: { deductions: [] },
+    });
+    expect(result.payroll?.deductions).toEqual([]);
+  });
+
+  it("accepts one valid allowance", () => {
+    const result = CreateStaffSchema.parse({
+      personal: { fullName: "John Doe" },
+      contact: {},
+      professional: { personnelNo: "1", designation: "T" },
+      payroll: { allowances: [{ name: "House Rent", amount: 15000 }] },
+    });
+    expect(result.payroll?.allowances).toEqual([{ name: "House Rent", amount: 15000 }]);
+  });
+
+  it("accepts one valid deduction", () => {
+    const result = CreateStaffSchema.parse({
+      personal: { fullName: "John Doe" },
+      contact: {},
+      professional: { personnelNo: "1", designation: "T" },
+      payroll: { deductions: [{ name: "Tax", amount: 5000 }] },
+    });
+    expect(result.payroll?.deductions).toEqual([{ name: "Tax", amount: 5000 }]);
+  });
+
+  it("rejects allowance missing name", () => {
+    expect(() =>
+      CreateStaffSchema.parse({
+        personal: { fullName: "John Doe" },
+        contact: {},
+        professional: { personnelNo: "1", designation: "T" },
+        payroll: { allowances: [{ name: "", amount: 1000 }] },
+      })
+    ).toThrow();
+  });
+
+  it("rejects deduction missing name", () => {
+    expect(() =>
+      CreateStaffSchema.parse({
+        personal: { fullName: "John Doe" },
+        contact: {},
+        professional: { personnelNo: "1", designation: "T" },
+        payroll: { deductions: [{ name: "", amount: 1000 }] },
+      })
+    ).toThrow();
+  });
+
+  it("defaults missing allowances to empty array", () => {
+    const result = CreateStaffSchema.parse({
+      personal: { fullName: "John Doe" },
+      contact: {},
+      professional: { personnelNo: "1", designation: "T" },
+      payroll: {},
+    });
+    expect(result.payroll?.allowances).toEqual([]);
+    expect(result.payroll?.deductions).toEqual([]);
+  });
+
+  it("rejects negative allowance amount", () => {
+    expect(() =>
+      CreateStaffSchema.parse({
+        personal: { fullName: "John Doe" },
+        contact: {},
+        professional: { personnelNo: "1", designation: "T" },
+        payroll: { allowances: [{ name: "Bonus", amount: -100 }] },
+      })
+    ).toThrow();
+  });
+
+  it("rejects negative deduction amount", () => {
+    expect(() =>
+      CreateStaffSchema.parse({
+        personal: { fullName: "John Doe" },
+        contact: {},
+        professional: { personnelNo: "1", designation: "T" },
+        payroll: { deductions: [{ name: "Tax", amount: -500 }] },
+      })
+    ).toThrow();
+  });
 });
 
 describe("UpdateStaffSchema", () => {

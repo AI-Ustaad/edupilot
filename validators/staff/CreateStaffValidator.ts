@@ -40,11 +40,13 @@ export const CreateStaffSchema = z.object({
   payroll: z.object({
     basicSalary: z.number().min(0).optional(),
     allowances: z
-      .array(z.object({ name: z.string(), amount: z.number() }))
-      .optional(),
+      .array(z.object({ name: z.string().min(1, "Allowance name is required"), amount: z.number().nonnegative("Amount must be >= 0") }))
+      .optional()
+      .default([]),
     deductions: z
-      .array(z.object({ name: z.string(), amount: z.number() }))
-      .optional(),
+      .array(z.object({ name: z.string().min(1, "Deduction name is required"), amount: z.number().nonnegative("Amount must be >= 0") }))
+      .optional()
+      .default([]),
     grossSalary: z.number().min(0).optional(),
     netSalary: z.number().min(0).optional(),
     bankName: z.string().optional(),

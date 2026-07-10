@@ -47,11 +47,24 @@ export class StaffService {
    * Sanitize form payload: convert empty strings to undefined for optional fields.
    * Forms send "" for all empty inputs; Zod treats "" as a value (not undefined),
    * so optional fields with "" fail type-specific validators (email, url, enum, etc.)
+   * Also filters out incomplete objects from arrays (e.g. [{name:"",amount:0}] → []).
    */
   private sanitizePayload(data: any): any {
+    const isEmpty = (val: any): boolean =>
+      val === undefined || val === null || val === "";
+
+    const isObjectEmpty = (obj: any): boolean =>
+      typeof obj === "object" && obj !== null && !(obj instanceof Date) && !Array.isArray(obj)
+        ? Object.values(obj).every(isEmpty)
+        : false;
+
     const clean = (obj: any): any => {
       if (obj === null || obj === undefined) return obj;
-      if (Array.isArray(obj)) return obj.map(clean);
+      if (Array.isArray(obj)) {
+        return obj
+          .map(clean)
+          .filter((item: any) => !isObjectEmpty(item));
+      }
       if (typeof obj === "object" && !(obj instanceof Date)) {
         const cleaned: any = {};
         for (const [key, value] of Object.entries(obj)) {
@@ -77,6 +90,14 @@ export class StaffService {
   ): Promise<string> {
     // Sanitize payload: convert empty strings to undefined before validation
     const sanitized = this.sanitizePayload(data);
+
+    logger.info("[StaffService] Payroll payload", {
+      metadata: {
+        payroll: sanitized.payroll,
+        allowances: sanitized.payroll?.allowances,
+        deductions: sanitized.payroll?.deductions,
+      },
+    });
 
     const validation = this.validation.validate(CreateStaffSchema, sanitized);
     if (!validation.success) {
