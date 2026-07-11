@@ -6,11 +6,10 @@ import { withPermission } from "@/lib/auth/rbac";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 import { createSuccessResponse, createErrorResponse, createApiResponse } from "@/lib/api/response";
 import { StaffService } from "@/services/StaffService";
+import { AuditService } from "@/services/AuditService";
 import { AppError } from "@/errors/AppError";
 import type { TenantContext } from "@/types/api";
 import * as XLSX from "xlsx";
-import { FieldValue } from "firebase-admin/firestore";
-import { adminDb } from "@/lib/firebase-admin";
 
 export const POST = withErrorHandler(
   withAuth(
@@ -38,10 +37,15 @@ export const POST = withErrorHandler(
 
           for (const row of jsonData as any[]) {
             const fullName = row["Full Name"] || row["fullName"] || row["Name"];
-            const email = row["Email"] || row["email"];
+            const personnelNo = row["Personnel No"] || row["personnelNo"] || row["PersonnelNo"];
 
             if (!fullName || String(fullName).trim().length < 2) {
               errors.push(`Invalid row: Full Name is required`);
+              continue;
+            }
+
+            if (!personnelNo || String(personnelNo).trim() === "") {
+              errors.push(`Skipped row "${fullName}": Personnel No is required`);
               continue;
             }
 
@@ -50,11 +54,16 @@ export const POST = withErrorHandler(
                 {
                   personal: {
                     fullName: String(fullName).trim(),
-                    email: email || "",
+                  },
+                  contact: {
+                    email: row["Email"] || row["email"] || "",
+                    mobile: row["Phone"] || row["phone"] || row["Mobile"] || "",
                   },
                   professional: {
                     designation: row["Designation"] || row["designation"] || "Teacher",
-                    personnelNo: row["Personnel No"] || row["personnelNo"] || "",
+                    personnelNo: String(personnelNo).trim(),
+                    department: row["Department"] || row["department"] || "",
+                    employmentType: row["Employment Type"] || row["employmentType"] || "",
                   },
                   admissionMethod: "bulk",
                 },
@@ -68,15 +77,15 @@ export const POST = withErrorHandler(
             }
           }
 
-          // Audit log
-          const auditRef = adminDb.collection("logs").doc();
-          await auditRef.set({
+          // Audit log via AuditService
+          const auditService = new AuditService();
+          await auditService.log({
             action: "staff.bulk_import",
             userId: user.uid,
             tenantId,
+            entityId: "bulk",
             entityType: "staff",
             metadata: { total: jsonData.length, success: results.filter((r) => r.success).length, errors: errors.length },
-            createdAt: FieldValue.serverTimestamp(),
           });
 
           return createApiResponse(201, {

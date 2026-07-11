@@ -47,12 +47,10 @@ export interface Staff {
 
   payroll?: {
     basicSalary?: number;
-    allowances?: {
-      houseRent?: number;
-      medical?: number;
-      transport?: number;
-    };
+    allowances?: { name: string; amount: number }[];
+    deductions?: { name: string; amount: number }[];
     grossSalary?: number;
+    netSalary?: number;
     bankName?: string;
     accountNumber?: string;
     iban?: string;

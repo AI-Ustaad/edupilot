@@ -2,13 +2,13 @@
 import { useState } from "react";
 import Link from "next/link";
 import {
-  Loader2, Plus, Trash2, Users, Upload, FileSpreadsheet, X, CheckCircle2, AlertTriangle,
+  Loader2, Plus, Trash2, Users, Upload, FileSpreadsheet, X, CheckCircle2, AlertTriangle, Search, Edit3,
 } from "lucide-react";
 import RequirePermission from "@/components/RequirePermission";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 
 // 🚀 Layered Architecture Hooks & Skeletons
-import { useStaff, useDeleteStaff } from "@/hooks/useStaff";
+import { useStaff, useDeleteStaff, useSearchStaff } from "@/hooks/useStaff";
 import { TableSkeleton } from "@/components/Skeletons";
 
 export default function StaffDirectoryPage() {
@@ -17,6 +17,11 @@ export default function StaffDirectoryPage() {
   
   // 2. Delete Mutation (With Optimistic Update Built-in)
   const deleteMutation = useDeleteStaff();
+
+  // Search
+  const [searchQuery, setSearchQuery] = useState("");
+  const { data: searchResults } = useSearchStaff(searchQuery);
+  const displayStaff = searchQuery.length >= 2 ? (searchResults || []) : staff;
 
   // Bulk Import states
   const [showBulkModal, setShowBulkModal] = useState(false);
@@ -88,6 +93,16 @@ export default function StaffDirectoryPage() {
             <p className="text-gray-500 text-sm">Manage teachers and administrative staff.</p>
           </div>
           <div className="flex gap-2">
+            <div className="relative flex-1 md:flex-none md:w-72">
+              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search by name, CNIC, email..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
             <RequirePermission permissions={[PERMISSIONS.staff.create]}>
               <Link
                 href="/staff/add"
@@ -173,10 +188,10 @@ export default function StaffDirectoryPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {staff.length === 0 ? (
-                  <tr><td colSpan={4} className="p-8 text-center text-gray-400 font-medium">No staff members found.</td></tr>
+                {displayStaff.length === 0 ? (
+                  <tr><td colSpan={4} className="p-8 text-center text-gray-400 font-medium">{searchQuery ? "No matching staff found." : "No staff members found."}</td></tr>
                 ) : (
-                  staff.map((s: any) => (
+                  displayStaff.map((s: any) => (
                     <tr 
                       key={s.id} 
                       className={`hover:bg-gray-50 transition ${
@@ -195,8 +210,15 @@ export default function StaffDirectoryPage() {
                       </td>
                       <td className="p-4 text-gray-600 font-medium">{s.contact?.email || s.email || "N/A"}</td>
                       <td className="p-4 text-right">
-                        <RequirePermission permissions={[PERMISSIONS.staff.delete]}>
-                          <button 
+                        <div className="flex items-center justify-end gap-1">
+                          <Link
+                            href={`/staff/${s.id}/edit`}
+                            className="text-blue-500 hover:bg-blue-50 p-2 rounded-lg transition"
+                          >
+                            <Edit3 size={16} />
+                          </Link>
+                          <RequirePermission permissions={[PERMISSIONS.staff.delete]}>
+                            <button 
                             onClick={() => handleDelete(s.id)} 
                             className="text-red-500 hover:bg-red-50 p-2 rounded-lg transition disabled:opacity-50"
                             disabled={deleteMutation.isPending}
@@ -206,6 +228,7 @@ export default function StaffDirectoryPage() {
                             }
                           </button>
                         </RequirePermission>
+                        </div>
                       </td>
                     </tr>
                   ))

@@ -14,6 +14,8 @@ import {
 import { PaginatedResult } from "@/types/api";
 import { logger } from "@/lib/logger/logger";
 import { serializeForFirestore } from "@/lib/firestore/firestoreSerializer";
+import { eventBus } from "@/lib/events/event-bus";
+import { EVENTS } from "@/lib/events/event-types";
 
 export class StaffService {
   private repository: IStaffRepository;
@@ -162,6 +164,13 @@ export class StaffService {
       metadata: { fullName: validation.data?.personal?.fullName },
     });
 
+    eventBus.publish(EVENTS.STAFF_CREATED, {
+      staffId: id,
+      tenantId,
+      userId,
+      fullName: validation.data?.personal?.fullName,
+    });
+
     return id;
   }
 
@@ -197,6 +206,13 @@ export class StaffService {
       entityType: "staff",
       metadata: { updatedFields: Object.keys(data) },
     });
+
+    eventBus.publish(EVENTS.STAFF_UPDATED, {
+      staffId: id,
+      tenantId,
+      userId: userId || "system",
+      updatedFields: Object.keys(data),
+    });
   }
 
   async delete(tenantId: string, id: string, userId?: string): Promise<void> {
@@ -210,6 +226,13 @@ export class StaffService {
       entityId: id,
       entityType: "staff",
       metadata: { fullName: staff.personal?.fullName },
+    });
+
+    eventBus.publish(EVENTS.STAFF_DELETED, {
+      staffId: id,
+      tenantId,
+      userId: userId || "system",
+      fullName: staff.personal?.fullName,
     });
   }
 

@@ -5,6 +5,9 @@ export const EVENTS = {
   FEE_COLLECTED: "fee.collected",
   ATTENDANCE_MARKED: "attendance.marked",
   REPORT_GENERATED: "report.generated",
+  STAFF_CREATED: "staff.created",
+  STAFF_UPDATED: "staff.updated",
+  STAFF_DELETED: "staff.deleted",
 } as const;
 
 // Typescript Magic for strict typing
