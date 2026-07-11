@@ -26,6 +26,7 @@ function initAdmin() {
     app = getApps()[0];
   }
   db = getFirestore(app);
+  db.settings({ ignoreUndefinedProperties: true });
   auth = getAuth(app);
   storage = getStorage(app);
   return { db, auth, storage };

@@ -13,6 +13,7 @@ import {
 } from "@/errors/AppError";
 import { PaginatedResult } from "@/types/api";
 import { logger } from "@/lib/logger/logger";
+import { serializeForFirestore } from "@/lib/firestore/firestoreSerializer";
 
 export class StaffService {
   private repository: IStaffRepository;
@@ -47,40 +48,58 @@ export class StaffService {
    * Sanitize form payload: convert empty strings to undefined for optional fields.
    * Forms send "" for all empty inputs; Zod treats "" as a value (not undefined),
    * so optional fields with "" fail type-specific validators (email, url, enum, etc.)
-   * Also filters out incomplete objects from arrays (e.g. [{name:"",amount:0}] → []).
+   * Also filters out incomplete/empty objects from arrays.
    */
   private sanitizePayload(data: any): any {
-    const isEmpty = (val: any): boolean =>
-      val === undefined || val === null || val === "" || val === 0;
+    const sanitize = (value: any): any => {
+      if (value === null) return null;
+      if (value === "") return undefined;
+      if (value instanceof Date) return value;
 
-    const isObjectEmpty = (obj: any): boolean =>
-      typeof obj === "object" && obj !== null && !(obj instanceof Date) && !Array.isArray(obj)
-        ? Object.values(obj).every(isEmpty)
-        : false;
-
-    const clean = (obj: any): any => {
-      if (obj === null || obj === undefined) return obj;
-      if (Array.isArray(obj)) {
-        return obj
-          .map(clean)
-          .filter((item: any) => !isObjectEmpty(item));
+      if (Array.isArray(value)) {
+        return value
+          .map(sanitize)
+          .filter((item) => {
+            if (item === undefined) return false;
+            if (
+              typeof item === "object" &&
+              item !== null &&
+              !Array.isArray(item) &&
+              Object.keys(item).length === 0
+            ) {
+              return false;
+            }
+            return true;
+          });
       }
-      if (typeof obj === "object" && !(obj instanceof Date)) {
-        const cleaned: any = {};
-        for (const [key, value] of Object.entries(obj)) {
-          if (value === "") {
-            cleaned[key] = undefined;
-          } else if (typeof value === "object" && value !== null && !(value instanceof Date)) {
-            cleaned[key] = clean(value);
-          } else {
-            cleaned[key] = value;
+
+      if (typeof value === "object" && value !== undefined) {
+        const cleaned: Record<string, any> = {};
+        for (const [key, val] of Object.entries(value)) {
+          const result = sanitize(val);
+          if (result !== undefined) {
+            cleaned[key] = result;
           }
+        }
+        if (Object.keys(cleaned).length === 0) {
+          return undefined;
         }
         return cleaned;
       }
-      return obj;
+
+      return value;
     };
-    return clean(data);
+
+    return sanitize(data);
+  }
+
+  /**
+   * Remove undefined values before writing to Firestore.
+   * Firestore rejects undefined but accepts null.
+   * This is a safety net — serializeForFirestore is the shared utility.
+   */
+  private removeUndefined(data: any): any {
+    return serializeForFirestore(data);
   }
 
   async create(
@@ -122,7 +141,13 @@ export class StaffService {
       admissionMethod: sanitized.admissionMethod || "manual",
     };
 
-    const id = await this.repository.create(docData as any, tenantId);
+    const firestoreData = this.removeUndefined(docData);
+
+    logger.info("[StaffService] Firestore Payload", {
+      metadata: { staffId: null, tenantId, userId, personal: firestoreData.personal },
+    });
+
+    const id = await this.repository.create(firestoreData as any, tenantId);
 
     logger.info("[StaffService] Staff created", {
       metadata: { staffId: id, tenantId, userId, fullName: validation.data?.personal?.fullName },
@@ -160,7 +185,9 @@ export class StaffService {
       throw new ValidationError("Validation failed", validation.errors);
     }
 
-    await this.repository.update(id, validation.data as any, tenantId);
+    const firestoreData = this.removeUndefined(validation.data);
+
+    await this.repository.update(id, firestoreData as any, tenantId);
 
     await this.audit.log({
       action: "staff.updated",
