@@ -106,7 +106,7 @@ describe("Enterprise E2E Workflows", () => {
       const formData = new FormData();
       formData.append("file", new Blob(["fake"], { type: "image/jpeg" }), "doc.jpg");
       const req = new NextRequest("http://localhost/api/v1/staff/ocr", { method: "POST", body: formData });
-      const res = await ocrPOST(req);
+      const res = await ocrPOST(req, {} as any);
       expect(res.status).toBe(401);
     });
   });

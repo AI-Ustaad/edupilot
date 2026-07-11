@@ -40,17 +40,15 @@ export default function AttendancePage() {
   const handleSaveAll = async () => {
     if (students.length === 0) return;
     try {
-      await Promise.all(students.map((student: any) => {
-        const status = entries[student.id] || "Absent";
-        return saveMutation.mutateAsync({
-          studentId: student.id,
-          studentName: student.fullName || student.name,
-          classGrade: selectedClass,
-          section: selectedSection,
-          date: selectedDate,
-          status,
-        });
+      const bulkData = students.map((student: any) => ({
+        studentId: student.id,
+        studentName: student.fullName || student.name,
+        classGrade: selectedClass,
+        section: selectedSection,
+        date: selectedDate,
+        status: entries[student.id] || "Absent",
       }));
+      await saveMutation.mutateAsync(bulkData);
       showToast("Attendance saved successfully!", "success");
     } catch (err) {
       showToast("Failed to save attendance.", "error");

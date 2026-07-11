@@ -2,67 +2,12 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import { Loader2, Camera, Upload, Trash2, Save, UserPlus, FileText } from "lucide-react";
+import { Loader2, Camera, Upload, Save } from "lucide-react";
 import Image from "next/image";
-import { useCreateStaff } from "@/hooks/useStaff";
+import { useCreateStaff, useStaffOCR } from "@/hooks/useStaff";
 import { useToast } from "@/components/ToastProvider";
-import { mapOCRToStaffForm } from "@/lib/mappers/staff.mapper";
 import type { StaffFormData } from "@/lib/mappers/staff.mapper";
-import type { OCRMetaData } from "@/lib/mappers/shared";
-
-const Input = ({ label, ...props }: { label: string } & React.InputHTMLAttributes<HTMLInputElement>) => (
-  <div><label className="block text-sm font-medium text-gray-700 mb-1">{label}</label><input {...props} className="w-full p-2 border rounded-xl" /></div>
-);
-
-const Select = ({ label, options, ...props }: { label: string; options: string[] } & React.SelectHTMLAttributes<HTMLSelectElement>) => (
-  <div><label className="block text-sm font-medium text-gray-700 mb-1">{label}</label><select {...props} className="w-full p-2 border rounded-xl bg-white">{options.map((opt) => <option key={opt} value={opt}>{opt}</option>)}</select></div>
-);
-
-const FormSection = ({ title, children }: { title: string; children: React.ReactNode }) => (
-  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-white p-6 rounded-2xl border border-gray-200"><h3 className="col-span-2 font-bold text-lg text-gray-800">{title}</h3>{children}</div>
-);
-
-const DocumentUpload = ({ label, value, onChange }: { label: string; value: string; onChange: (val: string) => void }) => {
-  const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => onChange(reader.result as string);
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const isImage = value.startsWith("data:image");
-
-  return (
-    <div>
-      <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
-      <div className="relative border-2 border-dashed border-gray-300 rounded-xl p-4 flex items-center justify-center h-32 hover:border-blue-500 transition">
-        <input type="file" accept="image/*,application/pdf,.docx" onChange={handleFile} className="absolute inset-0 opacity-0 cursor-pointer" />
-        {value ? (
-          isImage ? (
-            <Image src={value} alt={label} width={80} height={80} className="object-contain p-2" />
-          ) : (
-            <div className="flex flex-col items-center text-gray-600">
-              <FileText size={24} />
-              <span className="text-xs mt-1">File Selected</span>
-            </div>
-          )
-        ) : (
-          <div className="flex flex-col items-center text-gray-400">
-            <Upload size={24} />
-            <span className="text-xs mt-1">Click to Upload</span>
-          </div>
-        )}
-      </div>
-      {value && (
-        <button type="button" onClick={() => onChange("")} className="text-xs text-red-500 mt-1 flex items-center gap-1">
-          <Trash2 size={12} /> Remove
-        </button>
-      )}
-    </div>
-  );
-};
+import { Input, Select, FormSection, DocumentUpload } from "./form-primitives";
 
 
 
@@ -71,10 +16,10 @@ export function useStaffForm() {
   const { user } = useAuth();
   const createMutation = useCreateStaff();
   const { showToast } = useToast();
+  const { ocrUploading, openFilePicker } = useStaffOCR();
 
   const [activeTab, setActiveTab] = useState(0);
   const [error, setError] = useState("");
-  const [ocrUploading, setOcrUploading] = useState(false);
 
   const [form, setForm] = useState<StaffFormData>({
     personal: { fullName: "", fatherName: "", cnic: "", dob: "", gender: "Male", bloodGroup: "", nationality: "", religion: "", maritalStatus: "Single", photo: "" },
@@ -92,41 +37,17 @@ export function useStaffForm() {
 
   const setFormData = (data: StaffFormData) => setForm(data);
 
-  const handleOCRUpload = async () => {
-    const input = document.createElement("input");
-    input.type = "file";
-    input.accept = "image/*,application/pdf";
-    input.onchange = async (e: any) => {
-      const file = e.target.files[0];
-      if (!file) return;
-      setOcrUploading(true);
-      showToast("Extracting data via OCR...", "info");
-      try {
-        const formData = new FormData();
-        formData.append("file", file);
-        const res = await fetch("/api/v1/staff/ocr", { method: "POST", body: formData });
-        const result = await res.json();
-        if (res.ok && result.success && result.data) {
-          const { staffFormData } = mapOCRToStaffForm(result.data);
-          setForm((prev) => ({
-            ...prev,
-            personal: { ...prev.personal, ...staffFormData.personal },
-            contact: { ...prev.contact, ...staffFormData.contact },
-            professional: { ...prev.professional, ...staffFormData.professional },
-            payroll: { ...prev.payroll, ...staffFormData.payroll },
-          }));
-          showToast("Data extracted successfully! Please verify.", "success");
-          setActiveTab(0);
-        } else {
-          showToast(result.error || "Failed to extract data.", "error");
-        }
-      } catch {
-        showToast("Network error during OCR.", "error");
-      } finally {
-        setOcrUploading(false);
-      }
-    };
-    input.click();
+  const handleOCRUpload = () => {
+    openFilePicker((staffFormData) => {
+      setForm((prev) => ({
+        ...prev,
+        personal: { ...prev.personal, ...staffFormData.personal },
+        contact: { ...prev.contact, ...staffFormData.contact },
+        professional: { ...prev.professional, ...staffFormData.professional },
+        payroll: { ...prev.payroll, ...staffFormData.payroll },
+      }));
+      setActiveTab(0);
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {

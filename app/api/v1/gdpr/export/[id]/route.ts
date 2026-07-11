@@ -26,8 +26,7 @@ export const GET = withErrorHandler(
         if (!student) return createErrorResponse(404, "Student not found");
 
         const attendanceService = new AttendanceService(new AttendanceRepository());
-        const allAttendance = await attendanceService.listAttendance(tenantId);
-        const studentAttendance = allAttendance.filter(r => (r as any).studentId === id);
+        const studentAttendance = await attendanceService.findByStudentId(tenantId, id);
 
         const feesService = new FeesService(new FeesRepository());
         const allFees = await feesService.listFees(tenantId);

@@ -20,5 +20,4 @@ export interface IStaffRepository {
   exists(id: string, tenantId: string): Promise<boolean>;
   search(tenantId: string, query: string): Promise<(Staff & { id: string })[]>;
   findByEmail(tenantId: string, email: string): Promise<(Staff & { id: string }) | null>;
-  countByDepartment(tenantId: string, department: string): Promise<number>;
 }

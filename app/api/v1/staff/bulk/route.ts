@@ -14,7 +14,7 @@ import * as XLSX from "xlsx";
 export const POST = withErrorHandler(
   withAuth(
     withTenant(
-      withPermission(PERMISSIONS.staff.update)(
+      withPermission(PERMISSIONS.staff.create)(
         async (req: Request, { tenantId, user }: TenantContext) => {
           const formData = await req.formData();
           const file = formData.get("file") as File;

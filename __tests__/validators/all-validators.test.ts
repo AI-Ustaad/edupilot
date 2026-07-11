@@ -215,15 +215,15 @@ describe("CreateStaffSchema", () => {
     ).toThrow();
   });
 
-  it("defaults missing allowances to empty array", () => {
+  it("leaves missing allowances/deductions as undefined (no .default([]))", () => {
     const result = CreateStaffSchema.parse({
       personal: { fullName: "John Doe" },
       contact: {},
       professional: { personnelNo: "1", designation: "T" },
       payroll: {},
     });
-    expect(result.payroll?.allowances).toEqual([]);
-    expect(result.payroll?.deductions).toEqual([]);
+    expect(result.payroll?.allowances).toBeUndefined();
+    expect(result.payroll?.deductions).toBeUndefined();
   });
 
   it("rejects negative allowance amount", () => {
@@ -632,7 +632,7 @@ describe("MarkAttendanceSchema", () => {
         date: "2024-01-15",
         status: "Unknown",
       })
-    ).toThrow("Status must be Present, Absent, or Leave");
+    ).toThrow("Status must be Present, Absent, Leave, Late, HalfDay, or Holiday");
   });
 
   it("accepts Absent and Leave status", () => {

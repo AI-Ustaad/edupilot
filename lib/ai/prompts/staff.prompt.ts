@@ -9,7 +9,6 @@ Fields to extract:
 - dob: Date of birth (YYYY-MM-DD format)
 - designation: Job title or designation
 - personnelNo: Personnel/Employee ID number
-- bps: Basic pay scale
 - basicSalary: Basic salary amount
 - grossPay: Gross salary amount
 - netPay: Net salary after deductions

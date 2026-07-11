@@ -4,6 +4,7 @@ import { Staff } from "@/types/staff";
 import { IStaffRepository } from "@/interfaces/IStaffRepository";
 import { PaginatedResult } from "@/types/api";
 import { RepositoryException } from "@/errors/AppError";
+import { adminDb } from "@/lib/firebase-admin";
 
 export class StaffRepository extends BaseRepository<Staff> implements IStaffRepository {
   constructor() {
@@ -12,39 +13,41 @@ export class StaffRepository extends BaseRepository<Staff> implements IStaffRepo
 
   async search(tenantId: string, query: string): Promise<(Staff & { id: string })[]> {
     try {
-      const all = await this.findAll(tenantId);
-      const lowerQuery = query.toLowerCase();
+      // Scope query by tenantId first, then filter client-side (Firestore doesn't support OR on nested fields)
+      const snapshot = await adminDb
+        .collection("staff")
+        .where("tenantId", "==", tenantId)
+        .get();
 
-      return all.filter(
-        (staff) =>
-          staff.personal?.fullName?.toLowerCase().includes(lowerQuery) ||
-          staff.personal?.cnic?.includes(query) ||
-          staff.contact?.mobile?.includes(query) ||
-          staff.contact?.email?.toLowerCase().includes(lowerQuery) ||
-          staff.professional?.personnelNo?.includes(query) ||
-          staff.professional?.designation?.toLowerCase().includes(lowerQuery)
-      );
+      const lowerQuery = query.toLowerCase();
+      return snapshot.docs
+        .map((doc) => ({ id: doc.id, ...doc.data() } as Staff & { id: string }))
+        .filter(
+          (staff) =>
+            staff.personal?.fullName?.toLowerCase().includes(lowerQuery) ||
+            staff.personal?.cnic?.includes(query) ||
+            staff.contact?.mobile?.includes(query) ||
+            staff.contact?.email?.toLowerCase().includes(lowerQuery) ||
+            staff.professional?.personnelNo?.includes(query) ||
+            staff.professional?.designation?.toLowerCase().includes(lowerQuery)
+        );
     } catch (error) {
       throw new RepositoryException("Failed to search staff", { query, tenantId });
     }
   }
 
-  async countByDepartment(tenantId: string, department: string): Promise<number> {
-    try {
-      const all = await this.findAll(tenantId);
-      return all.filter((s) => s.professional?.department === department).length;
-    } catch (error) {
-      throw new RepositoryException("Failed to count staff by department", {
-        department,
-        tenantId,
-      });
-    }
-  }
-
   async findByEmail(tenantId: string, email: string): Promise<(Staff & { id: string }) | null> {
     try {
-      const all = await this.findAll(tenantId);
-      return all.find((s) => s.contact?.email?.toLowerCase() === email.toLowerCase()) ?? null;
+      const snapshot = await adminDb
+        .collection("staff")
+        .where("tenantId", "==", tenantId)
+        .where("contact.email", "==", email.toLowerCase())
+        .limit(1)
+        .get();
+
+      if (snapshot.empty) return null;
+      const doc = snapshot.docs[0];
+      return { id: doc.id, ...doc.data() } as Staff & { id: string };
     } catch (error) {
       throw new RepositoryException("Failed to find staff by email", { email, tenantId });
     }

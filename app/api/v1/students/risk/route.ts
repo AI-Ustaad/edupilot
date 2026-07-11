@@ -1,7 +1,8 @@
 export const dynamic = 'force-dynamic';
 import { adminDb } from "@/lib/firebase-admin";
 import { withAuth, withTenant, withErrorHandler } from "@/route-helpers";
-import { createSuccessResponse, createErrorResponse, createApiResponse } from "@/lib/api/response";
+import { createSuccessResponse, createApiResponse } from "@/lib/api/response";
+import { AttendanceRepository } from "@/repositories/attendance.repository";
 import { logger } from "@/lib/logger/logger";
 import type { TenantContext } from "@/types/api";
 
@@ -10,44 +11,49 @@ export const GET = withErrorHandler(
     withTenant(
       async (req: Request, { tenantId }: TenantContext) => {
         try {
-          // صرف اس tenant کے سٹوڈنٹس لائیں (Limit 50 for performance)
-          const studentsSnap = await adminDb.collection("students").where("tenantId", "==", tenantId).limit(50).get();
-          const riskStudents: any[] = [];
+          const studentsSnap = await adminDb
+            .collection("students")
+            .where("tenantId", "==", tenantId)
+            .limit(50)
+            .get();
 
-          for (const doc of studentsSnap.docs) {
-            const student = { id: doc.id, ...doc.data() };
-            
-            // ہر سٹوڈنٹ کے لیے صرف ایک Simple Query (No Index Required)
-            const attSnap = await adminDb.collection("attendance").where("studentId", "==", student.id).limit(30).get();
+          const students = studentsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+          if (students.length === 0) return createSuccessResponse([]);
 
-            let present = 0, total = 0;
-            attSnap.forEach(d => {
-              // Tenant Check in memory
-              if (d.data().tenantId === tenantId) {
-                total++;
-                if (d.data().status === "Present") present++;
-              }
-            });
-            
-            const attendancePct = total > 0 ? (present / total) * 100 : 100;
+          // Batch-fetch attendance for ALL students in one set of queries
+          const attendanceRepo = new AttendanceRepository();
+          const studentIds = students.map(s => s.id);
+          const allAttendance = await attendanceRepo.findByStudentIds(tenantId, studentIds, 30);
 
-            // اگر حاضری 60% سے کم ہے تو Risk میں شامل کر دیں
+          // Group attendance by studentId in-memory
+          const attendanceByStudent: Record<string, { present: number; total: number }> = {};
+          for (const rec of allAttendance) {
+            const sid = (rec as any).studentId;
+            if (!attendanceByStudent[sid]) attendanceByStudent[sid] = { present: 0, total: 0 };
+            attendanceByStudent[sid].total++;
+            if (rec.status === "Present") attendanceByStudent[sid].present++;
+          }
+
+          // Calculate risk for each student
+          const riskStudents = [];
+          for (const student of students) {
+            const stats = attendanceByStudent[student.id] || { present: 0, total: 0 };
+            const attendancePct = stats.total > 0 ? (stats.present / stats.total) * 100 : 100;
+
             if (attendancePct < 60) {
               riskStudents.push({
                 ...student,
                 attendance: Math.round(attendancePct),
-                marks: 0, // Marks Query کو ہٹا دیا ہے تاکہ Function Timeout نہ ہو
+                marks: 0,
                 riskReason: "Low Attendance",
               });
             }
           }
 
           return createSuccessResponse(riskStudents);
-          
         } catch (error: any) {
           logger.error("Risk API Error:", { metadata: { error } });
-          // اگر کوئی بھی Error آئے تو خالی Array Return کر دیں تاکہ Dashboard Crash نہ ہو
-          return createApiResponse(200, []); 
+          return createApiResponse(200, []);
         }
       }
     )

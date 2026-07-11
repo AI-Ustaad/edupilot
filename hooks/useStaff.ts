@@ -1,10 +1,13 @@
 // hooks/useStaff.ts
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useState, useCallback } from "react";
 import apiClient from "@/lib/api/client";
 import { safeArray } from "@/lib/api/safeResponse";
 import { QueryKeys } from "@/lib/api/queryKeys";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/components/ToastProvider";
+import { mapOCRToStaffForm, type StaffFormData } from "@/lib/mappers/staff.mapper";
+import { logger } from "@/lib/logger/logger";
 
 export const useStaff = () => {
   const { user } = useAuth();
@@ -159,5 +162,56 @@ export const useSearchStaff = (query: string) => {
     },
     enabled: !!query && query.length >= 2 && !!tenantId && tenantId !== "unknown",
   });
+};
+
+/**
+ * Shared OCR upload hook.
+ * Opens a file picker, uploads to OCR API, maps response to StaffFormData,
+ * and merges into the caller's form state via onMerge callback.
+ */
+export const useStaffOCR = () => {
+  const { showToast } = useToast();
+  const [ocrUploading, setOcrUploading] = useState(false);
+
+  const openFilePicker = useCallback(
+    (onMerge: (data: StaffFormData) => void) => {
+      const input = document.createElement("input");
+      input.type = "file";
+      input.accept = "image/*,application/pdf";
+      input.onchange = async (e: Event) => {
+        const file = (e.target as HTMLInputElement).files?.[0];
+        if (!file) return;
+
+        setOcrUploading(true);
+        showToast("Extracting data via OCR...", "info");
+
+        try {
+          const formData = new FormData();
+          formData.append("file", file);
+
+          const res = await fetch("/api/v1/staff/ocr", { method: "POST", body: formData });
+          const result = await res.json();
+
+          logger.info("AI Extracted Data:", { metadata: { data: result.data } });
+
+          if (res.ok && result.success && result.data) {
+            const { staffFormData } = mapOCRToStaffForm(result.data);
+            onMerge(staffFormData);
+            showToast("Data extracted successfully! Please verify.", "success");
+          } else {
+            showToast(result.error || "Failed to extract data.", "error");
+          }
+        } catch {
+          showToast("Network error during OCR.", "error");
+        } finally {
+          setOcrUploading(false);
+        }
+      };
+      input.click();
+    },
+    [showToast]
+  );
+
+  return { ocrUploading, openFilePicker };
 };
 

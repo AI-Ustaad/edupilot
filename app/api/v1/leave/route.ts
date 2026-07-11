@@ -6,6 +6,7 @@ import { adminDb } from "@/lib/firebase-admin";
 import { withErrorHandler, withAuth, withTenant } from "@/route-helpers";
 import { withPermission } from "@/lib/auth/rbac";
 import { PERMISSIONS } from "@/lib/auth/permissions";
+import { StaffRepository } from "@/repositories/staff.repository";
 import type { TenantContext } from "@/types/api";
 
 // ==========================================
@@ -24,15 +25,13 @@ export const GET = withErrorHandler(
         // ✅ Explicitly type as any[] because Firestore data has no strict schema
         const leaves: any[] = leavesSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
-        // 2. Fetch staff for THIS tenant only (to map teacher names)
-        const staffSnap = await adminDb.collection("staff")
-          .where("tenantId", "==", tenantId)
-          .get();
+        // 2. Fetch staff for THIS tenant only (to map teacher names) via Repository
+        const staffRepo = new StaffRepository();
+        const staffList = await staffRepo.findAll(tenantId);
 
         const staffMap: Record<string, string> = {};
-        staffSnap.docs.forEach(d => {
-          const data = d.data();
-          staffMap[d.id] = data.personal?.fullName || data.fullName || "Unknown";
+        staffList.forEach(s => {
+          staffMap[s.id] = s.personal?.fullName || "Unknown";
         });
 
         // 3. Merge data safely

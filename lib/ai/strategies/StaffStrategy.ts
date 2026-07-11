@@ -53,7 +53,6 @@ export class StaffStrategy implements DocumentStrategy {
       dob: String(data.dob || "").trim(),
       designation: String(data.designation || "").trim(),
       personnelNo: String(data.personnelNo || "").trim(),
-      bps: String(data.bps || "").trim(),
       basicSalary: String(data.basicSalary || "").trim(),
       grossPay: String(data.grossPay || "").trim(),
       netPay: String(data.netPay || "").trim(),

@@ -23,18 +23,21 @@ export const GET = withErrorHandler(
         }
 
         const attendanceService = new AttendanceService(new AttendanceRepository());
-        const filters: any = {};
-        if (date) filters.date = date;
 
-        if (!studentId) {
-          const childIds = await parentService.getChildIds(user.uid, tenantId);
-          const all = await attendanceService.listAttendance(tenantId, filters);
-          const filtered = all.filter(r => childIds.includes((r as any).studentId));
-          return createSuccessResponse(filtered);
+        if (studentId) {
+          // Direct query for one student -- no fetch-all
+          const records = await attendanceService.listAttendance(tenantId, { studentId, date });
+          return createSuccessResponse(records);
         }
 
-        const records = await attendanceService.listAttendance(tenantId, { ...filters });
-        return createSuccessResponse(records.filter(r => (r as any).studentId === studentId));
+        // Fetch all children and query per child using targeted filters
+        const childIds = await parentService.getChildIds(user.uid, tenantId);
+        const allRecords = [];
+        for (const childId of childIds) {
+          const records = await attendanceService.listAttendance(tenantId, { studentId: childId, date });
+          allRecords.push(...records);
+        }
+        return createSuccessResponse(allRecords);
       })
     )
   )

@@ -5,6 +5,24 @@
       "queryScope": "COLLECTION",
       "fields": [
         { "fieldPath": "tenantId", "order": "ASCENDING" },
+        { "fieldPath": "date", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "attendance",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "tenantId", "order": "ASCENDING" },
+        { "fieldPath": "classGrade", "order": "ASCENDING" },
+        { "fieldPath": "section", "order": "ASCENDING" },
+        { "fieldPath": "date", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "attendance",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "tenantId", "order": "ASCENDING" },
         { "fieldPath": "studentId", "order": "ASCENDING" },
         { "fieldPath": "date", "order": "DESCENDING" }
       ]
@@ -77,6 +95,14 @@
         { "fieldPath": "tenantId", "order": "ASCENDING" },
         { "fieldPath": "professional.employmentType", "order": "ASCENDING" },
         { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "staff",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "tenantId", "order": "ASCENDING" },
+        { "fieldPath": "contact.email", "order": "ASCENDING" }
       ]
     },
     {

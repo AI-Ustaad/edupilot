@@ -4,16 +4,8 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { Loader2, Save, ArrowLeft, User } from "lucide-react";
 import { useStaffMember, useUpdateStaff } from "@/hooks/useStaff";
 import { logger } from "@/lib/logger/logger";
-
-const Input = ({ label, ...props }: { label: string } & React.InputHTMLAttributes<HTMLInputElement>) => (
-  <div><label className="block text-sm font-medium text-gray-700 mb-1">{label}</label><input {...props} className="w-full p-2 border rounded-xl" /></div>
-);
-const Select = ({ label, options, ...props }: { label: string; options: string[] } & React.SelectHTMLAttributes<HTMLSelectElement>) => (
-  <div><label className="block text-sm font-medium text-gray-700 mb-1">{label}</label><select {...props} className="w-full p-2 border rounded-xl bg-white">{options.map((opt) => <option key={opt} value={opt}>{opt}</option>)}</select></div>
-);
-const Section = ({ title, children }: { title: string; children: React.ReactNode }) => (
-  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-white p-6 rounded-2xl border border-gray-200"><h3 className="col-span-2 font-bold text-lg text-gray-800">{title}</h3>{children}</div>
-);
+import { Input, Select, Section } from "@/components/staff/form-primitives";
+import type { StaffFormData } from "@/lib/mappers/staff.mapper";
 
 function EditStaffContent() {
   const searchParams = useSearchParams();
@@ -25,11 +17,11 @@ function EditStaffContent() {
 
   const [activeTab, setActiveTab] = useState(0);
   const [error, setError] = useState("");
-  const [form, setForm] = useState<any>(null);
+  const [form, setForm] = useState<StaffFormData | null>(null);
 
   useEffect(() => {
     if (staffData) {
-      const s = staffData as any;
+      const s = staffData;
       setForm({
         personal: {
           fullName: s.personal?.fullName || "",
@@ -100,8 +92,12 @@ function EditStaffContent() {
     }
   }, [staffData]);
 
-  const handleChange = (section: string, field: string, value: any) => {
-    setForm((prev: any) => ({ ...prev, [section]: { ...prev[section], [field]: value } }));
+  const handleChange = (section: string, field: string, value: unknown) => {
+    setForm((prev) => {
+      if (!prev) return prev;
+      const key = section as keyof StaffFormData;
+      return { ...prev, [key]: { ...prev[key], [field]: value } };
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {

@@ -6,7 +6,19 @@ import { sendEmail } from '@/lib/email';
 import { adminDb } from '@/lib/firebase-admin';
 import { logger } from '@/lib/logger/logger';
 
+const CRON_SECRET = process.env.CRON_SECRET || 'internal-cron-secret';
+
 export async function GET(req: Request) {
+  // Validate cron secret
+  const authHeader = req.headers.get('authorization') || '';
+  const url = new URL(req.url);
+  const querySecret = url.searchParams.get('secret');
+  const providedSecret = authHeader.replace('Bearer ', '') || querySecret;
+
+  if (providedSecret !== CRON_SECRET) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   try {
     const tenantsSnap = await adminDb.collection('tenants').get();
     const tenants = tenantsSnap.docs.map(doc => doc.id);

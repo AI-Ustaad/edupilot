@@ -41,12 +41,10 @@ export const CreateStaffSchema = z.object({
     basicSalary: z.number().min(0).optional(),
     allowances: z
       .array(z.object({ name: z.string().min(1, "Allowance name is required"), amount: z.number().nonnegative("Amount must be >= 0") }))
-      .optional()
-      .default([]),
+      .optional(),
     deductions: z
       .array(z.object({ name: z.string().min(1, "Deduction name is required"), amount: z.number().nonnegative("Amount must be >= 0") }))
-      .optional()
-      .default([]),
+      .optional(),
     grossSalary: z.number().min(0).optional(),
     netSalary: z.number().min(0).optional(),
     bankName: z.string().optional(),
@@ -64,9 +62,7 @@ export const CreateStaffSchema = z.object({
   documents: z.object({
     cnicFront: z.string().optional(),
     cnicBack: z.string().optional(),
-    degree: z.string().optional(),
     degreeCertificates: z.array(z.string()).optional(),
-    experienceCert: z.string().optional(),
     experienceCertificates: z.array(z.string()).optional(),
     appointmentLetter: z.string().optional(),
     contract: z.string().optional(),

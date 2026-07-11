@@ -1,44 +1,73 @@
 export const dynamic = 'force-dynamic';
-import { withErrorHandler } from "@/route-helpers";
-import { withAuthAndPermission } from "@/route-helpers/withAuthAndPermission";
+import { withAuth, withTenant, withErrorHandler } from "@/route-helpers";
+import { withPermission } from "@/lib/auth/rbac";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 import { AttendanceService } from "@/services/attendance.service";
 import { createSuccessResponse, createApiResponse } from "@/lib/api/response";
-
-const attendanceService = new AttendanceService();
+import { GetAttendanceQuerySchema } from "@/validators/attendance";
+import type { TenantContext } from "@/types/api";
 
 export const GET = withErrorHandler(
-  withAuthAndPermission(
-    PERMISSIONS.attendance.view,
-    async (req: Request, context: any) => {
-      const tenantId = context.user.tenantId;
-      const url = new URL(req.url);
-      const date = url.searchParams.get("date") || undefined;
-      const classGrade = url.searchParams.get("classGrade") || undefined;
-      const section = url.searchParams.get("section") || undefined;
+  withAuth(
+    withTenant(
+      withPermission(PERMISSIONS.attendance.view)(async (req: Request, { tenantId }: TenantContext) => {
+        const url = new URL(req.url);
+        const queryParams = {
+          date: url.searchParams.get("date") || undefined,
+          classGrade: url.searchParams.get("classGrade") || undefined,
+          section: url.searchParams.get("section") || undefined,
+          studentId: url.searchParams.get("studentId") || undefined,
+          page: url.searchParams.get("page") || undefined,
+          limit: url.searchParams.get("limit") || undefined,
+        };
 
-      const filters = { date, classGrade, section };
-      const records = await attendanceService.listAttendance(tenantId, filters);
+        const validation = GetAttendanceQuerySchema.safeParse(queryParams);
+        if (!validation.success) {
+          return createSuccessResponse([]);
+        }
 
-      return createSuccessResponse(records);
-    }
+        const { page, limit, ...filters } = validation.data;
+        const service = new AttendanceService();
+        const records = await service.listAttendance(tenantId, filters);
+
+        // Pagination
+        if (page && limit) {
+          const pageNum = parseInt(page, 10);
+          const limitNum = parseInt(limit, 10);
+          const start = (pageNum - 1) * limitNum;
+          const end = start + limitNum;
+          return createSuccessResponse({
+            data: records.slice(start, end),
+            pagination: {
+              page: pageNum,
+              limit: limitNum,
+              total: records.length,
+              totalPages: Math.ceil(records.length / limitNum),
+            },
+          });
+        }
+
+        return createSuccessResponse(records);
+      })
+    )
   )
 );
 
 export const POST = withErrorHandler(
-  withAuthAndPermission(
-    PERMISSIONS.attendance.create,
-    async (req: Request, context: any) => {
-      const tenantId = context.user.tenantId;
-      const body = await req.json();
+  withAuth(
+    withTenant(
+      withPermission(PERMISSIONS.attendance.create)(async (req: Request, { tenantId, user }: TenantContext) => {
+        const body = await req.json();
+        const service = new AttendanceService();
 
-      if (Array.isArray(body)) {
-        const result = await attendanceService.createBulk(body, tenantId, context.user.uid);
-        return createApiResponse(201, result);
-      }
+        if (Array.isArray(body)) {
+          const result = await service.createBulk(body, tenantId, user.uid);
+          return createApiResponse(201, result);
+        }
 
-      const record = await attendanceService.createSingle(body, tenantId, context.user.uid);
-      return createApiResponse(201, record, "Attendance saved");
-    }
+        const record = await service.createSingle(body, tenantId, user.uid);
+        return createApiResponse(201, record, "Attendance saved");
+      })
+    )
   )
 );

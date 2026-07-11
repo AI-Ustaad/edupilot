@@ -8,12 +8,16 @@ import RequirePermission from "@/components/RequirePermission";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 
 // 🚀 Layered Architecture Hooks & Skeletons
-import { useStaff, useDeleteStaff, useSearchStaff } from "@/hooks/useStaff";
+import { useStaffList, useDeleteStaff, useSearchStaff } from "@/hooks/useStaff";
 import { TableSkeleton } from "@/components/Skeletons";
 
 export default function StaffDirectoryPage() {
-  // 1. Fetch Staff using Custom Hook
-  const { data: staff = [], isLoading } = useStaff();
+  // 1. Fetch Staff using paginated hook
+  const [page, setPage] = useState(1);
+  const limit = 20;
+  const { data: paginatedData, isLoading } = useStaffList(page, limit);
+  const staff = paginatedData?.data || [];
+  const totalPages = paginatedData?.totalPages || 1;
   
   // 2. Delete Mutation (With Optimistic Update Built-in)
   const deleteMutation = useDeleteStaff();
@@ -53,14 +57,14 @@ export default function StaffDirectoryPage() {
 
       const json = await res.json();
       if (json.success) {
-        setBulkMessage({ type: "success", text: `✅ ${json.count} staff members imported successfully!` });
+        setBulkMessage({ type: "success", text: `${json.data?.imported ?? 0} staff members imported successfully!` });
         setTimeout(() => {
           setShowBulkModal(false);
           setBulkFile(null);
           setBulkMessage(null);
         }, 2000);
       } else {
-        setBulkMessage({ type: "error", text: json.message || "Import failed." });
+        setBulkMessage({ type: "error", text: json.data?.message || json.message || "Import failed." });
       }
     } catch (err) {
       setBulkMessage({ type: "error", text: "Network error. Please try again." });
@@ -237,6 +241,29 @@ export default function StaffDirectoryPage() {
             </table>
           </div>
         </div>
+
+        {/* Pagination Controls */}
+        {!searchQuery && totalPages > 1 && (
+          <div className="flex items-center justify-between bg-white border border-gray-200 rounded-xl px-4 py-3">
+            <span className="text-sm text-gray-500 font-medium">Page {page} of {totalPages}</span>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page <= 1}
+                className="px-4 py-2 rounded-lg border border-gray-200 text-sm font-bold text-gray-700 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition"
+              >
+                Previous
+              </button>
+              <button
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={page >= totalPages}
+                className="px-4 py-2 rounded-lg border border-gray-200 text-sm font-bold text-gray-700 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </RequirePermission>
   );

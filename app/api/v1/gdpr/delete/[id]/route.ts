@@ -29,10 +29,9 @@ export const DELETE = withErrorHandler(
 
         // Delete attendance records
         const attendanceService = new AttendanceService(new AttendanceRepository());
-        const allAttendance = await attendanceService.listAttendance(tenantId);
-        const studentAttendance = allAttendance.filter(r => (r as any).studentId === id);
+        const studentAttendance = await attendanceService.findByStudentId(tenantId, id);
         for (const rec of studentAttendance) {
-          await attendanceService.deleteAttendance(rec.id as string, tenantId);
+          await attendanceService.deleteAttendance(rec.id, tenantId);
         }
 
         // Delete fee records

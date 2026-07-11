@@ -3,6 +3,8 @@ import { AuditService } from "./AuditService";
 import { ValidationService } from "./ValidationService";
 import { MarkAttendanceSchema, BulkAttendanceSchema } from "@/validators/attendance";
 import { invalidateCache } from "@/lib/cache";
+import { eventBus } from "@/lib/events/event-bus";
+import { EVENTS } from "@/lib/events/event-types";
 import type { IAttendanceRepository } from "@/interfaces/IAttendanceRepository";
 import type { Attendance } from "@/types/attendance";
 
@@ -39,6 +41,14 @@ export class AttendanceService {
       metadata: { studentId: parsed.studentId, date: parsed.date, status: parsed.status },
     });
 
+    eventBus.publish(EVENTS.ATTENDANCE_MARKED, {
+      tenantId,
+      attendanceId: id || docId,
+      studentId: parsed.studentId,
+      date: parsed.date,
+      status: parsed.status,
+    });
+
     return record as Attendance;
   }
 
@@ -49,21 +59,14 @@ export class AttendanceService {
     }
     const records = validation.data;
 
-    const batch = this.repo.getDb().batch();
-    const datesSet = new Set<string>();
-    for (const rec of records) {
-      const docId = `${rec.studentId}_${rec.date}`;
-      const docRef = this.repo.getDb().collection(this.repo.getCollectionName()).doc(docId);
-      batch.set(docRef, {
-        ...rec,
-        tenantId,
-        createdBy: userId,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      }, { merge: true });
-      datesSet.add(rec.date);
-    }
-    await batch.commit();
+    const bulkData = records.map(rec => ({
+      id: `${rec.studentId}_${rec.date}`,
+      ...rec,
+      tenantId,
+      createdBy: userId,
+    }));
+
+    await this.repo.bulkCreate(bulkData as any, tenantId);
 
     await invalidateCache(`dashboard:${tenantId}`);
 
@@ -72,14 +75,24 @@ export class AttendanceService {
       userId,
       tenantId,
       entityType: "attendance",
-      metadata: { recordCount: records.length, dates: Array.from(datesSet) },
+      metadata: { recordCount: records.length, dates: [...new Set(records.map(r => r.date))] },
+    });
+
+    eventBus.publish(EVENTS.ATTENDANCE_IMPORTED, {
+      tenantId,
+      recordCount: records.length,
+      dates: [...new Set(records.map(r => r.date))],
     });
 
     return { success: true, message: `${records.length} attendance records saved` };
   }
 
-  async listAttendance(tenantId: string, filters?: { date?: string; classGrade?: string; section?: string }): Promise<Attendance[]> {
+  async listAttendance(tenantId: string, filters?: { date?: string; classGrade?: string; section?: string; studentId?: string }): Promise<Attendance[]> {
     return this.repo.findWithFilters(tenantId, filters);
+  }
+
+  async findByStudentId(tenantId: string, studentId: string): Promise<(Attendance & { id: string })[]> {
+    return this.repo.findByStudentId(tenantId, studentId);
   }
 
   async getById(id: string, tenantId: string): Promise<(Attendance & { id: string }) | null> {
@@ -110,6 +123,12 @@ export class AttendanceService {
       });
     }
 
+    eventBus.publish(EVENTS.ATTENDANCE_UPDATED, {
+      tenantId,
+      attendanceId: id,
+      updates: parsed,
+    });
+
     return updated as Attendance;
   }
 
@@ -129,6 +148,12 @@ export class AttendanceService {
         metadata: { studentId: (record as any)?.studentId, date: (record as any)?.date },
       });
     }
+
+    eventBus.publish(EVENTS.ATTENDANCE_DELETED, {
+      tenantId,
+      attendanceId: id,
+      studentId: (record as any)?.studentId,
+    });
   }
 
   async getTodayAttendance(tenantId: string): Promise<{ present: number; absent: number; total: number }> {
@@ -143,18 +168,35 @@ export class AttendanceService {
   }
 
   async getWeeklyAttendanceTrend(tenantId: string): Promise<{ day: string; percent: number }[]> {
-    const last7Days = Array.from({ length: 7 }, (_, i) => {
-      const d = new Date();
-      d.setDate(d.getDate() - i);
-      return d.toISOString().slice(0, 10);
-    }).reverse();
+    const endDate = new Date();
+    const startDate = new Date();
+    startDate.setDate(endDate.getDate() - 6);
 
+    const startStr = startDate.toISOString().slice(0, 10);
+    const endStr = endDate.toISOString().slice(0, 10);
+
+    // Single date-range query instead of 7 sequential queries
+    const records = await this.repo.findWithFilters(tenantId, {
+      dateRange: { gte: startStr, lte: endStr },
+    });
+
+    // Group by date in-memory
+    const byDate: Record<string, { present: number; total: number }> = {};
+    for (const r of records) {
+      if (!byDate[r.date]) byDate[r.date] = { present: 0, total: 0 };
+      byDate[r.date].total++;
+      if (r.status === "Present") byDate[r.date].present++;
+    }
+
+    // Build trend for all 7 days (including days with 0 records)
     const trend = [];
-    for (const day of last7Days) {
-      const records = await this.repo.findWithFilters(tenantId, { date: day });
-      const present = records.filter(r => r.status === 'Present').length;
-      const percent = records.length > 0 ? (present / records.length) * 100 : 0;
-      trend.push({ day: day.slice(5), percent: Math.round(percent) });
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(startDate);
+      d.setDate(d.getDate() + i);
+      const dayStr = d.toISOString().slice(0, 10);
+      const stats = byDate[dayStr] || { present: 0, total: 0 };
+      const percent = stats.total > 0 ? (stats.present / stats.total) * 100 : 0;
+      trend.push({ day: dayStr.slice(5), percent: Math.round(percent) });
     }
     return trend;
   }
