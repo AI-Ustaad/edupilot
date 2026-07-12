@@ -228,4 +228,113 @@ export function registerAuditSubscriber() {
       logger.error("Audit: Failed to log behavior recorded event:", { metadata: { error } });
     }
   });
+
+  // 🎧 Listen for MARKS_ENTERED event
+  eventBus.subscribe(EVENTS.MARKS_ENTERED, async (payload) => {
+    try {
+      const { tenantId, markId, studentId, subject, term, marksObtained, totalMarks } = payload;
+
+      await adminDb
+        .collection("tenants")
+        .doc(tenantId)
+        .collection("audit_logs")
+        .add({
+          action: "MARKS_ENTERED",
+          targetId: markId,
+          details: `Marks entered for student ${studentId}: ${marksObtained}/${totalMarks} in ${subject} (${term}).`,
+          timestamp: new Date().toISOString(),
+          module: "Examination",
+          systemAction: true,
+        });
+    } catch (error) {
+      logger.error("Audit: Failed to log marks entered event:", { metadata: { error } });
+    }
+  });
+
+  // 🎧 Listen for MARKS_DELETED event
+  eventBus.subscribe(EVENTS.MARKS_DELETED, async (payload) => {
+    try {
+      const { tenantId, markId, studentId, subject, term } = payload;
+
+      await adminDb
+        .collection("tenants")
+        .doc(tenantId)
+        .collection("audit_logs")
+        .add({
+          action: "MARKS_DELETED",
+          targetId: markId,
+          details: `Mark deleted for student ${studentId}: ${subject} (${term}).`,
+          timestamp: new Date().toISOString(),
+          module: "Examination",
+          systemAction: true,
+        });
+    } catch (error) {
+      logger.error("Audit: Failed to log marks deleted event:", { metadata: { error } });
+    }
+  });
+
+  // 🎧 Listen for RESULT_PUBLISHED event
+  eventBus.subscribe(EVENTS.RESULT_PUBLISHED, async (payload) => {
+    try {
+      const { tenantId, classGrade, section, term, studentCount, publishedBy } = payload;
+
+      await adminDb
+        .collection("tenants")
+        .doc(tenantId)
+        .collection("audit_logs")
+        .add({
+          action: "RESULT_PUBLISHED",
+          details: `Results published for ${classGrade}-${section} (${term}): ${studentCount} students. Published by: ${publishedBy}.`,
+          timestamp: new Date().toISOString(),
+          module: "Examination",
+          systemAction: true,
+        });
+    } catch (error) {
+      logger.error("Audit: Failed to log result published event:", { metadata: { error } });
+    }
+  });
+
+  // 🎧 Listen for QUIZ_CREATED event
+  eventBus.subscribe(EVENTS.QUIZ_CREATED, async (payload) => {
+    try {
+      const { tenantId, quizId, title, classGrade, createdBy } = payload;
+
+      await adminDb
+        .collection("tenants")
+        .doc(tenantId)
+        .collection("audit_logs")
+        .add({
+          action: "QUIZ_CREATED",
+          targetId: quizId,
+          details: `Quiz "${title}" created for class ${classGrade} by ${createdBy}.`,
+          timestamp: new Date().toISOString(),
+          module: "Examination",
+          systemAction: true,
+        });
+    } catch (error) {
+      logger.error("Audit: Failed to log quiz created event:", { metadata: { error } });
+    }
+  });
+
+  // 🎧 Listen for QUIZ_SUBMITTED event
+  eventBus.subscribe(EVENTS.QUIZ_SUBMITTED, async (payload) => {
+    try {
+      const { tenantId, quizId, studentId, submissionId, percentage } = payload;
+
+      await adminDb
+        .collection("tenants")
+        .doc(tenantId)
+        .collection("audit_logs")
+        .add({
+          action: "QUIZ_SUBMITTED",
+          targetId: submissionId,
+          details: `Quiz ${quizId} submitted by student ${studentId}. Score: ${percentage}%.`,
+          timestamp: new Date().toISOString(),
+          module: "Examination",
+          systemAction: true,
+        });
+    } catch (error) {
+      logger.error("Audit: Failed to log quiz submitted event:", { metadata: { error } });
+    }
+  });
 }

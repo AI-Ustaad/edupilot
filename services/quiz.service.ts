@@ -116,6 +116,17 @@ export class QuizService {
     return { id: submissionId, correct, total, percentage };
   }
 
+  async deleteQuiz(id: string, tenantId: string): Promise<void> {
+    await this.repo.delete(id, tenantId);
+    await this.audit.log({
+      action: "quiz.deleted",
+      userId: "system",
+      tenantId,
+      entityId: id,
+      entityType: "quiz",
+    });
+  }
+
   async getSubmissions(quizId: string, tenantId: string) {
     return this.repo.findSubmissionsByQuiz(quizId, tenantId);
   }
