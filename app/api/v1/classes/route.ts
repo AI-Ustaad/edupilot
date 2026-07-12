@@ -1,10 +1,10 @@
-import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebase-admin";
 import { FieldValue } from "firebase-admin/firestore";
 import { withErrorHandler, withAuth, withTenant } from "@/route-helpers";
 import { withPermission } from "@/lib/auth/rbac";
 import { PERMISSIONS } from "@/lib/auth/permissions";
-import { logAction } from "@/lib/audit";
+import { createSuccessResponse, createErrorResponse, createApiResponse } from "@/lib/api/response";
+import { AuditService } from "@/services/AuditService";
 import type { TenantContext } from "@/types/api";
 
 export const runtime = 'nodejs';
@@ -26,7 +26,7 @@ export const GET = withErrorHandler(
           ...(d.data() as any) 
         })).filter((s: any) => !s.deleted);
 
-        return NextResponse.json({ success: true, data: sections });
+        return createSuccessResponse(sections);
       })
     )
   )
@@ -43,7 +43,7 @@ export const POST = withErrorHandler(
         const { classGrade, sectionName, subjects } = data;
 
         if (!classGrade || !sectionName) {
-          return NextResponse.json({ success: false, message: "Class and Section name required" }, { status: 400 });
+          return createErrorResponse(400, "Class and Section name required");
         }
 
         const docRef = adminDb.collection("sections").doc();
@@ -57,8 +57,8 @@ export const POST = withErrorHandler(
           createdBy: user.uid,
         });
 
-        // 🛡️ Audit Log
-        await logAction({
+        const audit = new AuditService();
+        await audit.log({
           action: "class.create",
           userId: user.uid,
           tenantId,
@@ -67,7 +67,7 @@ export const POST = withErrorHandler(
           metadata: { classGrade, sectionName },
         });
 
-        return NextResponse.json({ success: true, id: docRef.id });
+        return createApiResponse(201, { id: docRef.id }, "Section created successfully");
       })
     )
   )
@@ -84,7 +84,7 @@ export const DELETE = withErrorHandler(
         const sectionId = searchParams.get("id");
 
         if (!sectionId) {
-          return NextResponse.json({ success: false, message: "Section ID required" }, { status: 400 });
+          return createErrorResponse(400, "Section ID required");
         }
 
         const docRef = adminDb.collection("sections").doc(sectionId);
@@ -92,7 +92,7 @@ export const DELETE = withErrorHandler(
 
         // 🛡️ Verify ownership
         if (!snap.exists || (snap.data() as any)?.tenantId !== tenantId) {
-          return NextResponse.json({ success: false, message: "Section not found" }, { status: 404 });
+          return createErrorResponse(404, "Section not found");
         }
 
         // 🛑 SOFT DELETE
@@ -102,8 +102,8 @@ export const DELETE = withErrorHandler(
           deletedBy: user.uid,
         });
 
-        // 🛡️ Audit Log
-        await logAction({
+        const audit = new AuditService();
+        await audit.log({
           action: "class.delete",
           userId: user.uid,
           tenantId,
@@ -111,7 +111,7 @@ export const DELETE = withErrorHandler(
           entityType: "section",
         });
 
-        return NextResponse.json({ success: true, message: "Section archived" });
+        return createSuccessResponse(null, { message: "Section archived" });
       })
     )
   )

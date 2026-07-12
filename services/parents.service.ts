@@ -28,14 +28,9 @@ export class ParentsService {
       return [];
     }
 
-    const children: Student[] = [];
-    for (const studentId of parent.studentIds) {
-      const student = await this.studentRepo.findById(studentId, tenantId);
-      if (student) {
-        children.push(student as Student);
-      }
-    }
-    return children;
+    // Batch fetch all children in minimal queries (30 per batch) instead of N sequential queries
+    const children = await this.studentRepo.batchFindByIds(tenantId, parent.studentIds);
+    return children as Student[];
   }
 
   async getChildIds(userId: string, tenantId: string): Promise<string[]> {

@@ -125,6 +125,11 @@ export class QuizService {
       entityId: id,
       entityType: "quiz",
     });
+
+    eventBus.publish(EVENTS.QUIZ_DELETED, {
+      tenantId,
+      quizId: id,
+    });
   }
 
   async getSubmissions(quizId: string, tenantId: string) {

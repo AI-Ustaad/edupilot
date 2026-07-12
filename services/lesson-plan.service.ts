@@ -63,6 +63,7 @@ export class LessonPlanService {
   async updateLessonPlan(id: string, data: unknown, tenantId: string, userId: string): Promise<void> {
     const parsed = this.validation.validateOrThrow(UpdateLessonPlanSchema, data);
     await this.repo.update(id, parsed, tenantId);
+    await invalidateCache(`lessonPlans:${tenantId}`);
 
     await this.audit.log({
       action: "lesson_plan.updated",
@@ -73,7 +74,7 @@ export class LessonPlanService {
       metadata: { updates: parsed },
     });
 
-    eventBus.publish(EVENTS.LESSON_PLAN_CREATED, {
+    eventBus.publish(EVENTS.LESSON_PLAN_UPDATED, {
       tenantId,
       lessonPlanId: id,
       topic: parsed.topic,
@@ -84,6 +85,7 @@ export class LessonPlanService {
 
   async deleteLessonPlan(id: string, tenantId: string, userId: string): Promise<void> {
     await this.repo.delete(id, tenantId);
+    await invalidateCache(`lessonPlans:${tenantId}`);
 
     await this.audit.log({
       action: "lesson_plan.deleted",

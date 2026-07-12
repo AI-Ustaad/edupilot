@@ -75,6 +75,13 @@ export class AssignmentService {
       entityType: "assignment",
       metadata: { updates: parsed },
     });
+
+    eventBus.publish(EVENTS.ASSIGNMENT_UPDATED, {
+      tenantId,
+      assignmentId: id,
+      updates: parsed,
+      updatedBy: userId,
+    });
   }
 
   async deleteAssignment(id: string, tenantId: string, userId: string): Promise<void> {

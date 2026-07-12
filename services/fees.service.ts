@@ -54,15 +54,20 @@ export class FeesService {
   }
 
   async listFees(tenantId: string, studentId?: string, page = 1, limit = 20) {
-    let fees = await this.repo.findAll(tenantId);
+    let fees: (Fee & { id: string })[];
+
     if (studentId) {
-      fees = fees.filter(f => f.studentId === studentId);
+      // Use optimized Firestore query instead of fetching all + filtering in-memory
+      fees = await (this.repo as FeesRepository).findByStudent(tenantId, studentId, page * limit);
+    } else {
+      fees = await this.repo.findAll(tenantId);
+      fees.sort((a, b) => {
+        const dateA = (a as any).createdAt?.toDate?.() || 0;
+        const dateB = (b as any).createdAt?.toDate?.() || 0;
+        return dateB - dateA;
+      });
     }
-    fees.sort((a, b) => {
-      const dateA = (a as any).createdAt?.toDate?.() || 0;
-      const dateB = (b as any).createdAt?.toDate?.() || 0;
-      return dateB - dateA;
-    });
+
     const start = (page - 1) * limit;
     const end = start + limit;
     return {

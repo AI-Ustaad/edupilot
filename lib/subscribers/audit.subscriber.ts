@@ -32,6 +32,107 @@ export function registerAuditSubscriber() {
     }
   });
 
+  // 🎧 Listen for STUDENT_UPDATED event
+  eventBus.subscribe(EVENTS.STUDENT_UPDATED, async (payload) => {
+    try {
+      const { tenantId, studentId, updates } = payload;
+      await adminDb.collection("tenants").doc(tenantId).collection("audit_logs").add({
+        action: "STUDENT_UPDATED",
+        targetId: studentId,
+        details: `Student ${studentId} was updated. Fields: ${Object.keys(updates || {}).join(", ")}`,
+        timestamp: new Date().toISOString(),
+        module: "Students",
+        systemAction: true,
+      });
+    } catch (error) {
+      logger.error("Audit: Failed to log student updated:", { metadata: { error } });
+    }
+  });
+
+  // 🎧 Listen for STUDENT_DELETED event
+  eventBus.subscribe(EVENTS.STUDENT_DELETED, async (payload) => {
+    try {
+      const { tenantId, studentId, studentData } = payload;
+      await adminDb.collection("tenants").doc(tenantId).collection("audit_logs").add({
+        action: "STUDENT_DELETED",
+        targetId: studentId,
+        details: `Student ${studentData?.fullName || studentId} was removed from the system.`,
+        timestamp: new Date().toISOString(),
+        module: "Students",
+        systemAction: true,
+      });
+    } catch (error) {
+      logger.error("Audit: Failed to log student deleted:", { metadata: { error } });
+    }
+  });
+
+  // 🎧 Listen for STUDENT_PROMOTED event
+  eventBus.subscribe(EVENTS.STUDENT_PROMOTED, async (payload) => {
+    try {
+      const { tenantId, studentIds, newClassGrade, newSection, academicYear, promotedBy } = payload;
+      await adminDb.collection("tenants").doc(tenantId).collection("audit_logs").add({
+        action: "STUDENT_PROMOTED",
+        details: `${studentIds?.length || 0} students promoted to ${newClassGrade}-${newSection} (${academicYear}). By: ${promotedBy}.`,
+        timestamp: new Date().toISOString(),
+        module: "Students",
+        systemAction: true,
+      });
+    } catch (error) {
+      logger.error("Audit: Failed to log student promoted:", { metadata: { error } });
+    }
+  });
+
+  // 🎧 Listen for CLASS_CHANGED event
+  eventBus.subscribe(EVENTS.CLASS_CHANGED, async (payload) => {
+    try {
+      const { tenantId, studentId, oldClass, newClass } = payload;
+      await adminDb.collection("tenants").doc(tenantId).collection("audit_logs").add({
+        action: "CLASS_CHANGED",
+        targetId: studentId,
+        details: `Student ${studentId} class changed from ${oldClass} to ${newClass}.`,
+        timestamp: new Date().toISOString(),
+        module: "Students",
+        systemAction: true,
+      });
+    } catch (error) {
+      logger.error("Audit: Failed to log class changed:", { metadata: { error } });
+    }
+  });
+
+  // 🎧 Listen for SECTION_CHANGED event
+  eventBus.subscribe(EVENTS.SECTION_CHANGED, async (payload) => {
+    try {
+      const { tenantId, studentId, oldSection, newSection } = payload;
+      await adminDb.collection("tenants").doc(tenantId).collection("audit_logs").add({
+        action: "SECTION_CHANGED",
+        targetId: studentId,
+        details: `Student ${studentId} section changed from ${oldSection} to ${newSection}.`,
+        timestamp: new Date().toISOString(),
+        module: "Students",
+        systemAction: true,
+      });
+    } catch (error) {
+      logger.error("Audit: Failed to log section changed:", { metadata: { error } });
+    }
+  });
+
+  // 🎧 Listen for ADMISSION_APPROVED event
+  eventBus.subscribe(EVENTS.ADMISSION_APPROVED, async (payload) => {
+    try {
+      const { tenantId, studentId, studentData } = payload;
+      await adminDb.collection("tenants").doc(tenantId).collection("audit_logs").add({
+        action: "ADMISSION_APPROVED",
+        targetId: studentId,
+        details: `Admission approved for ${studentData?.fullName || studentId} in class ${studentData?.classGrade || "N/A"}.`,
+        timestamp: new Date().toISOString(),
+        module: "Students",
+        systemAction: true,
+      });
+    } catch (error) {
+      logger.error("Audit: Failed to log admission approved:", { metadata: { error } });
+    }
+  });
+
   // 🎧 Listen for ATTENDANCE_MARKED event
   eventBus.subscribe(EVENTS.ATTENDANCE_MARKED, async (payload) => {
     try {
@@ -335,6 +436,182 @@ export function registerAuditSubscriber() {
         });
     } catch (error) {
       logger.error("Audit: Failed to log quiz submitted event:", { metadata: { error } });
+    }
+  });
+
+  // 🎧 Listen for QUIZ_DELETED event
+  eventBus.subscribe(EVENTS.QUIZ_DELETED, async (payload) => {
+    try {
+      const { tenantId, quizId } = payload;
+
+      await adminDb
+        .collection("tenants")
+        .doc(tenantId)
+        .collection("audit_logs")
+        .add({
+          action: "QUIZ_DELETED",
+          targetId: quizId,
+          details: `Quiz ${quizId} was deleted.`,
+          timestamp: new Date().toISOString(),
+          module: "Examination",
+          systemAction: true,
+        });
+    } catch (error) {
+      logger.error("Audit: Failed to log quiz deleted event:", { metadata: { error } });
+    }
+  });
+
+  // 🎧 Listen for HOMEWORK_CREATED event
+  eventBus.subscribe(EVENTS.HOMEWORK_CREATED, async (payload) => {
+    try {
+      const { tenantId, homeworkId, title, classGrade, subject } = payload;
+
+      await adminDb
+        .collection("tenants")
+        .doc(tenantId)
+        .collection("audit_logs")
+        .add({
+          action: "HOMEWORK_CREATED",
+          targetId: homeworkId,
+          details: `Homework "${title}" created for class ${classGrade}, subject ${subject}.`,
+          timestamp: new Date().toISOString(),
+          module: "Academic",
+          systemAction: true,
+        });
+    } catch (error) {
+      logger.error("Audit: Failed to log homework created event:", { metadata: { error } });
+    }
+  });
+
+  // 🎧 Listen for HOMEWORK_UPDATED event
+  eventBus.subscribe(EVENTS.HOMEWORK_UPDATED, async (payload) => {
+    try {
+      const { tenantId, homeworkId, updates } = payload;
+
+      await adminDb
+        .collection("tenants")
+        .doc(tenantId)
+        .collection("audit_logs")
+        .add({
+          action: "HOMEWORK_UPDATED",
+          targetId: homeworkId,
+          details: `Homework ${homeworkId} updated: ${JSON.stringify(updates)}`,
+          timestamp: new Date().toISOString(),
+          module: "Academic",
+          systemAction: true,
+        });
+    } catch (error) {
+      logger.error("Audit: Failed to log homework updated event:", { metadata: { error } });
+    }
+  });
+
+  // 🎧 Listen for HOMEWORK_DELETED event
+  eventBus.subscribe(EVENTS.HOMEWORK_DELETED, async (payload) => {
+    try {
+      const { tenantId, homeworkId } = payload;
+
+      await adminDb
+        .collection("tenants")
+        .doc(tenantId)
+        .collection("audit_logs")
+        .add({
+          action: "HOMEWORK_DELETED",
+          targetId: homeworkId,
+          details: `Homework ${homeworkId} was deleted.`,
+          timestamp: new Date().toISOString(),
+          module: "Academic",
+          systemAction: true,
+        });
+    } catch (error) {
+      logger.error("Audit: Failed to log homework deleted event:", { metadata: { error } });
+    }
+  });
+
+  // 🎧 Listen for ASSIGNMENT_UPDATED event
+  eventBus.subscribe(EVENTS.ASSIGNMENT_UPDATED, async (payload) => {
+    try {
+      const { tenantId, assignmentId, updates } = payload;
+
+      await adminDb
+        .collection("tenants")
+        .doc(tenantId)
+        .collection("audit_logs")
+        .add({
+          action: "ASSIGNMENT_UPDATED",
+          targetId: assignmentId,
+          details: `Assignment ${assignmentId} updated: ${JSON.stringify(updates)}`,
+          timestamp: new Date().toISOString(),
+          module: "Teacher",
+          systemAction: true,
+        });
+    } catch (error) {
+      logger.error("Audit: Failed to log assignment updated event:", { metadata: { error } });
+    }
+  });
+
+  // 🎧 Listen for ASSIGNMENT_SUBMITTED event
+  eventBus.subscribe(EVENTS.ASSIGNMENT_SUBMITTED, async (payload) => {
+    try {
+      const { tenantId, assignmentId, studentId, submissionId } = payload;
+
+      await adminDb
+        .collection("tenants")
+        .doc(tenantId)
+        .collection("audit_logs")
+        .add({
+          action: "ASSIGNMENT_SUBMITTED",
+          targetId: submissionId,
+          details: `Assignment ${assignmentId} submitted by student ${studentId}.`,
+          timestamp: new Date().toISOString(),
+          module: "Teacher",
+          systemAction: true,
+        });
+    } catch (error) {
+      logger.error("Audit: Failed to log assignment submitted event:", { metadata: { error } });
+    }
+  });
+
+  // 🎧 Listen for LESSON_PLAN_UPDATED event
+  eventBus.subscribe(EVENTS.LESSON_PLAN_UPDATED, async (payload) => {
+    try {
+      const { tenantId, lessonPlanId, topic, date } = payload;
+
+      await adminDb
+        .collection("tenants")
+        .doc(tenantId)
+        .collection("audit_logs")
+        .add({
+          action: "LESSON_PLAN_UPDATED",
+          targetId: lessonPlanId,
+          details: `Lesson plan "${topic}" updated for date ${date}.`,
+          timestamp: new Date().toISOString(),
+          module: "Teacher",
+          systemAction: true,
+        });
+    } catch (error) {
+      logger.error("Audit: Failed to log lesson plan updated event:", { metadata: { error } });
+    }
+  });
+
+  // 🎧 Listen for LESSON_PLAN_DELETED event
+  eventBus.subscribe(EVENTS.LESSON_PLAN_DELETED, async (payload) => {
+    try {
+      const { tenantId, lessonPlanId } = payload;
+
+      await adminDb
+        .collection("tenants")
+        .doc(tenantId)
+        .collection("audit_logs")
+        .add({
+          action: "LESSON_PLAN_DELETED",
+          targetId: lessonPlanId,
+          details: `Lesson plan ${lessonPlanId} was deleted.`,
+          timestamp: new Date().toISOString(),
+          module: "Teacher",
+          systemAction: true,
+        });
+    } catch (error) {
+      logger.error("Audit: Failed to log lesson plan deleted event:", { metadata: { error } });
     }
   });
 }

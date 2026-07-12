@@ -89,16 +89,11 @@ export class MarksService {
     if (studentIds.length === 0) return { students: 0, emailsSent: 0 };
 
     const studentRepo = new StudentRepository();
-    const batches: string[][] = [];
-    for (let i = 0; i < studentIds.length; i += 30) batches.push(studentIds.slice(i, i + 30));
+    const allStudents = await studentRepo.batchFindByIds(tenantId, studentIds);
 
-    const allStudents: { id: string; parentEmail?: string; parent_email?: string; fullName?: string; name?: string }[] = [];
-    for (const batch of batches) {
-      const snap = await (studentRepo as any).db.collection((studentRepo as any).collectionName).where("tenantId", "==", tenantId).where("__name__", "in", batch).get();
-      snap.docs.forEach(d => allStudents.push({ id: d.id, ...d.data() }));
-    }
-
-    const parentEmails = allStudents.filter(s => s.parentEmail || s.parent_email).map(s => ({ email: (s.parentEmail || s.parent_email)!, studentName: s.fullName || s.name || "Your child" }));
+    const parentEmails = allStudents
+      .filter((s: any) => s.parentEmail || s.parent_email)
+      .map((s: any) => ({ email: (s.parentEmail || s.parent_email)!, studentName: s.fullName || s.name || "Your child" }));
 
     await Promise.all(parentEmails.map(p => sendEmail(p.email, `Exam Results Published - ${parsed.term}`, `<p>Dear Parent,</p><p>Results for <strong>${p.studentName}</strong> in <strong>${parsed.term}</strong> are now available.</p>`).catch(err => logger.error("Failed to send results email:", { metadata: { error: err } }))));
 

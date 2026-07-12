@@ -6,7 +6,7 @@ import { AttendanceService } from "@/services/attendance.service";
 import { AttendanceRepository } from "@/repositories/attendance.repository";
 import { FeesService } from "@/services/fees.service";
 import { FeesRepository } from "@/repositories/fees.repository";
-import { logAction } from "@/lib/audit";
+import { AuditService } from "@/services/AuditService";
 import type { TenantContext } from "@/types/api";
 import { withPermission } from "@/lib/auth/rbac";
 import { PERMISSIONS } from "@/lib/auth/permissions";
@@ -45,7 +45,8 @@ export const DELETE = withErrorHandler(
         // Finally delete the student
         await studentService.delete(tenantId, id, user.uid);
 
-        await logAction({
+        const audit = new AuditService();
+        await audit.log({
           action: "GDPR_DELETION",
           userId: user.uid,
           tenantId,

@@ -96,8 +96,8 @@ export class StudentService {
   }
 
   async update(tenantId: string, id: string, data: any, userId?: string): Promise<Student & { id: string }> {
-    // Verify existence
-    await this.getById(tenantId, id);
+    // Fetch existing student to detect changes
+    const existing = await this.getById(tenantId, id);
 
     const validation = this.validation.validate(UpdateStudentSchema, data);
     if (!validation.success) {
@@ -124,6 +124,39 @@ export class StudentService {
       metadata: { updatedFields: Object.keys(data) },
     });
 
+    // Publish STUDENT_UPDATED event
+    eventBus.publish(EVENTS.STUDENT_UPDATED, {
+      tenantId,
+      studentId: id,
+      updates: validation.data,
+    });
+
+    // Detect field-level changes and publish specific events
+    if (validation.data.classGrade && validation.data.classGrade !== existing.classGrade) {
+      eventBus.publish(EVENTS.CLASS_CHANGED, {
+        tenantId,
+        studentId: id,
+        oldClass: existing.classGrade,
+        newClass: validation.data.classGrade,
+      });
+    }
+    if (validation.data.section && validation.data.section !== existing.section) {
+      eventBus.publish(EVENTS.SECTION_CHANGED, {
+        tenantId,
+        studentId: id,
+        oldSection: existing.section,
+        newSection: validation.data.section,
+      });
+    }
+    if (validation.data.rollNumber !== undefined && validation.data.rollNumber !== existing.rollNumber) {
+      eventBus.publish(EVENTS.ROLL_NUMBER_CHANGED, {
+        tenantId,
+        studentId: id,
+        oldRollNumber: existing.rollNumber,
+        newRollNumber: validation.data.rollNumber,
+      });
+    }
+
     const updated = await this.repository.findById(id, tenantId);
     return updated!;
   }
@@ -143,6 +176,13 @@ export class StudentService {
       entityId: id,
       entityType: "student",
       metadata: { fullName: student.fullName },
+    });
+
+    // Publish event
+    eventBus.publish(EVENTS.STUDENT_DELETED, {
+      tenantId,
+      studentId: id,
+      studentData: { fullName: student.fullName, classGrade: student.classGrade, section: student.section },
     });
   }
 
@@ -219,6 +259,16 @@ export class StudentService {
         entityType: "student",
         metadata: { count: promoted.length, newClassGrade, newSection, academicYear },
       });
+
+      // Publish promotion event
+      eventBus.publish(EVENTS.STUDENT_PROMOTED, {
+        tenantId,
+        studentIds: promoted,
+        newClassGrade,
+        newSection,
+        academicYear,
+        promotedBy: userId,
+      });
     }
 
     return { promoted: promoted.length, errors };
@@ -293,6 +343,18 @@ export class StudentService {
       entityType: "student",
       metadata: { fullName: student.fullName },
     });
+
+    // Publish events
+    eventBus.publish(EVENTS.ADMISSION_APPROVED, {
+      tenantId,
+      studentId,
+      studentData: { fullName: student.fullName, classGrade: student.classGrade, section: student.section },
+    });
+    eventBus.publish(EVENTS.STUDENT_UPDATED, {
+      tenantId,
+      studentId,
+      updates: { admissionStatus: "approved" },
+    });
   }
 
   async rejectAdmission(
@@ -315,6 +377,13 @@ export class StudentService {
       entityType: "student",
       metadata: { fullName: student.fullName },
     });
+
+    // Publish event
+    eventBus.publish(EVENTS.STUDENT_UPDATED, {
+      tenantId,
+      studentId,
+      updates: { admissionStatus: "rejected" },
+    });
   }
 
   async getByClass(
@@ -334,5 +403,13 @@ export class StudentService {
 
   async countByClass(tenantId: string): Promise<Record<string, number>> {
     return this.repository.countByClass(tenantId);
+  }
+
+  async getByClassAndSection(
+    tenantId: string,
+    className: string,
+    section: string
+  ): Promise<(Student & { id: string })[]> {
+    return this.repository.findBySection(className, section, tenantId);
   }
 }

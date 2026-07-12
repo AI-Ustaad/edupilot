@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic';
-import { adminDb } from "@/lib/firebase-admin";
 import { withAuth, withTenant, withErrorHandler } from "@/route-helpers";
 import { createSuccessResponse, createApiResponse } from "@/lib/api/response";
+import { StudentRepository } from "@/repositories/student.repository";
 import { AttendanceRepository } from "@/repositories/attendance.repository";
 import { logger } from "@/lib/logger/logger";
 import type { TenantContext } from "@/types/api";
@@ -11,13 +11,8 @@ export const GET = withErrorHandler(
     withTenant(
       async (req: Request, { tenantId }: TenantContext) => {
         try {
-          const studentsSnap = await adminDb
-            .collection("students")
-            .where("tenantId", "==", tenantId)
-            .limit(50)
-            .get();
-
-          const students = studentsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+          const studentRepo = new StudentRepository();
+          const students = await studentRepo.findAll(tenantId);
           if (students.length === 0) return createSuccessResponse([]);
 
           // Batch-fetch attendance for ALL students in one set of queries

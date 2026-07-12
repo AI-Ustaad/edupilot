@@ -1,10 +1,13 @@
 export const dynamic = 'force-dynamic';
 
-import { adminDb } from "@/lib/firebase-admin";
 import { withErrorHandler, withAuth, withTenant } from "@/route-helpers";
 import { withPermission } from "@/lib/auth/rbac";
 import { PERMISSIONS } from "@/lib/auth/permissions";
+import { StudentRepository } from "@/repositories/student.repository";
 import { AttendanceRepository } from "@/repositories/attendance.repository";
+import { MarksRepository } from "@/repositories/marks.repository";
+import { FeesRepository } from "@/repositories/fees.repository";
+import { BehaviorRepository } from "@/repositories/behavior.repository";
 import { logger } from "@/lib/logger/logger";
 import type { TenantContext } from "@/types/api";
 
@@ -22,24 +25,20 @@ export const GET = withErrorHandler(
             return Response.json({ success: false, error: "Student ID required" }, { status: 400 });
           }
 
-          const studentSnap = await adminDb.collection("students").doc(studentId).get();
-          
-          if (!studentSnap.exists || studentSnap.data()?.tenantId !== tenantId) {
+          const studentRepo = new StudentRepository();
+          const student = await studentRepo.findById(studentId, tenantId);
+
+          if (!student) {
             return Response.json({ success: false, error: "Student not found" }, { status: 404 });
           }
 
-          const student = { id: studentSnap.id, ...studentSnap.data() };
-
-          // Use Repository for attendance instead of direct Firestore access
-          const attendanceRepo = new AttendanceRepository();
-          const [marksSnap, attendance, feesSnap] = await Promise.all([
-            adminDb.collection("marks").where("studentId", "==", studentId).limit(50).get(),
-            attendanceRepo.findByStudentId(tenantId, studentId),
-            adminDb.collection("fees").where("studentId", "==", studentId).limit(20).get(),
+          // Use repositories for all data fetching - no direct Firestore access
+          const [marks, attendance, fees, behavior] = await Promise.all([
+            new MarksRepository().findByStudent(tenantId, studentId),
+            new AttendanceRepository().findByStudentId(tenantId, studentId),
+            new FeesRepository().findByStudent(tenantId, studentId, 20),
+            new BehaviorRepository().findByStudent(studentId, tenantId, 20),
           ]);
-
-          const marks = marksSnap.docs.map(d => ({ id: d.id, ...d.data() })).filter((m: any) => m.tenantId === tenantId);
-          const fees = feesSnap.docs.map(d => ({ id: d.id, ...d.data() })).filter((f: any) => f.tenantId === tenantId);
 
           return Response.json({
             success: true,
@@ -48,6 +47,7 @@ export const GET = withErrorHandler(
               academic: { marks },
               attendance: { records: attendance },
               financial: { records: fees },
+              behavior: { records: behavior },
             },
           });
         } catch (error: any) {

@@ -27,4 +27,7 @@ export interface IStudentRepository {
     dataArray: Omit<Student, "id" | "createdAt" | "updatedAt">[],
     tenantId: string
   ): Promise<string[]>;
+  findActiveStudents(tenantId: string): Promise<(Student & { id: string })[]>;
+  batchFindByIds(tenantId: string, ids: string[]): Promise<(Student & { id: string })[]>;
+  countByClassAndSection(tenantId: string): Promise<Record<string, Record<string, number>>>;
 }

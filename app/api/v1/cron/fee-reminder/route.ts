@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic';
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebase-admin";
+import { StudentRepository } from "@/repositories/student.repository";
 import { sendEmail } from "@/lib/email";
 
 export async function GET(req: Request) {
@@ -17,15 +18,19 @@ export async function GET(req: Request) {
     .get();
 
   let processed = 0;
+  const studentRepo = new StudentRepository();
 
   for (const doc of overdueFees.docs) {
     const fee = doc.data();
-    const studentDoc = await adminDb.collection("students").doc(fee.studentId).get();
-    const student = studentDoc.data();
+    const feeTenantId = fee.tenantId;
+    if (!feeTenantId || !fee.studentId) continue;
 
-    if (student?.parentEmail) {
+    const student = await studentRepo.findById(fee.studentId, feeTenantId);
+    const studentData = student as any;
+
+    if (studentData?.parentEmail) {
       await sendEmail(
-        student.parentEmail,
+        studentData.parentEmail,
         "Fee Due Reminder",
         `<p>Dear Parent,</p>
          <p>This is a reminder that <strong>Rs. ${fee.amount}</strong> for <strong>${fee.feeMonth}</strong> was due on <strong>${fee.dueDate}</strong>.</p>

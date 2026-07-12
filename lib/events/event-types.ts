@@ -2,6 +2,16 @@
 
 export const EVENTS = {
   STUDENT_CREATED: "student.created",
+  STUDENT_UPDATED: "student.updated",
+  STUDENT_DELETED: "student.deleted",
+  STUDENT_PROMOTED: "student.promoted",
+  STUDENT_TRANSFERRED: "student.transferred",
+  CLASS_CHANGED: "student.class_changed",
+  SECTION_CHANGED: "student.section_changed",
+  ROLL_NUMBER_CHANGED: "student.roll_number_changed",
+  PARENT_LINKED: "student.parent_linked",
+  PARENT_UNLINKED: "student.parent_unlinked",
+  ADMISSION_APPROVED: "student.admission_approved",
   FEE_COLLECTED: "fee.collected",
   ATTENDANCE_MARKED: "attendance.marked",
   ATTENDANCE_UPDATED: "attendance.updated",
@@ -28,6 +38,12 @@ export const EVENTS = {
   RESULT_PUBLISHED: "result.published",
   QUIZ_CREATED: "quiz.created",
   QUIZ_SUBMITTED: "quiz.submitted",
+  QUIZ_DELETED: "quiz.deleted",
+  HOMEWORK_CREATED: "homework.created",
+  HOMEWORK_UPDATED: "homework.updated",
+  HOMEWORK_DELETED: "homework.deleted",
+  ASSIGNMENT_UPDATED: "assignment.updated",
+  LESSON_PLAN_UPDATED: "lesson_plan.updated",
 } as const;
 
 // Typescript Magic for strict typing
