@@ -4,6 +4,8 @@ import { AuditService } from "./AuditService";
 import { ValidationService } from "./ValidationService";
 import { CreateFeeSchema, UpdateFeeSchema } from "@/validators/fees";
 import { invalidateCache } from "@/lib/cache";
+import { eventBus } from "@/lib/events/event-bus";
+import { EVENTS } from "@/lib/events/event-types";
 import type { IFeesRepository } from "@/interfaces/IFeesRepository";
 import type { Fee } from "@/types/fees";
 
@@ -17,11 +19,7 @@ export class FeesService {
   }
 
   async createFee(data: unknown, tenantId: string, userId?: string): Promise<Fee> {
-    const validation = this.validation.validate(CreateFeeSchema, data);
-    if (!validation.success) {
-      throw new Error(`Validation failed: ${validation.errors?.map(e => e.message).join(", ")}`);
-    }
-    const parsed = validation.data;
+    const parsed = this.validation.validateOrThrow(CreateFeeSchema, data);
 
     const createData = {
       ...parsed,
@@ -34,6 +32,7 @@ export class FeesService {
     if (!fee) throw new Error("Fee record created but could not be retrieved");
 
     await invalidateCache(`dashboard:${tenantId}`);
+    await invalidateCache(`fees:${tenantId}`);
 
     if (userId) {
       await this.audit.log({
@@ -46,6 +45,15 @@ export class FeesService {
       });
     }
 
+    eventBus.publish(EVENTS.FEE_COLLECTED, {
+      tenantId,
+      feeId: id,
+      studentId: parsed.studentId,
+      amount: parsed.amountPaid,
+      month: parsed.feeMonth,
+      collectedBy: userId,
+    });
+
     return fee as Fee;
   }
 
@@ -57,7 +65,6 @@ export class FeesService {
     let fees: (Fee & { id: string })[];
 
     if (studentId) {
-      // Use optimized Firestore query instead of fetching all + filtering in-memory
       fees = await (this.repo as FeesRepository).findByStudent(tenantId, studentId, page * limit);
     } else {
       fees = await this.repo.findAll(tenantId);
@@ -80,17 +87,14 @@ export class FeesService {
   }
 
   async updateFee(id: string, data: unknown, tenantId: string, userId?: string): Promise<Fee> {
-    const validation = this.validation.validate(UpdateFeeSchema, data);
-    if (!validation.success) {
-      throw new Error(`Validation failed: ${validation.errors?.map(e => e.message).join(", ")}`);
-    }
-    const parsed = validation.data;
+    const parsed = this.validation.validateOrThrow(UpdateFeeSchema, data);
 
     await this.repo.update(id, parsed, tenantId);
     const updated = await this.repo.findById(id, tenantId);
     if (!updated) throw new Error("Fee record not found after update");
 
     await invalidateCache(`dashboard:${tenantId}`);
+    await invalidateCache(`fees:${tenantId}`);
 
     if (userId) {
       await this.audit.log({
@@ -103,6 +107,13 @@ export class FeesService {
       });
     }
 
+    eventBus.publish(EVENTS.FEE_UPDATED, {
+      tenantId,
+      feeId: id,
+      updates: parsed,
+      updatedBy: userId,
+    });
+
     return updated as Fee;
   }
 
@@ -111,6 +122,7 @@ export class FeesService {
     await this.repo.delete(id, tenantId);
 
     await invalidateCache(`dashboard:${tenantId}`);
+    await invalidateCache(`fees:${tenantId}`);
 
     if (userId) {
       await this.audit.log({
@@ -145,4 +157,3 @@ export class FeesService {
     }));
   }
 }
-

@@ -1,7 +1,9 @@
 export const dynamic = 'force-dynamic';
-import { adminDb } from "@/lib/firebase-admin";
-import { withAuth, withTenant, withErrorHandler, withRole } from "@/route-helpers";
-import { createSuccessResponse, createErrorResponse } from "@/lib/api/response";
+import { withAuth, withTenant, withErrorHandler } from "@/route-helpers";
+import { createSuccessResponse } from "@/lib/api/response";
+import { withPermission } from "@/lib/auth/rbac";
+import { PERMISSIONS } from "@/lib/auth/permissions";
+import { LeaveRepository } from "@/repositories/leave.repository";
 import { StaffRepository } from "@/repositories/staff.repository";
 import { logger } from "@/lib/logger/logger";
 import type { TenantContext } from "@/types/api";
@@ -9,10 +11,11 @@ import type { TenantContext } from "@/types/api";
 export const POST = withErrorHandler(
   withAuth(
     withTenant(
-      withRole(["admin"])(async (req: Request, { tenantId }: TenantContext) => {
+      withPermission(PERMISSIONS.leaves.approve)(async (req: Request, { tenantId, user }: TenantContext) => {
         const { leaveId, substituteTeacherId, arrangedPeriods } = await req.json();
 
-        await adminDb.collection("leave_requests").doc(leaveId).update({
+        const leaveRepo = new LeaveRepository();
+        await leaveRepo.updateStatus(leaveId, {
           substituteTeacherId,
           arrangements: arrangedPeriods,
           status: "approved",

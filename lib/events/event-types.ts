@@ -44,6 +44,10 @@ export const EVENTS = {
   HOMEWORK_DELETED: "homework.deleted",
   ASSIGNMENT_UPDATED: "assignment.updated",
   LESSON_PLAN_UPDATED: "lesson_plan.updated",
+  BUS_CREATED: "bus.created",
+  BUS_UPDATED: "bus.updated",
+  BUS_DELETED: "bus.deleted",
+  FEE_UPDATED: "fee.updated",
 } as const;
 
 // Typescript Magic for strict typing

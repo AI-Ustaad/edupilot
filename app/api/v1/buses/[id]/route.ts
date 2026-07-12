@@ -1,21 +1,11 @@
 export const dynamic = 'force-dynamic';
 import { withAuth, withTenant, withErrorHandler } from "@/route-helpers";
-import { createSuccessResponse, createErrorResponse, createApiResponse } from "@/lib/api/response";
+import { createSuccessResponse, createErrorResponse } from "@/lib/api/response";
 import { BusService } from "@/services/bus.service";
 import { BusRepository } from "@/repositories/bus.repository";
-import { logAction } from "@/lib/audit";
 import { withPermission } from "@/lib/auth/rbac";
 import { PERMISSIONS } from "@/lib/auth/permissions";
-
-interface WithTenantContext {
-  tenantId: string;
-  user: {
-    uid: string;
-    email: string;
-    role: string;
-    tenantId: string;
-  };
-}
+import type { TenantContext } from "@/types/api";
 
 function getIdFromUrl(req: Request): string {
   const url = new URL(req.url);
@@ -26,7 +16,7 @@ function getIdFromUrl(req: Request): string {
 export const GET = withErrorHandler(
   withAuth(
     withTenant(
-      withPermission(PERMISSIONS.buses.view)(async (req: Request, { tenantId }: WithTenantContext) => {
+      withPermission(PERMISSIONS.buses.view)(async (req: Request, { tenantId }: TenantContext) => {
         const id = getIdFromUrl(req);
         const service = new BusService(new BusRepository());
         const bus = await service.getById(id, tenantId);
@@ -42,11 +32,11 @@ export const GET = withErrorHandler(
 export const PUT = withErrorHandler(
   withAuth(
     withTenant(
-     withPermission(PERMISSIONS.buses.update)(async (req: Request, { tenantId }: WithTenantContext) => {
+      withPermission(PERMISSIONS.buses.update)(async (req: Request, { tenantId, user }: TenantContext) => {
         const id = getIdFromUrl(req);
         const body = await req.json();
         const service = new BusService(new BusRepository());
-        await service.update(id, body, tenantId);
+        await service.update(id, body, tenantId, user.uid);
         return createSuccessResponse(null, { message: "Bus updated successfully" });
       })
     )
@@ -56,7 +46,7 @@ export const PUT = withErrorHandler(
 export const DELETE = withErrorHandler(
   withAuth(
     withTenant(
-      withPermission(PERMISSIONS.settings.update)(async (req: Request, { tenantId, user }: WithTenantContext) => {
+      withPermission(PERMISSIONS.buses.delete)(async (req: Request, { tenantId, user }: TenantContext) => {
         const id = getIdFromUrl(req);
         const service = new BusService(new BusRepository());
         const bus = await service.getById(id, tenantId);
@@ -64,17 +54,7 @@ export const DELETE = withErrorHandler(
           return createErrorResponse(404, "Bus not found");
         }
 
-        await service.delete(id, tenantId);
-
-        // آڈٹ لاگ
-        await logAction({
-          action: "BUS_DELETED",
-          userId: user.uid,
-          tenantId,
-          entityId: id,
-          entityType: "bus",
-          metadata: { busNumber: bus.busNumber },
-        });
+        await service.delete(id, tenantId, user.uid);
 
         return createSuccessResponse(null, { message: "Bus deleted successfully" });
       })

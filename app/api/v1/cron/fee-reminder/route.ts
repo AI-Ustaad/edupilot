@@ -1,8 +1,9 @@
 export const dynamic = 'force-dynamic';
 import { NextResponse } from "next/server";
-import { adminDb } from "@/lib/firebase-admin";
+import { FeesRepository } from "@/repositories/fees.repository";
 import { StudentRepository } from "@/repositories/student.repository";
 import { sendEmail } from "@/lib/email";
+import { adminDb } from "@/lib/firebase-admin";
 
 export async function GET(req: Request) {
   // Basic security – verify cron secret
@@ -12,32 +13,35 @@ export async function GET(req: Request) {
   }
 
   const today = new Date().toISOString().slice(0, 10);
-  const overdueFees = await adminDb.collection("fees")
-    .where("dueDate", "<", today)
-    .where("paid", "==", false)
-    .get();
-
-  let processed = 0;
+  const feesRepo = new FeesRepository();
   const studentRepo = new StudentRepository();
 
-  for (const doc of overdueFees.docs) {
-    const fee = doc.data();
-    const feeTenantId = fee.tenantId;
-    if (!feeTenantId || !fee.studentId) continue;
+  // Get all tenants and use repository filter per tenant
+  const tenantsSnap = await adminDb.collection("tenants").get();
+  let processed = 0;
 
-    const student = await studentRepo.findById(fee.studentId, feeTenantId);
-    const studentData = student as any;
+  for (const tenantDoc of tenantsSnap.docs) {
+    const tenantId = tenantDoc.id;
+    const overdueFees = await feesRepo.findWithFilters(tenantId, { paid: false, dueBefore: today });
 
-    if (studentData?.parentEmail) {
-      await sendEmail(
-        studentData.parentEmail,
-        "Fee Due Reminder",
-        `<p>Dear Parent,</p>
-         <p>This is a reminder that <strong>Rs. ${fee.amount}</strong> for <strong>${fee.feeMonth}</strong> was due on <strong>${fee.dueDate}</strong>.</p>
-         <p>Please log in to the portal to make the payment.</p>
-         <a href="${process.env.NEXT_PUBLIC_BASE_URL}/parent/dashboard">Pay Now</a>`
-      );
-      processed++;
+    for (const fee of overdueFees) {
+      const feeData = fee as any;
+      if (!feeData.studentId) continue;
+
+      const student = await studentRepo.findById(feeData.studentId, tenantId);
+      const studentData = student as any;
+
+      if (studentData?.parentEmail) {
+        await sendEmail(
+          studentData.parentEmail,
+          "Fee Due Reminder",
+          `<p>Dear Parent,</p>
+           <p>This is a reminder that <strong>Rs. ${feeData.amount}</strong> for <strong>${feeData.feeMonth}</strong> was due on <strong>${feeData.dueDate}</strong>.</p>
+           <p>Please log in to the portal to make the payment.</p>
+           <a href="${process.env.NEXT_PUBLIC_BASE_URL}/parent/dashboard">Pay Now</a>`
+        );
+        processed++;
+      }
     }
   }
 

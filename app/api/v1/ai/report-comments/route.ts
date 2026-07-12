@@ -1,10 +1,8 @@
 export const dynamic = 'force-dynamic';
 import { withAuth, withTenant, withErrorHandler } from "@/route-helpers";
 import { createSuccessResponse, createErrorResponse } from "@/lib/api/response";
-import { AgentRegistry } from "@/lib/ai/agents/AgentRegistry";
+import { agentRegistry } from "@/lib/ai/agents/AgentRegistry";
 import type { TenantContext } from "@/types/api";
-
-const reportAgent = new AgentRegistry();
 
 export const POST = withErrorHandler(
   withAuth(
@@ -15,7 +13,8 @@ export const POST = withErrorHandler(
       }
 
       const query = `Write a personalized report card comment for ${body.studentName} (Class ${body.grade || "N/A"}, Subject ${body.subject}). Marks: ${body.marks || "N/A"}%, Attendance: ${body.attendance || "N/A"}%.`;
-      const result = await reportAgent.execute("teacher", {
+
+      const result = await agentRegistry.execute("teacher", {
         tenantId,
         userId: user.uid,
         userRole: user.role,

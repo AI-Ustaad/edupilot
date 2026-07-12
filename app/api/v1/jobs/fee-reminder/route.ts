@@ -1,32 +1,35 @@
 export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
-import { FeesService } from '@/services/fees.service';
 import { FeesRepository } from '@/repositories/fees.repository';
 import { sendEmail } from '@/lib/email';
 import { adminDb } from '@/lib/firebase-admin';
 import { logger } from '@/lib/logger/logger';
 
 export async function GET(req: Request) {
+  // Security – verify cron secret
+  const authHeader = req.headers.get("authorization");
+  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   try {
+    const feesRepo = new FeesRepository();
+    const today = new Date().toISOString().slice(0, 10);
     const tenantsSnap = await adminDb.collection('tenants').get();
-    const tenants = tenantsSnap.docs.map(doc => doc.id);
     let totalProcessed = 0;
 
-    for (const tenantId of tenants) {
-      const feesService = new FeesService(new FeesRepository());
-      const allFees = await feesService.listFees(tenantId);
-      
-      const overdue = allFees.data.filter(fee => {
-        const dueDate = fee.dueDate ? new Date(fee.dueDate) : null;
-        return dueDate && dueDate < new Date() && fee.status === 'pending';
-      });
+    for (const tenantDoc of tenantsSnap.docs) {
+      const tenantId = tenantDoc.id;
+      // Use repository filter instead of fetching all fees + in-memory filter
+      const overdueFees = await feesRepo.findWithFilters(tenantId, { paid: false, dueBefore: today });
 
-      for (const fee of overdue) {
-        if (fee.email) {
+      for (const fee of overdueFees) {
+        const feeData = fee as any;
+        if (feeData.email) {
           await sendEmail(
-            fee.email,
-            `Fee Reminder: ${fee.feeMonth}`,
-            `<p>Dear Parent,<br/>This is a reminder that the fee of Rs. ${fee.amountPaid} for ${fee.feeMonth} is pending.<br/>Please make the payment at your earliest convenience.</p>`
+            feeData.email,
+            `Fee Reminder: ${feeData.feeMonth}`,
+            `<p>Dear Parent,<br/>This is a reminder that the fee of Rs. ${feeData.amountPaid} for ${feeData.feeMonth} is pending.<br/>Please make the payment at your earliest convenience.</p>`
           );
           totalProcessed++;
         }

@@ -2,6 +2,8 @@ export const dynamic = 'force-dynamic';
 import { createWorker } from "tesseract.js";
 import { withAuth, withTenant, withErrorHandler } from "@/route-helpers";
 import { createSuccessResponse, createErrorResponse, createApiResponse } from "@/lib/api/response";
+import { AuditService } from "@/services/AuditService";
+import { logger } from "@/lib/logger/logger";
 import type { TenantContext } from "@/types/api";
 
 function base64ToBuffer(base64: string): Buffer {
@@ -29,16 +31,26 @@ function extractSalaryFields(text: string) {
 
 export const POST = withErrorHandler(
   withAuth(
-    withTenant(async (req: Request, { tenantId }: TenantContext) => {
+    withTenant(async (req: Request, { tenantId, user }: TenantContext) => {
       const { image, documentType } = await req.json();
       if (!image) return createErrorResponse(400, "No file");
       if (documentType !== "salary_slip") return createErrorResponse(400, "Unsupported type");
 
       const buffer = base64ToBuffer(image);
-      let extractedText = "";
+      const audit = new AuditService();
+      const startTime = Date.now();
 
       const isPdf = buffer.slice(0, 4).toString() === "%PDF";
       if (isPdf) {
+        await audit.log({
+          action: "ocr.extracted",
+          userId: user.uid,
+          tenantId,
+          entityId: user.uid,
+          entityType: "ocr",
+          metadata: { documentType, provider: "fallback", processingTimeMs: Date.now() - startTime },
+        });
+
         return createApiResponse(200, {
           fullName: "Ahmed Raza",
           fatherName: "Muhammad Raza",
@@ -58,9 +70,23 @@ export const POST = withErrorHandler(
       const worker = await createWorker("eng");
       const { data } = await worker.recognize(buffer);
       await worker.terminate();
-      extractedText = data.text;
 
-      const extractedData = extractSalaryFields(extractedText);
+      const extractedData = extractSalaryFields(data.text);
+      const processingTimeMs = Date.now() - startTime;
+
+      logger.info("[OCR] Document processed", {
+        metadata: { tenantId, userId: user.uid, documentType, processingTimeMs },
+      });
+
+      await audit.log({
+        action: "ocr.extracted",
+        userId: user.uid,
+        tenantId,
+        entityId: user.uid,
+        entityType: "ocr",
+        metadata: { documentType, provider: "tesseract", processingTimeMs },
+      });
+
       return createSuccessResponse(extractedData);
     })
   )

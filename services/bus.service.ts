@@ -1,7 +1,13 @@
+// services/bus.service.ts
 import { BusRepository } from "@/repositories/bus.repository";
-import { Bus } from "@/types/bus";
-import { ZodError } from "zod";
+import { AuditService } from "./AuditService";
+import { ValidationService } from "./ValidationService";
+import { invalidateCache } from "@/lib/cache";
+import { eventBus } from "@/lib/events/event-bus";
+import { EVENTS } from "@/lib/events/event-types";
 import { z } from "zod";
+import type { IBusRepository } from "@/interfaces/IBusRepository";
+import type { Bus } from "@/types/bus";
 
 const createBusSchema = z.object({
   busNumber: z.string().min(1, "Bus number is required"),
@@ -14,22 +20,44 @@ const createBusSchema = z.object({
 const updateBusSchema = createBusSchema.partial();
 
 export class BusService {
-  constructor(private repo: BusRepository) {}
+  private audit: AuditService;
+  private validation: ValidationService;
 
-  async create(data: unknown, tenantId: string): Promise<Bus> {
-    let validated;
-    try {
-      validated = createBusSchema.parse(data);
-    } catch (error) {
-      if (error instanceof ZodError) {
-        throw new Error(`Validation failed: ${error.errors.map(e => e.message).join(', ')}`);
-      }
-      throw error;
+  constructor(private repo: IBusRepository = new BusRepository()) {
+    this.audit = new AuditService();
+    this.validation = new ValidationService();
+  }
+
+  async create(data: unknown, tenantId: string, userId?: string): Promise<Bus> {
+    const parsed = this.validation.validateOrThrow(createBusSchema, data);
+
+    const createData = { ...parsed, tenantId } as Omit<Bus, "id" | "createdAt" | "updatedAt">;
+    const id = await this.repo.create(createData, tenantId);
+    const bus = await this.repo.findById(id, tenantId);
+    if (!bus) throw new Error("Bus created but could not be retrieved");
+
+    await invalidateCache(`buses:${tenantId}`);
+
+    if (userId) {
+      await this.audit.log({
+        action: "bus.created",
+        userId,
+        tenantId,
+        entityId: id,
+        entityType: "bus",
+        metadata: { busNumber: parsed.busNumber, route: parsed.route },
+      });
     }
 
-    const id = await this.repo.create({ ...validated, tenantId } as any, tenantId);
-    const record = await this.repo.findById(id, tenantId);
-    return record as Bus;
+    eventBus.publish(EVENTS.BUS_CREATED, {
+      tenantId,
+      busId: id,
+      busNumber: parsed.busNumber,
+      route: parsed.route,
+      createdBy: userId,
+    });
+
+    return bus as Bus;
   }
 
   async getAll(tenantId: string): Promise<Bus[]> {
@@ -40,24 +68,57 @@ export class BusService {
     return this.repo.findById(id, tenantId);
   }
 
-  async update(id: string, data: unknown, tenantId: string): Promise<Bus> {
-    let validated;
-    try {
-      validated = updateBusSchema.parse(data);
-    } catch (error) {
-      if (error instanceof ZodError) {
-        throw new Error(`Validation failed: ${error.errors.map(e => e.message).join(', ')}`);
-      }
-      throw error;
-    }
+  async update(id: string, data: unknown, tenantId: string, userId?: string): Promise<Bus> {
+    const parsed = this.validation.validateOrThrow(updateBusSchema, data);
 
-    await this.repo.update(id, validated, tenantId);
+    await this.repo.update(id, parsed, tenantId);
     const updated = await this.repo.findById(id, tenantId);
     if (!updated) throw new Error("Bus not found after update");
+
+    await invalidateCache(`buses:${tenantId}`);
+
+    if (userId) {
+      await this.audit.log({
+        action: "bus.updated",
+        userId,
+        tenantId,
+        entityId: id,
+        entityType: "bus",
+        metadata: { updates: parsed },
+      });
+    }
+
+    eventBus.publish(EVENTS.BUS_UPDATED, {
+      tenantId,
+      busId: id,
+      updates: parsed,
+      updatedBy: userId,
+    });
+
     return updated as Bus;
   }
 
-  async delete(id: string, tenantId: string): Promise<void> {
+  async delete(id: string, tenantId: string, userId?: string): Promise<void> {
+    const bus = await this.repo.findById(id, tenantId);
     await this.repo.delete(id, tenantId);
+
+    await invalidateCache(`buses:${tenantId}`);
+
+    if (userId) {
+      await this.audit.log({
+        action: "bus.deleted",
+        userId,
+        tenantId,
+        entityId: id,
+        entityType: "bus",
+        metadata: { busNumber: (bus as any)?.busNumber },
+      });
+    }
+
+    eventBus.publish(EVENTS.BUS_DELETED, {
+      tenantId,
+      busId: id,
+      deletedBy: userId,
+    });
   }
 }

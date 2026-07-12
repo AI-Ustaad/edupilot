@@ -1,4 +1,5 @@
 import { GeminiProvider } from "@/lib/ai/providers/GeminiProvider";
+import { UsageTracker } from "@/lib/ai/monitoring/UsageTracker";
 import { logger } from "@/lib/logger/logger";
 
 interface ExamRequest { className: string; subject: string; topic: string; difficulty: string; }
@@ -6,12 +7,14 @@ interface ExamOutput { mcqs: { question: string; options: string[]; correct: str
 
 export class ExamService {
   private provider: GeminiProvider;
+  private usageTracker: UsageTracker;
 
   constructor(provider?: GeminiProvider) {
     this.provider = provider ?? new GeminiProvider();
+    this.usageTracker = new UsageTracker();
   }
 
-  async generateExam(req: ExamRequest): Promise<ExamOutput> {
+  async generateExam(req: ExamRequest, tenantId?: string, userId?: string): Promise<ExamOutput> {
     logger.info("[ExamService] Generating exam", { metadata: { className: req.className, subject: req.subject, topic: req.topic, difficulty: req.difficulty } });
     const startTime = Date.now();
 
@@ -36,6 +39,20 @@ Only return the JSON, no other text.`;
 
     const elapsed = Date.now() - startTime;
     logger.info("[ExamService] Exam generated successfully", { metadata: { elapsedMs: elapsed, mcqCount: exam.mcqs?.length || 0 } });
+
+    if (tenantId && userId) {
+      await this.usageTracker.track({
+        tenantId,
+        userId,
+        provider: this.provider.name,
+        model: this.provider.getConfig().model,
+        tokens: response.tokensUsed ?? 0,
+        latencyMs: elapsed,
+        success: true,
+        documentType: "exam-generation",
+      });
+    }
+
     return exam;
   }
 }

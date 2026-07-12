@@ -8,13 +8,13 @@ const examService = new ExamService();
 
 export const POST = withErrorHandler(
   withAuth(
-    withTenant(async (req: Request, _context: TenantContext) => {
+    withTenant(async (req: Request, { tenantId, user }: TenantContext) => {
       const body = await req.json();
       if (!body.className || !body.subject || !body.topic) {
         return createErrorResponse(400, "Missing required fields (className, subject, topic)");
       }
 
-      const result = await examService.generateExam(body);
+      const result = await examService.generateExam(body, tenantId, user.uid);
       return createSuccessResponse(result);
     })
   )

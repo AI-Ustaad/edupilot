@@ -8,13 +8,13 @@ const timetableService = new TimetableService();
 
 export const POST = withErrorHandler(
   withAuth(
-    withTenant(async (req: Request, _context: TenantContext) => {
+    withTenant(async (req: Request, { tenantId, user }: TenantContext) => {
       const body = await req.json();
       if (!body.classes || !body.subjects || !body.teachers) {
         return createErrorResponse(400, "Missing required fields (classes, subjects, teachers)");
       }
 
-      const result = await timetableService.generateTimetable(body);
+      const result = await timetableService.generateTimetable(body, tenantId, user.uid);
       return createSuccessResponse(result);
     })
   )

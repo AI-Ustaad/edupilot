@@ -614,4 +614,76 @@ export function registerAuditSubscriber() {
       logger.error("Audit: Failed to log lesson plan deleted event:", { metadata: { error } });
     }
   });
+
+  // 🎧 Listen for BUS_CREATED event
+  eventBus.subscribe(EVENTS.BUS_CREATED, async (payload) => {
+    try {
+      const { tenantId, busId, busNumber, route } = payload;
+
+      await adminDb
+        .collection("tenants")
+        .doc(tenantId)
+        .collection("audit_logs")
+        .add({
+          action: "BUS_CREATED",
+          targetId: busId,
+          details: `Bus ${busNumber} (Route: ${route}) was added to the system.`,
+          timestamp: new Date().toISOString(),
+          module: "Transport",
+          systemAction: true,
+        });
+
+      logger.info(`Audit: Bus created event logged for bus: ${busId}`);
+    } catch (error) {
+      logger.error("Audit: Failed to log bus created event:", { metadata: { error } });
+    }
+  });
+
+  // 🎧 Listen for BUS_UPDATED event
+  eventBus.subscribe(EVENTS.BUS_UPDATED, async (payload) => {
+    try {
+      const { tenantId, busId, updates } = payload;
+
+      await adminDb
+        .collection("tenants")
+        .doc(tenantId)
+        .collection("audit_logs")
+        .add({
+          action: "BUS_UPDATED",
+          targetId: busId,
+          details: `Bus ${busId} was updated. Changes: ${JSON.stringify(updates)}`,
+          timestamp: new Date().toISOString(),
+          module: "Transport",
+          systemAction: true,
+        });
+
+      logger.info(`Audit: Bus updated event logged for bus: ${busId}`);
+    } catch (error) {
+      logger.error("Audit: Failed to log bus updated event:", { metadata: { error } });
+    }
+  });
+
+  // 🎧 Listen for BUS_DELETED event
+  eventBus.subscribe(EVENTS.BUS_DELETED, async (payload) => {
+    try {
+      const { tenantId, busId } = payload;
+
+      await adminDb
+        .collection("tenants")
+        .doc(tenantId)
+        .collection("audit_logs")
+        .add({
+          action: "BUS_DELETED",
+          targetId: busId,
+          details: `Bus ${busId} was removed from the system.`,
+          timestamp: new Date().toISOString(),
+          module: "Transport",
+          systemAction: true,
+        });
+
+      logger.info(`Audit: Bus deleted event logged for bus: ${busId}`);
+    } catch (error) {
+      logger.error("Audit: Failed to log bus deleted event:", { metadata: { error } });
+    }
+  });
 }
