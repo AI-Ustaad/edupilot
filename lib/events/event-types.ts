@@ -23,6 +23,11 @@ export const EVENTS = {
   BOOK_UPDATED: "book.updated",
   BOOK_DELETED: "book.deleted",
   BEHAVIOR_RECORDED: "behavior.recorded",
+  MARKS_ENTERED: "marks.entered",
+  MARKS_DELETED: "marks.deleted",
+  RESULT_PUBLISHED: "result.published",
+  QUIZ_CREATED: "quiz.created",
+  QUIZ_SUBMITTED: "quiz.submitted",
 } as const;
 
 // Typescript Magic for strict typing
