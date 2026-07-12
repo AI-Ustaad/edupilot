@@ -29,8 +29,8 @@ export const GET = withErrorHandler(
         const studentAttendance = await attendanceService.findByStudentId(tenantId, id);
 
         const feesService = new FeesService(new FeesRepository());
-        const allFees = await feesService.listFees(tenantId);
-        const studentFees = allFees.data.filter(f => (f as any).studentId === id);
+        const studentFeesResult = await feesService.listFees(tenantId, id, 1, 9999);
+        const studentFees = studentFeesResult.data;
 
         // Add more data types as needed
 

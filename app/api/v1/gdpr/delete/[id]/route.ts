@@ -36,8 +36,8 @@ export const DELETE = withErrorHandler(
 
         // Delete fee records
         const feesService = new FeesService(new FeesRepository());
-        const allFees = await feesService.listFees(tenantId);
-        const studentFees = allFees.data.filter(f => (f as any).studentId === id);
+        const studentFeesResult = await feesService.listFees(tenantId, id, 1, 9999);
+        const studentFees = studentFeesResult.data;
         for (const fee of studentFees) {
           await feesService.deleteFee(fee.id, tenantId);
         }

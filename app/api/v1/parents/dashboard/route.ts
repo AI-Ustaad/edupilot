@@ -2,7 +2,6 @@ export const dynamic = 'force-dynamic';
 import { withAuth, withTenant, withErrorHandler } from "@/route-helpers";
 import { createSuccessResponse } from "@/lib/api/response";
 import { ParentsService } from "@/services/parents.service";
-import { AttendanceService } from "@/services/attendance.service";
 import { AttendanceRepository } from "@/repositories/attendance.repository";
 import { FeesService } from "@/services/fees.service";
 import { FeesRepository } from "@/repositories/fees.repository";
@@ -18,15 +17,22 @@ export const GET = withErrorHandler(
         const children = await parentService.getChildren(user.uid, tenantId);
         const childIds = children.map(c => c.id);
 
-        const today = new Date().toISOString().slice(0, 10);
+        if (childIds.length === 0) {
+          return createSuccessResponse([]);
+        }
 
-        const attendanceService = new AttendanceService(new AttendanceRepository());
-        const attendancePromises = childIds.map(id =>
-          attendanceService.listAttendance(tenantId, { date: today }).then(recs =>
-            recs.filter(r => (r as any).studentId === id)
-          )
-        );
-        const attendanceResults = await Promise.all(attendancePromises);
+        // Batch-fetch attendance for ALL children in one query
+        const attendanceRepo = new AttendanceRepository();
+        const allAttendance = await attendanceRepo.findByStudentIds(tenantId, childIds, 5);
+
+        // Group by studentId in-memory
+        const attendanceByStudent: Record<string, string> = {};
+        for (const rec of allAttendance) {
+          const sid = (rec as any).studentId;
+          if (!attendanceByStudent[sid]) {
+            attendanceByStudent[sid] = rec.status;
+          }
+        }
 
         const feesService = new FeesService(new FeesRepository());
         const feesPromises = childIds.map(id =>
@@ -36,7 +42,7 @@ export const GET = withErrorHandler(
 
         const dashboardData = children.map((child, index) => ({
           student: child,
-          todayAttendance: attendanceResults[index]?.[0]?.status || 'N/A',
+          todayAttendance: attendanceByStudent[child.id] || 'N/A',
           recentFee: feesResults[index]?.data?.[0] || null,
         }));
 

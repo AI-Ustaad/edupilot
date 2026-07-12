@@ -47,4 +47,33 @@ export function registerNotificationSubscriber() {
       logger.error("Notification: Failed to send notification:", { metadata: { error } });
     }
   });
+
+  // 🎧 Listen for ATTENDANCE_IMPORTED event - notify admin
+  eventBus.subscribe(EVENTS.ATTENDANCE_IMPORTED, async (payload) => {
+    try {
+      const { tenantId, recordCount } = payload;
+
+      // Find admin users for this tenant
+      const adminSnap = await adminDb
+        .collection("tenants")
+        .doc(tenantId)
+        .collection("users")
+        .where("role", "in", ["admin", "super-admin"])
+        .limit(5)
+        .get();
+
+      for (const doc of adminSnap.docs) {
+        await doc.ref.collection("notifications").add({
+          title: "Attendance Bulk Import Complete",
+          message: `${recordCount} attendance records have been imported successfully.`,
+          type: "success",
+          isRead: false,
+          link: "/attendance",
+          createdAt: new Date().toISOString(),
+        });
+      }
+    } catch (error) {
+      logger.error("Notification: Failed to send attendance import notification:", { metadata: { error } });
+    }
+  });
 }

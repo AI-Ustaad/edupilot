@@ -11,8 +11,16 @@ interface AttendanceStats {
 }
 
 export default function AttendanceCard({ stats }: { stats?: AttendanceStats }) {
-  // Mock data if no stats provided
-  const data = stats || { percentage: 88, present: 145, absent: 12, late: 5, trend: "up" };
+  if (!stats) {
+    return (
+      <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm h-full flex flex-col items-center justify-center">
+        <UserCheck className="text-slate-300 mb-2" size={32} />
+        <p className="text-slate-400 text-sm font-medium">No attendance data available</p>
+      </div>
+    );
+  }
+
+  const data = stats;
 
   return (
     <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm h-full flex flex-col">

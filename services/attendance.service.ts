@@ -156,15 +156,16 @@ export class AttendanceService {
     });
   }
 
-  async getTodayAttendance(tenantId: string): Promise<{ present: number; absent: number; total: number }> {
+  async getTodayAttendance(tenantId: string): Promise<{ present: number; absent: number; late: number; total: number }> {
     const today = new Date().toISOString().slice(0, 10);
     const records = await this.repo.findWithFilters(tenantId, { date: today });
-    let present = 0, absent = 0;
+    let present = 0, absent = 0, late = 0;
     records.forEach(r => {
       if (r.status === 'Present') present++;
       else if (r.status === 'Absent') absent++;
+      else if (r.status === 'Late') { present++; late++; }
     });
-    return { present, absent, total: records.length };
+    return { present, absent, late, total: records.length };
   }
 
   async getWeeklyAttendanceTrend(tenantId: string): Promise<{ day: string; percent: number }[]> {
@@ -185,7 +186,7 @@ export class AttendanceService {
     for (const r of records) {
       if (!byDate[r.date]) byDate[r.date] = { present: 0, total: 0 };
       byDate[r.date].total++;
-      if (r.status === "Present") byDate[r.date].present++;
+      if (r.status === "Present" || r.status === "Late") byDate[r.date].present++;
     }
 
     // Build trend for all 7 days (including days with 0 records)
