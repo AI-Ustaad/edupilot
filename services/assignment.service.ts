@@ -4,6 +4,8 @@ import { AuditService } from "./AuditService";
 import { ValidationService } from "./ValidationService";
 import { CreateAssignmentSchema, UpdateAssignmentSchema } from "@/validators/teacher";
 import { invalidateCache } from "@/lib/cache";
+import { eventBus } from "@/lib/events/event-bus";
+import { EVENTS } from "@/lib/events/event-types";
 import type { IAssignmentRepository } from "@/interfaces/IAssignmentRepository";
 import type { Assignment } from "@/types/teacher";
 import { adminStorage } from "@/lib/firebase-admin";
@@ -20,13 +22,13 @@ export class AssignmentService {
   async createAssignment(data: unknown, tenantId: string, userId: string): Promise<Assignment> {
     const parsed = this.validation.validateOrThrow(CreateAssignmentSchema, data);
 
-    const createData = {
+    const createData: Omit<Assignment, "id" | "createdAt" | "updatedAt"> = {
       ...parsed,
       tenantId,
       createdBy: userId,
-    } as unknown as Omit<Assignment, "id" | "createdAt" | "updatedAt">;
+    } as Omit<Assignment, "id" | "createdAt" | "updatedAt">;
 
-    const id = await this.repo.create(createData as any, tenantId);
+    const id = await this.repo.create(createData, tenantId);
     const assignment = await this.repo.findById(id, tenantId);
     if (!assignment) throw new Error("Assignment created but could not be retrieved");
 
@@ -40,21 +42,39 @@ export class AssignmentService {
       metadata: { title: parsed.title, classGrade: parsed.classGrade, subject: parsed.subject },
     });
 
+    eventBus.publish(EVENTS.ASSIGNMENT_CREATED, {
+      tenantId,
+      assignmentId: id,
+      title: parsed.title,
+      classGrade: parsed.classGrade,
+      subject: parsed.subject,
+      createdBy: userId,
+    });
+
     return assignment as Assignment;
   }
 
-  async listAssignments(tenantId: string): Promise<(Assignment & { id: string })[]> {
-    const assignments = await this.repo.findAll(tenantId);
-    assignments.sort((a, b) => {
-      const dateA = (a as any).createdAt?.toDate?.() || 0;
-      const dateB = (b as any).createdAt?.toDate?.() || 0;
-      return dateB - dateA;
-    });
-    return assignments;
+  async listAssignments(tenantId: string, page = 1, limit = 50): Promise<{ data: (Assignment & { id: string })[]; total: number; page: number; totalPages: number }> {
+    return this.repo.paginate(tenantId, page, limit, "createdAt", "desc");
   }
 
   async getAssignmentById(id: string, tenantId: string): Promise<(Assignment & { id: string }) | null> {
     return this.repo.findById(id, tenantId);
+  }
+
+  async updateAssignment(id: string, data: unknown, tenantId: string, userId: string): Promise<void> {
+    const parsed = this.validation.validateOrThrow(UpdateAssignmentSchema, data);
+    await this.repo.update(id, parsed, tenantId);
+    await invalidateCache(`dashboard:${tenantId}`);
+
+    await this.audit.log({
+      action: "assignment.updated",
+      userId,
+      tenantId,
+      entityId: id,
+      entityType: "assignment",
+      metadata: { updates: parsed },
+    });
   }
 
   async deleteAssignment(id: string, tenantId: string, userId: string): Promise<void> {
@@ -66,6 +86,12 @@ export class AssignmentService {
       tenantId,
       entityId: id,
       entityType: "assignment",
+    });
+
+    eventBus.publish(EVENTS.ASSIGNMENT_DELETED, {
+      tenantId,
+      assignmentId: id,
+      deletedBy: userId,
     });
   }
 
@@ -95,6 +121,13 @@ export class AssignmentService {
       entityId: id,
       entityType: "assignment_submission",
       metadata: { assignmentId, studentId },
+    });
+
+    eventBus.publish(EVENTS.ASSIGNMENT_SUBMITTED, {
+      tenantId,
+      assignmentId,
+      studentId,
+      submissionId: id,
     });
 
     return id;

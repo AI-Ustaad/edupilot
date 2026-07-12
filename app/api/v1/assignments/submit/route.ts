@@ -1,15 +1,17 @@
 export const dynamic = 'force-dynamic';
 import { withAuth, withTenant, withErrorHandler } from "@/route-helpers";
+import { withPermission } from "@/lib/auth/rbac";
+import { PERMISSIONS } from "@/lib/auth/permissions";
 import { createSuccessResponse, createErrorResponse, createApiResponse } from "@/lib/api/response";
 import { AssignmentService } from "@/services/assignment.service";
 import type { TenantContext } from "@/types/api";
 
-const assignmentService = new AssignmentService();
-
 export const POST = withErrorHandler(
   withAuth(
-    withTenant(async (req: Request, { tenantId, user }: TenantContext) => {
-      const formData = await req.formData();
+    withTenant(
+      withPermission(PERMISSIONS.assignments.create)(async (req: Request, { tenantId, user }: TenantContext) => {
+        const service = new AssignmentService();
+        const formData = await req.formData();
       const file = formData.get("file") as File;
       const assignmentId = formData.get("assignmentId") as string;
       const studentId = formData.get("studentId") as string;
@@ -19,9 +21,9 @@ export const POST = withErrorHandler(
         return createErrorResponse(400, "Missing required fields");
       }
 
-      const fileUrl = await assignmentService.uploadSubmissionFile(file, tenantId, assignmentId, studentId);
+      const fileUrl = await service.uploadSubmissionFile(file, tenantId, assignmentId, studentId);
 
-      const submissionId = await assignmentService.submitAssignment(
+      const submissionId = await service.submitAssignment(
         assignmentId,
         studentId,
         studentName || "Unknown",
@@ -32,20 +34,24 @@ export const POST = withErrorHandler(
       );
 
       return createApiResponse(201, { id: submissionId, fileUrl });
-    })
+      })
+    )
   )
 );
 
 export const GET = withErrorHandler(
   withAuth(
-    withTenant(async (req: Request, { tenantId }: TenantContext) => {
+    withTenant(
+      withPermission(PERMISSIONS.assignments.view)(async (req: Request, { tenantId }: TenantContext) => {
+        const service = new AssignmentService();
       const { searchParams } = new URL(req.url);
       const assignmentId = searchParams.get("assignmentId");
       if (!assignmentId) {
         return createErrorResponse(400, "assignmentId is required");
       }
-      const data = await assignmentService.getSubmissions(assignmentId, tenantId);
+      const data = await service.getSubmissions(assignmentId, tenantId);
       return createSuccessResponse(data);
-    })
+      })
+    )
   )
 );

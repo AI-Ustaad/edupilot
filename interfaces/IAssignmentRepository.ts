@@ -9,6 +9,7 @@ export interface IAssignmentRepository {
   delete(id: string, tenantId: string): Promise<void>;
   count(tenantId: string): Promise<number>;
   exists(id: string, tenantId: string): Promise<boolean>;
+  paginate(tenantId: string, page: number, limit: number, orderBy?: string, direction?: "asc" | "desc"): Promise<{ data: (Assignment & { id: string })[]; total: number; page: number; totalPages: number }>;
   // Submissions
   findSubmissionsByAssignment(assignmentId: string, tenantId: string): Promise<(AssignmentSubmission & { id: string })[]>;
   createSubmission(data: Omit<AssignmentSubmission, "id" | "createdAt">, tenantId: string): Promise<string>;

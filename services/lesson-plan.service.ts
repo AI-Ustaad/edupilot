@@ -2,7 +2,10 @@
 import { LessonPlanRepository } from "@/repositories/lesson-plan.repository";
 import { AuditService } from "./AuditService";
 import { ValidationService } from "./ValidationService";
-import { CreateLessonPlanSchema } from "@/validators/teacher";
+import { CreateLessonPlanSchema, UpdateLessonPlanSchema } from "@/validators/teacher";
+import { eventBus } from "@/lib/events/event-bus";
+import { EVENTS } from "@/lib/events/event-types";
+import { invalidateCache } from "@/lib/cache";
 import type { ILessonPlanRepository } from "@/interfaces/ILessonPlanRepository";
 import type { LessonPlan } from "@/types/teacher";
 
@@ -18,15 +21,16 @@ export class LessonPlanService {
   async createLessonPlan(data: unknown, tenantId: string, userId: string): Promise<LessonPlan> {
     const parsed = this.validation.validateOrThrow(CreateLessonPlanSchema, data);
 
-    const createData = {
+    const createData: Omit<LessonPlan, "id" | "createdAt" | "updatedAt"> = {
       ...parsed,
       tenantId,
       createdBy: userId,
-    } as unknown as Omit<LessonPlan, "id" | "createdAt" | "updatedAt">;
+    } as Omit<LessonPlan, "id" | "createdAt" | "updatedAt">;
 
-    const id = await this.repo.create(createData as any, tenantId);
+    const id = await this.repo.create(createData, tenantId);
     const plan = await this.repo.findById(id, tenantId);
     if (!plan) throw new Error("Lesson plan created but could not be retrieved");
+    await invalidateCache(`lessonPlans:${tenantId}`);
 
     await this.audit.log({
       action: "lesson_plan.created",
@@ -37,20 +41,62 @@ export class LessonPlanService {
       metadata: { topic: parsed.topic, date: parsed.date },
     });
 
+    eventBus.publish(EVENTS.LESSON_PLAN_CREATED, {
+      tenantId,
+      lessonPlanId: id,
+      topic: parsed.topic,
+      date: parsed.date,
+      createdBy: userId,
+    });
+
     return plan as LessonPlan;
   }
 
-  async listLessonPlans(tenantId: string): Promise<(LessonPlan & { id: string })[]> {
-    const plans = await this.repo.findAll(tenantId);
-    plans.sort((a, b) => {
-      const dateA = (a as any).createdAt?.toDate?.() || 0;
-      const dateB = (b as any).createdAt?.toDate?.() || 0;
-      return dateB - dateA;
-    });
-    return plans;
+  async listLessonPlans(tenantId: string, page = 1, limit = 50): Promise<{ data: (LessonPlan & { id: string })[]; total: number; page: number; totalPages: number }> {
+    return this.repo.paginate(tenantId, page, limit, "createdAt", "desc");
   }
 
   async getLessonPlanById(id: string, tenantId: string): Promise<(LessonPlan & { id: string }) | null> {
     return this.repo.findById(id, tenantId);
+  }
+
+  async updateLessonPlan(id: string, data: unknown, tenantId: string, userId: string): Promise<void> {
+    const parsed = this.validation.validateOrThrow(UpdateLessonPlanSchema, data);
+    await this.repo.update(id, parsed, tenantId);
+
+    await this.audit.log({
+      action: "lesson_plan.updated",
+      userId,
+      tenantId,
+      entityId: id,
+      entityType: "lesson_plan",
+      metadata: { updates: parsed },
+    });
+
+    eventBus.publish(EVENTS.LESSON_PLAN_CREATED, {
+      tenantId,
+      lessonPlanId: id,
+      topic: parsed.topic,
+      date: parsed.date,
+      updatedBy: userId,
+    });
+  }
+
+  async deleteLessonPlan(id: string, tenantId: string, userId: string): Promise<void> {
+    await this.repo.delete(id, tenantId);
+
+    await this.audit.log({
+      action: "lesson_plan.deleted",
+      userId,
+      tenantId,
+      entityId: id,
+      entityType: "lesson_plan",
+    });
+
+    eventBus.publish(EVENTS.LESSON_PLAN_DELETED, {
+      tenantId,
+      lessonPlanId: id,
+      deletedBy: userId,
+    });
   }
 }

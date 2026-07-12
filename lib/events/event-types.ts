@@ -14,6 +14,15 @@ export const EVENTS = {
   STAFF_ACTIVATED: "staff.activated",
   STAFF_DEACTIVATED: "staff.deactivated",
   STAFF_PROMOTED: "staff.promoted",
+  ASSIGNMENT_CREATED: "assignment.created",
+  ASSIGNMENT_DELETED: "assignment.deleted",
+  ASSIGNMENT_SUBMITTED: "assignment.submitted",
+  LESSON_PLAN_CREATED: "lesson_plan.created",
+  LESSON_PLAN_DELETED: "lesson_plan.deleted",
+  BOOK_CREATED: "book.created",
+  BOOK_UPDATED: "book.updated",
+  BOOK_DELETED: "book.deleted",
+  BEHAVIOR_RECORDED: "behavior.recorded",
 } as const;
 
 // Typescript Magic for strict typing

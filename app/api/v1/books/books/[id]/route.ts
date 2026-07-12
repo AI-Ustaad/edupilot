@@ -12,15 +12,14 @@ function getIdFromUrl(req: Request): string {
   return segments[segments.length - 1];
 }
 
-const bookService = new BookService();
-
 export const PUT = withErrorHandler(
   withAuth(
     withTenant(
       withPermission(PERMISSIONS.bookCenter.update)(async (req: Request, { tenantId, user }: TenantContext) => {
+        const service = new BookService();
         const id = getIdFromUrl(req);
         const body = await req.json();
-        await bookService.updateBook(id, body, tenantId, user.uid);
+        await service.updateBook(id, body, tenantId, user.uid);
         return createSuccessResponse({ success: true });
       })
     )
@@ -31,10 +30,11 @@ export const DELETE = withErrorHandler(
   withAuth(
     withTenant(
       withPermission(PERMISSIONS.bookCenter.delete)(async (req: Request, { tenantId, user }: TenantContext) => {
+        const service = new BookService();
         const id = getIdFromUrl(req);
-        const book = await bookService.getBookById(id, tenantId);
+        const book = await service.getBookById(id, tenantId);
         if (!book) return createErrorResponse(404, "Book not found");
-        await bookService.deleteBook(id, tenantId, user.uid);
+        await service.deleteBook(id, tenantId, user.uid);
         return createSuccessResponse({ success: true });
       })
     )

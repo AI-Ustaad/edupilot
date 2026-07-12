@@ -118,4 +118,114 @@ export function registerAuditSubscriber() {
       logger.error("Audit: Failed to log attendance imported event:", { metadata: { error } });
     }
   });
+
+  // 🎧 Listen for ASSIGNMENT_CREATED event
+  eventBus.subscribe(EVENTS.ASSIGNMENT_CREATED, async (payload) => {
+    try {
+      const { tenantId, assignmentId, title, classGrade, subject } = payload;
+
+      await adminDb
+        .collection("tenants")
+        .doc(tenantId)
+        .collection("audit_logs")
+        .add({
+          action: "ASSIGNMENT_CREATED",
+          targetId: assignmentId,
+          details: `Assignment "${title}" created for class ${classGrade}, subject ${subject}.`,
+          timestamp: new Date().toISOString(),
+          module: "Teacher",
+          systemAction: true,
+        });
+    } catch (error) {
+      logger.error("Audit: Failed to log assignment created event:", { metadata: { error } });
+    }
+  });
+
+  // 🎧 Listen for ASSIGNMENT_DELETED event
+  eventBus.subscribe(EVENTS.ASSIGNMENT_DELETED, async (payload) => {
+    try {
+      const { tenantId, assignmentId } = payload;
+
+      await adminDb
+        .collection("tenants")
+        .doc(tenantId)
+        .collection("audit_logs")
+        .add({
+          action: "ASSIGNMENT_DELETED",
+          targetId: assignmentId,
+          details: `Assignment ${assignmentId} was deleted.`,
+          timestamp: new Date().toISOString(),
+          module: "Teacher",
+          systemAction: true,
+        });
+    } catch (error) {
+      logger.error("Audit: Failed to log assignment deleted event:", { metadata: { error } });
+    }
+  });
+
+  // 🎧 Listen for LESSON_PLAN_CREATED event
+  eventBus.subscribe(EVENTS.LESSON_PLAN_CREATED, async (payload) => {
+    try {
+      const { tenantId, lessonPlanId, topic, date } = payload;
+
+      await adminDb
+        .collection("tenants")
+        .doc(tenantId)
+        .collection("audit_logs")
+        .add({
+          action: "LESSON_PLAN_CREATED",
+          targetId: lessonPlanId,
+          details: `Lesson plan "${topic}" created for date ${date}.`,
+          timestamp: new Date().toISOString(),
+          module: "Teacher",
+          systemAction: true,
+        });
+    } catch (error) {
+      logger.error("Audit: Failed to log lesson plan created event:", { metadata: { error } });
+    }
+  });
+
+  // 🎧 Listen for BOOK_CREATED event
+  eventBus.subscribe(EVENTS.BOOK_CREATED, async (payload) => {
+    try {
+      const { tenantId, bookId, title } = payload;
+
+      await adminDb
+        .collection("tenants")
+        .doc(tenantId)
+        .collection("audit_logs")
+        .add({
+          action: "BOOK_CREATED",
+          targetId: bookId,
+          details: `Book "${title}" added to library.`,
+          timestamp: new Date().toISOString(),
+          module: "Teacher",
+          systemAction: true,
+        });
+    } catch (error) {
+      logger.error("Audit: Failed to log book created event:", { metadata: { error } });
+    }
+  });
+
+  // 🎧 Listen for BEHAVIOR_RECORDED event
+  eventBus.subscribe(EVENTS.BEHAVIOR_RECORDED, async (payload) => {
+    try {
+      const { tenantId, studentId, points, reason } = payload;
+
+      await adminDb
+        .collection("tenants")
+        .doc(tenantId)
+        .collection("audit_logs")
+        .add({
+          action: "BEHAVIOR_RECORDED",
+          targetId: studentId,
+          details: `Behavior recorded for student ${studentId}: ${points} points - ${reason}.`,
+          timestamp: new Date().toISOString(),
+          module: "Teacher",
+          systemAction: true,
+        });
+    } catch (error) {
+      logger.error("Audit: Failed to log behavior recorded event:", { metadata: { error } });
+    }
+  });
 }

@@ -25,7 +25,7 @@ export default function BehaviorPage() { // Keeping file name same as before if 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!studentId || !points || !reason) return;
-    recordMutation.mutate({ studentId, points, reason, type: "skill" }, {
+    recordMutation.mutate({ studentId, points, reason }, {
       onSuccess: () => {
         setStudentId(""); setPoints(0); setReason("");
       }

@@ -9,4 +9,5 @@ export interface ILessonPlanRepository {
   delete(id: string, tenantId: string): Promise<void>;
   count(tenantId: string): Promise<number>;
   exists(id: string, tenantId: string): Promise<boolean>;
+  paginate(tenantId: string, page: number, limit: number, orderBy?: string, direction?: "asc" | "desc"): Promise<{ data: (LessonPlan & { id: string })[]; total: number; page: number; totalPages: number }>;
 }

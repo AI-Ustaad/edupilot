@@ -12,14 +12,13 @@ function getIdFromUrl(req: Request): string {
   return segments[segments.length - 1];
 }
 
-const assignmentService = new AssignmentService();
-
 export const GET = withErrorHandler(
   withAuth(
     withTenant(
       withPermission(PERMISSIONS.assignments.view)(async (req: Request, { tenantId }: TenantContext) => {
+        const service = new AssignmentService();
         const id = getIdFromUrl(req);
-        const assignment = await assignmentService.getAssignmentById(id, tenantId);
+        const assignment = await service.getAssignmentById(id, tenantId);
         if (!assignment) return createErrorResponse(404, "Assignment not found");
         return createSuccessResponse(assignment);
       })
