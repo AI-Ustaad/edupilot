@@ -3,7 +3,7 @@ import { HomeworkRepository } from "@/repositories/homework.repository";
 import { AuditService } from "./AuditService";
 import { ValidationService } from "./ValidationService";
 import { createHomeworkSchema, updateHomeworkSchema } from "@/lib/validation/homework.schema";
-import { eventBus } from "@/lib/events/event-bus";
+import { eventBus } from "@/lib/events";
 import { EVENTS } from "@/lib/events/event-types";
 import { invalidateCache } from "@/lib/cache";
 import type { IHomeworkRepository } from "@/interfaces/IHomeworkRepository";
@@ -41,7 +41,7 @@ export class HomeworkService {
       metadata: { title: parsed.title, classGrade: parsed.classGrade, subject: parsed.subject },
     });
 
-    eventBus.publish(EVENTS.HOMEWORK_CREATED, {
+    await eventBus.publish(EVENTS.HOMEWORK_CREATED, {
       tenantId,
       homeworkId: id,
       title: parsed.title,
@@ -78,7 +78,7 @@ export class HomeworkService {
       metadata: { updates: parsed },
     });
 
-    eventBus.publish(EVENTS.HOMEWORK_UPDATED, {
+    await eventBus.publish(EVENTS.HOMEWORK_UPDATED, {
       tenantId,
       homeworkId: id,
       updates: parsed,
@@ -100,7 +100,7 @@ export class HomeworkService {
       entityType: "homework",
     });
 
-    eventBus.publish(EVENTS.HOMEWORK_DELETED, {
+    await eventBus.publish(EVENTS.HOMEWORK_DELETED, {
       tenantId,
       homeworkId: id,
       deletedBy: userId,

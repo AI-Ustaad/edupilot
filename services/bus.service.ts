@@ -3,7 +3,7 @@ import { BusRepository } from "@/repositories/bus.repository";
 import { AuditService } from "./AuditService";
 import { ValidationService } from "./ValidationService";
 import { invalidateCache } from "@/lib/cache";
-import { eventBus } from "@/lib/events/event-bus";
+import { eventBus } from "@/lib/events";
 import { EVENTS } from "@/lib/events/event-types";
 import { z } from "zod";
 import type { IBusRepository } from "@/interfaces/IBusRepository";
@@ -49,7 +49,7 @@ export class BusService {
       });
     }
 
-    eventBus.publish(EVENTS.BUS_CREATED, {
+    await eventBus.publish(EVENTS.BUS_CREATED, {
       tenantId,
       busId: id,
       busNumber: parsed.busNumber,
@@ -88,7 +88,7 @@ export class BusService {
       });
     }
 
-    eventBus.publish(EVENTS.BUS_UPDATED, {
+    await eventBus.publish(EVENTS.BUS_UPDATED, {
       tenantId,
       busId: id,
       updates: parsed,
@@ -115,7 +115,7 @@ export class BusService {
       });
     }
 
-    eventBus.publish(EVENTS.BUS_DELETED, {
+    await eventBus.publish(EVENTS.BUS_DELETED, {
       tenantId,
       busId: id,
       deletedBy: userId,

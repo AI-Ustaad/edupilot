@@ -2,7 +2,7 @@
 import { ParentsRepository } from "@/repositories/parents.repository";
 import { StudentRepository } from "@/repositories/student.repository";
 import { AuditService } from "./AuditService";
-import { eventBus } from "@/lib/events/event-bus";
+import { eventBus } from "@/lib/events";
 import { EVENTS } from "@/lib/events/event-types";
 import { invalidateCache } from "@/lib/cache";
 import type { IParentRepository } from "@/interfaces/IParentRepository";
@@ -72,7 +72,7 @@ export class ParentsService {
 
     await invalidateCache(`dashboard:${tenantId}`);
 
-    eventBus.publish(EVENTS.PARENT_CREATED, {
+    await eventBus.publish(EVENTS.PARENT_CREATED, {
       tenantId,
       parentId,
       email: data.email,
@@ -96,7 +96,7 @@ export class ParentsService {
 
     await invalidateCache(`dashboard:${tenantId}`);
 
-    eventBus.publish(EVENTS.PARENT_DELETED, {
+    await eventBus.publish(EVENTS.PARENT_DELETED, {
       tenantId,
       parentId,
       deletedBy: userId,

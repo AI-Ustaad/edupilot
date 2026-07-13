@@ -7,12 +7,25 @@ import { registerLifecycleSubscriber } from "@/lib/subscribers/lifecycle.subscri
 import { registerStaffLifecycleSubscriber } from "@/lib/subscribers/staff-lifecycle.subscriber";
 import { registerDashboardSubscriber } from "@/lib/subscribers/dashboard.subscriber";
 
-// Register all background listeners
-registerAuditSubscriber();
-registerNotificationSubscriber();
-registerLifecycleSubscriber();
-registerStaffLifecycleSubscriber();
-registerDashboardSubscriber();
+let subscribersRegistered = false;
+
+/**
+ * Registers process-local subscribers once. Services import this module rather
+ * than the bare bus so every mutation has the same event topology in API and
+ * worker runtimes.
+ */
+function registerSubscribers(): void {
+  if (subscribersRegistered) return;
+  subscribersRegistered = true;
+
+  registerAuditSubscriber();
+  registerNotificationSubscriber();
+  registerLifecycleSubscriber();
+  registerStaffLifecycleSubscriber();
+  registerDashboardSubscriber();
+}
+
+registerSubscribers();
 
 // Export the ready-to-use eventBus
 export { eventBus };

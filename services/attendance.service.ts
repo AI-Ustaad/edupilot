@@ -3,7 +3,7 @@ import { AuditService } from "./AuditService";
 import { ValidationService } from "./ValidationService";
 import { MarkAttendanceSchema, BulkAttendanceSchema } from "@/validators/attendance";
 import { invalidateCache } from "@/lib/cache";
-import { eventBus } from "@/lib/events/event-bus";
+import { eventBus } from "@/lib/events";
 import { EVENTS } from "@/lib/events/event-types";
 import type { IAttendanceRepository } from "@/interfaces/IAttendanceRepository";
 import type { Attendance } from "@/types/attendance";
@@ -41,7 +41,7 @@ export class AttendanceService {
       metadata: { studentId: parsed.studentId, date: parsed.date, status: parsed.status },
     });
 
-    eventBus.publish(EVENTS.ATTENDANCE_MARKED, {
+    await eventBus.publish(EVENTS.ATTENDANCE_MARKED, {
       tenantId,
       attendanceId: id || docId,
       studentId: parsed.studentId,
@@ -78,7 +78,7 @@ export class AttendanceService {
       metadata: { recordCount: records.length, dates: [...new Set(records.map(r => r.date))] },
     });
 
-    eventBus.publish(EVENTS.ATTENDANCE_IMPORTED, {
+    await eventBus.publish(EVENTS.ATTENDANCE_IMPORTED, {
       tenantId,
       recordCount: records.length,
       dates: [...new Set(records.map(r => r.date))],
@@ -123,7 +123,7 @@ export class AttendanceService {
       });
     }
 
-    eventBus.publish(EVENTS.ATTENDANCE_UPDATED, {
+    await eventBus.publish(EVENTS.ATTENDANCE_UPDATED, {
       tenantId,
       attendanceId: id,
       updates: parsed,
@@ -149,7 +149,7 @@ export class AttendanceService {
       });
     }
 
-    eventBus.publish(EVENTS.ATTENDANCE_DELETED, {
+    await eventBus.publish(EVENTS.ATTENDANCE_DELETED, {
       tenantId,
       attendanceId: id,
       studentId: (record as any)?.studentId,

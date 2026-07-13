@@ -4,7 +4,7 @@ import { AuditService } from "./AuditService";
 import { ValidationService } from "./ValidationService";
 import { CreateFeeSchema, UpdateFeeSchema } from "@/validators/fees";
 import { invalidateCache } from "@/lib/cache";
-import { eventBus } from "@/lib/events/event-bus";
+import { eventBus } from "@/lib/events";
 import { EVENTS } from "@/lib/events/event-types";
 import type { IFeesRepository } from "@/interfaces/IFeesRepository";
 import type { Fee } from "@/types/fees";
@@ -45,7 +45,7 @@ export class FeesService {
       });
     }
 
-    eventBus.publish(EVENTS.FEE_COLLECTED, {
+    await eventBus.publish(EVENTS.FEE_COLLECTED, {
       tenantId,
       feeId: id,
       studentId: parsed.studentId,
@@ -107,7 +107,7 @@ export class FeesService {
       });
     }
 
-    eventBus.publish(EVENTS.FEE_UPDATED, {
+    await eventBus.publish(EVENTS.FEE_UPDATED, {
       tenantId,
       feeId: id,
       updates: parsed,
@@ -135,7 +135,7 @@ export class FeesService {
       });
     }
 
-    eventBus.publish(EVENTS.FEE_DELETED, {
+    await eventBus.publish(EVENTS.FEE_DELETED, {
       tenantId,
       feeId: id,
       studentId: (fee as any)?.studentId,

@@ -3,7 +3,7 @@ import { LessonPlanRepository } from "@/repositories/lesson-plan.repository";
 import { AuditService } from "./AuditService";
 import { ValidationService } from "./ValidationService";
 import { CreateLessonPlanSchema, UpdateLessonPlanSchema } from "@/validators/teacher";
-import { eventBus } from "@/lib/events/event-bus";
+import { eventBus } from "@/lib/events";
 import { EVENTS } from "@/lib/events/event-types";
 import { invalidateCache } from "@/lib/cache";
 import type { ILessonPlanRepository } from "@/interfaces/ILessonPlanRepository";
@@ -41,7 +41,7 @@ export class LessonPlanService {
       metadata: { topic: parsed.topic, date: parsed.date },
     });
 
-    eventBus.publish(EVENTS.LESSON_PLAN_CREATED, {
+    await eventBus.publish(EVENTS.LESSON_PLAN_CREATED, {
       tenantId,
       lessonPlanId: id,
       topic: parsed.topic,
@@ -74,7 +74,7 @@ export class LessonPlanService {
       metadata: { updates: parsed },
     });
 
-    eventBus.publish(EVENTS.LESSON_PLAN_UPDATED, {
+    await eventBus.publish(EVENTS.LESSON_PLAN_UPDATED, {
       tenantId,
       lessonPlanId: id,
       topic: parsed.topic,
@@ -95,7 +95,7 @@ export class LessonPlanService {
       entityType: "lesson_plan",
     });
 
-    eventBus.publish(EVENTS.LESSON_PLAN_DELETED, {
+    await eventBus.publish(EVENTS.LESSON_PLAN_DELETED, {
       tenantId,
       lessonPlanId: id,
       deletedBy: userId,

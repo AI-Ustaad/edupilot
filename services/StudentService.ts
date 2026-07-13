@@ -76,7 +76,7 @@ export class StudentService {
     await invalidateCache(`dashboard:${tenantId}`);
 
     // Publish event
-    eventBus.publish(EVENTS.STUDENT_CREATED, {
+    await eventBus.publish(EVENTS.STUDENT_CREATED, {
       tenantId,
       studentId: id,
       studentData: student,
@@ -125,7 +125,7 @@ export class StudentService {
     });
 
     // Publish STUDENT_UPDATED event
-    eventBus.publish(EVENTS.STUDENT_UPDATED, {
+    await eventBus.publish(EVENTS.STUDENT_UPDATED, {
       tenantId,
       studentId: id,
       updates: validation.data,
@@ -133,7 +133,7 @@ export class StudentService {
 
     // Detect field-level changes and publish specific events
     if (validation.data.classGrade && validation.data.classGrade !== existing.classGrade) {
-      eventBus.publish(EVENTS.CLASS_CHANGED, {
+      await eventBus.publish(EVENTS.CLASS_CHANGED, {
         tenantId,
         studentId: id,
         oldClass: existing.classGrade,
@@ -141,7 +141,7 @@ export class StudentService {
       });
     }
     if (validation.data.section && validation.data.section !== existing.section) {
-      eventBus.publish(EVENTS.SECTION_CHANGED, {
+      await eventBus.publish(EVENTS.SECTION_CHANGED, {
         tenantId,
         studentId: id,
         oldSection: existing.section,
@@ -149,7 +149,7 @@ export class StudentService {
       });
     }
     if (validation.data.rollNumber !== undefined && validation.data.rollNumber !== existing.rollNumber) {
-      eventBus.publish(EVENTS.ROLL_NUMBER_CHANGED, {
+      await eventBus.publish(EVENTS.ROLL_NUMBER_CHANGED, {
         tenantId,
         studentId: id,
         oldRollNumber: existing.rollNumber,
@@ -179,7 +179,7 @@ export class StudentService {
     });
 
     // Publish event
-    eventBus.publish(EVENTS.STUDENT_DELETED, {
+    await eventBus.publish(EVENTS.STUDENT_DELETED, {
       tenantId,
       studentId: id,
       studentData: { fullName: student.fullName, classGrade: student.classGrade, section: student.section },
@@ -261,7 +261,7 @@ export class StudentService {
       });
 
       // Publish promotion event
-      eventBus.publish(EVENTS.STUDENT_PROMOTED, {
+      await eventBus.publish(EVENTS.STUDENT_PROMOTED, {
         tenantId,
         studentIds: promoted,
         newClassGrade,
@@ -348,14 +348,14 @@ export class StudentService {
     });
 
     // Publish events
-    eventBus.publish(EVENTS.ADMISSION_APPROVED, {
+    await eventBus.publish(EVENTS.ADMISSION_APPROVED, {
       tenantId,
       studentId,
       studentData: { fullName: student.fullName, classGrade: student.classGrade, section: student.section },
     });
 
     // Publish STUDENT_ENROLLED for full lifecycle cascade
-    eventBus.publish(EVENTS.STUDENT_ENROLLED, {
+    await eventBus.publish(EVENTS.STUDENT_ENROLLED, {
       tenantId,
       studentId,
       studentData: {
@@ -367,7 +367,7 @@ export class StudentService {
       approvedBy: userId,
     });
 
-    eventBus.publish(EVENTS.STUDENT_UPDATED, {
+    await eventBus.publish(EVENTS.STUDENT_UPDATED, {
       tenantId,
       studentId,
       updates: { admissionStatus: "approved" },
@@ -396,7 +396,7 @@ export class StudentService {
     });
 
     // Publish event
-    eventBus.publish(EVENTS.STUDENT_UPDATED, {
+    await eventBus.publish(EVENTS.STUDENT_UPDATED, {
       tenantId,
       studentId,
       updates: { admissionStatus: "rejected" },

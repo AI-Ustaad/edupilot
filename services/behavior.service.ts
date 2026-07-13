@@ -4,7 +4,7 @@ import { StudentRepository } from "@/repositories/student.repository";
 import { AuditService } from "./AuditService";
 import { ValidationService } from "./ValidationService";
 import { RecordBehaviorSchema } from "@/validators/teacher";
-import { eventBus } from "@/lib/events/event-bus";
+import { eventBus } from "@/lib/events";
 import { EVENTS } from "@/lib/events/event-types";
 import { invalidateCache } from "@/lib/cache";
 import type { IBehaviorRepository } from "@/interfaces/IBehaviorRepository";
@@ -49,7 +49,7 @@ export class BehaviorService {
       metadata: { points: parsed.points, reason: parsed.reason },
     });
 
-    eventBus.publish(EVENTS.BEHAVIOR_RECORDED, {
+    await eventBus.publish(EVENTS.BEHAVIOR_RECORDED, {
       tenantId,
       studentId: parsed.studentId,
       points: parsed.points,

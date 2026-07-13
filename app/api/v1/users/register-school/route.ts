@@ -4,7 +4,7 @@ import { adminDb, adminAuth, dbTimestamp } from "@/lib/firebase-admin";
 import { getSessionUser } from "@/lib/auth/auth-server";
 import { logger } from "@/lib/logger/logger";
 import { createSuccessResponse, createErrorResponse } from "@/lib/api/response";
-import { eventBus } from "@/lib/events/event-bus";
+import { eventBus } from "@/lib/events";
 import { EVENTS } from "@/lib/events/event-types";
 import { AcademicYearRepository } from "@/repositories/academic-year.repository";
 
@@ -172,7 +172,7 @@ export async function POST(req: NextRequest) {
     });
 
     // 10. Publish SCHOOL_SETUP_COMPLETED event
-    eventBus.publish(EVENTS.SCHOOL_SETUP_COMPLETED, {
+    await eventBus.publish(EVENTS.SCHOOL_SETUP_COMPLETED, {
       tenantId,
       schoolName,
       classesCount: classes.length,

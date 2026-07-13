@@ -5,7 +5,7 @@ import { AuditService } from "./AuditService";
 import { ValidationService } from "./ValidationService";
 import { SaveMarkSchema, BulkPublishSchema, SkillsSchema } from "@/validators/marks";
 import { invalidateCache } from "@/lib/cache";
-import { eventBus } from "@/lib/events/event-bus";
+import { eventBus } from "@/lib/events";
 import { EVENTS } from "@/lib/events/event-types";
 import { sendEmail } from "@/lib/email";
 import { logger } from "@/lib/logger/logger";
@@ -30,7 +30,7 @@ export class MarksService {
     await invalidateCache(`results:${tenantId}`);
 
     await this.audit.log({ action: "mark.saved", userId, tenantId, entityId: markDocId, entityType: "mark", metadata: { studentId: parsed.studentId, subject: parsed.subject, term: parsed.term } });
-    eventBus.publish(EVENTS.MARKS_ENTERED, { tenantId, markId: markDocId, studentId: parsed.studentId, subject: parsed.subject, term: parsed.term, marksObtained: parsed.marksObtained, totalMarks: parsed.totalMarks });
+    await eventBus.publish(EVENTS.MARKS_ENTERED, { tenantId, markId: markDocId, studentId: parsed.studentId, subject: parsed.subject, term: parsed.term, marksObtained: parsed.marksObtained, totalMarks: parsed.totalMarks });
 
     return { id: markDocId, message: "Mark saved successfully" };
   }
@@ -45,7 +45,7 @@ export class MarksService {
     await invalidateCache(`dashboard:${tenantId}`);
     await invalidateCache(`results:${tenantId}`);
     await this.audit.log({ action: "mark.deleted", userId, tenantId, entityId: id, entityType: "mark", metadata: { studentId: mark?.studentId, subject: mark?.subject, term: mark?.term } });
-    eventBus.publish(EVENTS.MARKS_DELETED, { tenantId, markId: id, studentId: mark?.studentId, subject: mark?.subject, term: mark?.term, deletedBy: userId });
+    await eventBus.publish(EVENTS.MARKS_DELETED, { tenantId, markId: id, studentId: mark?.studentId, subject: mark?.subject, term: mark?.term, deletedBy: userId });
   }
 
   async saveSkills(data: unknown, tenantId: string, userId: string): Promise<void> {
@@ -101,7 +101,7 @@ export class MarksService {
     await invalidateCache(`results:${tenantId}`);
     await invalidateCache(`dashboard:${tenantId}`);
 
-    eventBus.publish(EVENTS.RESULT_PUBLISHED, { tenantId, classGrade: parsed.classGrade, section: parsed.section, term: parsed.term, studentCount: studentIds.length, publishedBy: userId });
+    await eventBus.publish(EVENTS.RESULT_PUBLISHED, { tenantId, classGrade: parsed.classGrade, section: parsed.section, term: parsed.term, studentCount: studentIds.length, publishedBy: userId });
     await this.audit.log({ action: "result.published", userId, tenantId, entityType: "result", metadata: { classGrade: parsed.classGrade, section: parsed.section, term: parsed.term, studentCount: studentIds.length } });
 
     return { students: studentIds.length, emailsSent: parentEmails.length };

@@ -1,7 +1,7 @@
 import { adminDb, dbTimestamp } from '@/lib/firebase-admin';
 import { PLANS, Plan } from '@/lib/config/subscription-plans';
 import { AuditService } from './AuditService';
-import { eventBus } from '@/lib/events/event-bus';
+import { eventBus } from '@/lib/events';
 import { EVENTS } from '@/lib/events/event-types';
 import { invalidateCache } from '@/lib/cache';
 

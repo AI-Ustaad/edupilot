@@ -14,7 +14,7 @@ import {
 import { PaginatedResult } from "@/types/api";
 import { logger } from "@/lib/logger/logger";
 import { serializeForFirestore } from "@/lib/firestore/firestoreSerializer";
-import { eventBus } from "@/lib/events/event-bus";
+import { eventBus } from "@/lib/events";
 import { EVENTS } from "@/lib/events/event-types";
 
 export class StaffService {
@@ -164,7 +164,7 @@ export class StaffService {
       metadata: { fullName: validation.data?.personal?.fullName },
     });
 
-    eventBus.publish(EVENTS.STAFF_CREATED, {
+    await eventBus.publish(EVENTS.STAFF_CREATED, {
       staffId: id,
       tenantId,
       userId,
@@ -172,7 +172,7 @@ export class StaffService {
     });
 
     // Publish STAFF_ACTIVATED for lifecycle cascade
-    eventBus.publish(EVENTS.STAFF_ACTIVATED, {
+    await eventBus.publish(EVENTS.STAFF_ACTIVATED, {
       staffId: id,
       tenantId,
       userId,
@@ -217,7 +217,7 @@ export class StaffService {
       metadata: { updatedFields: Object.keys(data) },
     });
 
-    eventBus.publish(EVENTS.STAFF_UPDATED, {
+    await eventBus.publish(EVENTS.STAFF_UPDATED, {
       staffId: id,
       tenantId,
       userId: userId || "system",
@@ -238,7 +238,7 @@ export class StaffService {
       metadata: { fullName: staff.personal?.fullName },
     });
 
-    eventBus.publish(EVENTS.STAFF_DELETED, {
+    await eventBus.publish(EVENTS.STAFF_DELETED, {
       staffId: id,
       tenantId,
       userId: userId || "system",

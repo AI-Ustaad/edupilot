@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { verifyQStashSignature } from "@/lib/qstash-verify";
 import { runReportWorker } from "@/lib/workers/report.worker";
 import { logger } from "@/lib/logger/logger";
+import { EventWorker } from "@/lib/workers/event.worker";
 
 // Vercel کو بتائیں کہ اس API کو ٹائم آؤٹ نہ کرے (Maximum allowed time for Hobby/Pro)
 export const maxDuration = 300; // 5 minutes
@@ -20,6 +21,9 @@ export async function POST(req: Request) {
     switch (body.type) {
       case "REPORT_GENERATION":
         await runReportWorker(body.data);
+        break;
+      case "EVENT_OUTBOX":
+        await new EventWorker().processBatch(body.data?.limit ?? 50);
         break;
       // مستقبل میں: case "BULK_IMPORT": await runImportWorker(body.data); break;
       default:

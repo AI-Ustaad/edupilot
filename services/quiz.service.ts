@@ -3,7 +3,7 @@ import { QuizRepository } from "@/repositories/quiz.repository";
 import { AuditService } from "./AuditService";
 import { ValidationService } from "./ValidationService";
 import { CreateQuizSchema, SubmitQuizSchema } from "@/validators/quiz";
-import { eventBus } from "@/lib/events/event-bus";
+import { eventBus } from "@/lib/events";
 import { EVENTS } from "@/lib/events/event-types";
 import type { IQuizRepository } from "@/interfaces/IQuizRepository";
 import type { Quiz } from "@/types/quiz";
@@ -39,7 +39,7 @@ export class QuizService {
       metadata: { title: parsed.title, classGrade: parsed.classGrade, subject: parsed.subject },
     });
 
-    eventBus.publish(EVENTS.QUIZ_CREATED, {
+    await eventBus.publish(EVENTS.QUIZ_CREATED, {
       tenantId,
       quizId: id,
       title: parsed.title,
@@ -105,7 +105,7 @@ export class QuizService {
       metadata: { quizId: parsed.quizId, studentId: parsed.studentId, percentage },
     });
 
-    eventBus.publish(EVENTS.QUIZ_SUBMITTED, {
+    await eventBus.publish(EVENTS.QUIZ_SUBMITTED, {
       tenantId,
       quizId: parsed.quizId,
       studentId: parsed.studentId,
@@ -126,7 +126,7 @@ export class QuizService {
       entityType: "quiz",
     });
 
-    eventBus.publish(EVENTS.QUIZ_DELETED, {
+    await eventBus.publish(EVENTS.QUIZ_DELETED, {
       tenantId,
       quizId: id,
     });

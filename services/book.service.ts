@@ -4,7 +4,7 @@ import { AuditService } from "./AuditService";
 import { ValidationService } from "./ValidationService";
 import { CreateBookSchema, UpdateBookSchema } from "@/validators/teacher";
 import { invalidateCache } from "@/lib/cache";
-import { eventBus } from "@/lib/events/event-bus";
+import { eventBus } from "@/lib/events";
 import { EVENTS } from "@/lib/events/event-types";
 import type { IBookRepository } from "@/interfaces/IBookRepository";
 import type { Book } from "@/types/teacher";
@@ -47,7 +47,7 @@ export class BookService {
       metadata: { title: parsed.title, author: parsed.author },
     });
 
-    eventBus.publish(EVENTS.BOOK_CREATED, {
+    await eventBus.publish(EVENTS.BOOK_CREATED, {
       tenantId,
       bookId: id,
       title: parsed.title,
@@ -75,7 +75,7 @@ export class BookService {
       metadata: { updates: parsed },
     });
 
-    eventBus.publish(EVENTS.BOOK_UPDATED, {
+    await eventBus.publish(EVENTS.BOOK_UPDATED, {
       tenantId,
       bookId: id,
       updates: parsed,
@@ -95,7 +95,7 @@ export class BookService {
       entityType: "book",
     });
 
-    eventBus.publish(EVENTS.BOOK_DELETED, {
+    await eventBus.publish(EVENTS.BOOK_DELETED, {
       tenantId,
       bookId: id,
       deletedBy: userId,

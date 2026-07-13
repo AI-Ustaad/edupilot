@@ -113,6 +113,20 @@ service cloud.firestore {
       allow write: if isSuperAdmin();
     }
 
+    // Durable outbox infrastructure is server-only. Workers use the Admin SDK;
+    // browser clients must never inspect another tenant's event payloads.
+    match /events/{eventId} {
+      allow read, write: if false;
+    }
+
+    match /processed_events/{eventId} {
+      allow read, write: if false;
+    }
+
+    match /dead_letter_events/{eventId} {
+      allow read, write: if false;
+    }
+
     // Logs - audit trail, admin only
     match /logs/{logId} {
       allow read: if isAuthenticated() && (isAdmin() || isSuperAdmin());

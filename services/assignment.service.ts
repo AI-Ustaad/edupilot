@@ -4,7 +4,7 @@ import { AuditService } from "./AuditService";
 import { ValidationService } from "./ValidationService";
 import { CreateAssignmentSchema, UpdateAssignmentSchema } from "@/validators/teacher";
 import { invalidateCache } from "@/lib/cache";
-import { eventBus } from "@/lib/events/event-bus";
+import { eventBus } from "@/lib/events";
 import { EVENTS } from "@/lib/events/event-types";
 import type { IAssignmentRepository } from "@/interfaces/IAssignmentRepository";
 import type { Assignment } from "@/types/teacher";
@@ -42,7 +42,7 @@ export class AssignmentService {
       metadata: { title: parsed.title, classGrade: parsed.classGrade, subject: parsed.subject },
     });
 
-    eventBus.publish(EVENTS.ASSIGNMENT_CREATED, {
+    await eventBus.publish(EVENTS.ASSIGNMENT_CREATED, {
       tenantId,
       assignmentId: id,
       title: parsed.title,
@@ -76,7 +76,7 @@ export class AssignmentService {
       metadata: { updates: parsed },
     });
 
-    eventBus.publish(EVENTS.ASSIGNMENT_UPDATED, {
+    await eventBus.publish(EVENTS.ASSIGNMENT_UPDATED, {
       tenantId,
       assignmentId: id,
       updates: parsed,
@@ -95,7 +95,7 @@ export class AssignmentService {
       entityType: "assignment",
     });
 
-    eventBus.publish(EVENTS.ASSIGNMENT_DELETED, {
+    await eventBus.publish(EVENTS.ASSIGNMENT_DELETED, {
       tenantId,
       assignmentId: id,
       deletedBy: userId,
@@ -130,7 +130,7 @@ export class AssignmentService {
       metadata: { assignmentId, studentId },
     });
 
-    eventBus.publish(EVENTS.ASSIGNMENT_SUBMITTED, {
+    await eventBus.publish(EVENTS.ASSIGNMENT_SUBMITTED, {
       tenantId,
       assignmentId,
       studentId,
