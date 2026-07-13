@@ -335,6 +335,9 @@ export class StudentService {
       tenantId
     );
 
+    // Invalidate dashboard cache
+    await invalidateCache(`dashboard:${tenantId}`);
+
     await this.audit.log({
       action: "student.admission_approved",
       userId,
@@ -350,6 +353,20 @@ export class StudentService {
       studentId,
       studentData: { fullName: student.fullName, classGrade: student.classGrade, section: student.section },
     });
+
+    // Publish STUDENT_ENROLLED for full lifecycle cascade
+    eventBus.publish(EVENTS.STUDENT_ENROLLED, {
+      tenantId,
+      studentId,
+      studentData: {
+        fullName: student.fullName,
+        classGrade: student.classGrade,
+        section: student.section,
+        rollNumber: student.rollNumber,
+      },
+      approvedBy: userId,
+    });
+
     eventBus.publish(EVENTS.STUDENT_UPDATED, {
       tenantId,
       studentId,

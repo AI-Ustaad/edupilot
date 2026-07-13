@@ -44,4 +44,23 @@ export class FeesRepository extends BaseRepository<Fee> implements IFeesReposito
     const snapshot = await query.get();
     return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Fee & { id: string }));
   }
+
+  async getTotalRevenue(tenantId: string): Promise<number> {
+    const snapshot = await this.db
+      .collection(this.collectionName)
+      .where("tenantId", "==", tenantId)
+      .select("amountPaid")
+      .get();
+    return snapshot.docs.reduce((sum, doc) => sum + (doc.data().amountPaid || 0), 0);
+  }
+
+  async getRecentPayments(tenantId: string, limit = 5): Promise<(Fee & { id: string })[]> {
+    const snapshot = await this.db
+      .collection(this.collectionName)
+      .where("tenantId", "==", tenantId)
+      .orderBy("createdAt", "desc")
+      .limit(limit)
+      .get();
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Fee & { id: string }));
+  }
 }

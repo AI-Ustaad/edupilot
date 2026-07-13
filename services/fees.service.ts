@@ -137,22 +137,16 @@ export class FeesService {
   }
 
   async getTotalRevenue(tenantId: string): Promise<number> {
-    const allFees = await this.repo.findAll(tenantId);
-    return allFees.reduce((sum, fee) => sum + (fee.amountPaid || 0), 0);
+    return (this.repo as FeesRepository).getTotalRevenue(tenantId);
   }
 
   async getRecentPayments(tenantId: string, limit = 5): Promise<any[]> {
-    const allFees = await this.repo.findAll(tenantId);
-    allFees.sort((a, b) => {
-      const dateA = (a as any).createdAt?.toDate?.() || 0;
-      const dateB = (b as any).createdAt?.toDate?.() || 0;
-      return dateB - dateA;
-    });
-    return allFees.slice(0, limit).map(fee => ({
+    const fees = await (this.repo as FeesRepository).getRecentPayments(tenantId, limit);
+    return fees.map(fee => ({
       id: fee.id,
-      studentName: fee.studentName || "Unknown",
-      amount: fee.amountPaid || 0,
-      date: fee.feeMonth || "",
+      studentName: (fee as any).studentName || "Unknown",
+      amount: (fee as any).amountPaid || 0,
+      date: (fee as any).feeMonth || "",
       timestamp: (fee as any).createdAt?.toDate?.().toISOString() || "",
     }));
   }

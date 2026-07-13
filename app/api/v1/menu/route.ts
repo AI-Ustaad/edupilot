@@ -1,6 +1,8 @@
 export const dynamic = 'force-dynamic';
 import { adminDb } from "@/lib/firebase-admin";
-import { withAuth, withTenant, withErrorHandler, withRole } from "@/route-helpers";
+import { withAuth, withTenant, withErrorHandler } from "@/route-helpers";
+import { withPermission } from "@/lib/auth/rbac";
+import { PERMISSIONS } from "@/lib/auth/permissions";
 import { createSuccessResponse, createErrorResponse, createApiResponse } from "@/lib/api/response";
 import type { TenantContext } from "@/types/api";
 
@@ -16,7 +18,7 @@ export const GET = withErrorHandler(
 export const POST = withErrorHandler(
   withAuth(
     withTenant(
-      withRole(["admin"])(async (req: Request, { tenantId }: TenantContext) => {
+      withPermission(PERMISSIONS.menu.update)(async (req: Request, { tenantId }: TenantContext) => {
         const menu = await req.json();
         await adminDb.collection("customMenus").doc(tenantId).set(menu, { merge: true });
         return createSuccessResponse(null, { message: "Menu saved" });

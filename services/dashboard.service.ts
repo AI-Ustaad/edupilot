@@ -1,4 +1,4 @@
-// services/dashboard.service.ts
+import { adminDb } from "@/lib/firebase-admin";
 import { StudentService } from "./StudentService";
 import { StudentRepository } from "@/repositories/student.repository";
 import { StaffService } from "./StaffService";
@@ -34,7 +34,7 @@ export class DashboardService {
         totalRevenue,
         todayAttendance,
         attendanceTrend,
-        allStudents,
+        classCountMap,
         recentPayments,
       ] = await Promise.all([
         this.studentService.count(tenantId),
@@ -42,38 +42,60 @@ export class DashboardService {
         this.feesService.getTotalRevenue(tenantId),
         this.attendanceService.getTodayAttendance(tenantId),
         this.attendanceService.getWeeklyAttendanceTrend(tenantId),
-        this.studentService.paginate(tenantId, 1, 9999),
+        this.studentService.countByClass(tenantId),
         this.feesService.getRecentPayments(tenantId, 5),
       ]);
 
-      const classMap: Record<string, number> = {};
-      allStudents.data.forEach((student: any) => {
-        const cls = student.classGrade || "Unknown";
-        classMap[cls] = (classMap[cls] || 0) + 1;
-      });
-      const classDistribution = Object.entries(classMap).map(([name, value]) => ({ name, value }));
+      // Build class distribution from countByClass (no full student fetch)
+      const classDistribution = Object.entries(classCountMap || {}).map(([name, value]) => ({
+        name: name || "Unknown",
+        value: value || 0,
+      }));
 
-      // 🔥 حقیقی اوسط، زیادہ سے زیادہ، کم سے کم — اب کوئی جعلی نمبر نہیں
-      const attendanceStats = attendanceTrend.length > 0
+      // Null-safe attendance stats
+      const safeAttendanceTrend = attendanceTrend || [];
+      const attendanceStats = safeAttendanceTrend.length > 0
         ? {
-            avg: Math.round(attendanceTrend.reduce((s, d) => s + d.percent, 0) / attendanceTrend.length),
-            highest: Math.max(...attendanceTrend.map(d => d.percent)),
-            lowest: Math.min(...attendanceTrend.map(d => d.percent)),
+            avg: Math.round(safeAttendanceTrend.reduce((s, d) => s + (d.percent || 0), 0) / safeAttendanceTrend.length),
+            highest: Math.max(...safeAttendanceTrend.map(d => d.percent || 0)),
+            lowest: Math.min(...safeAttendanceTrend.map(d => d.percent || 0)),
           }
         : { avg: 0, highest: 0, lowest: 0 };
 
+      // Null-safe today attendance
+      const safeTodayAttendance = todayAttendance || { present: 0, absent: 0, late: 0, total: 0 };
+
       return {
-        students: studentsCount,
-        staff: staffCount,
-        revenue: totalRevenue,
-        todayAttendance,
-        attendanceTrend,
-        attendanceStats,             // ← یہاں حقیقی ڈیٹا
-        feeMonth: { collected: totalRevenue, pending: 0, total: totalRevenue },
+        students: studentsCount || 0,
+        staff: staffCount || 0,
+        revenue: totalRevenue || 0,
+        todayAttendance: safeTodayAttendance,
+        attendanceTrend: safeAttendanceTrend,
+        attendanceStats,
+        feeMonth: { collected: totalRevenue || 0, pending: 0, total: totalRevenue || 0 },
         classFeeSummary: [],
-        recentPayments,
+        recentPayments: recentPayments || [],
         classDistribution,
       };
     });
+  }
+
+  async rebuildStats(tenantId: string) {
+    const [studentCount, staffCount, totalRevenue] = await Promise.all([
+      this.studentService.count(tenantId),
+      this.staffService.count(tenantId),
+      this.feesService.getTotalRevenue(tenantId),
+    ]);
+
+    const statsRef = adminDb.collection("tenants").doc(tenantId).collection("dashboard").doc("stats");
+    await statsRef.set({
+      students: studentCount,
+      staff: staffCount,
+      revenue: totalRevenue,
+      lastRebuildAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
+
+    return { students: studentCount, staff: staffCount, revenue: totalRevenue };
   }
 }

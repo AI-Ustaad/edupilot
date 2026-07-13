@@ -1,6 +1,8 @@
 export const dynamic = 'force-dynamic';
 import { adminDb } from "@/lib/firebase-admin";
-import { withAuth, withTenant, withErrorHandler, withRole } from "@/route-helpers";
+import { withAuth, withTenant, withErrorHandler } from "@/route-helpers";
+import { withPermission } from "@/lib/auth/rbac";
+import { PERMISSIONS } from "@/lib/auth/permissions";
 import { createSuccessResponse, createErrorResponse, createApiResponse } from "@/lib/api/response";
 import type { TenantContext } from "@/types/api";
 import jsPDF from "jspdf";
@@ -8,7 +10,7 @@ import jsPDF from "jspdf";
 export const POST = withErrorHandler(
   withAuth(
     withTenant(
-      withRole(["admin"])(async (req: Request, { tenantId }: TenantContext) => {
+      withPermission(PERMISSIONS.exams.generate)(async (req: Request, { tenantId }: TenantContext) => {
         const { classGrade, section, examTerm, schoolName } = await req.json();
         if (!classGrade || !section || !examTerm) {
           return createErrorResponse(400, "Missing fields");

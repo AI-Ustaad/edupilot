@@ -1,60 +1,36 @@
-// app/api/v1/admin/feature-flags/route.ts
-import { NextRequest, NextResponse } from "next/server";
-import { adminDb } from "@/lib/firebase-admin";
-import { getSessionUser } from "@/lib/auth/auth-server";
-import { logger } from "@/lib/logger/logger";
+import { withErrorHandler, withAuth, withTenant } from "@/route-helpers";
+import { withPermission } from "@/lib/auth/rbac";
+import { PERMISSIONS } from "@/lib/auth/permissions";
+import { createSuccessResponse, createErrorResponse } from "@/lib/api/response";
+import { FeatureFlagService } from "@/services/featureFlag.service";
+import type { TenantContext } from "@/types/api";
 
 export const runtime = "nodejs";
 
-// 📥 GET: Fetch all feature flags for the tenant
-export async function GET(req: NextRequest) {
-  try {
-    const user = await getSessionUser();
-    if (!user || !user.tenantId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+export const GET = withErrorHandler(
+  withAuth(
+    withTenant(
+      withPermission(PERMISSIONS.featureFlags.view)(async (_req: Request, { tenantId }: TenantContext) => {
+        const service = new FeatureFlagService();
+        const flags = await service.getAllFlags(tenantId);
+        return createSuccessResponse(flags);
+      })
+    )
+  )
+);
 
-    const docRef = adminDb.collection("tenants").doc(user.tenantId).collection("settings").doc("feature-flags");
-    const docSnap = await docRef.get();
-
-    if (!docSnap.exists) {
-      // If no flags are set, return empty object (default true will be handled by frontend)
-      return NextResponse.json({ success: true, data: {} });
-    }
-
-    return NextResponse.json({ success: true, data: docSnap.data() });
-  } catch (error: any) {
-    logger.error("Feature Flags GET Error:", { metadata: { error: error.message } });
-    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
-  }
-}
-
-// 📤 POST: Update a specific feature flag
-export async function POST(req: NextRequest) {
-  try {
-    const user = await getSessionUser();
-    if (!user || !user.tenantId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const { feature, enabled } = await req.json();
-
-    if (!feature || typeof enabled !== "boolean") {
-      return NextResponse.json({ error: "Feature name and enabled status are required" }, { status: 400 });
-    }
-
-    const docRef = adminDb.collection("tenants").doc(user.tenantId).collection("settings").doc("feature-flags");
-    
-    // Merge the specific flag into the document
-    await docRef.set({
-      [feature]: enabled,
-      updatedAt: new Date().toISOString()
-    }, { merge: true });
-
-    return NextResponse.json({ success: true, message: "Feature flag updated successfully" });
-
-  } catch (error: any) {
-    logger.error("Feature Flags POST Error:", { metadata: { error: error.message } });
-    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
-  }
-}
+export const POST = withErrorHandler(
+  withAuth(
+    withTenant(
+      withPermission(PERMISSIONS.featureFlags.update)(async (req: Request, { tenantId }: TenantContext) => {
+        const { feature, enabled } = await req.json();
+        if (!feature || typeof enabled !== "boolean") {
+          return createErrorResponse(400, "Feature name and enabled status are required");
+        }
+        const service = new FeatureFlagService();
+        await service.setFeature(tenantId, feature, enabled);
+        return createSuccessResponse(null, { message: "Feature flag updated successfully" });
+      })
+    )
+  )
+);

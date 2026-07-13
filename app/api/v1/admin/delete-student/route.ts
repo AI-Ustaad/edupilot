@@ -1,5 +1,7 @@
 export const dynamic = 'force-dynamic';
-import { withAuth, withTenant, withErrorHandler, withRole } from "@/route-helpers";
+import { withAuth, withTenant, withErrorHandler } from "@/route-helpers";
+import { withPermission } from "@/lib/auth/rbac";
+import { PERMISSIONS } from "@/lib/auth/permissions";
 import { createSuccessResponse, createErrorResponse } from "@/lib/api/response";
 import { StudentService } from "@/services/StudentService";
 import { AttendanceService } from "@/services/attendance.service";
@@ -12,7 +14,7 @@ import type { TenantContext } from "@/types/api";
 export const DELETE = withErrorHandler(
   withAuth(
     withTenant(
-      withRole(["admin"])(async (req: Request, { tenantId, user }: TenantContext) => {
+      withPermission(PERMISSIONS.students.delete)(async (req: Request, { tenantId, user }: TenantContext) => {
         const { searchParams } = new URL(req.url);
         const studentId = searchParams.get("id");
         if (!studentId) {

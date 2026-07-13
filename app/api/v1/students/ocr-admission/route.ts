@@ -1,6 +1,8 @@
 export const dynamic = 'force-dynamic';
 import { createWorker } from "tesseract.js";
-import { withAuth, withTenant, withErrorHandler, withRole } from "@/route-helpers";
+import { withAuth, withTenant, withErrorHandler } from "@/route-helpers";
+import { withPermission } from "@/lib/auth/rbac";
+import { PERMISSIONS } from "@/lib/auth/permissions";
 import { createSuccessResponse, createErrorResponse, createApiResponse } from "@/lib/api/response";
 import type { TenantContext } from "@/types/api";
 
@@ -40,7 +42,7 @@ function extractStudentFields(text: string) {
 export const POST = withErrorHandler(
   withAuth(
     withTenant(
-      withRole(["admin"])(async (req: Request, { tenantId }: TenantContext) => {
+      withPermission(PERMISSIONS.admissions.create)(async (req: Request, { tenantId }: TenantContext) => {
         const formData = await req.formData();
         const file = formData.get("file") as File;
         if (!file) return createErrorResponse(400, "No file provided");

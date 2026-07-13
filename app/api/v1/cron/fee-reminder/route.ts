@@ -1,15 +1,15 @@
 export const dynamic = 'force-dynamic';
-import { NextResponse } from "next/server";
 import { FeesRepository } from "@/repositories/fees.repository";
 import { StudentRepository } from "@/repositories/student.repository";
 import { sendEmail } from "@/lib/email";
 import { adminDb } from "@/lib/firebase-admin";
+import { createSuccessResponse, createErrorResponse } from "@/lib/api/response";
 
 export async function GET(req: Request) {
   // Basic security – verify cron secret
   const authHeader = req.headers.get("authorization");
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return createErrorResponse(401, "Unauthorized");
   }
 
   const today = new Date().toISOString().slice(0, 10);
@@ -45,5 +45,5 @@ export async function GET(req: Request) {
     }
   }
 
-  return NextResponse.json({ success: true, processed });
+  return createSuccessResponse({ processed });
 }

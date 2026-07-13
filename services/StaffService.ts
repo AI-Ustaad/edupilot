@@ -171,6 +171,16 @@ export class StaffService {
       fullName: validation.data?.personal?.fullName,
     });
 
+    // Publish STAFF_ACTIVATED for lifecycle cascade
+    eventBus.publish(EVENTS.STAFF_ACTIVATED, {
+      staffId: id,
+      tenantId,
+      userId,
+      fullName: validation.data?.personal?.fullName,
+      department: validation.data?.department,
+      designation: validation.data?.designation,
+    });
+
     return id;
   }
 

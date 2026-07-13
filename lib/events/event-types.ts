@@ -48,6 +48,12 @@ export const EVENTS = {
   BUS_UPDATED: "bus.updated",
   BUS_DELETED: "bus.deleted",
   FEE_UPDATED: "fee.updated",
+  SUBSCRIPTION_ACTIVATED: "subscription.activated",
+  SUBSCRIPTION_CANCELED: "subscription.canceled",
+  SUBSCRIPTION_UPDATED: "subscription.updated",
+  SCHOOL_SETUP_COMPLETED: "school.setup_completed",
+  STUDENT_ENROLLED: "student.enrolled",
+  NOTIFICATION_CREATED: "notification.created",
 } as const;
 
 // Typescript Magic for strict typing

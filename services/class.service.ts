@@ -1,19 +1,25 @@
 // services/class.service.ts
-import { classRepository } from "@/repositories/class.repository";
+import { ClassRepository } from "@/repositories/class.repository";
 import { safeArray } from "@/lib/api/safeResponse";
 
 export class ClassService {
-  async getAllClasses() {
-    const response = await classRepository.getAll();
-    return safeArray(response); // Business Rule: ہمیشہ Array Return کرنا ہے
+  private repo: ClassRepository;
+
+  constructor(repo?: ClassRepository) {
+    this.repo = repo ?? new ClassRepository();
   }
 
-  async createClass(data: { classGrade: string; sectionName: string }) {
-    return classRepository.create(data);
+  async getAllClasses(tenantId: string) {
+    const records = await this.repo.getAll(tenantId);
+    return safeArray(records);
   }
 
-  async deleteClass(id: string) {
-    return classRepository.delete(id);
+  async createClass(data: { classGrade: string; sectionName: string }, tenantId: string) {
+    return this.repo.createClass(data, tenantId);
+  }
+
+  async deleteClass(id: string, tenantId: string) {
+    return this.repo.deleteClass(id, tenantId);
   }
 }
 

@@ -1,15 +1,15 @@
 export const dynamic = 'force-dynamic';
-import { NextResponse } from 'next/server';
 import { FeesRepository } from '@/repositories/fees.repository';
 import { sendEmail } from '@/lib/email';
 import { adminDb } from '@/lib/firebase-admin';
 import { logger } from '@/lib/logger/logger';
+import { createSuccessResponse, createErrorResponse } from "@/lib/api/response";
 
 export async function GET(req: Request) {
   // Security – verify cron secret
   const authHeader = req.headers.get("authorization");
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return createErrorResponse(401, "Unauthorized");
   }
 
   try {
@@ -36,9 +36,9 @@ export async function GET(req: Request) {
       }
     }
 
-    return NextResponse.json({ success: true, processed: totalProcessed });
+    return createSuccessResponse({ processed: totalProcessed });
   } catch (error: any) {
     logger.error('Fee reminder job failed:', { metadata: { error } });
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return createErrorResponse(500, error.message);
   }
 }

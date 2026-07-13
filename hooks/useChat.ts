@@ -24,6 +24,7 @@ export const useRealtimeChat = (otherUserId: string) => {
     const q = query(
       collection(db, "chat_messages"),
       where("chatId", "==", chatId),
+      where("tenantId", "==", user.tenantId),
       orderBy("createdAt", "asc")
     );
 

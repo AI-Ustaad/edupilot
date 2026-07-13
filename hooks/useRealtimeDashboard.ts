@@ -1,10 +1,11 @@
 // hooks/useRealtimeDashboard.ts
 import { useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { collection, query, where, onSnapshot, Timestamp } from "firebase/firestore";
+import { collection, query, where, onSnapshot } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/context/AuthContext";
 import { QueryKeys } from "@/lib/api/queryKeys";
+import { logger } from "@/lib/logger/logger";
 
 export const useRealtimeDashboard = () => {
   const { user } = useAuth();
@@ -22,6 +23,8 @@ export const useRealtimeDashboard = () => {
         ...oldData,
         students: snapshot.size
       }));
+    }, (error) => {
+      logger.error("Realtime dashboard error:", { metadata: { error: error.message } });
     });
 
     // Cleanup listeners

@@ -1,13 +1,10 @@
-import { NextRequest, NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebase-admin";
-import Stripe from "stripe";
+import { stripe } from "@/lib/stripe";
 import { logger } from "@/lib/logger/logger";
+import { createSuccessResponse, createErrorResponse } from "@/lib/api/response";
+import Stripe from "stripe";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: "2023-10-16",
-});
-
-export async function POST(req: NextRequest) {
+export async function POST(req: Request) {
   const body = await req.text();
   const signature = req.headers.get("stripe-signature") as string;
 
@@ -21,7 +18,7 @@ export async function POST(req: NextRequest) {
     );
   } catch (error: any) {
     logger.error("Webhook Error:", { metadata: { error: error.message } });
-    return NextResponse.json({ error: `Webhook Error: ${error.message}` }, { status: 400 });
+    return createErrorResponse(400, `Webhook Error: ${error.message}`);
   }
 
   // Handle the event
@@ -94,9 +91,9 @@ export async function POST(req: NextRequest) {
         logger.info(`Unhandled event type ${event.type}`);
     }
 
-    return NextResponse.json({ received: true });
+    return createSuccessResponse({ received: true });
   } catch (error: any) {
     logger.error("Stripe Webhook Processing Error:", { metadata: { error: error.message } });
-    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+    return createErrorResponse(500, "Internal Server Error");
   }
 }

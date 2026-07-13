@@ -1,20 +1,17 @@
 export const dynamic = 'force-dynamic';
-import { adminDb } from "@/lib/firebase-admin";
-import { withAuth, withTenant, withErrorHandler, withRole } from "@/route-helpers";
-import { createSuccessResponse, createErrorResponse, createApiResponse } from "@/lib/api/response";
+import { withAuth, withTenant, withErrorHandler } from "@/route-helpers";
+import { withPermission } from "@/lib/auth/rbac";
+import { PERMISSIONS } from "@/lib/auth/permissions";
+import { createSuccessResponse } from "@/lib/api/response";
+import { AuditRepository } from "@/repositories/audit.repository";
 import type { TenantContext } from "@/types/api";
 
 export const GET = withErrorHandler(
   withAuth(
     withTenant(
-      withRole(["admin"])(async (req: Request, { tenantId }: TenantContext) => {
-        const snapshot = await adminDb
-          .collection("logs")
-          .where("tenantId", "==", tenantId)
-          .orderBy("createdAt", "desc")
-          .limit(500)
-          .get();
-        const logs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as any[];
+      withPermission(PERMISSIONS.audit.view)(async (req: Request, { tenantId }: TenantContext) => {
+        const auditRepo = new AuditRepository();
+        const logs = await auditRepo.findRecent(tenantId, 500);
         return createSuccessResponse(logs);
       })
     )
