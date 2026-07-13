@@ -6,6 +6,7 @@ import { FeatureFlagService } from "@/services/featureFlag.service";
 import type { TenantContext } from "@/types/api";
 
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 export const GET = withErrorHandler(
   withAuth(

@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { NextResponse } from "next/server";
 import { JobService } from "@/lib/services/job.service";
 import { Queue } from "@/lib/queue/publisher";

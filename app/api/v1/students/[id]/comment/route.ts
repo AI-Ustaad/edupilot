@@ -7,6 +7,7 @@ import { createSuccessResponse, createErrorResponse } from "@/lib/api/response";
 import type { TenantContext } from "@/types/api";
 
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 export const PUT = withErrorHandler(
   withAuth(

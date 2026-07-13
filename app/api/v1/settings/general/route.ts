@@ -6,6 +6,7 @@ import { SettingsRepository } from "@/repositories/settings.repository";
 import type { TenantContext } from "@/types/api";
 
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 const settingsRepo = new SettingsRepository();
 

@@ -8,6 +8,7 @@ import { SectionRepository } from "@/repositories/section.repository";
 import type { TenantContext } from "@/types/api";
 
 export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 // ==========================================
 // 1. GET: Fetch Sections Securely

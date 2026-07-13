@@ -1,5 +1,6 @@
 // app/api/v1/staff/ocr/route.ts
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 import { withErrorHandler, withAuth, withTenant } from "@/route-helpers";
