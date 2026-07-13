@@ -54,6 +54,14 @@ export const EVENTS = {
   SCHOOL_SETUP_COMPLETED: "school.setup_completed",
   STUDENT_ENROLLED: "student.enrolled",
   NOTIFICATION_CREATED: "notification.created",
+  PARENT_CREATED: "parent.created",
+  PARENT_DELETED: "parent.deleted",
+  TIMETABLE_CREATED: "timetable.created",
+  TIMETABLE_DELETED: "timetable.deleted",
+  VIDEO_CREATED: "video.created",
+  VIDEO_UPDATED: "video.updated",
+  VIDEO_DELETED: "video.deleted",
+  FEE_DELETED: "fee.deleted",
 } as const;
 
 // Typescript Magic for strict typing

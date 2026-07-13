@@ -4,9 +4,12 @@ import { withAuth, withTenant, withErrorHandler } from "@/route-helpers";
 import { createSuccessResponse, createErrorResponse } from "@/lib/api/response";
 import { withPermission } from "@/lib/auth/rbac";
 import { PERMISSIONS } from "@/lib/auth/permissions";
-import { adminDb } from "@/lib/firebase-admin";
 import { logger } from "@/lib/logger/logger";
+import { SettingsRepository } from "@/repositories/settings.repository";
+import { SectionRepository } from "@/repositories/section.repository";
 import type { TenantContext } from "@/types/api";
+
+const settingsRepo = new SettingsRepository();
 
 export const POST = withErrorHandler(
   withAuth(
@@ -18,40 +21,37 @@ export const POST = withErrorHandler(
           return createErrorResponse(400, "Classes and Subjects are required");
         }
 
-        const batch = adminDb.batch();
-
-        const settingsRef = adminDb.collection("tenants").doc(tenantId).collection("settings").doc("config");
-        batch.set(settingsRef, {
-          classes,
-          subjects,
-          updatedAt: new Date().toISOString()
-        }, { merge: true });
-
-        const generalRef = adminDb.collection("tenants").doc(tenantId).collection("settings").doc("general");
-        batch.set(generalRef, {
-          schoolType: schoolType,
+        // Update settings via repository
+        await settingsRepo.updateConfig(tenantId, { classes, subjects });
+        await settingsRepo.updateGeneral(tenantId, {
+          schoolType,
           affiliation: curriculum,
           levelsOffered: levels,
-          updatedAt: new Date().toISOString()
-        }, { merge: true });
+        });
 
-        const sectionsRef = adminDb.collection("sections");
-        const oldSections = await sectionsRef.where("tenantId", "==", tenantId).get();
-        oldSections.docs.forEach(doc => batch.delete(doc.ref));
+        // Rebuild sections
+        const sectionRepo = new SectionRepository();
+        await sectionRepo.deleteAllForTenant(tenantId);
 
+        const newSections: any[] = [];
         classes.forEach((cls: any) => {
           if (cls.name) {
-            const newSecRef = sectionsRef.doc();
-            batch.set(newSecRef, {
-              tenantId,
-              classGrade: cls.name,
-              sectionName: "A",
-              createdAt: new Date().toISOString()
+            const sections = Array.isArray(cls.sections) ? cls.sections : ["A"];
+            sections.forEach((secName: string) => {
+              newSections.push({
+                tenantId,
+                classGrade: cls.name,
+                sectionName: secName,
+                incharge: '',
+                deleted: false,
+              });
             });
           }
         });
 
-        await batch.commit();
+        if (newSections.length > 0) {
+          await sectionRepo.bulkCreate(newSections, tenantId);
+        }
 
         logger.info("Curriculum applied", { metadata: { tenantId, userId: user.uid, classCount: classes.length } });
 

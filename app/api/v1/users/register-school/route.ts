@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
       createdAt: new Date(),
     }, { merge: true });
 
-    // 3. Settings: Classes, Subjects + Grading Rules + Exam Terms + Fee Categories
+    // 3. Settings: Full ERP configuration
     const settingsRef = adminDb.collection("tenants").doc(tenantId).collection("settings").doc("config");
     batch.set(settingsRef, {
       classes,
@@ -73,6 +73,29 @@ export async function POST(req: NextRequest) {
         { name: "Transport", description: "Transport fee", active: true },
       ],
       promotionRules: { minPercentage: 40, autoPromote: false },
+      shifts: [{ name: "Morning", startTime: "07:30", endTime: "12:30" }],
+      periods: Array.from({ length: 8 }, (_, i) => ({ name: `Period ${i + 1}`, order: i + 1, duration: 40 })),
+      houses: [
+        { name: "Red", color: "#EF4444" },
+        { name: "Blue", color: "#3B82F6" },
+        { name: "Green", color: "#22C55E" },
+        { name: "Yellow", color: "#EAB308" },
+      ],
+      attendanceRules: { lateMinutes: 15, autoAbsent: false, workingDays: [1, 2, 3, 4, 5, 6] },
+      examWeightages: { midterm: 30, final: 50, assignment: 20 },
+      assessmentTypes: [
+        { name: "Written Exam", active: true },
+        { name: "Oral Test", active: true },
+        { name: "Practical", active: true },
+        { name: "Assignment", active: true },
+      ],
+      feeStructures: [],
+      timetableSlots: { periodsPerDay: 8, daysPerWeek: 6, breakAfterPeriod: 4 },
+      notificationTemplates: { welcomeEmail: true, feeReminder: true, attendanceAlert: true },
+      aiConfig: { provider: "gemini", autoInsights: false },
+      dashboardConfig: { refreshInterval: 300, showAnalytics: true },
+      defaultRoles: ["admin", "teacher", "student", "parent"],
+      featureFlags: { aiEnabled: false, smsEnabled: false, emailEnabled: true },
       updatedAt: now,
     }, { merge: true });
 
@@ -116,7 +139,18 @@ export async function POST(req: NextRequest) {
       batch.set(desigRef, desig);
     });
 
-    // 7. Commit batch
+    // 7. Default campus
+    const campusRef = adminDb.collection("campuses").doc();
+    batch.set(campusRef, {
+      name: "Main Campus",
+      address: "",
+      phone: "",
+      tenantId,
+      isMain: true,
+      createdAt: now,
+    });
+
+    // 8. Commit batch
     await batch.commit();
 
     // 8. Create Academic Year (outside batch — uses repository)

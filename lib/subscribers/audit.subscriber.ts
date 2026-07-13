@@ -686,4 +686,140 @@ export function registerAuditSubscriber() {
       logger.error("Audit: Failed to log bus deleted event:", { metadata: { error } });
     }
   });
+
+  // 🎧 Listen for PARENT_CREATED event
+  eventBus.subscribe(EVENTS.PARENT_CREATED, async (payload) => {
+    try {
+      const { tenantId, parentId, email, studentIds, createdBy } = payload;
+      await adminDb.collection("tenants").doc(tenantId).collection("audit_logs").add({
+        action: "PARENT_CREATED",
+        targetId: parentId,
+        details: `Parent ${email} linked to ${studentIds?.length || 0} student(s). By: ${createdBy}.`,
+        timestamp: new Date().toISOString(),
+        module: "Parents",
+        systemAction: true,
+      });
+    } catch (error) {
+      logger.error("Audit: Failed to log parent created:", { metadata: { error } });
+    }
+  });
+
+  // 🎧 Listen for PARENT_DELETED event
+  eventBus.subscribe(EVENTS.PARENT_DELETED, async (payload) => {
+    try {
+      const { tenantId, parentId, deletedBy } = payload;
+      await adminDb.collection("tenants").doc(tenantId).collection("audit_logs").add({
+        action: "PARENT_DELETED",
+        targetId: parentId,
+        details: `Parent ${parentId} was removed. By: ${deletedBy}.`,
+        timestamp: new Date().toISOString(),
+        module: "Parents",
+        systemAction: true,
+      });
+    } catch (error) {
+      logger.error("Audit: Failed to log parent deleted:", { metadata: { error } });
+    }
+  });
+
+  // 🎧 Listen for TIMETABLE_CREATED event
+  eventBus.subscribe(EVENTS.TIMETABLE_CREATED, async (payload) => {
+    try {
+      const { tenantId, timetableId, day, period, subject, createdBy } = payload;
+      await adminDb.collection("tenants").doc(tenantId).collection("audit_logs").add({
+        action: "TIMETABLE_CREATED",
+        targetId: timetableId,
+        details: `Timetable entry created: ${subject} on day ${day}, period ${period}. By: ${createdBy}.`,
+        timestamp: new Date().toISOString(),
+        module: "Timetable",
+        systemAction: true,
+      });
+    } catch (error) {
+      logger.error("Audit: Failed to log timetable created:", { metadata: { error } });
+    }
+  });
+
+  // 🎧 Listen for TIMETABLE_DELETED event
+  eventBus.subscribe(EVENTS.TIMETABLE_DELETED, async (payload) => {
+    try {
+      const { tenantId, timetableId, deletedBy } = payload;
+      await adminDb.collection("tenants").doc(tenantId).collection("audit_logs").add({
+        action: "TIMETABLE_DELETED",
+        targetId: timetableId,
+        details: `Timetable entry ${timetableId} was deleted. By: ${deletedBy}.`,
+        timestamp: new Date().toISOString(),
+        module: "Timetable",
+        systemAction: true,
+      });
+    } catch (error) {
+      logger.error("Audit: Failed to log timetable deleted:", { metadata: { error } });
+    }
+  });
+
+  // 🎧 Listen for VIDEO_CREATED event
+  eventBus.subscribe(EVENTS.VIDEO_CREATED, async (payload) => {
+    try {
+      const { tenantId, videoId, title, createdBy } = payload;
+      await adminDb.collection("tenants").doc(tenantId).collection("audit_logs").add({
+        action: "VIDEO_CREATED",
+        targetId: videoId,
+        details: `Video lecture "${title}" created. By: ${createdBy}.`,
+        timestamp: new Date().toISOString(),
+        module: "Video Library",
+        systemAction: true,
+      });
+    } catch (error) {
+      logger.error("Audit: Failed to log video created:", { metadata: { error } });
+    }
+  });
+
+  // 🎧 Listen for VIDEO_UPDATED event
+  eventBus.subscribe(EVENTS.VIDEO_UPDATED, async (payload) => {
+    try {
+      const { tenantId, videoId, updatedBy } = payload;
+      await adminDb.collection("tenants").doc(tenantId).collection("audit_logs").add({
+        action: "VIDEO_UPDATED",
+        targetId: videoId,
+        details: `Video lecture ${videoId} was updated. By: ${updatedBy}.`,
+        timestamp: new Date().toISOString(),
+        module: "Video Library",
+        systemAction: true,
+      });
+    } catch (error) {
+      logger.error("Audit: Failed to log video updated:", { metadata: { error } });
+    }
+  });
+
+  // 🎧 Listen for VIDEO_DELETED event
+  eventBus.subscribe(EVENTS.VIDEO_DELETED, async (payload) => {
+    try {
+      const { tenantId, videoId, deletedBy } = payload;
+      await adminDb.collection("tenants").doc(tenantId).collection("audit_logs").add({
+        action: "VIDEO_DELETED",
+        targetId: videoId,
+        details: `Video lecture ${videoId} was deleted. By: ${deletedBy}.`,
+        timestamp: new Date().toISOString(),
+        module: "Video Library",
+        systemAction: true,
+      });
+    } catch (error) {
+      logger.error("Audit: Failed to log video deleted:", { metadata: { error } });
+    }
+  });
+
+  // 🎧 Listen for FEE_DELETED event
+  eventBus.subscribe(EVENTS.FEE_DELETED, async (payload) => {
+    try {
+      const { tenantId, feeId, studentId, deletedBy } = payload;
+      await adminDb.collection("tenants").doc(tenantId).collection("audit_logs").add({
+        action: "FEE_DELETED",
+        targetId: feeId,
+        details: `Fee record ${feeId} deleted for student ${studentId || "unknown"}. By: ${deletedBy}.`,
+        timestamp: new Date().toISOString(),
+        module: "Fees",
+        systemAction: true,
+      });
+    } catch (error) {
+      logger.error("Audit: Failed to log fee deleted:", { metadata: { error } });
+    }
+  });
 }

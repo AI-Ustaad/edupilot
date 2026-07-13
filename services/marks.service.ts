@@ -45,6 +45,7 @@ export class MarksService {
     await invalidateCache(`dashboard:${tenantId}`);
     await invalidateCache(`results:${tenantId}`);
     await this.audit.log({ action: "mark.deleted", userId, tenantId, entityId: id, entityType: "mark", metadata: { studentId: mark?.studentId, subject: mark?.subject, term: mark?.term } });
+    eventBus.publish(EVENTS.MARKS_DELETED, { tenantId, markId: id, studentId: mark?.studentId, subject: mark?.subject, term: mark?.term, deletedBy: userId });
   }
 
   async saveSkills(data: unknown, tenantId: string, userId: string): Promise<void> {

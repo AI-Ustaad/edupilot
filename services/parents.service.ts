@@ -2,6 +2,9 @@
 import { ParentsRepository } from "@/repositories/parents.repository";
 import { StudentRepository } from "@/repositories/student.repository";
 import { AuditService } from "./AuditService";
+import { eventBus } from "@/lib/events/event-bus";
+import { EVENTS } from "@/lib/events/event-types";
+import { invalidateCache } from "@/lib/cache";
 import type { IParentRepository } from "@/interfaces/IParentRepository";
 import type { Parent } from "@/types/parents";
 import type { Student } from "@/types/student";
@@ -67,6 +70,16 @@ export class ParentsService {
       metadata: { email: data.email, studentIds: data.studentIds },
     });
 
+    await invalidateCache(`dashboard:${tenantId}`);
+
+    eventBus.publish(EVENTS.PARENT_CREATED, {
+      tenantId,
+      parentId,
+      email: data.email,
+      studentIds: data.studentIds,
+      createdBy: userId,
+    });
+
     return parentId;
   }
 
@@ -79,6 +92,14 @@ export class ParentsService {
       tenantId,
       entityId: parentId,
       entityType: "parent",
+    });
+
+    await invalidateCache(`dashboard:${tenantId}`);
+
+    eventBus.publish(EVENTS.PARENT_DELETED, {
+      tenantId,
+      parentId,
+      deletedBy: userId,
     });
   }
 

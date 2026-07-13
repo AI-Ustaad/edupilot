@@ -134,6 +134,13 @@ export class FeesService {
         metadata: { studentName: (fee as any)?.studentName, amount: (fee as any)?.amountPaid },
       });
     }
+
+    eventBus.publish(EVENTS.FEE_DELETED, {
+      tenantId,
+      feeId: id,
+      studentId: (fee as any)?.studentId,
+      deletedBy: userId,
+    });
   }
 
   async getTotalRevenue(tenantId: string): Promise<number> {

@@ -2,7 +2,10 @@ import { adminDb } from "@/lib/firebase-admin";
 import { stripe } from "@/lib/stripe";
 import { logger } from "@/lib/logger/logger";
 import { createSuccessResponse, createErrorResponse } from "@/lib/api/response";
+import { SubscriptionService } from "@/services/subscription.service";
 import Stripe from "stripe";
+
+const subscriptionService = new SubscriptionService();
 
 export async function POST(req: Request) {
   const body = await req.text();
@@ -21,7 +24,6 @@ export async function POST(req: Request) {
     return createErrorResponse(400, `Webhook Error: ${error.message}`);
   }
 
-  // Handle the event
   try {
     switch (event.type) {
       case "checkout.session.completed": {
@@ -30,16 +32,11 @@ export async function POST(req: Request) {
         const planId = session.metadata?.planId as string;
 
         if (tenantId && planId) {
-          // Update Subscription in Firestore
-          await adminDb.collection("subscriptions").doc(tenantId).set({
-            tenantId,
-            planId,
-            status: "active",
+          await subscriptionService.activateSubscription(tenantId, planId);
+          await subscriptionService.updateSubscription(tenantId, {
             stripeCustomerId: session.customer as string,
             stripeSubscriptionId: session.subscription as string,
-            updatedAt: new Date(),
-          }, { merge: true });
-          
+          });
           logger.info(`Tenant ${tenantId} upgraded to ${planId}`);
         }
         break;
@@ -48,9 +45,8 @@ export async function POST(req: Request) {
       case "invoice.payment_succeeded": {
         const invoice = event.data.object as Stripe.Invoice;
         const tenantId = invoice.metadata?.tenantId as string;
-        
+
         if (tenantId) {
-          // Save Invoice Record for Audit/Accounting
           await adminDb.collection("invoices").add({
             tenantId,
             stripeInvoiceId: invoice.id,
@@ -60,11 +56,8 @@ export async function POST(req: Request) {
             periodEnd: new Date(invoice.period_end * 1000),
             createdAt: new Date(),
           });
-          
-          // Ensure status is active
-          await adminDb.collection("subscriptions").doc(tenantId).set({
-            status: "active"
-          }, { merge: true });
+
+          await subscriptionService.updateSubscription(tenantId, { status: "active" });
         }
         break;
       }
@@ -74,20 +67,13 @@ export async function POST(req: Request) {
         const tenantId = subscription.metadata?.tenantId as string;
 
         if (tenantId) {
-          // Downgrade to Free Plan on Cancellation
-          await adminDb.collection("subscriptions").doc(tenantId).set({
-            planId: "free",
-            status: "canceled",
-            updatedAt: new Date(),
-          }, { merge: true });
-          
+          await subscriptionService.cancelSubscription(tenantId);
           logger.info(`Tenant ${tenantId} subscription canceled. Downgraded to free.`);
         }
         break;
       }
 
       default:
-        // Unhandled event type
         logger.info(`Unhandled event type ${event.type}`);
     }
 

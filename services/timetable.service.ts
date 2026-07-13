@@ -3,6 +3,9 @@ import { TimetableRepository } from "@/repositories/timetable.repository";
 import { AuditService } from "./AuditService";
 import { ValidationService } from "./ValidationService";
 import { CreateTimetableEntrySchema } from "@/validators/timetable";
+import { eventBus } from "@/lib/events/event-bus";
+import { EVENTS } from "@/lib/events/event-types";
+import { invalidateCache } from "@/lib/cache";
 import type { ITimetableRepository } from "@/interfaces/ITimetableRepository";
 import type { TimetableEntry } from "@/types/timetable";
 
@@ -45,6 +48,17 @@ export class TimetableService {
       });
     }
 
+    await invalidateCache(`dashboard:${tenantId}`);
+
+    eventBus.publish(EVENTS.TIMETABLE_CREATED, {
+      tenantId,
+      timetableId: id,
+      day: parsed.day,
+      period: parsed.period,
+      subject: parsed.subject,
+      createdBy: userId,
+    });
+
     return id;
   }
 
@@ -63,5 +77,13 @@ export class TimetableService {
         entityType: "timetable",
       });
     }
+
+    await invalidateCache(`dashboard:${tenantId}`);
+
+    eventBus.publish(EVENTS.TIMETABLE_DELETED, {
+      tenantId,
+      timetableId: id,
+      deletedBy: userId,
+    });
   }
 }
