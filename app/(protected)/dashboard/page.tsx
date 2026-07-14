@@ -57,6 +57,7 @@ export default function DashboardPage() {
   const classFeeSummary = data.classFeeSummary || [];
   const recentPayments = data.recentPayments || [];
   const classDistribution = data.classDistribution || [];
+  const studentStatus = data.studentStatusBreakdown || { active: 0, graduated: 0, transferred: 0, suspended: 0, archived: 0 };
 
   return (
     <motion.div initial="hidden" animate="visible" variants={staggerContainer} className="space-y-8">
@@ -196,32 +197,18 @@ export default function DashboardPage() {
           )}
         </motion.div>
 
+        {/* Student Status Breakdown */}
         <motion.div variants={fadeInUp} className="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm">
           <h3 className="text-lg font-bold mb-4 flex items-center gap-2 text-gray-900">
-            <Clock size={20} className="text-orange-500" /> Recent Payments
+            <Activity size={20} className="text-blue-600" /> Student Status
           </h3>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="text-gray-500 border-b border-gray-100">
-                <tr>
-                  <th className="pb-3 text-left font-bold">Student</th>
-                  <th className="pb-3 text-left font-bold">Month</th>
-                  <th className="pb-3 text-right font-bold">Amount</th>
-                </tr>
-              </thead>
-              <tbody>
-                {recentPayments.map((p: any) => (
-                  <tr key={p.id} className="border-b border-gray-50 last:border-0">
-                    <td className="py-3 text-gray-900 font-medium">{p.studentName}</td>
-                    <td className="py-3 text-gray-600">{p.date}</td>
-                    <td className="py-3 text-green-600 font-bold text-right">Rs {(p.amount || 0).toLocaleString()}</td>
-                  </tr>
-                ))}
-                {recentPayments.length === 0 && (
-                  <tr><td colSpan={3} className="py-6 text-center text-gray-400">No recent payments</td></tr>
-                )}
-              </tbody>
-            </table>
+          <div className="grid grid-cols-2 gap-4">
+            <StatusCard label="Active" value={studentStatus.active} color="green" />
+            <StatusCard label="Graduated" value={studentStatus.graduated} color="blue" />
+            <StatusCard label="Transferred" value={studentStatus.transferred} color="gray" />
+            <StatusCard label="Suspended" value={studentStatus.suspended} color="red" />
+            <StatusCard label="Archived" value={studentStatus.archived} color="yellow" />
+            <StatusCard label="Total" value={data.students || 0} color="purple" />
           </div>
         </motion.div>
       </div>
@@ -249,5 +236,22 @@ function KpiCard({ title, value, icon, subtitle, color }: any) {
         </div>
       </div>
     </motion.div>
+  );
+}
+
+function StatusCard({ label, value, color }: { label: string; value: number; color: string }) {
+  const colorMap: Record<string, string> = {
+    green: "bg-green-50 text-green-700 border-green-100",
+    blue: "bg-blue-50 text-blue-700 border-blue-100",
+    gray: "bg-gray-50 text-gray-700 border-gray-100",
+    red: "bg-red-50 text-red-700 border-red-100",
+    yellow: "bg-yellow-50 text-yellow-700 border-yellow-100",
+    purple: "bg-purple-50 text-purple-700 border-purple-100",
+  };
+  return (
+    <div className={`rounded-xl p-3 border text-center ${colorMap[color] || colorMap.gray}`}>
+      <p className="text-2xl font-black">{value}</p>
+      <p className="text-xs font-medium">{label}</p>
+    </div>
   );
 }

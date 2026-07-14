@@ -3,11 +3,8 @@ export const dynamic = 'force-dynamic';
 import { withErrorHandler, withAuth, withTenant } from "@/route-helpers";
 import { withPermission } from "@/lib/auth/rbac";
 import { PERMISSIONS } from "@/lib/auth/permissions";
-import { StudentRepository } from "@/repositories/student.repository";
-import { AttendanceRepository } from "@/repositories/attendance.repository";
-import { MarksRepository } from "@/repositories/marks.repository";
-import { FeesRepository } from "@/repositories/fees.repository";
-import { BehaviorRepository } from "@/repositories/behavior.repository";
+import { StudentService } from "@/services/StudentService";
+import { createSuccessResponse, createErrorResponse } from "@/lib/api/response";
 import { logger } from "@/lib/logger/logger";
 import type { TenantContext } from "@/types/api";
 
@@ -22,37 +19,19 @@ export const GET = withErrorHandler(
           const studentId = searchParams.get("id");
 
           if (!studentId) {
-            return Response.json({ success: false, error: "Student ID required" }, { status: 400 });
+            return createErrorResponse(400, "Student ID required");
           }
 
-          const studentRepo = new StudentRepository();
-          const student = await studentRepo.findById(studentId, tenantId);
+          const studentService = new StudentService();
+          const data = await studentService.student360(tenantId, studentId);
 
-          if (!student) {
-            return Response.json({ success: false, error: "Student not found" }, { status: 404 });
-          }
-
-          // Use repositories for all data fetching - no direct Firestore access
-          const [marks, attendance, fees, behavior] = await Promise.all([
-            new MarksRepository().findByStudent(tenantId, studentId),
-            new AttendanceRepository().findByStudentId(tenantId, studentId),
-            new FeesRepository().findByStudent(tenantId, studentId, 20),
-            new BehaviorRepository().findByStudent(studentId, tenantId, 20),
-          ]);
-
-          return Response.json({
-            success: true,
-            data: {
-              student,
-              academic: { marks },
-              attendance: { records: attendance },
-              financial: { records: fees },
-              behavior: { records: behavior },
-            },
-          });
+          return createSuccessResponse(data);
         } catch (error: any) {
           logger.error("Student 360 Error:", { metadata: { error } });
-          return Response.json({ success: false, error: "Internal Server Error" }, { status: 500 });
+          if (error.message === "Student not found") {
+            return createErrorResponse(404, "Student not found");
+          }
+          return createErrorResponse(500, "Internal Server Error");
         }
       })
     )

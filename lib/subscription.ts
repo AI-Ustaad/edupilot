@@ -1,5 +1,7 @@
 import { adminDb } from "@/lib/firebase-admin";
 import { PLANS } from "@/lib/config/subscription-plans";
+import { StudentRepository } from "@/repositories/student.repository";
+import { StaffRepository } from "@/repositories/staff.repository";
 
 export interface PlanLimits {
   students: number;
@@ -21,12 +23,16 @@ export async function getTenantSubscription(tenantId: string) {
 }
 
 export async function getTenantUsage(tenantId: string) {
-  const studentsSnapshot = await adminDb.collection("students").where("tenantId", "==", tenantId).get();
-  const staffSnapshot = await adminDb.collection("staff").where("tenantId", "==", tenantId).get();
+  const studentRepo = new StudentRepository();
+  const staffRepo = new StaffRepository();
+  const [studentsUsed, staffUsed] = await Promise.all([
+    studentRepo.count(tenantId),
+    staffRepo.count(tenantId),
+  ]);
   
   return {
-    studentsUsed: studentsSnapshot.size,
-    staffUsed: staffSnapshot.size,
+    studentsUsed,
+    staffUsed,
   };
 }
 

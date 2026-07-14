@@ -1,5 +1,5 @@
 // interfaces/IStudentRepository.ts
-import { Student } from "@/types/student";
+import { Student, StudentFilter, StudentAnalytics, TimelineEntry } from "@/types/student";
 import { PaginatedResult } from "@/types/api";
 
 export interface IStudentRepository {
@@ -30,4 +30,21 @@ export interface IStudentRepository {
   findActiveStudents(tenantId: string): Promise<(Student & { id: string })[]>;
   batchFindByIds(tenantId: string, ids: string[]): Promise<(Student & { id: string })[]>;
   countByClassAndSection(tenantId: string): Promise<Record<string, Record<string, number>>>;
+  // Enterprise methods
+  findByAdmissionNo(admissionNo: string, tenantId: string): Promise<(Student & { id: string }) | null>;
+  findByStatus(status: string, tenantId: string): Promise<(Student & { id: string })[]>;
+  findByHouse(house: string, tenantId: string): Promise<(Student & { id: string })[]>;
+  findByParent(parentId: string, tenantId: string): Promise<(Student & { id: string })[]>;
+  findByTransport(transportRouteId: string, tenantId: string): Promise<(Student & { id: string })[]>;
+  findByHostel(hostelId: string, tenantId: string): Promise<(Student & { id: string })[]>;
+  findGraduated(tenantId: string): Promise<(Student & { id: string })[]>;
+  findTransferred(tenantId: string): Promise<(Student & { id: string })[]>;
+  findDeleted(tenantId: string): Promise<(Student & { id: string })[]>;
+  advancedFilter(tenantId: string, filter: StudentFilter): Promise<PaginatedResult<Student & { id: string }>>;
+  bulkUpdate(tenantId: string, ids: string[], data: Partial<Student>): Promise<void>;
+  bulkDelete(tenantId: string, ids: string[]): Promise<void>;
+  archive(tenantId: string, id: string): Promise<void>;
+  restore(tenantId: string, id: string): Promise<void>;
+  studentAnalytics(tenantId: string): Promise<StudentAnalytics>;
+  timeline(tenantId: string, studentId: string): Promise<TimelineEntry[]>;
 }

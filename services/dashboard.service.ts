@@ -36,6 +36,7 @@ export class DashboardService {
         attendanceTrend,
         classCountMap,
         recentPayments,
+        studentAnalytics,
       ] = await Promise.all([
         this.studentService.count(tenantId),
         this.staffService.count(tenantId),
@@ -44,6 +45,7 @@ export class DashboardService {
         this.attendanceService.getWeeklyAttendanceTrend(tenantId),
         this.studentService.countByClass(tenantId),
         this.feesService.getRecentPayments(tenantId, 5),
+        this.studentService.getAnalytics(tenantId),
       ]);
 
       // Build class distribution from countByClass (no full student fetch)
@@ -76,6 +78,13 @@ export class DashboardService {
         classFeeSummary: [],
         recentPayments: recentPayments || [],
         classDistribution,
+        studentStatusBreakdown: {
+          active: studentAnalytics?.active || 0,
+          graduated: studentAnalytics?.graduated || 0,
+          transferred: studentAnalytics?.transferred || 0,
+          suspended: studentAnalytics?.suspended || 0,
+          archived: studentAnalytics?.archived || 0,
+        },
       };
     });
   }

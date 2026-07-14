@@ -1,7 +1,11 @@
 // services/StudentService.ts
 import { IStudentRepository } from "@/interfaces/IStudentRepository";
 import { StudentRepository } from "@/repositories/student.repository";
-import { Student } from "@/types/student";
+import { AttendanceRepository } from "@/repositories/attendance.repository";
+import { MarksRepository } from "@/repositories/marks.repository";
+import { FeesRepository } from "@/repositories/fees.repository";
+import { BehaviorRepository } from "@/repositories/behavior.repository";
+import { Student, Student360Aggregate, StudentAnalytics, StudentFilter, TimelineEntry, PromotionRecord } from "@/types/student";
 import { ValidationService } from "./ValidationService";
 import { AuditService } from "./AuditService";
 import { CreateStudentSchema, UpdateStudentSchema } from "@/validators/student";
@@ -13,7 +17,7 @@ import {
 import { PaginatedResult } from "@/types/api";
 import { eventBus } from "@/lib/events";
 import { EVENTS } from "@/lib/events/event-types";
-import { invalidateCache } from "@/lib/cache";
+import { invalidateCache, getOrSet } from "@/lib/cache";
 
 export class StudentService {
   private repository: IStudentRepository;
@@ -230,6 +234,19 @@ export class StudentService {
         const oldClass = student.classGrade;
         const oldSection = student.section;
 
+        // Build promotion history entry
+        const promoRecord: PromotionRecord = {
+          fromClass: oldClass,
+          fromSection: oldSection,
+          toClass: newClassGrade,
+          toSection: newSection,
+          academicYear,
+          promotedAt: new Date().toISOString(),
+          promotedBy: userId,
+        };
+
+        const existingHistory = student.promotionHistory || [];
+
         await this.repository.update(
           studentId,
           {
@@ -241,7 +258,8 @@ export class StudentService {
             promotedAt: new Date(),
             promotedBy: userId,
             updatedBy: userId,
-          },
+            promotionHistory: [...existingHistory, promoRecord],
+          } as Partial<Student>,
           tenantId
         );
 
@@ -428,5 +446,243 @@ export class StudentService {
     section: string
   ): Promise<(Student & { id: string })[]> {
     return this.repository.findBySection(className, section, tenantId);
+  }
+
+  // ─── Enterprise Methods ────────────────────────────────────────────────────
+
+  async transfer(
+    tenantId: string,
+    studentId: string,
+    reason: string,
+    userId: string
+  ): Promise<void> {
+    const student = await this.getById(tenantId, studentId);
+    await this.repository.update(studentId, { status: "transferred" } as Partial<Student>, tenantId);
+
+    await invalidateCache(`dashboard:${tenantId}`);
+
+    await this.audit.log({
+      action: "student.transferred",
+      userId,
+      tenantId,
+      entityId: studentId,
+      entityType: "student",
+      metadata: { fullName: student.fullName, reason },
+    });
+
+    await eventBus.publish(EVENTS.STUDENT_UPDATED, {
+      tenantId,
+      studentId,
+      updates: { status: "transferred", reason },
+    });
+  }
+
+  async graduate(
+    tenantId: string,
+    studentIds: string[],
+    academicYear: string,
+    userId: string
+  ): Promise<{ graduated: number; errors: string[] }> {
+    const graduated: string[] = [];
+    const errors: string[] = [];
+
+    for (const studentId of studentIds) {
+      try {
+        await this.repository.update(
+          studentId,
+          { status: "graduated", academicYear, promotedAt: new Date(), promotedBy: userId, updatedBy: userId } as Partial<Student>,
+          tenantId
+        );
+        graduated.push(studentId);
+      } catch (err: any) {
+        errors.push(`Student ${studentId}: ${err.message}`);
+      }
+    }
+
+    if (graduated.length > 0) {
+      await this.audit.log({
+        action: "student.graduate",
+        userId,
+        tenantId,
+        entityType: "student",
+        metadata: { count: graduated.length, academicYear },
+      });
+
+      await invalidateCache(`dashboard:${tenantId}`);
+    }
+
+    return { graduated: graduated.length, errors };
+  }
+
+  async archive(tenantId: string, studentId: string, userId: string): Promise<void> {
+    await this.getById(tenantId, studentId);
+    await this.repository.archive(tenantId, studentId);
+
+    await invalidateCache(`dashboard:${tenantId}`);
+
+    await this.audit.log({
+      action: "student.archived",
+      userId,
+      tenantId,
+      entityId: studentId,
+      entityType: "student",
+    });
+  }
+
+  async restore(tenantId: string, studentId: string, userId: string): Promise<void> {
+    await this.repository.restore(tenantId, studentId);
+
+    await invalidateCache(`dashboard:${tenantId}`);
+
+    await this.audit.log({
+      action: "student.restored",
+      userId,
+      tenantId,
+      entityId: studentId,
+      entityType: "student",
+    });
+  }
+
+  async bulkUpdate(
+    tenantId: string,
+    ids: string[],
+    data: Partial<Student>,
+    userId: string
+  ): Promise<void> {
+    await this.repository.bulkUpdate(tenantId, ids, data);
+
+    await invalidateCache(`dashboard:${tenantId}`);
+
+    await this.audit.log({
+      action: "student.bulk_updated",
+      userId,
+      tenantId,
+      entityType: "student",
+      metadata: { count: ids.length, updatedFields: Object.keys(data) },
+    });
+  }
+
+  async bulkDelete(
+    tenantId: string,
+    ids: string[],
+    userId: string
+  ): Promise<void> {
+    await this.repository.bulkDelete(tenantId, ids);
+
+    await invalidateCache(`dashboard:${tenantId}`);
+
+    await this.audit.log({
+      action: "student.bulk_deleted",
+      userId,
+      tenantId,
+      entityType: "student",
+      metadata: { count: ids.length },
+    });
+  }
+
+  async student360(tenantId: string, studentId: string): Promise<Student360Aggregate> {
+    const student = await this.getById(tenantId, studentId);
+
+    const [attendanceRecords, marksRecords, feeRecords, behaviorRecords, timelineEntries] = await Promise.all([
+      new AttendanceRepository().findByStudentId(tenantId, studentId),
+      new MarksRepository().findByStudent(tenantId, studentId),
+      new FeesRepository().findByStudent(tenantId, studentId, 50),
+      new BehaviorRepository().findByStudent(studentId, tenantId, 50),
+      this.repository.timeline(tenantId, studentId),
+    ]);
+
+    // Attendance aggregation
+    const present = attendanceRecords.filter(r => (r as any).status === "Present").length;
+    const absent = attendanceRecords.filter(r => (r as any).status === "Absent").length;
+    const late = attendanceRecords.filter(r => (r as any).status === "Late").length;
+    const totalAtt = present + absent + late;
+    const attendancePct = totalAtt > 0 ? Math.round((present / totalAtt) * 100) : 0;
+
+    // Marks aggregation
+    const marksArr = marksRecords as any[];
+    const avgMarks = marksArr.length > 0
+      ? Math.round(marksArr.reduce((sum, m) => sum + (m.obtainedMarks || 0), 0) / marksArr.length)
+      : 0;
+
+    // Fees aggregation
+    const feeArr = feeRecords as any[];
+    const totalDue = feeArr.reduce((sum, f) => sum + (f.totalAmount || f.amount || 0), 0);
+    const totalPaid = feeArr.reduce((sum, f) => sum + (f.paidAmount || 0), 0);
+
+    return {
+      student,
+      attendance: { present, absent, late, percentage: attendancePct },
+      fees: { totalDue, totalPaid, outstanding: totalDue - totalPaid, records: feeArr },
+      marks: { exams: marksArr, average: avgMarks, trend: avgMarks >= 60 ? "improving" : "declining" },
+      behavior: { logs: behaviorRecords, incidents: behaviorRecords.length },
+      transport: null,
+      hostel: null,
+      timeline: timelineEntries,
+    };
+  }
+
+  async getAnalytics(tenantId: string): Promise<StudentAnalytics> {
+    return this.repository.studentAnalytics(tenantId);
+  }
+
+  async getTimeline(tenantId: string, studentId: string): Promise<TimelineEntry[]> {
+    return this.repository.timeline(tenantId, studentId);
+  }
+
+  async getRiskData(tenantId: string): Promise<any[]> {
+    const students = await this.repository.findAll(tenantId);
+    if (students.length === 0) return [];
+
+    const studentIds = students.map(s => s.id);
+    const attendanceRepo = new AttendanceRepository();
+    const allAttendance = await attendanceRepo.findByStudentIds(tenantId, studentIds, 30);
+
+    const attendanceByStudent: Record<string, { present: number; total: number }> = {};
+    for (const rec of allAttendance) {
+      const sid = (rec as any).studentId;
+      if (!attendanceByStudent[sid]) attendanceByStudent[sid] = { present: 0, total: 0 };
+      attendanceByStudent[sid].total++;
+      if (rec.status === "Present") attendanceByStudent[sid].present++;
+    }
+
+    const riskStudents: any[] = [];
+    for (const student of students) {
+      const stats = attendanceByStudent[student.id] || { present: 0, total: 0 };
+      const attendancePct = stats.total > 0 ? (stats.present / stats.total) * 100 : 100;
+
+      if (attendancePct < 60) {
+        riskStudents.push({
+          ...student,
+          attendance: Math.round(attendancePct),
+          marks: 0,
+          riskReason: "Low Attendance",
+        });
+      }
+    }
+
+    return riskStudents;
+  }
+
+  async getDashboardStats(tenantId: string): Promise<{
+    total: number; active: number; graduated: number; transferred: number;
+    suspended: number; archived: number; riskCount: number;
+  }> {
+    const analytics = await this.repository.studentAnalytics(tenantId);
+    return {
+      total: analytics.total,
+      active: analytics.active,
+      graduated: analytics.graduated,
+      transferred: analytics.transferred,
+      suspended: analytics.suspended,
+      archived: analytics.archived,
+      riskCount: analytics.riskCount,
+    };
+  }
+
+  async advancedFilter(
+    tenantId: string,
+    filter: StudentFilter
+  ): Promise<PaginatedResult<Student & { id: string }>> {
+    return this.repository.advancedFilter(tenantId, filter);
   }
 }
