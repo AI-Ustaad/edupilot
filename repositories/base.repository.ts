@@ -1,5 +1,21 @@
+// repositories/base.repository.ts
 import { adminDb, dbTimestamp } from '@/lib/firebase-admin';
-import type { Firestore } from 'firebase-admin/firestore';
+import type { Firestore, DocumentSnapshot } from 'firebase-admin/firestore';
+
+// 🟢 Enterprise Helper: فائر بیس کے ٹائم سٹیمپس کو محفوظ ISO Strings میں بدلنے کے لیے
+export function serializeDoc<T>(doc: DocumentSnapshot | any): T & { id: string } {
+  const data = doc.data() || {};
+  
+  for (const key in data) {
+    if (data[key] && typeof data[key].toDate === 'function') {
+      data[key] = data[key].toDate().toISOString();
+    } else if (data[key] && data[key]._seconds !== undefined) {
+      data[key] = new Date(data[key]._seconds * 1000).toISOString();
+    }
+  }
+  
+  return { id: doc.id, ...data } as T & { id: string };
+}
 
 export class BaseRepository<T> {
   protected collectionName: string;
@@ -49,7 +65,8 @@ export class BaseRepository<T> {
     if (!docSnap.exists || docSnap.data()?.tenantId !== tenantId) {
       return null;
     }
-    return { id: docSnap.id, ...docSnap.data() } as T & { id: string };
+    // 🟢 Applied Serializer Here
+    return serializeDoc<T>(docSnap);
   }
 
   async findAll(tenantId: string): Promise<(T & { id: string })[]> {
@@ -57,7 +74,8 @@ export class BaseRepository<T> {
       .collection(this.collectionName)
       .where('tenantId', '==', tenantId)
       .get();
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as T & { id: string }));
+    // 🟢 Applied Serializer Here
+    return snapshot.docs.map(doc => serializeDoc<T>(doc));
   }
 
   async paginate(
@@ -90,7 +108,8 @@ export class BaseRepository<T> {
     }
 
     const snapshot = await query.limit(limit).get();
-    const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as T & { id: string }));
+    // 🟢 Applied Serializer Here
+    const data = snapshot.docs.map(doc => serializeDoc<T>(doc));
 
     return { data, total, page, totalPages };
   }
