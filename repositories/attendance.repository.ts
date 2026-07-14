@@ -3,6 +3,19 @@ import { BaseRepository } from "./base.repository";
 import type { Attendance } from "@/types/attendance";
 import type { IAttendanceRepository } from "@/interfaces/IAttendanceRepository";
 
+// 🟢 Enterprise Safe Serializer
+function serializeDoc<T>(doc: any): T & { id: string } {
+  const data = doc.data() || {};
+  for (const key in data) {
+    if (data[key] && typeof data[key].toDate === 'function') {
+      data[key] = data[key].toDate().toISOString();
+    } else if (data[key] && data[key]._seconds !== undefined) {
+      data[key] = new Date(data[key]._seconds * 1000).toISOString();
+    }
+  }
+  return { id: doc.id, ...data } as T & { id: string };
+}
+
 export class AttendanceRepository extends BaseRepository<Attendance> implements IAttendanceRepository {
   constructor() {
     super("attendance");
@@ -39,7 +52,7 @@ export class AttendanceRepository extends BaseRepository<Attendance> implements 
     }
 
     const snapshot = await query.get();
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Attendance));
+    return snapshot.docs.map(doc => serializeDoc<Attendance>(doc));
   }
 
   async findByStudentId(tenantId: string, studentId: string): Promise<(Attendance & { id: string })[]> {
@@ -49,12 +62,12 @@ export class AttendanceRepository extends BaseRepository<Attendance> implements 
       .where("studentId", "==", studentId)
       .orderBy("date", "desc")
       .get();
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Attendance & { id: string }));
+    return snapshot.docs.map(doc => serializeDoc<Attendance>(doc));
   }
 
   async findByStudentIds(tenantId: string, studentIds: string[], limit = 30): Promise<(Attendance & { id: string })[]> {
     if (studentIds.length === 0) return [];
-    // Firestore `in` operator supports up to 30 values; chunk if needed
+    
     const results: (Attendance & { id: string })[] = [];
     const chunks: string[][] = [];
     for (let i = 0; i < studentIds.length; i += 30) {
@@ -67,7 +80,7 @@ export class AttendanceRepository extends BaseRepository<Attendance> implements 
         .where("studentId", "in", chunk)
         .limit(limit * chunk.length)
         .get();
-      results.push(...snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Attendance & { id: string })));
+      results.push(...snapshot.docs.map(doc => serializeDoc<Attendance>(doc)));
     }
     return results;
   }
