@@ -3,6 +3,19 @@ import { BaseRepository } from "./base.repository";
 import type { Fee } from "@/types/fees";
 import type { IFeesRepository } from "@/interfaces/IFeesRepository";
 
+// 🟢 Enterprise Safe Serializer
+function serializeDoc<T>(doc: any): T & { id: string } {
+  const data = doc.data() || {};
+  for (const key in data) {
+    if (data[key] && typeof data[key].toDate === 'function') {
+      data[key] = data[key].toDate().toISOString();
+    } else if (data[key] && data[key]._seconds !== undefined) {
+      data[key] = new Date(data[key]._seconds * 1000).toISOString();
+    }
+  }
+  return { id: doc.id, ...data } as T & { id: string };
+}
+
 export class FeesRepository extends BaseRepository<Fee> implements IFeesRepository {
   constructor() {
     super("fees");
@@ -20,7 +33,7 @@ export class FeesRepository extends BaseRepository<Fee> implements IFeesReposito
       .orderBy("createdAt", "desc")
       .limit(limit)
       .get();
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Fee & { id: string }));
+    return snapshot.docs.map(doc => serializeDoc<Fee>(doc));
   }
 
   async findWithFilters(
@@ -42,7 +55,7 @@ export class FeesRepository extends BaseRepository<Fee> implements IFeesReposito
     }
 
     const snapshot = await query.get();
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Fee & { id: string }));
+    return snapshot.docs.map(doc => serializeDoc<Fee>(doc));
   }
 
   async getTotalRevenue(tenantId: string): Promise<number> {
@@ -61,6 +74,6 @@ export class FeesRepository extends BaseRepository<Fee> implements IFeesReposito
       .orderBy("createdAt", "desc")
       .limit(limit)
       .get();
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Fee & { id: string }));
+    return snapshot.docs.map(doc => serializeDoc<Fee>(doc));
   }
 }
