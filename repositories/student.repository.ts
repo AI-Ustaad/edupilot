@@ -478,6 +478,29 @@ export class StudentRepository
     }
   }
 
+  // 🟢 Helper Method for Date Parsing
+  private toIsoDate(value: any): string | null {
+    if (!value) return null;
+
+    // Firestore Timestamp
+    if (typeof value?.toDate === "function") {
+      return value.toDate().toISOString();
+    }
+
+    // JS Date
+    if (value instanceof Date) {
+      return value.toISOString();
+    }
+
+    // ISO String
+    if (typeof value === "string") {
+      const d = new Date(value);
+      return isNaN(d.getTime()) ? null : d.toISOString();
+    }
+
+    return null;
+  }
+
   async timeline(tenantId: string, studentId: string): Promise<TimelineEntry[]> {
     try {
       const student = await this.findById(studentId, tenantId);
@@ -486,9 +509,10 @@ export class StudentRepository
       const entries: TimelineEntry[] = [];
 
       // Admission entry
-      if (student.createdAt) {
+      const created = this.toIsoDate(student.createdAt);
+      if (created) {
         entries.push({
-          date: new Date(student.createdAt).toISOString(),
+          date: created,
           type: "admission",
           title: "Student Admitted",
           description: `Admitted to class ${student.classGrade} section ${student.section}`,
@@ -499,29 +523,35 @@ export class StudentRepository
       // Promotion entries
       if (student.promotionHistory) {
         for (const promo of student.promotionHistory) {
-          entries.push({
-            date: promo.promotedAt,
-            type: "promotion",
-            title: "Promoted",
-            description: `Promoted from ${promo.fromClass}-${promo.fromSection} to ${promo.toClass}-${promo.toSection}`,
-            metadata: { academicYear: promo.academicYear },
-          });
+          const promoDate = this.toIsoDate(promo.promotedAt);
+          if (promoDate) {
+            entries.push({
+              date: promoDate,
+              type: "promotion",
+              title: "Promoted",
+              description: `Promoted from ${promo.fromClass}-${promo.fromSection} to ${promo.toClass}-${promo.toSection}`,
+              metadata: { academicYear: promo.academicYear },
+            });
+          }
         }
       }
 
-      // Status change entries
-      if (student.status === "graduated" && student.promotedAt) {
+      // Graduation entry
+      const promoted = this.toIsoDate(student.promotedAt);
+      if (student.status === "graduated" && promoted) {
         entries.push({
-          date: new Date(student.promotedAt).toISOString(),
+          date: promoted,
           type: "graduation",
           title: "Graduated",
           description: `Student graduated from class ${student.classGrade}`,
         });
       }
 
-      if (student.status === "transferred" && student.updatedAt) {
+      // Transfer entry
+      const updated = this.toIsoDate(student.updatedAt);
+      if (student.status === "transferred" && updated) {
         entries.push({
-          date: new Date(student.updatedAt).toISOString(),
+          date: updated,
           type: "transfer",
           title: "Transferred",
           description: "Student transferred to another institution",
@@ -533,7 +563,7 @@ export class StudentRepository
 
       return entries;
     } catch (error) {
-      throw new RepositoryException("Failed to build student timeline", { tenantId, studentId });
+      throw new RepositoryException("Failed to build student timeline", { tenantId, studentId, originalError: error });
     }
   }
 }
