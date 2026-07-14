@@ -21,13 +21,29 @@ export const GET = withErrorHandler(
           const page = parseInt(url.searchParams.get("page") || "1");
           const limit = parseInt(url.searchParams.get("limit") || "20");
           const search = url.searchParams.get("search") || undefined;
+          const category = url.searchParams.get("category") || undefined;
+          const department = url.searchParams.get("department") || undefined;
+          const designation = url.searchParams.get("designation") || undefined;
+          const status = url.searchParams.get("status") || undefined;
+          const campus = url.searchParams.get("campus") || undefined;
+          const gender = url.searchParams.get("gender") || undefined;
+          const employmentType = url.searchParams.get("employmentType") || undefined;
+          const orderBy = url.searchParams.get("orderBy") || undefined;
+          const direction = url.searchParams.get("direction") as "asc" | "desc" | undefined;
 
           const service = new StaffService();
 
-          // If search query is provided, use search instead of pagination
-          if (search) {
-            const results = await service.search(tenantId, search);
-            return createApiResponse(200, results, "Staff search results");
+          // If any filter is provided, use advancedFilter
+          const hasFilters = search || category || department || designation || status || campus || gender || employmentType;
+
+          if (hasFilters) {
+            const result = await service.advancedFilter(tenantId, {
+              search, category, department, designation, status, campus, gender, employmentType,
+              page, limit, orderBy, direction,
+            });
+            return createApiResponse(200, result, "Staff filtered results", {
+              page, limit, total: result.total, totalPages: result.totalPages,
+            });
           }
 
           const result = await service.paginate(tenantId, page, limit);

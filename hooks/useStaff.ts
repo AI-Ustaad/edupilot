@@ -215,3 +215,74 @@ export const useStaffOCR = () => {
   return { ocrUploading, openFilePicker };
 };
 
+// ─── Enterprise Hooks ──────────────────────────────────────────────────────────
+
+export const useStaffDirectory = (filters: Record<string, any> = {}) => {
+  const { user } = useAuth();
+  const tenantId = user?.tenantId || "unknown";
+  const params = new URLSearchParams();
+  Object.entries(filters).forEach(([k, v]) => {
+    if (v !== undefined && v !== null && v !== "") params.set(k, String(v));
+  });
+  return useQuery({
+    queryKey: [...QueryKeys.staff(tenantId), "directory", params.toString()],
+    queryFn: async () => {
+      const response = await apiClient.get(`/staff?${params.toString()}`);
+      return (response as any)?.data ?? response;
+    },
+    enabled: !!tenantId && tenantId !== "unknown",
+  });
+};
+
+export const useStaffAnalytics = () => {
+  const { user } = useAuth();
+  const tenantId = user?.tenantId || "unknown";
+  return useQuery({
+    queryKey: [...QueryKeys.staff(tenantId), "analytics"],
+    queryFn: async () => {
+      const response = await apiClient.get("/staff/analytics");
+      return (response as any)?.data ?? response;
+    },
+    enabled: !!tenantId && tenantId !== "unknown",
+  });
+};
+
+export const useBulkStaff = () => {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const tenantId = user?.tenantId || "unknown";
+  const { showToast } = useToast();
+
+  const archiveMutation = useMutation({
+    mutationFn: async ({ ids, action }: { ids: string[]; action: string }) => {
+      if (action === "archive") {
+        await apiClient.post("/staff/bulk", { ids, action: "archive" });
+      } else if (action === "delete") {
+        await apiClient.post("/staff/bulk", { ids, action: "delete" });
+      }
+    },
+    onSuccess: (_, vars) => {
+      queryClient.invalidateQueries({ queryKey: QueryKeys.staff(tenantId) });
+      showToast(`Bulk ${vars.action} completed!`, "success");
+    },
+    onError: (_err, vars) => {
+      showToast(`Bulk ${vars.action} failed.`, "error");
+    },
+  });
+
+  return { archiveMutation };
+};
+
+export const useStaffTimeline = (staffId: string) => {
+  const { user } = useAuth();
+  const tenantId = user?.tenantId || "unknown";
+  return useQuery({
+    queryKey: [...QueryKeys.staff(tenantId), staffId, "timeline"],
+    queryFn: async () => {
+      const response = await apiClient.get(`/staff/${staffId}/timeline`);
+      return (response as any)?.data ?? response;
+    },
+    enabled: !!staffId && !!tenantId && tenantId !== "unknown",
+  });
+};
+

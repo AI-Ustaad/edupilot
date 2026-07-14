@@ -1,7 +1,8 @@
 // services/StaffService.ts
 import { IStaffRepository } from "@/interfaces/IStaffRepository";
 import { StaffRepository } from "@/repositories/staff.repository";
-import { Staff } from "@/types/staff";
+import { AttendanceRepository } from "@/repositories/attendance.repository";
+import { Staff, StaffFilter, StaffAnalytics, StaffTimelineEntry, StatusChangeRecord } from "@/types/staff";
 import { ValidationService } from "./ValidationService";
 import { AuditService } from "./AuditService";
 import { CreateStaffSchema, UpdateStaffSchema } from "@/validators/staff";
@@ -16,16 +17,21 @@ import { logger } from "@/lib/logger/logger";
 import { serializeForFirestore } from "@/lib/firestore/firestoreSerializer";
 import { eventBus } from "@/lib/events";
 import { EVENTS } from "@/lib/events/event-types";
+import { GeminiProvider } from "@/lib/ai/providers/GeminiProvider";
 
 export class StaffService {
   private repository: IStaffRepository;
   private validation: ValidationService;
   private audit: AuditService;
+  private attendanceRepo: AttendanceRepository;
+  private aiProvider: GeminiProvider;
 
   constructor(repository?: IStaffRepository) {
     this.repository = repository ?? new StaffRepository();
     this.validation = new ValidationService();
     this.audit = new AuditService();
+    this.attendanceRepo = new AttendanceRepository();
+    this.aiProvider = new GeminiProvider();
   }
 
   async list(tenantId: string): Promise<(Staff & { id: string })[]> {
@@ -268,5 +274,301 @@ export class StaffService {
         `Staff limit reached (${maxStaff}). Please upgrade your plan.`
       );
     }
+  }
+
+  // ─── Enterprise Staff Methods ────────────────────────────────────────────────
+
+  async hire(
+    data: any,
+    tenantId: string,
+    userId: string
+  ): Promise<string> {
+    const id = await this.create({ ...data, status: "active" }, tenantId, userId);
+
+    await this.audit.log({
+      action: "staff.hired",
+      userId,
+      tenantId,
+      entityId: id,
+      entityType: "staff",
+      metadata: { hiredBy: userId },
+    });
+
+    await eventBus.publish(EVENTS.STAFF_ACTIVATED, {
+      staffId: id,
+      tenantId,
+      userId,
+    });
+
+    return id;
+  }
+
+  async promote(
+    tenantId: string,
+    staffId: string,
+    newDesignation: string,
+    newDepartment: string | undefined,
+    userId: string
+  ): Promise<void> {
+    const staff = await this.getById(tenantId, staffId);
+    const oldDesignation = staff.professional?.designation;
+    const oldDepartment = staff.professional?.department;
+
+    const updateData: Partial<Staff> = {
+      professional: {
+        ...staff.professional,
+        designation: newDesignation,
+        ...(newDepartment ? { department: newDepartment } : {}),
+      },
+      performance: {
+        ...staff.performance,
+        promotions: [...(staff.performance?.promotions || []), `Promoted to ${newDesignation}`],
+      },
+    };
+
+    await this.repository.update(staffId, updateData, tenantId);
+
+    await this.audit.log({
+      action: "staff.promoted",
+      userId,
+      tenantId,
+      entityId: staffId,
+      entityType: "staff",
+      metadata: { oldDesignation, newDesignation, oldDepartment, newDepartment },
+    });
+
+    await eventBus.publish(EVENTS.STAFF_PROMOTED, {
+      staffId,
+      tenantId,
+      userId,
+      oldDesignation,
+      newDesignation,
+    });
+  }
+
+  async transfer(
+    tenantId: string,
+    staffId: string,
+    reason: string,
+    userId: string
+  ): Promise<void> {
+    const staff = await this.getById(tenantId, staffId);
+    const now = new Date().toISOString();
+
+    const statusRecord: StatusChangeRecord = {
+      fromStatus: staff.status || "active",
+      toStatus: "on-leave",
+      changedAt: now,
+      changedBy: userId,
+      reason,
+    };
+
+    await this.repository.update(staffId, {
+      status: "on-leave",
+      statusHistory: [...(staff.statusHistory || []), statusRecord],
+    } as any, tenantId);
+
+    await this.audit.log({
+      action: "staff.transferred",
+      userId,
+      tenantId,
+      entityId: staffId,
+      entityType: "staff",
+      metadata: { reason },
+    });
+  }
+
+  async terminate(
+    tenantId: string,
+    staffId: string,
+    reason: string,
+    userId: string
+  ): Promise<void> {
+    const staff = await this.getById(tenantId, staffId);
+    const now = new Date().toISOString();
+
+    const statusRecord: StatusChangeRecord = {
+      fromStatus: staff.status || "active",
+      toStatus: "terminated",
+      changedAt: now,
+      changedBy: userId,
+      reason,
+    };
+
+    await this.repository.update(staffId, {
+      status: "terminated",
+      statusHistory: [...(staff.statusHistory || []), statusRecord],
+    } as any, tenantId);
+
+    await this.audit.log({
+      action: "staff.terminated",
+      userId,
+      tenantId,
+      entityId: staffId,
+      entityType: "staff",
+      metadata: { reason },
+    });
+
+    await eventBus.publish(EVENTS.STAFF_DEACTIVATED, {
+      staffId,
+      tenantId,
+      userId,
+      fullName: staff.personal?.fullName,
+      reason,
+    });
+  }
+
+  async archive(tenantId: string, staffId: string, userId: string): Promise<void> {
+    const staff = await this.getById(tenantId, staffId);
+    await this.repository.archive(tenantId, staffId);
+
+    await this.audit.log({
+      action: "staff.archived",
+      userId,
+      tenantId,
+      entityId: staffId,
+      entityType: "staff",
+    });
+
+    await eventBus.publish(EVENTS.STAFF_DEACTIVATED, {
+      staffId,
+      tenantId,
+      userId,
+      fullName: staff.personal?.fullName,
+    });
+  }
+
+  async restore(tenantId: string, staffId: string, userId: string): Promise<void> {
+    await this.repository.restore(tenantId, staffId);
+
+    await this.audit.log({
+      action: "staff.restored",
+      userId,
+      tenantId,
+      entityId: staffId,
+      entityType: "staff",
+    });
+
+    await eventBus.publish(EVENTS.STAFF_ACTIVATED, {
+      staffId,
+      tenantId,
+      userId,
+    });
+  }
+
+  async bulkUpdate(tenantId: string, ids: string[], data: Partial<Staff>, userId: string): Promise<void> {
+    await this.repository.bulkUpdate(tenantId, ids, data);
+
+    await this.audit.log({
+      action: "staff.bulk_updated",
+      userId,
+      tenantId,
+      entityType: "staff",
+      metadata: { count: ids.length, fields: Object.keys(data) },
+    });
+  }
+
+  async bulkDelete(tenantId: string, ids: string[], userId: string): Promise<void> {
+    await this.repository.bulkDelete(tenantId, ids);
+
+    await this.audit.log({
+      action: "staff.bulk_deleted",
+      userId,
+      tenantId,
+      entityType: "staff",
+      metadata: { count: ids.length },
+    });
+  }
+
+  async getAnalytics(tenantId: string): Promise<StaffAnalytics> {
+    return this.repository.staffAnalytics(tenantId);
+  }
+
+  async getTimeline(tenantId: string, staffId: string): Promise<StaffTimelineEntry[]> {
+    return this.repository.timeline(tenantId, staffId);
+  }
+
+  async getAttendance(tenantId: string, staffId: string): Promise<any> {
+    const staff = await this.getById(tenantId, staffId);
+    return staff.attendance || { presentDays: 0, absentDays: 0, lateArrivals: 0, leaves: 0, attendancePercent: 0 };
+  }
+
+  async getLeave(tenantId: string, staffId: string): Promise<any> {
+    const staff = await this.getById(tenantId, staffId);
+    return {
+      balance: staff.leaves || {},
+    };
+  }
+
+  async getPayroll(tenantId: string, staffId: string): Promise<any> {
+    const staff = await this.getById(tenantId, staffId);
+    const payroll = staff.payroll || {};
+    const allowances = payroll.allowances || [];
+    const deductions = payroll.deductions || [];
+    const totalAllowances = allowances.reduce((sum: number, a: any) => sum + (a.amount || 0), 0);
+    const totalDeductions = deductions.reduce((sum: number, d: any) => sum + (d.amount || 0), 0);
+
+    return {
+      ...payroll,
+      totalAllowances,
+      totalDeductions,
+      computedGross: (payroll.basicSalary || 0) + totalAllowances,
+      computedNet: ((payroll.basicSalary || 0) + totalAllowances) - totalDeductions,
+    };
+  }
+
+  async getAISummary(tenantId: string, staffId: string): Promise<any> {
+    const staff = await this.getById(tenantId, staffId);
+
+    const summaryData = {
+      name: staff.personal?.fullName,
+      designation: staff.professional?.designation,
+      department: staff.professional?.department,
+      status: staff.status || "active",
+      attendance: staff.attendance,
+      leaves: staff.leaves,
+      performance: staff.performance,
+      academic: staff.academic,
+    };
+
+    const prompt = `Analyze this staff member's profile and provide a brief summary with risk alerts and suggestions:
+${JSON.stringify(summaryData, null, 2)}
+
+Provide:
+1. Overall assessment (1-2 sentences)
+2. Key strengths
+3. Areas of concern
+4. Recommendations
+
+Keep response concise and structured.`;
+
+    try {
+      const response = await this.aiProvider.generateContent(
+        prompt,
+        "You are an HR analytics assistant. Provide concise, professional analysis of staff data."
+      );
+
+      return {
+        summary: response.text,
+        staffId,
+        generatedAt: new Date().toISOString(),
+        model: this.aiProvider.getConfig().model,
+      };
+    } catch (error) {
+      logger.warn("[StaffService] AI summary failed", { metadata: { staffId, error } });
+      return {
+        summary: "AI summary unavailable. Staff data is valid.",
+        staffId,
+        generatedAt: new Date().toISOString(),
+        error: true,
+      };
+    }
+  }
+
+  async advancedFilter(
+    tenantId: string,
+    filter: StaffFilter
+  ): Promise<{ data: (Staff & { id: string })[]; total: number; page: number; totalPages: number }> {
+    return this.repository.advancedFilter(tenantId, filter);
   }
 }

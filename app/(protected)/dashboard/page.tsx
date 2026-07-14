@@ -58,6 +58,7 @@ export default function DashboardPage() {
   const recentPayments = data.recentPayments || [];
   const classDistribution = data.classDistribution || [];
   const studentStatus = data.studentStatusBreakdown || { active: 0, graduated: 0, transferred: 0, suspended: 0, archived: 0 };
+  const staffAnalytics = data.staffAnalytics || { total: 0, active: 0, terminated: 0, resigned: 0, onLeave: 0, byDepartment: {}, byCategory: {} };
 
   return (
     <motion.div initial="hidden" animate="visible" variants={staggerContainer} className="space-y-8">
@@ -210,6 +211,44 @@ export default function DashboardPage() {
             <StatusCard label="Archived" value={studentStatus.archived} color="yellow" />
             <StatusCard label="Total" value={data.students || 0} color="purple" />
           </div>
+        </motion.div>
+      </div>
+
+      {/* Staff Overview Section */}
+      <div className="grid lg:grid-cols-2 gap-6">
+        <motion.div variants={fadeInUp} className="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm">
+          <h3 className="text-lg font-bold mb-4 flex items-center gap-2 text-gray-900">
+            <Briefcase size={20} className="text-purple-600" /> Staff Overview
+          </h3>
+          <div className="grid grid-cols-2 gap-4">
+            <StatusCard label="Active" value={staffAnalytics.active} color="green" />
+            <StatusCard label="On Leave" value={staffAnalytics.onLeave} color="blue" />
+            <StatusCard label="Terminated" value={staffAnalytics.terminated} color="red" />
+            <StatusCard label="Resigned" value={staffAnalytics.resigned} color="yellow" />
+          </div>
+        </motion.div>
+
+        <motion.div variants={fadeInUp} className="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm">
+          <h3 className="text-lg font-bold mb-4 flex items-center gap-2 text-gray-900">
+            <Users size={20} className="text-purple-600" /> Staff by Department
+          </h3>
+          {Object.keys(staffAnalytics.byDepartment).length === 0 ? (
+            <div className="h-40 flex items-center justify-center text-gray-400">No department data</div>
+          ) : (
+            <div className="space-y-3">
+              {Object.entries(staffAnalytics.byDepartment).slice(0, 6).map(([dept, count]) => (
+                <div key={dept}>
+                  <div className="flex justify-between text-sm mb-1">
+                    <span className="text-gray-700 font-medium">{dept}</span>
+                    <span className="text-gray-500 font-bold">{count as number}</span>
+                  </div>
+                  <div className="w-full bg-gray-100 rounded-full h-2">
+                    <div className="bg-purple-500 h-2 rounded-full" style={{ width: `${Math.min(100, ((count as number) / (staffAnalytics.total || 1)) * 100)}%` }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </motion.div>
       </div>
     </motion.div>
