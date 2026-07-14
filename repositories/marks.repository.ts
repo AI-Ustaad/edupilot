@@ -4,6 +4,19 @@ import { dbTimestamp } from "@/lib/firebase-admin";
 import type { Mark } from "@/types/marks";
 import type { IMarksRepository } from "@/interfaces/IMarksRepository";
 
+// 🟢 Enterprise Safe Serializer
+function serializeDoc<T>(doc: any): T & { id: string } {
+  const data = doc.data() || {};
+  for (const key in data) {
+    if (data[key] && typeof data[key].toDate === 'function') {
+      data[key] = data[key].toDate().toISOString();
+    } else if (data[key] && data[key]._seconds !== undefined) {
+      data[key] = new Date(data[key]._seconds * 1000).toISOString();
+    }
+  }
+  return { id: doc.id, ...data } as T & { id: string };
+}
+
 export class MarksRepository extends BaseRepository<Mark> implements IMarksRepository {
   constructor() {
     super("marks");
@@ -41,7 +54,7 @@ export class MarksRepository extends BaseRepository<Mark> implements IMarksRepos
     }
 
     const snapshot = await query.get();
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Mark & { id: string }));
+    return snapshot.docs.map(doc => serializeDoc<Mark>(doc));
   }
 
   async upsert(id: string, data: Partial<Mark>, tenantId: string): Promise<void> {
@@ -72,7 +85,7 @@ export class MarksRepository extends BaseRepository<Mark> implements IMarksRepos
       .where("studentId", "==", studentId)
       .where("deleted", "==", false)
       .get();
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Mark & { id: string }));
+    return snapshot.docs.map(doc => serializeDoc<Mark>(doc));
   }
 
   async findSkills(tenantId: string, studentId: string, term?: string): Promise<Record<string, number>[]> {
