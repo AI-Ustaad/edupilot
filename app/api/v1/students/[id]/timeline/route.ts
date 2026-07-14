@@ -1,4 +1,5 @@
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
 
 import { withErrorHandler, withAuth, withTenant } from "@/route-helpers";
 import { withPermission } from "@/lib/auth/rbac";
@@ -11,27 +12,53 @@ import type { TenantContext } from "@/types/api";
 export const GET = withErrorHandler(
   withAuth(
     withTenant(
-      withPermission(PERMISSIONS.students.view)(async (req: Request, { tenantId }: TenantContext) => {
-        try {
-          const url = new URL(req.url);
-          // Extract studentId from /students/[id]/timeline
-          const segments = url.pathname.split("/");
-          const timelineIdx = segments.indexOf("timeline");
-          const studentId = timelineIdx > 1 ? segments[timelineIdx - 1] : "";
+      withPermission(PERMISSIONS.students.view)(
+        async (req: Request, { tenantId }: TenantContext) => {
+          try {
+            const url = new URL(req.url);
 
-          if (!studentId) {
-            return createErrorResponse(400, "Student ID required");
+            const segments = url.pathname.split("/");
+            const timelineIndex = segments.indexOf("timeline");
+
+            const studentId =
+              timelineIndex > 0
+                ? segments[timelineIndex - 1]
+                : "";
+
+            if (!studentId) {
+              return createErrorResponse(400, "Student ID required");
+            }
+
+            const studentService = new StudentService();
+
+            const timeline = await studentService.getTimeline(
+              tenantId,
+              studentId
+            );
+
+            return createSuccessResponse(timeline);
+
+          } catch (error: any) {
+
+            logger.error("========== TIMELINE ERROR ==========", {
+              metadata: {
+                error,
+                message: error?.message,
+                stack: error?.stack,
+              },
+            });
+
+            console.error("========== TIMELINE ERROR ==========");
+            console.error(error);
+            console.error(error?.stack);
+
+            return createErrorResponse(
+              500,
+              error?.message || "Internal Server Error"
+            );
           }
-
-          const studentService = new StudentService();
-          const timeline = await studentService.getTimeline(tenantId, studentId);
-
-          return createSuccessResponse(timeline);
-        } catch (error: any) {
-          logger.error("Student Timeline Error:", { metadata: { error } });
-          return createErrorResponse(500, "Internal Server Error");
         }
-      })
+      )
     )
   )
 );
