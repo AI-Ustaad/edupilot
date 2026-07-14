@@ -4,60 +4,26 @@ import { withAuth, withTenant, withErrorHandler } from "@/route-helpers";
 import { createSuccessResponse, createErrorResponse } from "@/lib/api/response";
 import { withPermission } from "@/lib/auth/rbac";
 import { PERMISSIONS } from "@/lib/auth/permissions";
-import { logger } from "@/lib/logger/logger";
-import { SettingsRepository } from "@/repositories/settings.repository";
-import { SectionRepository } from "@/repositories/section.repository";
+import { SchoolConfigurationSchema } from "@/lib/validation/school-configuration.schema";
+import { schoolConfigurationService } from "@/services/school-configuration.service";
 import type { TenantContext } from "@/types/api";
-
-const settingsRepo = new SettingsRepository();
 
 export const POST = withErrorHandler(
   withAuth(
     withTenant(
       withPermission(PERMISSIONS.curriculum.create)(async (req: Request, { tenantId, user }: TenantContext) => {
-        const { classes, subjects, schoolType, curriculum, levels } = await req.json();
-
-        if (!classes || !subjects) {
-          return createErrorResponse(400, "Classes and Subjects are required");
-        }
-
-        // Update settings via repository
-        await settingsRepo.updateConfig(tenantId, { classes, subjects });
-        await settingsRepo.updateGeneral(tenantId, {
-          schoolType,
-          affiliation: curriculum,
-          levelsOffered: levels,
+        const body = await req.json();
+        const current = await schoolConfigurationService.getConfiguration(tenantId);
+        const parsed = SchoolConfigurationSchema.safeParse({
+          schoolName: body.schoolName || current.school.name,
+          schoolType: body.schoolType || current.school.type,
+          curriculumId: body.curriculumId || body.curriculum || current.school.curriculumId,
+          levels: body.levels || current.academicStructure.levels,
+          sectionNames: body.sectionNames || current.academicStructure.sectionNames,
         });
-
-        // Rebuild sections
-        const sectionRepo = new SectionRepository();
-        await sectionRepo.deleteAllForTenant(tenantId);
-
-        const newSections: any[] = [];
-        classes.forEach((cls: any) => {
-          if (cls.name) {
-            const sections = Array.isArray(cls.sections) ? cls.sections : ["A"];
-            sections.forEach((secName: string) => {
-              newSections.push({
-                tenantId,
-                classGrade: cls.name,
-                sectionName: secName,
-                incharge: '',
-                deleted: false,
-              });
-            });
-          }
-        });
-
-        if (newSections.length > 0) {
-          await sectionRepo.bulkCreate(newSections, tenantId);
-        }
-
-        logger.info("Curriculum applied", { metadata: { tenantId, userId: user.uid, classCount: classes.length } });
-
-        return createSuccessResponse(null, {
-          message: "Curriculum applied successfully! Classes and Subjects have been updated."
-        });
+        if (!parsed.success) return createErrorResponse(400, "Invalid school configuration", parsed.error.errors);
+        const configuration = await schoolConfigurationService.saveConfiguration(parsed.data, tenantId, user.uid);
+        return createSuccessResponse(configuration, { message: "Curriculum applied through School Configuration." });
       })
     )
   )

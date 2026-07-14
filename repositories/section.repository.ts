@@ -51,4 +51,17 @@ export class SectionRepository extends BaseRepository<Section> {
     snapshot.docs.forEach(doc => batch.delete(doc.ref));
     await batch.commit();
   }
+
+  async createMissingStructure(
+    tenantId: string,
+    structure: Array<{ classGrade: string; sectionName: string; subjects: { core: string[]; electives: string[] } }>,
+    userId: string
+  ): Promise<number> {
+    const existing = await this.findAllActive(tenantId);
+    const keys = new Set(existing.map((section) => `${section.classGrade}::${section.sectionName}`.toLowerCase()));
+    const missing = structure.filter((section) => !keys.has(`${section.classGrade}::${section.sectionName}`.toLowerCase()));
+    if (!missing.length) return 0;
+    await this.bulkCreate(missing.map((section) => ({ ...section, tenantId, deleted: false, createdBy: userId })), tenantId);
+    return missing.length;
+  }
 }

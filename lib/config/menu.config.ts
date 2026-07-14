@@ -318,14 +318,14 @@ const ALL_MENU_GROUPS: MenuGroupDef[] = [
     items: [
       {
         id: "school-setup",
-        name: "School Setup Wizard",
+        name: "School Configuration",
         icon: School,
         path: "/admin/school-setup",
         requiredPermission: "settings.manage",
       },
       {
         id: "general-settings",
-        name: "General Settings",
+        name: "School Profile",
         icon: Building2,
         path: "/settings/general",
         requiredPermission: "settings.manage",

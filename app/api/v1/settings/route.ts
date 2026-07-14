@@ -3,21 +3,20 @@ import { withErrorHandler, withAuth, withTenant } from "@/route-helpers";
 import { withPermission } from "@/lib/auth/rbac";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 import { createSuccessResponse } from "@/lib/api/response";
-import { SectionRepository } from "@/repositories/section.repository";
-import { SettingsRepository } from "@/repositories/settings.repository";
+import { schoolConfigurationService } from "@/services/school-configuration.service";
 import type { TenantContext } from "@/types/api";
-
-const settingsRepo = new SettingsRepository();
 
 export const GET = withErrorHandler(
   withAuth(
     withTenant(
       withPermission(PERMISSIONS.settings.view)(async (_req: Request, { tenantId }: TenantContext) => {
-        const config = await settingsRepo.getConfig(tenantId);
-        if (!config) {
-          return createSuccessResponse({ classes: [], subjects: [] });
-        }
-        return createSuccessResponse(config);
+        const config = await schoolConfigurationService.getConfiguration(tenantId);
+        return createSuccessResponse({
+          ...config,
+          // Retained until module-specific consumers move to academicStructure.
+          classes: config.academicStructure.classes.map((item) => ({ name: item.name, sections: config.academicStructure.sectionNames })),
+          subjects: config.academicStructure.subjects,
+        });
       })
     )
   )
@@ -26,40 +25,18 @@ export const GET = withErrorHandler(
 export const PUT = withErrorHandler(
   withAuth(
     withTenant(
-      withPermission(PERMISSIONS.settings.update)(async (req: Request, { tenantId }: TenantContext) => {
+      withPermission(PERMISSIONS.settings.update)(async (req: Request, { tenantId, user }: TenantContext) => {
         const body = await req.json();
-        const { classes, subjects } = body;
-
-        await settingsRepo.updateConfig(tenantId, {
-          classes: classes || [],
-          subjects: subjects || [],
-        });
-
-        if (classes && Array.isArray(classes)) {
-          const sectionRepo = new SectionRepository();
-          await sectionRepo.deleteAllForTenant(tenantId);
-
-          const newSections: any[] = [];
-          classes.forEach((cls: any) => {
-            if (cls.name && cls.sections && Array.isArray(cls.sections)) {
-              cls.sections.forEach((secName: string) => {
-                newSections.push({
-                  tenantId,
-                  classGrade: cls.name,
-                  sectionName: secName,
-                  incharge: '',
-                  deleted: false,
-                });
-              });
-            }
-          });
-
-          if (newSections.length > 0) {
-            await sectionRepo.bulkCreate(newSections, tenantId);
-          }
-        }
-
-        return createSuccessResponse(null, { message: "Settings updated" });
+        const current = await schoolConfigurationService.getConfiguration(tenantId);
+        // Backward-compatible legacy endpoint. Structural writes are normalized through the central engine.
+        const configuration = await schoolConfigurationService.saveConfiguration({
+          schoolName: body.schoolName || current.school.name,
+          schoolType: body.schoolType || current.school.type,
+          curriculumId: body.curriculumId || current.school.curriculumId,
+          levels: body.levels || current.academicStructure.levels,
+          sectionNames: body.sectionNames || current.academicStructure.sectionNames,
+        }, tenantId, user.uid);
+        return createSuccessResponse(configuration, { message: "School configuration updated" });
       })
     )
   )
