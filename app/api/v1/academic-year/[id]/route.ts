@@ -21,7 +21,7 @@ export const GET = withAuth(
         return createErrorResponse(404, "Academic year not found");
       }
 
-      return createSuccessResponse({ id: doc.id, ...doc }, { message: "Academic year retrieved" });
+      return createSuccessResponse({ ...doc, id: doc.id }, { message: "Academic year retrieved" });
     })
   )
 );

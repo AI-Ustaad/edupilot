@@ -8,7 +8,7 @@ export class SettingsRepository {
 
   async getConfig(tenantId: string): Promise<Record<string, any> | null> {
     const doc = await this.getSettingsRef(tenantId, "config").get();
-    return doc.exists ? doc.data() : null;
+    return doc.exists ? (doc.data() as Record<string, any>) : null;
   }
 
   async updateConfig(tenantId: string, data: Record<string, any>): Promise<void> {
@@ -44,7 +44,7 @@ export class SettingsRepository {
 
   async getGeneral(tenantId: string): Promise<Record<string, any> | null> {
     const doc = await this.getSettingsRef(tenantId, "general").get();
-    return doc.exists ? doc.data() : null;
+    return doc.exists ? (doc.data() as Record<string, any>) : null;
   }
 
   async updateGeneral(tenantId: string, data: Record<string, any>): Promise<void> {

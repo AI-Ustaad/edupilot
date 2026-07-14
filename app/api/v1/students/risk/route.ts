@@ -30,7 +30,7 @@ export const GET = withErrorHandler(
           }
 
           // Calculate risk for each student
-          const riskStudents = [];
+          const riskStudents: any[] = [];
           for (const student of students) {
             const stats = attendanceByStudent[student.id] || { present: 0, total: 0 };
             const attendancePct = stats.total > 0 ? (stats.present / stats.total) * 100 : 100;

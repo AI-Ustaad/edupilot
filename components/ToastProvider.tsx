@@ -61,7 +61,7 @@ export const ToastProvider = ({ children }: { children: React.ReactNode }) => {
               {toast.onUndo && (
                 <button
                   onClick={() => {
-                    toast.onUndo();
+                    toast.onUndo?.();
                     removeToast(toast.id);
                   }}
                   className="flex items-center gap-1 text-xs font-black uppercase text-blue-600 hover:text-blue-800 transition"

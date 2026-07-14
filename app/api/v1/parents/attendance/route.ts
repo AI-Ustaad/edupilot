@@ -13,8 +13,8 @@ export const GET = withErrorHandler(
     withTenant(
       withPermission(PERMISSIONS.parents.view)(async (req: Request, { tenantId, user }: TenantContext) => {
         const url = new URL(req.url);
-        const studentId = url.searchParams.get('studentId');
-        const date = url.searchParams.get('date');
+        const studentId = url.searchParams.get('studentId') ?? undefined;
+        const date = url.searchParams.get('date') ?? undefined;
 
         const parentService = new ParentsService();
         if (studentId) {
@@ -32,7 +32,7 @@ export const GET = withErrorHandler(
 
         // Fetch all children and query per child using targeted filters
         const childIds = await parentService.getChildIds(user.uid, tenantId);
-        const allRecords = [];
+        const allRecords: any[] = [];
         for (const childId of childIds) {
           const records = await attendanceService.listAttendance(tenantId, { studentId: childId, date });
           allRecords.push(...records);

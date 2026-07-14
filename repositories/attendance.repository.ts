@@ -56,7 +56,7 @@ export class AttendanceRepository extends BaseRepository<Attendance> implements 
     if (studentIds.length === 0) return [];
     // Firestore `in` operator supports up to 30 values; chunk if needed
     const results: (Attendance & { id: string })[] = [];
-    const chunks = [];
+    const chunks: string[][] = [];
     for (let i = 0; i < studentIds.length; i += 30) {
       chunks.push(studentIds.slice(i, i + 30));
     }

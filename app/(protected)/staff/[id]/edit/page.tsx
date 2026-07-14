@@ -102,6 +102,7 @@ function EditStaffContent() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!form) return;
     if (!form.personal.fullName || form.personal.fullName.trim().length < 2) {
       setError("Full Name is required (min 2 characters).");
       return;

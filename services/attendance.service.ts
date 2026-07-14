@@ -190,7 +190,7 @@ export class AttendanceService {
     }
 
     // Build trend for all 7 days (including days with 0 records)
-    const trend = [];
+    const trend: { day: string; percent: number }[] = [];
     for (let i = 0; i < 7; i++) {
       const d = new Date(startDate);
       d.setDate(d.getDate() + i);
