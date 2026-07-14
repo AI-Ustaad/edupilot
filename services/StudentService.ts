@@ -580,43 +580,148 @@ export class StudentService {
     });
   }
 
-  async student360(tenantId: string, studentId: string): Promise<Student360Aggregate> {
+  async student360(
+    tenantId: string,
+    studentId: string
+  ): Promise<Student360Aggregate> {
+
     const student = await this.getById(tenantId, studentId);
 
-    const [attendanceRecords, marksRecords, feeRecords, behaviorRecords, timelineEntries] = await Promise.all([
-      new AttendanceRepository().findByStudentId(tenantId, studentId),
-      new MarksRepository().findByStudent(tenantId, studentId),
-      new FeesRepository().findByStudent(tenantId, studentId, 50),
-      new BehaviorRepository().findByStudent(studentId, tenantId, 50),
-      this.repository.timeline(tenantId, studentId),
-    ]);
+    let attendanceRecords: any[] = [];
+    let marksRecords: any[] = [];
+    let feeRecords: any[] = [];
+    let behaviorRecords: any[] = [];
+    let timelineEntries: any[] = [];
 
-    // Attendance aggregation
-    const present = attendanceRecords.filter(r => (r as any).status === "Present").length;
-    const absent = attendanceRecords.filter(r => (r as any).status === "Absent").length;
-    const late = attendanceRecords.filter(r => (r as any).status === "Late").length;
+    try {
+      attendanceRecords = await new AttendanceRepository()
+        .findByStudentId(tenantId, studentId);
+
+      console.log("✅ AttendanceRepository OK");
+    } catch (err) {
+      console.error("❌ AttendanceRepository FAILED");
+      console.error(err);
+    }
+
+    try {
+      marksRecords = await new MarksRepository()
+        .findByStudent(tenantId, studentId);
+
+      console.log("✅ MarksRepository OK");
+    } catch (err) {
+      console.error("❌ MarksRepository FAILED");
+      console.error(err);
+    }
+
+    try {
+      feeRecords = await new FeesRepository()
+        .findByStudent(tenantId, studentId, 50);
+
+      console.log("✅ FeesRepository OK");
+    } catch (err) {
+      console.error("❌ FeesRepository FAILED");
+      console.error(err);
+    }
+
+    try {
+      behaviorRecords = await new BehaviorRepository()
+        .findByStudent(studentId, tenantId, 50);
+
+      console.log("✅ BehaviorRepository OK");
+    } catch (err) {
+      console.error("❌ BehaviorRepository FAILED");
+      console.error(err);
+    }
+
+    try {
+      timelineEntries = await this.repository.timeline(
+        tenantId,
+        studentId
+      );
+
+      console.log("✅ TimelineRepository OK");
+    } catch (err) {
+      console.error("❌ TimelineRepository FAILED");
+      console.error(err);
+    }
+
+    const present = attendanceRecords.filter(
+      (r: any) => r.status === "Present"
+    ).length;
+
+    const absent = attendanceRecords.filter(
+      (r: any) => r.status === "Absent"
+    ).length;
+
+    const late = attendanceRecords.filter(
+      (r: any) => r.status === "Late"
+    ).length;
+
     const totalAtt = present + absent + late;
-    const attendancePct = totalAtt > 0 ? Math.round((present / totalAtt) * 100) : 0;
 
-    // Marks aggregation
-    const marksArr = marksRecords as any[];
-    const avgMarks = marksArr.length > 0
-      ? Math.round(marksArr.reduce((sum, m) => sum + (m.obtainedMarks || 0), 0) / marksArr.length)
-      : 0;
+    const attendancePct =
+      totalAtt > 0
+        ? Math.round((present / totalAtt) * 100)
+        : 0;
 
-    // Fees aggregation
-    const feeArr = feeRecords as any[];
-    const totalDue = feeArr.reduce((sum, f) => sum + (f.totalAmount || f.amount || 0), 0);
-    const totalPaid = feeArr.reduce((sum, f) => sum + (f.paidAmount || 0), 0);
+    const avgMarks =
+      marksRecords.length > 0
+        ? Math.round(
+            marksRecords.reduce(
+              (sum: number, m: any) =>
+                sum + (m.obtainedMarks || 0),
+              0
+            ) / marksRecords.length
+          )
+        : 0;
+
+    const totalDue = feeRecords.reduce(
+      (sum: number, f: any) =>
+        sum + (f.totalAmount || f.amount || 0),
+      0
+    );
+
+    const totalPaid = feeRecords.reduce(
+      (sum: number, f: any) =>
+        sum + (f.paidAmount || 0),
+      0
+    );
 
     return {
       student,
-      attendance: { present, absent, late, percentage: attendancePct },
-      fees: { totalDue, totalPaid, outstanding: totalDue - totalPaid, records: feeArr },
-      marks: { exams: marksArr, average: avgMarks, trend: avgMarks >= 60 ? "improving" : "declining" },
-      behavior: { logs: behaviorRecords, incidents: behaviorRecords.length },
+
+      attendance: {
+        present,
+        absent,
+        late,
+        percentage: attendancePct,
+      },
+
+      fees: {
+        totalDue,
+        totalPaid,
+        outstanding: totalDue - totalPaid,
+        records: feeRecords,
+      },
+
+      marks: {
+        exams: marksRecords,
+        average: avgMarks,
+        trend:
+          avgMarks >= 60
+            ? "improving"
+            : "declining",
+      },
+
+      behavior: {
+        logs: behaviorRecords,
+        incidents: behaviorRecords.length,
+      },
+
       transport: null,
+
       hostel: null,
+
       timeline: timelineEntries,
     };
   }
