@@ -19,7 +19,6 @@ export class DashboardService {
 
   constructor() {
     this.studentService = new StudentService(new StudentRepository());
-    // 🟢 StaffRepository is injected here to prevent undefined crashes
     this.staffService = new StaffService(new StaffRepository()); 
     this.feesService = new FeesService(new FeesRepository());
     this.attendanceService = new AttendanceService(new AttendanceRepository());
@@ -29,7 +28,6 @@ export class DashboardService {
     const cacheKey = `dashboard:${tenantId}`;
 
     return getOrSet(cacheKey, DASHBOARD_CACHE_TTL, async () => {
-      // 🟢 Added .catch() to every promise so one failure doesn't crash everything
       const [
         studentsCount,
         staffCount,
@@ -52,26 +50,25 @@ export class DashboardService {
         this.staffService.getAnalytics(tenantId).catch(() => null),
       ]);
 
-      // Build class distribution from countByClass (no full student fetch)
       const classDistribution = Object.entries(classCountMap || {}).map(([name, value]) => ({
         name: name || "Unknown",
         value: value || 0,
       }));
 
-      // 🟢 TypeScript Fix: Strictly typed reduction for attendance stats
-      const safeAttendanceTrend = attendanceTrend || [];
+      // 🟢 TypeScript Fix: Strictly typed as any[] to completely bypass 'reduce' inference errors
+      const safeAttendanceTrend: any[] = Array.isArray(attendanceTrend) ? attendanceTrend : [];
+      
       const attendanceStats = safeAttendanceTrend.length > 0
         ? {
             avg: Math.round(
-              (safeAttendanceTrend.reduce((s: number, d: any) => s + (Number(d.percent) || 0), 0) as number) / 
+              safeAttendanceTrend.reduce((s, d) => s + (Number(d?.percent) || 0), 0) / 
               safeAttendanceTrend.length
             ),
-            highest: Math.max(...safeAttendanceTrend.map((d: any) => Number(d.percent) || 0)),
-            lowest: Math.min(...safeAttendanceTrend.map((d: any) => Number(d.percent) || 0)),
+            highest: Math.max(...safeAttendanceTrend.map(d => Number(d?.percent) || 0)),
+            lowest: Math.min(...safeAttendanceTrend.map(d => Number(d?.percent) || 0)),
           }
         : { avg: 0, highest: 0, lowest: 0 };
 
-      // Null-safe today attendance
       const safeTodayAttendance = todayAttendance || { present: 0, absent: 0, late: 0, total: 0 };
 
       return {
@@ -108,7 +105,6 @@ export class DashboardService {
   }
 
   async rebuildStats(tenantId: string) {
-    // 🟢 Added .catch() here as well for background reliability
     const [studentCount, staffCount, totalRevenue] = await Promise.all([
       this.studentService.count(tenantId).catch(() => 0),
       this.staffService.count(tenantId).catch(() => 0),
