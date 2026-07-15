@@ -28,7 +28,6 @@ export default function EnterpriseSchoolConfigurationPage() {
   const { data, isLoading } = useQuery({
     queryKey: ["schoolConfiguration"],
     queryFn: async () => {
-      // ✅ پاتھ درست کر دیا گیا ہے
       const res = await apiClient.get("/settings/school-configuration");
       return res.data?.configuration; // MasterSchoolConfiguration
     }
@@ -48,7 +47,6 @@ export default function EnterpriseSchoolConfigurationPage() {
   // 3. Save Mutation
   const saveMutation = useMutation({
     mutationFn: async (payloadData: any) => {
-      // ✅ پاتھ درست کر دیا گیا ہے
       return await apiClient.post("/settings/school-configuration", {
         action: "save_and_publish",
         reason: editReason || "Admin updated configuration",
@@ -159,22 +157,49 @@ export default function EnterpriseSchoolConfigurationPage() {
           <div className="bg-white border shadow-sm rounded-2xl p-6 md:p-8 space-y-7">
             <section className="grid md:grid-cols-2 gap-5">
               <Field label="School Name">
-                <input value={schoolName} onChange={(e) => setSchoolName(e.target.value)} className="w-full p-3 border rounded-lg outline-none focus:border-blue-500" placeholder="e.g. City Public School" />
+                <input 
+                  id="schoolName"
+                  name="schoolName"
+                  value={schoolName} 
+                  onChange={(e) => setSchoolName(e.target.value)} 
+                  className="w-full p-3 border rounded-lg outline-none focus:border-blue-500" 
+                  placeholder="e.g. City Public School" 
+                />
               </Field>
               <Field label="School Type">
-                <select value={schoolType} onChange={(e) => setSchoolType(e.target.value)} className="w-full p-3 border rounded-lg outline-none focus:border-blue-500">
+                <select 
+                  id="schoolType"
+                  name="schoolType"
+                  value={schoolType} 
+                  onChange={(e) => setSchoolType(e.target.value)} 
+                  className="w-full p-3 border rounded-lg outline-none focus:border-blue-500"
+                >
                   <option value="Private">Private</option>
                   <option value="Government">Government</option>
                   <option value="Madrissa">Madrissa</option>
                 </select>
               </Field>
               <Field label="Curriculum / Board">
-                <select value={curriculumId} onChange={(e) => setCurriculumId(e.target.value)} className="w-full p-3 border rounded-lg outline-none focus:border-blue-500">
+                <select 
+                  id="curriculumId"
+                  name="curriculumId"
+                  value={curriculumId} 
+                  onChange={(e) => setCurriculumId(e.target.value)} 
+                  className="w-full p-3 border rounded-lg outline-none focus:border-blue-500"
+                >
                   {CURRICULUMS.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
               </Field>
               <Field label="Reason for Edit (Audit Log)">
-                <input value={editReason} onChange={(e) => setEditReason(e.target.value)} className="w-full p-3 border rounded-lg outline-none focus:border-blue-500" placeholder="e.g. Added Higher Secondary Classes" required />
+                <input 
+                  id="editReason"
+                  name="editReason"
+                  value={editReason} 
+                  onChange={(e) => setEditReason(e.target.value)} 
+                  className="w-full p-3 border rounded-lg outline-none focus:border-blue-500" 
+                  placeholder="e.g. Added Higher Secondary Classes" 
+                  required 
+                />
               </Field>
             </section>
 
