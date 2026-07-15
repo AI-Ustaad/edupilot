@@ -14,16 +14,18 @@ export const GET = withErrorHandler(
     withTenant(
       withPermission(PERMISSIONS.parents.view)(async (req: Request, { tenantId, user }: TenantContext) => {
         const parentService = new ParentsService();
-        const children = await parentService.getChildren(user.uid, tenantId);
+        
+        // 🟢 Fault-Tolerance: Catch error if children fetching fails
+        const children = await parentService.getChildren(user.uid, tenantId).catch(() => []);
         const childIds = children.map(c => c.id);
 
         if (childIds.length === 0) {
           return createSuccessResponse([]);
         }
 
-        // Batch-fetch attendance for ALL children in one query
+        // Batch-fetch attendance safely
         const attendanceRepo = new AttendanceRepository();
-        const allAttendance = await attendanceRepo.findByStudentIds(tenantId, childIds, 5);
+        const allAttendance = await attendanceRepo.findByStudentIds(tenantId, childIds, 5).catch(() => []);
 
         // Group by studentId in-memory
         const attendanceByStudent: Record<string, string> = {};
@@ -35,8 +37,10 @@ export const GET = withErrorHandler(
         }
 
         const feesService = new FeesService(new FeesRepository());
+        
+        // 🟢 Fault-Tolerance: Ensure one failing query doesn't break Promise.all
         const feesPromises = childIds.map(id =>
-          feesService.listFees(tenantId, id, 1, 1)
+          feesService.listFees(tenantId, id, 1, 1).catch(() => ({ data: [] }))
         );
         const feesResults = await Promise.all(feesPromises);
 
