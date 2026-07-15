@@ -1,39 +1,29 @@
-// lib/api/client.ts
 import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
 import * as Sentry from "@sentry/nextjs";
-import { firebaseTokenProvider } from "@/lib/auth/tokenProvider";
 import { logger } from "@/lib/logger/logger";
 
-// 🚀 Enterprise Axios Instance
+// 🚀 Enterprise Axios Instance (Session Cookie Based)
 const apiClient = axios.create({
   baseURL: "/api/v1",
+  // 🟢 CRITICAL: This automatically sends the HTTP-Only Session Cookie to the backend
+  withCredentials: true, 
   headers: {
     "Content-Type": "application/json",
   },
   timeout: 15000,
 });
 
-// 🛡️ Request Interceptor: Token, Tenant ID, اور Request ID (Tracing)
+// 🛡️ Request Interceptor: Distributed Tracing ONLY
 apiClient.interceptors.request.use(
-  async (config: InternalAxiosRequestConfig) => {
+  (config: InternalAxiosRequestConfig) => {
     try {
-      // 1. Token Inject کریں
-      const token = await firebaseTokenProvider.getAccessToken();
-      if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
-      }
+      // 🟢 No more manual Token or TenantID injection here! 
+      // Everything is securely handled by the backend session.
 
-      // 2. Tenant ID Inject کریں (یہ آپ کا AuthContext Provide کرے گا)
-      const tenantId = (apiClient.defaults.headers as any)["x-tenant-id"];
-      if (tenantId) {
-        config.headers["x-tenant-id"] = tenantId;
-      }
-
-      // 3. Distributed Tracing کیلئے Request ID
+      // Distributed Tracing کیلئے Request ID
       if (typeof crypto !== "undefined" && crypto.randomUUID) {
         config.headers["x-request-id"] = crypto.randomUUID();
       }
-      
     } catch (err) {
       logger.error("[API Client] Interceptor Error:", { metadata: { error: err } });
     }
@@ -42,35 +32,21 @@ apiClient.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// 🛡️ Response Interceptor: Sentry Logging اور Refresh Token Logic
+// 🛡️ Response Interceptor: Sentry Logging & Session Expiry
 apiClient.interceptors.response.use(
   (response) => response.data,
   async (error: AxiosError) => {
-    const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
-    
     // Sentry پر Error Log بھیجیں
     Sentry.captureException(error);
 
     if (error.response) {
       const status = error.response.status;
 
-      if (status === 401 && !originalRequest._retry) {
-        originalRequest._retry = true;
-        try {
-          // Force Refresh Token
-          const newToken = await firebaseTokenProvider.getAccessToken(true);
-          if (newToken) {
-            originalRequest.headers.Authorization = `Bearer ${newToken}`;
-            return apiClient(originalRequest); // Request دوبارہ بھیجیں
-          } else {
-            throw new Error("No user found for token refresh");
-          }
-        } catch (refreshError) {
-          logger.error("[API Client] Token Refresh Failed. Logging out.");
-          if (typeof window !== "undefined") {
-            window.location.href = "/login";
-          }
-          return Promise.reject(refreshError);
+      // 🟢 اگر کوکی ایکسپائر ہو گئی ہے یا انویلڈ ہے، تو سیدھا لاگ ان پر بھیجیں
+      if (status === 401 || status === 403) {
+        logger.warn("[API Client] Session expired or unauthorized. Redirecting to login.");
+        if (typeof window !== "undefined") {
+          window.location.href = "/login";
         }
       }
     }
