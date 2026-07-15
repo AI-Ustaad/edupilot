@@ -1,55 +1,31 @@
-import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
-import * as Sentry from "@sentry/nextjs";
-import { logger } from "@/lib/logger/logger";
+import axios from 'axios';
 
-// 🚀 Enterprise Axios Instance (Session Cookie Based)
 const apiClient = axios.create({
-  baseURL: "/api/v1",
-  // 🟢 CRITICAL: This automatically sends the HTTP-Only Session Cookie to the backend
-  withCredentials: true, 
-  headers: {
-    "Content-Type": "application/json",
-  },
+  baseURL: '/api/v1',
+  withCredentials: true,
   timeout: 15000,
 });
 
-// 🛡️ Request Interceptor: Distributed Tracing ONLY
-apiClient.interceptors.request.use(
-  (config: InternalAxiosRequestConfig) => {
-    try {
-      // 🟢 No more manual Token or TenantID injection here! 
-      // Everything is securely handled by the backend session.
-
-      // Distributed Tracing کیلئے Request ID
-      if (typeof crypto !== "undefined" && crypto.randomUUID) {
-        config.headers["x-request-id"] = crypto.randomUUID();
-      }
-    } catch (err) {
-      logger.error("[API Client] Interceptor Error:", { metadata: { error: err } });
-    }
-    return config;
-  },
-  (error) => Promise.reject(error)
-);
-
-// 🛡️ Response Interceptor: Sentry Logging & Session Expiry
+// 🔥 PERMANENT FIX: نیٹ ورک ایررز کو ہینڈل کرنے کا انٹرسیپٹر
 apiClient.interceptors.response.use(
-  (response) => response.data,
-  async (error: AxiosError) => {
-    // Sentry پر Error Log بھیجیں
-    Sentry.captureException(error);
-
-    if (error.response) {
-      const status = error.response.status;
-
-      // 🟢 اگر کوکی ایکسپائر ہو گئی ہے یا انویلڈ ہے، تو سیدھا لاگ ان پر بھیجیں
-      if (status === 401 || status === 403) {
-        logger.warn("[API Client] Session expired or unauthorized. Redirecting to login.");
-        if (typeof window !== "undefined") {
-          window.location.href = "/login";
-        }
+  (response) => response,
+  (error) => {
+    // 1. اگر انٹرنیٹ کنکشن ٹوٹ جائے یا سرور جواب نہ دے
+    if (!error.response) {
+      console.error("[Axios] Network Error: Internet disconnected or server unreachable");
+      // ایسا ایرر ریٹرن کریں جو فرنٹ اینڈ آسانی سے پڑھ سکے
+      return Promise.reject({ 
+        response: { data: { error: "Network Error. Please check your internet connection." } } 
+      });
+    }
+    
+    // 2. اگر یوزر کا سیشن ختم ہو جائے (401 Unauthorized)
+    if (error.response.status === 401) {
+      if (typeof window !== "undefined" && !window.location.pathname.includes('/login')) {
+        window.location.href = '/login';
       }
     }
+    
     return Promise.reject(error);
   }
 );
