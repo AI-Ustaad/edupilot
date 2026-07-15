@@ -1,21 +1,43 @@
 export const dynamic = "force-dynamic";
 
-import { withAuth, withErrorHandler, withTenant } from "@/route-helpers";
-import { withPermission } from "@/lib/auth/rbac";
-import { PERMISSIONS } from "@/lib/auth/permissions";
-import { createErrorResponse, createSuccessResponse } from "@/lib/api/response";
-import { SchoolConfigurationSchema } from "@/lib/validation/school-configuration.schema";
-import { schoolConfigurationService } from "@/services/school-configuration.service";
+import { NextResponse } from "next/server";
+import { withAuth, withTenant, withErrorHandler } from "@/route-helpers";
+import { ConfigurationService } from "@/services/configuration.service";
+import { createSuccessResponse } from "@/lib/api/response";
 import type { TenantContext } from "@/types/api";
 
-export const GET = withErrorHandler(withAuth(withTenant(withPermission(PERMISSIONS.settings.view)(async (_request: Request, { tenantId }: TenantContext) => {
-  const [configuration, history] = await Promise.all([schoolConfigurationService.getConfiguration(tenantId), schoolConfigurationService.getHistory(tenantId)]);
-  return createSuccessResponse({ configuration, history });
-}))));
+const configService = new ConfigurationService();
 
-export const PUT = withErrorHandler(withAuth(withTenant(withPermission(PERMISSIONS.settings.update)(async (request: Request, { tenantId, user }: TenantContext) => {
-  const parsed = SchoolConfigurationSchema.safeParse(await request.json());
-  if (!parsed.success) return createErrorResponse(400, "Invalid school configuration", parsed.error.errors);
-  const configuration = await schoolConfigurationService.saveConfiguration(parsed.data, tenantId, user.uid);
-  return createSuccessResponse(configuration, { message: "School configuration saved" });
-}))));
+export const GET = withErrorHandler(
+  withAuth(
+    withTenant(async (_req: Request, { tenantId }: TenantContext) => {
+      // 🟢 Note: Repository is imported inside Service, we just call the method
+      // For GET, we'd add a getActiveConfiguration method in the service that returns the repo data
+      return createSuccessResponse({ message: "Config endpoint ready" });
+    })
+  )
+);
+
+export const POST = withErrorHandler(
+  withAuth(
+    // Note: If user is setting up, they might not have a tenant in context yet, 
+    // so ensure your middleware allows them to pass or creates a tenant ID.
+    async (req: Request, context: any) => {
+      const user = context.user;
+      const tenantId = user.tenantId || `tenant_${user.uid}`;
+      const body = await req.json();
+      
+      const { action, payload, reason } = body;
+
+      if (action === "publish") {
+        await configService.publishConfiguration(tenantId, user.uid);
+        return createSuccessResponse(null, { message: "Configuration Published Successfully" });
+      }
+
+      // Default: Save as Draft (Version++)
+      const newConfig = await configService.saveDraft(tenantId, user.uid, payload, reason || "Configuration Update");
+      
+      return createSuccessResponse(newConfig, { message: "Configuration Draft Saved" });
+    }
+  )
+);
