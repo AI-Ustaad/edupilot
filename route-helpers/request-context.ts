@@ -1,4 +1,4 @@
-import { crypto } from "crypto";
+import { randomUUID } from "crypto";
 
 export interface RequestContext {
   requestId: string;
@@ -13,7 +13,7 @@ export interface RequestContext {
 
 export const buildRequestContext = (req: Request): RequestContext => {
   return {
-    requestId: req.headers.get("x-request-id") || req.headers.get("x-vercel-id") || crypto.randomUUID(),
+    requestId: req.headers.get("x-request-id") || req.headers.get("x-vercel-id") || randomUUID(),
     traceId: req.headers.get("x-b3-traceid") || req.headers.get("traceparent") || null,
     spanId: req.headers.get("x-b3-spanid") || null,
     ip: req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip") || "unknown",
