@@ -4,22 +4,23 @@ import { NextResponse } from "next/server";
 import { withAuth, withTenant, withErrorHandler } from "@/route-helpers";
 import { ConfigurationService } from "@/services/configuration.service";
 import { ConfigurationRepository } from "@/repositories/configuration.repository";
-import { createSuccessResponse } from "@/lib/api/response";
+import { createSuccessResponse, createErrorResponse } from "@/lib/api/response";
 import type { TenantContext } from "@/types/api";
 
 const configService = new ConfigurationService();
-const configRepo = new ConfigurationRepository(); // GET کے لیے
+const configRepo = new ConfigurationRepository();
 
+// 🟢 GET: اسکول کی کنفیگریشن لانے کے لیے
 export const GET = withErrorHandler(
   withAuth(
     withTenant(async (_req: Request, { tenantId }: TenantContext) => {
-      // 🟢 موجودہ (Active) کنفیگریشن منگوائیں
       const configuration = await configRepo.getActiveConfiguration(tenantId);
       return createSuccessResponse({ configuration });
     })
   )
 );
 
+// 🟢 POST: کنفیگریشن سیو یا پبلش کرنے کے لیے
 export const POST = withErrorHandler(
   withAuth(
     async (req: Request, context: any) => {
@@ -29,22 +30,23 @@ export const POST = withErrorHandler(
       
       const { action, payload, reason } = body;
 
-      // 🟢 صرف Publish کرنا ہو (پہلے سے موجود Draft کو)
       if (action === "publish") {
         await configService.publishConfiguration(tenantId, user.uid);
         return createSuccessResponse(null, { message: "Configuration Published Successfully" });
       }
 
-      // 🟢 Edit Flow: نیا ڈرافٹ بنائیں اور فوراً پبلش کر دیں (Save & Publish)
       if (action === "save_and_publish") {
         const draft = await configService.saveDraft(tenantId, user.uid, payload, reason || "Configuration Upgraded");
         await configService.publishConfiguration(tenantId, user.uid);
         return createSuccessResponse(draft, { message: "Configuration Upgraded and Published!" });
       }
 
-      // Default: صرف Draft سیو کریں
+      // Default: Save as Draft
       const newConfig = await configService.saveDraft(tenantId, user.uid, payload, reason || "Configuration Draft Saved");
       return createSuccessResponse(newConfig, { message: "Draft Saved" });
     }
   )
 );
+
+// 🔥 PERMANENT FIX: PUT میتھڈ کو بھی POST کی طرح کام کرنے کی ہدایت دیں
+export const PUT = POST;
