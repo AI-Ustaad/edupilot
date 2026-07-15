@@ -3,25 +3,25 @@ export const dynamic = "force-dynamic";
 import { NextResponse } from "next/server";
 import { withAuth, withTenant, withErrorHandler } from "@/route-helpers";
 import { ConfigurationService } from "@/services/configuration.service";
+import { ConfigurationRepository } from "@/repositories/configuration.repository";
 import { createSuccessResponse } from "@/lib/api/response";
 import type { TenantContext } from "@/types/api";
 
 const configService = new ConfigurationService();
+const configRepo = new ConfigurationRepository(); // GET کے لیے
 
 export const GET = withErrorHandler(
   withAuth(
     withTenant(async (_req: Request, { tenantId }: TenantContext) => {
-      // 🟢 Note: Repository is imported inside Service, we just call the method
-      // For GET, we'd add a getActiveConfiguration method in the service that returns the repo data
-      return createSuccessResponse({ message: "Config endpoint ready" });
+      // 🟢 موجودہ (Active) کنفیگریشن منگوائیں
+      const configuration = await configRepo.getActiveConfiguration(tenantId);
+      return createSuccessResponse({ configuration });
     })
   )
 );
 
 export const POST = withErrorHandler(
   withAuth(
-    // Note: If user is setting up, they might not have a tenant in context yet, 
-    // so ensure your middleware allows them to pass or creates a tenant ID.
     async (req: Request, context: any) => {
       const user = context.user;
       const tenantId = user.tenantId || `tenant_${user.uid}`;
@@ -29,15 +29,22 @@ export const POST = withErrorHandler(
       
       const { action, payload, reason } = body;
 
+      // 🟢 صرف Publish کرنا ہو (پہلے سے موجود Draft کو)
       if (action === "publish") {
         await configService.publishConfiguration(tenantId, user.uid);
         return createSuccessResponse(null, { message: "Configuration Published Successfully" });
       }
 
-      // Default: Save as Draft (Version++)
-      const newConfig = await configService.saveDraft(tenantId, user.uid, payload, reason || "Configuration Update");
-      
-      return createSuccessResponse(newConfig, { message: "Configuration Draft Saved" });
+      // 🟢 Edit Flow: نیا ڈرافٹ بنائیں اور فوراً پبلش کر دیں (Save & Publish)
+      if (action === "save_and_publish") {
+        const draft = await configService.saveDraft(tenantId, user.uid, payload, reason || "Configuration Upgraded");
+        await configService.publishConfiguration(tenantId, user.uid);
+        return createSuccessResponse(draft, { message: "Configuration Upgraded and Published!" });
+      }
+
+      // Default: صرف Draft سیو کریں
+      const newConfig = await configService.saveDraft(tenantId, user.uid, payload, reason || "Configuration Draft Saved");
+      return createSuccessResponse(newConfig, { message: "Draft Saved" });
     }
   )
 );
