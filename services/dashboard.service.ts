@@ -19,7 +19,8 @@ export class DashboardService {
 
   constructor() {
     this.studentService = new StudentService(new StudentRepository());
-    this.staffService = new StaffService();
+    // 🟢 FIX: Added StaffRepository injection
+    this.staffService = new StaffService(new StaffRepository()); 
     this.feesService = new FeesService(new FeesRepository());
     this.attendanceService = new AttendanceService(new AttendanceRepository());
   }
@@ -28,6 +29,7 @@ export class DashboardService {
     const cacheKey = `dashboard:${tenantId}`;
 
     return getOrSet(cacheKey, DASHBOARD_CACHE_TTL, async () => {
+      // 🟢 FIX: Added .catch() to every promise so one failure doesn't crash everything
       const [
         studentsCount,
         staffCount,
@@ -39,15 +41,15 @@ export class DashboardService {
         studentAnalytics,
         staffAnalytics,
       ] = await Promise.all([
-        this.studentService.count(tenantId),
-        this.staffService.count(tenantId),
-        this.feesService.getTotalRevenue(tenantId),
-        this.attendanceService.getTodayAttendance(tenantId),
-        this.attendanceService.getWeeklyAttendanceTrend(tenantId),
-        this.studentService.countByClass(tenantId),
-        this.feesService.getRecentPayments(tenantId, 5),
-        this.studentService.getAnalytics(tenantId),
-        this.staffService.getAnalytics(tenantId),
+        this.studentService.count(tenantId).catch(() => 0),
+        this.staffService.count(tenantId).catch(() => 0),
+        this.feesService.getTotalRevenue(tenantId).catch(() => 0),
+        this.attendanceService.getTodayAttendance(tenantId).catch(() => null),
+        this.attendanceService.getWeeklyAttendanceTrend(tenantId).catch(() => []),
+        this.studentService.countByClass(tenantId).catch(() => ({})),
+        this.feesService.getRecentPayments(tenantId, 5).catch(() => []),
+        this.studentService.getAnalytics(tenantId).catch(() => null),
+        this.staffService.getAnalytics(tenantId).catch(() => null),
       ]);
 
       // Build class distribution from countByClass (no full student fetch)
@@ -103,10 +105,11 @@ export class DashboardService {
   }
 
   async rebuildStats(tenantId: string) {
+    // 🟢 FIX: Added .catch() here as well for background reliability
     const [studentCount, staffCount, totalRevenue] = await Promise.all([
-      this.studentService.count(tenantId),
-      this.staffService.count(tenantId),
-      this.feesService.getTotalRevenue(tenantId),
+      this.studentService.count(tenantId).catch(() => 0),
+      this.staffService.count(tenantId).catch(() => 0),
+      this.feesService.getTotalRevenue(tenantId).catch(() => 0),
     ]);
 
     const statsRef = adminDb.collection("tenants").doc(tenantId).collection("dashboard").doc("stats");
