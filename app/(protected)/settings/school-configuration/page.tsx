@@ -28,7 +28,8 @@ export default function EnterpriseSchoolConfigurationPage() {
   const { data, isLoading } = useQuery({
     queryKey: ["schoolConfiguration"],
     queryFn: async () => {
-      const res = await apiClient.get("/settings/configuration");
+      // ✅ پاتھ درست کر دیا گیا ہے
+      const res = await apiClient.get("/settings/school-configuration");
       return res.data?.configuration; // MasterSchoolConfiguration
     }
   });
@@ -47,7 +48,8 @@ export default function EnterpriseSchoolConfigurationPage() {
   // 3. Save Mutation
   const saveMutation = useMutation({
     mutationFn: async (payloadData: any) => {
-      return await apiClient.post("/settings/configuration", {
+      // ✅ پاتھ درست کر دیا گیا ہے
+      return await apiClient.post("/settings/school-configuration", {
         action: "save_and_publish",
         reason: editReason || "Admin updated configuration",
         payload: payloadData
