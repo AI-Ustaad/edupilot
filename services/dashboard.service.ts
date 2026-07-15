@@ -19,7 +19,7 @@ export class DashboardService {
 
   constructor() {
     this.studentService = new StudentService(new StudentRepository());
-    // 🟢 FIX: Added StaffRepository injection
+    // 🟢 StaffRepository is injected here to prevent undefined crashes
     this.staffService = new StaffService(new StaffRepository()); 
     this.feesService = new FeesService(new FeesRepository());
     this.attendanceService = new AttendanceService(new AttendanceRepository());
@@ -29,7 +29,7 @@ export class DashboardService {
     const cacheKey = `dashboard:${tenantId}`;
 
     return getOrSet(cacheKey, DASHBOARD_CACHE_TTL, async () => {
-      // 🟢 FIX: Added .catch() to every promise so one failure doesn't crash everything
+      // 🟢 Added .catch() to every promise so one failure doesn't crash everything
       const [
         studentsCount,
         staffCount,
@@ -58,13 +58,16 @@ export class DashboardService {
         value: value || 0,
       }));
 
-      // Null-safe attendance stats
+      // 🟢 TypeScript Fix: Strictly typed reduction for attendance stats
       const safeAttendanceTrend = attendanceTrend || [];
       const attendanceStats = safeAttendanceTrend.length > 0
         ? {
-            avg: Math.round(safeAttendanceTrend.reduce((s, d) => s + (d.percent || 0), 0) / safeAttendanceTrend.length),
-            highest: Math.max(...safeAttendanceTrend.map(d => d.percent || 0)),
-            lowest: Math.min(...safeAttendanceTrend.map(d => d.percent || 0)),
+            avg: Math.round(
+              (safeAttendanceTrend.reduce((s: number, d: any) => s + (Number(d.percent) || 0), 0) as number) / 
+              safeAttendanceTrend.length
+            ),
+            highest: Math.max(...safeAttendanceTrend.map((d: any) => Number(d.percent) || 0)),
+            lowest: Math.min(...safeAttendanceTrend.map((d: any) => Number(d.percent) || 0)),
           }
         : { avg: 0, highest: 0, lowest: 0 };
 
@@ -105,7 +108,7 @@ export class DashboardService {
   }
 
   async rebuildStats(tenantId: string) {
-    // 🟢 FIX: Added .catch() here as well for background reliability
+    // 🟢 Added .catch() here as well for background reliability
     const [studentCount, staffCount, totalRevenue] = await Promise.all([
       this.studentService.count(tenantId).catch(() => 0),
       this.staffService.count(tenantId).catch(() => 0),
