@@ -46,7 +46,8 @@
     "tesseract.js": "^5.0.5",
     "twilio": "^4.19.0",
     "xlsx": "^0.18.5",
-    "zod": "^3.22.4"
+    "zod": "^3.22.4",
+    "zustand": "^5.0.14"
   },
   "devDependencies": {
     "@babel/preset-env": "^7.24.0",
