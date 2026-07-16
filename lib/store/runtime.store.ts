@@ -3,16 +3,22 @@ import { devtools } from "zustand/middleware";
 import { EnterpriseRuntimeStore } from "./types";
 import { createKernelSlice } from "./slices/kernel.slice";
 
-// ہم مزید slices یہاں امپورٹ کریں گے (جیسے Academic, School, Features)
-const createSchoolSlice = (set: any) => ({
-  name: "", type: "", curriculumId: "", country: "PK"
+// ✅ FIXED: Added get and api arguments to satisfy TypeScript
+const createSchoolSlice = (set: any, get: any, api: any) => ({
+  name: "", 
+  type: "", 
+  curriculumId: "", 
+  country: "PK"
 });
 
-const createAcademicSlice = (set: any) => ({
-  levels: [], classes: [], subjects: [], defaultSections: ["A"]
+const createAcademicSlice = (set: any, get: any, api: any) => ({
+  levels: [], 
+  classes: [], 
+  subjects: [], 
+  defaultSections: ["A"]
 });
 
-const createFeatureSlice = (get: any) => ({
+const createFeatureSlice = (set: any, get: any, api: any) => ({
   enabledModules: ["attendance", "exams", "fees"], // یہ بعد میں API سے آئیں گے
   isFeatureEnabled: (featureName: string) => get().enabledModules.includes(featureName),
 });
