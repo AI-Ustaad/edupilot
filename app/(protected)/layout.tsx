@@ -22,7 +22,7 @@ import apiClient from "@/lib/api/client";
 import { safeObject } from "@/lib/api/safeResponse";
 
 // 🟢 NEW: Enterprise Runtime Provider
-import { RuntimeProvider } from "@/providers/runtime-provider";
+import { RuntimeProvider } from "./providers/runtime-provider";
 
 export default function ProtectedLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
