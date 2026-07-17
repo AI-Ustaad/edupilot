@@ -1,5 +1,4 @@
 import { useRuntimeStore } from "@/lib/store/runtime.store";
-import { useMemo } from "react";
 
 /**
  * 🎓 Enterprise Rule 11 & 12 Enforced
@@ -32,10 +31,17 @@ export const useStudentDomain = () => {
     return ids.map(id => studentsById[id]).filter(Boolean);
   };
 
+  // 🟢 NEW: Convenience method to get all students as an array
+  const getAllStudents = () => {
+    return Object.values(studentsById);
+  };
+
   // 🎯 Get the currently selected student (for Student 360 View)
   const selectedStudent = selectedStudentId ? studentsById[selectedStudentId] : null;
 
   return {
+    studentsById, // 🟢 FIXED: Exporting the raw map so the UI can use it
+    getAllStudents,
     getStudent,
     getStudentsByClass,
     getStudentsBySection,
