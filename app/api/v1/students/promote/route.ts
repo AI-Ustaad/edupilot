@@ -1,15 +1,12 @@
 export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 import { NextResponse } from "next/server";
-import { adminDb } from "@/lib/firebase-admin";
-import { FieldValue } from "firebase-admin/firestore";
 import { withErrorHandler, withAuth, withTenant } from "@/route-helpers";
 import { withPermission } from "@/lib/auth/rbac";
 import { PERMISSIONS } from "@/lib/auth/permissions";
-import { logAction } from "@/lib/audit";
+import { StudentService } from "@/services/StudentService";
 import type { TenantContext } from "@/types/api";
-
-export const runtime = 'nodejs';
 
 export const POST = withErrorHandler(
   withAuth(
@@ -29,54 +26,21 @@ export const POST = withErrorHandler(
           return NextResponse.json({ success: false, error: "Maximum 100 students per batch" }, { status: 400 });
         }
 
-        const batch = adminDb.batch();
-        const promoted: string[] = [];
-        const errors: string[] = [];
-
-        for (const studentId of studentIds) {
-          const docRef = adminDb.collection("students").doc(studentId);
-          const snap = await docRef.get();
-
-          if (!snap.exists || snap.data()?.tenantId !== tenantId || snap.data()?.deleted) {
-            errors.push(`Student ${studentId} not found`);
-            continue;
-          }
-
-          const oldClass = snap.data()?.classGrade;
-          const oldSection = snap.data()?.section;
-
-          batch.update(docRef, {
-            classGrade: newClassGrade,
-            section: newSection || "A",
-            academicYear: academicYear || FieldValue.serverTimestamp(),
-            previousClass: oldClass,
-            previousSection: oldSection,
-            promotedAt: FieldValue.serverTimestamp(),
-            promotedBy: user.uid,
-            updatedAt: FieldValue.serverTimestamp(),
-            updatedBy: user.uid,
-          });
-
-          promoted.push(studentId);
-        }
-
-        if (promoted.length > 0) {
-          await batch.commit();
-
-          await logAction({
-            action: "students.promote",
-            userId: user.uid,
-            tenantId,
-            entityType: "student",
-            metadata: { count: promoted.length, newClassGrade, newSection: newSection || "A", academicYear, studentIds: promoted },
-          });
-        }
+        const service = new StudentService();
+        const result = await service.promote(
+          tenantId,
+          studentIds,
+          newClassGrade,
+          newSection || "A",
+          academicYear || "",
+          user.uid
+        );
 
         return NextResponse.json({
           success: true,
-          promoted: promoted.length,
-          errors,
-          message: `Successfully promoted ${promoted.length} students`,
+          promoted: result.promoted,
+          errors: result.errors,
+          message: `Successfully promoted ${result.promoted} students`,
         });
       })
     )

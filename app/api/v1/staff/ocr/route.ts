@@ -1,131 +1,82 @@
 // app/api/v1/staff/ocr/route.ts
-import { NextRequest, NextResponse } from "next/server";
-import { getSessionUser } from "@/lib/auth/auth-server";
-
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 
-export async function POST(req: NextRequest) {
-  try {
-    // 1. Auth Check
-    const user = await getSessionUser();
-    if (!user) {
-      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
-    }
+import { withErrorHandler, withAuth, withTenant } from "@/route-helpers";
+import { withPermission } from "@/lib/auth/rbac";
+import { PERMISSIONS } from "@/lib/auth/permissions";
+import { createApiResponse, createErrorResponse } from "@/lib/api/response";
+import { OCRService } from "@/services/OCRService";
+import { logger } from "@/lib/logger/logger";
+import type { TenantContext } from "@/types/api";
 
-    // 2. Get File from FormData
-    const formData = await req.formData();
-    const file = formData.get("file") as File;
-    
-    if (!file) {
-      return NextResponse.json({ success: false, error: "No file provided" }, { status: 400 });
-    }
+export const POST = withErrorHandler(
+  withAuth(
+    withTenant(
+      withPermission(PERMISSIONS.staff.create)(
+        async (req: Request, { tenantId, user }: TenantContext) => {
+          const formData = await req.formData();
+          const file = formData.get("file") as File;
 
-    // 3. Check if API Key is configured
-    const apiKey = process.env.GOOGLE_VISION_API_KEY;
-    if (!apiKey) {
-      console.error("[Staff OCR] GOOGLE_VISION_API_KEY is missing in environment variables.");
-      return NextResponse.json({ 
-        success: false, 
-        error: "OCR Service is not configured. Please contact support." 
-      }, { status: 503 });
-    }
+          if (!file) {
+            return createErrorResponse(400, "No file provided");
+          }
 
-    // 4. Reject PDFs and Non-Images (Google Vision REST API requires images only)
-    if (file.type === 'application/pdf') {
-      return NextResponse.json({ 
-        success: false, 
-        error: "PDF OCR is not supported directly. Please upload an image (JPG, PNG)." 
-      }, { status: 400 });
-    }
+          const bytes = await file.arrayBuffer();
+          const buffer = Buffer.from(new Uint8Array(bytes));
 
-    if (!file.type.startsWith('image/')) {
-      return NextResponse.json({ 
-        success: false, 
-        error: "Unsupported file type. Please upload an image." 
-      }, { status: 400 });
-    }
+          const ocrService = new OCRService();
 
-    // 5. Check File Size (Vercel limit is 4.5MB, Base64 increases size by 33%)
-    if (file.size > 3500000) { // 3.5 MB limit
-      return NextResponse.json({ 
-        success: false, 
-        error: "Image is too large. Please upload an image under 3.5MB." 
-      }, { status: 413 });
-    }
+          // Validate file first
+          const validationError = ocrService.validateFile(file.type, file.name, file.size);
+          if (validationError) {
+            return createErrorResponse(415, validationError);
+          }
 
-    // 6. Convert Image to Base64
-    const bytes = await file.arrayBuffer();
-    const buffer = Buffer.from(bytes);
-    const base64Image = buffer.toString('base64');
+          const result = await ocrService.processDocument(
+            buffer,
+            file.type,
+            file.name,
+            tenantId,
+            user.uid,
+            "staff"
+          );
 
-    // 7. Call Google Cloud Vision API
-    const visionRes = await fetch(`https://vision.googleapis.com/v1/images:annotate?key=${apiKey}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        requests: [{
-          image: { content: base64Image },
-          features: [{ type: "DOCUMENT_TEXT_DETECTION", maxResults: 1 }]
-        }]
-      })
-    });
+          // Build response with photo base64 if image
+          let photoBase64: string | null = null;
+          if (file.type.startsWith("image/")) {
+            photoBase64 = `data:${file.type};base64,${buffer.toString("base64")}`;
+          }
 
-    const visionData = await visionRes.json();
+          const data = {
+            ...result.fields,
+            photoBase64,
+            confidence: result.overallConfidence,
+            needsReview: result.humanReviewRequired,
+          };
 
-    // Check if Google API returned an error
-    if (visionData.error) {
-      console.error("[Staff OCR] Google Vision API Error:", visionData.error);
-      return NextResponse.json({ 
-        success: false, 
-        error: "Google Vision API Error: " + (visionData.error.message || "Unknown error")
-      }, { status: 500 });
-    }
+          logger.ocr("Staff OCR processed", {
+            tenantId,
+            userId: user.uid,
+            metadata: {
+              provider: result.providerUsed,
+              model: result.modelUsed,
+              mime: file.type,
+              size: file.size,
+              confidence: result.overallConfidence,
+              needsReview: result.humanReviewRequired,
+              processingTime: result.processingTimeMs,
+            },
+          });
 
-    // 8. Safe Text Extraction
-    const extractedText = visionData?.responses?.[0]?.fullTextAnnotation?.text || "";
-
-    if (!extractedText) {
-      return NextResponse.json({ 
-        success: true, 
-        data: { 
-          fullName: "", cnic: "", phone: "", designation: "",
-          photoBase64: `data:${file.type};base64,${base64Image}`,
-          rawText: "" 
-        },
-        message: "No text could be extracted from the image."
-      });
-    }
-
-    // 9. Extract Fields using Regex
-    const extract = (regex: RegExp) => {
-      const match = extractedText.match(regex);
-      return match ? match[1].trim() : "";
-    };
-
-    const fullName = extract(/(?:Name|Full Name)\s*[:\-]?\s*([A-Za-z\s\.]+)/i);
-    const cnic = extract(/(?:CNIC|B-Form)\s*[:\-]?\s*([0-9\-]{8,15})/i);
-    const phone = extract(/(?:Phone|Mobile|Cell)\s*[:\-]?\s*([0-9\+\-\s]{11,15})/i);
-    const designation = extract(/(?:Designation|Post|Role)\s*[:\-]?\s*([A-Za-z\s\.]+)/i);
-
-    const photoBase64 = `data:${file.type};base64,${base64Image}`;
-
-    return NextResponse.json({
-      success: true,
-      data: {
-        fullName,
-        cnic,
-        phone,
-        designation,
-        photoBase64,
-        rawText: extractedText
-      }
-    });
-
-  } catch (error: any) {
-    console.error("[Staff OCR API Error]:", error);
-    return NextResponse.json(
-      { success: false, error: "Failed to process document. Server error occurred." },
-      { status: 500 }
-    );
-  }
-}
+          return createApiResponse(200, data, "OCR extraction complete", {
+            confidence: result.overallConfidence,
+            needsReview: result.humanReviewRequired,
+            processingTime: result.processingTimeMs,
+          });
+        }
+      )
+    )
+  )
+);

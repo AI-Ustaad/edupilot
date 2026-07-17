@@ -1,12 +1,14 @@
 // hooks/useStaff.ts
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useState, useCallback } from "react";
 import apiClient from "@/lib/api/client";
 import { safeArray } from "@/lib/api/safeResponse";
 import { QueryKeys } from "@/lib/api/queryKeys";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/components/ToastProvider";
+import { mapOCRToStaffForm, type StaffFormData } from "@/lib/mappers/staff.mapper";
+import { logger } from "@/lib/logger/logger";
 
-// 1. 🔄 Fetch All Staff
 export const useStaff = () => {
   const { user } = useAuth();
   const tenantId = user?.tenantId || "unknown";
@@ -21,7 +23,34 @@ export const useStaff = () => {
   });
 };
 
-// 2. ✨ Create Staff
+export const useStaffList = (page = 1, limit = 20) => {
+  const { user } = useAuth();
+  const tenantId = user?.tenantId || "unknown";
+
+  return useQuery({
+    queryKey: [...QueryKeys.staff(tenantId), "paginated", page, limit],
+    queryFn: async () => {
+      const response = await apiClient.get(`/staff?page=${page}&limit=${limit}`);
+      return response as any;
+    },
+    enabled: !!tenantId && tenantId !== "unknown",
+  });
+};
+
+export const useStaffMember = (id: string) => {
+  const { user } = useAuth();
+  const tenantId = user?.tenantId || "unknown";
+
+  return useQuery({
+    queryKey: QueryKeys.staffMember(tenantId, id),
+    queryFn: async () => {
+      const response = await apiClient.get(`/staff/${id}`);
+      return (response as any)?.data ?? response;
+    },
+    enabled: !!id && !!tenantId && tenantId !== "unknown",
+  });
+};
+
 export const useCreateStaff = () => {
   const queryClient = useQueryClient();
   const { user } = useAuth();
@@ -43,7 +72,27 @@ export const useCreateStaff = () => {
   });
 };
 
-// 3. 🗑️ Delete Staff (With Optimistic Update)
+export const useUpdateStaff = () => {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const tenantId = user?.tenantId || "unknown";
+  const { showToast } = useToast();
+
+  return useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: any }) => {
+      return apiClient.put(`/staff/${id}`, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: QueryKeys.staff(tenantId) });
+      queryClient.invalidateQueries({ queryKey: QueryKeys.dashboard(tenantId) });
+      showToast("Staff member updated!", "success");
+    },
+    onError: (err: any) => {
+      showToast(err.response?.data?.message || "Failed to update staff.", "error");
+    },
+  });
+};
+
 export const useDeleteStaff = () => {
   const queryClient = useQueryClient();
   const { user } = useAuth();
@@ -57,11 +106,11 @@ export const useDeleteStaff = () => {
     onMutate: async (deletedId: string) => {
       await queryClient.cancelQueries({ queryKey: QueryKeys.staff(tenantId) });
       const previousStaff = queryClient.getQueryData(QueryKeys.staff(tenantId));
-      
-      queryClient.setQueryData(QueryKeys.staff(tenantId), (old: any[]) => 
-        old.filter((s: any) => s.id !== deletedId)
+
+      queryClient.setQueryData(QueryKeys.staff(tenantId), (old: any[]) =>
+        old?.filter((s: any) => s.id !== deletedId) ?? []
       );
-      
+
       return { previousStaff };
     },
     onError: (err, deletedId, context) => {
@@ -77,3 +126,163 @@ export const useDeleteStaff = () => {
     },
   });
 };
+
+export const useBulkImport = () => {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const tenantId = user?.tenantId || "unknown";
+  const { showToast } = useToast();
+
+  return useMutation({
+    mutationFn: async (formData: FormData) => {
+      return apiClient.post("/staff/bulk", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+    },
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: QueryKeys.staff(tenantId) });
+      queryClient.invalidateQueries({ queryKey: QueryKeys.dashboard(tenantId) });
+      showToast(`Imported ${data?.imported ?? 0} staff members!`, "success");
+    },
+    onError: (err: any) => {
+      showToast(err.response?.data?.message || "Bulk import failed.", "error");
+    },
+  });
+};
+
+export const useSearchStaff = (query: string) => {
+  const { user } = useAuth();
+  const tenantId = user?.tenantId || "unknown";
+
+  return useQuery({
+    queryKey: [...QueryKeys.staff(tenantId), "search", query],
+    queryFn: async () => {
+      const response = await apiClient.get(`/staff?search=${encodeURIComponent(query)}`);
+      return safeArray(response);
+    },
+    enabled: !!query && query.length >= 2 && !!tenantId && tenantId !== "unknown",
+  });
+};
+
+/**
+ * Shared OCR upload hook.
+ * Opens a file picker, uploads to OCR API, maps response to StaffFormData,
+ * and merges into the caller's form state via onMerge callback.
+ */
+export const useStaffOCR = () => {
+  const { showToast } = useToast();
+  const [ocrUploading, setOcrUploading] = useState(false);
+
+  const openFilePicker = useCallback(
+    (onMerge: (data: StaffFormData) => void) => {
+      const input = document.createElement("input");
+      input.type = "file";
+      input.accept = "image/*,application/pdf";
+      input.onchange = async (e: Event) => {
+        const file = (e.target as HTMLInputElement).files?.[0];
+        if (!file) return;
+
+        setOcrUploading(true);
+        showToast("Extracting data via OCR...", "info");
+
+        try {
+          const formData = new FormData();
+          formData.append("file", file);
+
+          const res = await fetch("/api/v1/staff/ocr", { method: "POST", body: formData });
+          const result = await res.json();
+
+          logger.info("AI Extracted Data:", { metadata: { data: result.data } });
+
+          if (res.ok && result.success && result.data) {
+            const { staffFormData } = mapOCRToStaffForm(result.data);
+            onMerge(staffFormData);
+            showToast("Data extracted successfully! Please verify.", "success");
+          } else {
+            showToast(result.error || "Failed to extract data.", "error");
+          }
+        } catch {
+          showToast("Network error during OCR.", "error");
+        } finally {
+          setOcrUploading(false);
+        }
+      };
+      input.click();
+    },
+    [showToast]
+  );
+
+  return { ocrUploading, openFilePicker };
+};
+
+// ─── Enterprise Hooks ──────────────────────────────────────────────────────────
+
+export const useStaffDirectory = (filters: Record<string, any> = {}) => {
+  const { user } = useAuth();
+  const tenantId = user?.tenantId || "unknown";
+  const params = new URLSearchParams();
+  Object.entries(filters).forEach(([k, v]) => {
+    if (v !== undefined && v !== null && v !== "") params.set(k, String(v));
+  });
+  return useQuery({
+    queryKey: [...QueryKeys.staff(tenantId), "directory", params.toString()],
+    queryFn: async () => {
+      const response = await apiClient.get(`/staff?${params.toString()}`);
+      return (response as any)?.data ?? response;
+    },
+    enabled: !!tenantId && tenantId !== "unknown",
+  });
+};
+
+export const useStaffAnalytics = () => {
+  const { user } = useAuth();
+  const tenantId = user?.tenantId || "unknown";
+  return useQuery({
+    queryKey: [...QueryKeys.staff(tenantId), "analytics"],
+    queryFn: async () => {
+      const response = await apiClient.get("/staff/analytics");
+      return (response as any)?.data ?? response;
+    },
+    enabled: !!tenantId && tenantId !== "unknown",
+  });
+};
+
+export const useBulkStaff = () => {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const tenantId = user?.tenantId || "unknown";
+  const { showToast } = useToast();
+
+  const archiveMutation = useMutation({
+    mutationFn: async ({ ids, action }: { ids: string[]; action: string }) => {
+      if (action === "archive") {
+        await apiClient.post("/staff/bulk", { ids, action: "archive" });
+      } else if (action === "delete") {
+        await apiClient.post("/staff/bulk", { ids, action: "delete" });
+      }
+    },
+    onSuccess: (_, vars) => {
+      queryClient.invalidateQueries({ queryKey: QueryKeys.staff(tenantId) });
+      showToast(`Bulk ${vars.action} completed!`, "success");
+    },
+    onError: (_err, vars) => {
+      showToast(`Bulk ${vars.action} failed.`, "error");
+    },
+  });
+
+  return { archiveMutation };
+};
+
+export const useStaffTimeline = (staffId: string) => {
+  const { user } = useAuth();
+  const tenantId = user?.tenantId || "unknown";
+  return useQuery({
+    queryKey: [...QueryKeys.staff(tenantId), staffId, "timeline"],
+    queryFn: async () => {
+      const response = await apiClient.get(`/staff/${staffId}/timeline`);
+      return (response as any)?.data ?? response;
+    },
+    enabled: !!staffId && !!tenantId && tenantId !== "unknown",
+  });
+};
+

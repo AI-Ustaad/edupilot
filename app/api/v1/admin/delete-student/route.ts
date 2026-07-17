@@ -1,53 +1,61 @@
 export const dynamic = 'force-dynamic';
-import { adminDb } from "@/lib/firebase-admin";
-import { withAuth, withTenant, withErrorHandler, withRole } from "@/route-helpers";
-import { createApiResponse } from "@/lib/response/apiResponse";
+import { withAuth, withTenant, withErrorHandler } from "@/route-helpers";
+import { withPermission } from "@/lib/auth/rbac";
+import { PERMISSIONS } from "@/lib/auth/permissions";
+import { createSuccessResponse, createErrorResponse } from "@/lib/api/response";
+import { StudentService } from "@/services/StudentService";
+import { AttendanceService } from "@/services/attendance.service";
+import { AttendanceRepository } from "@/repositories/attendance.repository";
+import { FeesService } from "@/services/fees.service";
+import { FeesRepository } from "@/repositories/fees.repository";
+import { AuditService } from "@/services/AuditService";
 import type { TenantContext } from "@/types/api";
 
 export const DELETE = withErrorHandler(
   withAuth(
     withTenant(
-      withRole(["admin"])(async (req: Request, { tenantId, user }: TenantContext) => {
+      withPermission(PERMISSIONS.students.delete)(async (req: Request, { tenantId, user }: TenantContext) => {
         const { searchParams } = new URL(req.url);
         const studentId = searchParams.get("id");
         if (!studentId) {
-          return createApiResponse(400, null, "Student ID is required");
+          return createErrorResponse(400, "Student ID is required");
         }
 
-        const studentDoc = await adminDb.collection("students").doc(studentId).get();
-        if (!studentDoc.exists || studentDoc.data()?.tenantId !== tenantId) {
-          return createApiResponse(404, null, "Student not found");
+        // Verify student exists
+        const studentService = new StudentService();
+        const student = await studentService.getById(tenantId, studentId);
+        if (!student) {
+          return createErrorResponse(404, "Student not found");
         }
 
-        const collections = ["attendance", "marks", "fees", "submissions", "quiz_submissions"];
-        const batch = adminDb.batch();
-
-        // ہر متعلقہ کلیکشن سے ڈیٹا حذف کریں
-        for (const col of collections) {
-          const snap = await adminDb
-            .collection(col)
-            .where("studentId", "==", studentId)
-            .where("tenantId", "==", tenantId)
-            .get();
-          snap.docs.forEach(doc => batch.delete(doc.ref));
+        // Cascade delete using services (not direct Firestore)
+        const attendanceService = new AttendanceService(new AttendanceRepository());
+        const studentAttendance = await attendanceService.findByStudentId(tenantId, studentId);
+        for (const rec of studentAttendance) {
+          await attendanceService.deleteAttendance(rec.id, tenantId);
         }
 
-        // خود طالب علم کا دستاویز بھی حذف کریں
-        batch.delete(studentDoc.ref);
-        await batch.commit();
+        const feesService = new FeesService(new FeesRepository());
+        const studentFees = await (new FeesRepository()).findByStudent(tenantId, studentId, 9999);
+        for (const fee of studentFees) {
+          await feesService.deleteFee(fee.id, tenantId);
+        }
 
-        // آڈٹ لاگ میں ریکارڈ کریں
-        await adminDb.collection("logs").add({
+        // Finally delete the student (this now publishes STUDENT_DELETED event)
+        await studentService.hardDelete(tenantId, studentId, user.uid);
+
+        // Audit log
+        const audit = new AuditService();
+        await audit.log({
           action: "STUDENT_DELETED",
           userId: user.uid,
           tenantId,
           entityId: studentId,
           entityType: "student",
-          metadata: { name: studentDoc.data()?.fullName || studentDoc.data()?.name },
-          createdAt: new Date(),
+          metadata: { name: student.fullName },
         });
 
-        return createApiResponse(200, null, "Student and all related data deleted successfully");
+        return createSuccessResponse(null, { message: "Student and all related data deleted successfully" });
       })
     )
   )

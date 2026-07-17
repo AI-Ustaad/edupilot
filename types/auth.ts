@@ -1,39 +1,16 @@
-// types/auth.ts
+export type Role = "superAdmin" | "schoolAdmin" | "admin" | "teacher" | "parent" | "student" | "guest";
 
-export type UserRole =
-  | "super_admin"
-  | "admin"
-  | "principal"
-  | "vice_principal"
-  | "coordinator"
-  | "teacher"
-  | "accountant"
-  | "parent";
-
-export interface TenantInfo {
-  id: string;
-  name?: string;
-  domain?: string;
-}
-
-export interface SubscriptionInfo {
-  plan: string;
-  status: string;
-}
-
-export interface CurrentUser {
+export interface SessionUser {
   uid: string;
   email: string;
+  role: Role;
+  tenantId: string | null;
+  onboardingRequired: boolean;
+}
 
-  role: UserRole;
-
-  permissions: string[];
-
-  tenant: TenantInfo;
-
-  subscription: SubscriptionInfo;
-
-  features: string[];
-
-  onboardingRequired?: boolean;
+export interface LoginResponseDto {
+  success: boolean;
+  message: string;
+  user: SessionUser;
+  redirectTo: string;
 }

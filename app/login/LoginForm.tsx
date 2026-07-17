@@ -10,6 +10,7 @@ import {
   signInWithEmailAndPassword 
 } from "firebase/auth";
 import { auth } from "@/lib/firebase";
+import { logger } from "@/lib/logger/logger";
 
 export default function LoginForm() {
   const [email, setEmail] = useState("");
@@ -46,7 +47,7 @@ export default function LoginForm() {
           setGoogleLoading(false);
         }
       } catch (err: any) {
-        console.error("Redirect Error:", err);
+        logger.error("Redirect Error:", { metadata: { error: err } });
         setError("Google login failed. Please try again.");
         setGoogleLoading(false);
       }

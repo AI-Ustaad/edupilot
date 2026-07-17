@@ -1,33 +1,23 @@
-// app/api/v1/ai/chatbot/route.ts
-import { NextRequest, NextResponse } from "next/server";
-import { getSessionUser } from "@/lib/auth/auth-server";
-import { aiService } from "@/services/ai/ai.service";
-import * as Sentry from "@sentry/nextjs";
+export const dynamic = 'force-dynamic';
+import { withAuth, withTenant, withErrorHandler } from "@/route-helpers";
+import { createSuccessResponse, createErrorResponse } from "@/lib/api/response";
+import { agentRegistry } from "@/lib/ai/agents/AgentRegistry";
+import type { TenantContext } from "@/types/api";
 
-export const runtime = "nodejs";
+export const POST = withErrorHandler(
+  withAuth(
+    withTenant(async (req: Request, { tenantId, user }: TenantContext) => {
+      const { question } = await req.json();
+      if (!question) return createErrorResponse(400, "Question is required");
 
-export async function POST(req: NextRequest) {
-  try {
-    const user = await getSessionUser();
-    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      const answer = await agentRegistry.execute("teacher", {
+        tenantId,
+        userId: user.uid,
+        userRole: user.role,
+        query: question,
+      });
 
-    const { question } = await req.json();
-    if (!question) return NextResponse.json({ error: "Question required" }, { status: 400 });
-
-    // Call Central AI Service
-    const answer = await aiService.chat(question, user.tenantId, user.uid, user.role);
-
-    return NextResponse.json({ success: true, data: { answer } });
-
-  } catch (error: any) {
-    Sentry.captureException(error);
-    console.error("[Chatbot API Error]:", error);
-    return NextResponse.json(
-      { 
-        success: false, 
-        message: error instanceof Error ? error.message : String(error) 
-      },
-      { status: 500 }
-    );
-  }
-}
+      return createSuccessResponse({ answer });
+    })
+  )
+);

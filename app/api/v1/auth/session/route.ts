@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic';
 import { NextResponse } from "next/server";
 import { adminAuth } from "@/lib/firebase-admin";
+import { logger } from "@/lib/logger/logger";
 
 export async function POST(req: Request) {
   try {
@@ -14,10 +15,9 @@ export async function POST(req: Request) {
 
     const response = NextResponse.json({ success: true });
 
-    // 🚀 FIX: secure is now dynamic based on environment
     response.cookies.set("session", sessionCookie, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production", 
+      secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
       path: "/",
       maxAge: expiresIn / 1000,
@@ -25,7 +25,7 @@ export async function POST(req: Request) {
 
     return response;
   } catch (err) {
-    console.error("Session Error:", err);
+    logger.error("Session Error:", { metadata: { error: err } });
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 }

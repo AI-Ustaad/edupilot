@@ -19,4 +19,9 @@ export const QueryKeys = {
   
   dashboard: (tenantId: string) => ["dashboard", tenantId] as const,
   analytics: (tenantId: string) => ["analytics", tenantId] as const,
+
+  homework: (tenantId: string) => ["homework", tenantId] as const,
+  assignments: (tenantId: string) => ["assignments", tenantId] as const,
+  quizzes: (tenantId: string) => ["quizzes", tenantId] as const,
+  lessonPlans: (tenantId: string) => ["lessonPlans", tenantId] as const,
 };

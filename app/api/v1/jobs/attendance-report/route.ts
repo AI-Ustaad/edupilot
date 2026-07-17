@@ -1,12 +1,24 @@
 export const dynamic = 'force-dynamic';
-// app/api/jobs/attendance-report/route.ts
 import { NextResponse } from 'next/server';
 import { AttendanceService } from '@/services/attendance.service';
 import { AttendanceRepository } from '@/repositories/attendance.repository';
 import { sendEmail } from '@/lib/email';
 import { adminDb } from '@/lib/firebase-admin';
+import { logger } from '@/lib/logger/logger';
+
+const CRON_SECRET = process.env.CRON_SECRET || 'internal-cron-secret';
 
 export async function GET(req: Request) {
+  // Validate cron secret
+  const authHeader = req.headers.get('authorization') || '';
+  const url = new URL(req.url);
+  const querySecret = url.searchParams.get('secret');
+  const providedSecret = authHeader.replace('Bearer ', '') || querySecret;
+
+  if (providedSecret !== CRON_SECRET) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   try {
     const tenantsSnap = await adminDb.collection('tenants').get();
     const tenants = tenantsSnap.docs.map(doc => doc.id);
@@ -19,7 +31,6 @@ export async function GET(req: Request) {
 
       const records = await attendanceService.listAttendance(tenantId);
 
-      // انتظامیہ کو ای میل بھیجیں
       const adminEmail = process.env.ADMIN_EMAIL || 'admin@school.com';
       await sendEmail(
         adminEmail,
@@ -30,7 +41,7 @@ export async function GET(req: Request) {
 
     return NextResponse.json({ success: true });
   } catch (error: any) {
-    console.error('Attendance report job failed:', error);
+    logger.error('Attendance report job failed:', { metadata: { error } });
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

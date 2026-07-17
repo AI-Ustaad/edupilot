@@ -1,23 +1,27 @@
 export const dynamic = 'force-dynamic';
-import { adminDb } from "@/lib/firebase-admin";
-import { withAuth, withTenant, withErrorHandler, withRole } from "@/route-helpers";
-import { createApiResponse } from "@/lib/response/apiResponse";
+import { withAuth, withTenant, withErrorHandler } from "@/route-helpers";
+import { withPermission } from "@/lib/auth/rbac";
+import { PERMISSIONS } from "@/lib/auth/permissions";
+import { createSuccessResponse, createErrorResponse } from "@/lib/api/response";
+import { StudentRepository } from "@/repositories/student.repository";
 import type { TenantContext } from "@/types/api";
 import jsPDF from "jspdf";
 
 export const GET = withErrorHandler(
   withAuth(
     withTenant(
-      withRole(["admin"])(async (req: Request, { tenantId }: TenantContext) => {
+      withPermission(PERMISSIONS.certificates.generate)(async (req: Request, { tenantId }: TenantContext) => {
         const { searchParams } = new URL(req.url);
         const studentId = searchParams.get("studentId");
         const type = searchParams.get("type") || "degree";
 
-        if (!studentId) return createApiResponse(400, null, "Missing studentId");
+        if (!studentId) return createErrorResponse(400, "Missing studentId");
 
-        const studentDoc = await adminDb.collection("students").doc(studentId).get();
-        if (!studentDoc.exists) return createApiResponse(404, null, "Student not found");
-        const student = studentDoc.data();
+        const studentRepo = new StudentRepository();
+        const studentData = await studentRepo.findById(studentId, tenantId);
+        if (!studentData) return createErrorResponse(404, "Student not found");
+
+        const student = studentData as any;
 
         const doc = new jsPDF();
         doc.setFont("helvetica");

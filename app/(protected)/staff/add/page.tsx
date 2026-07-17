@@ -2,45 +2,45 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import { Loader2, Camera, Upload, Plus, Trash2, Save, UserPlus, FileText } from "lucide-react";
+import { Loader2, Camera, Upload, Save, UserPlus, FileText } from "lucide-react";
 import Image from "next/image";
-import { useCreateStaff } from "@/hooks/useStaff";
+import { useCreateStaff, useStaffOCR } from "@/hooks/useStaff";
 import { useToast } from "@/components/ToastProvider";
-
-// Reusable UI Components
-const Input = ({ label, ...props }: { label: string } & React.InputHTMLAttributes<HTMLInputElement>) => (
-  <div><label className="block text-sm font-medium text-gray-700 mb-1">{label}</label><input {...props} className="w-full p-2 border rounded-xl" /></div>
-);
-const Select = ({ label, options, ...props }: { label: string; options: string[] } & React.SelectHTMLAttributes<HTMLSelectElement>) => (
-  <div><label className="block text-sm font-medium text-gray-700 mb-1">{label}</label><select {...props} className="w-full p-2 border rounded-xl bg-white">{options.map((opt) => <option key={opt} value={opt}>{opt}</option>)}</select></div>
-);
-const Section = ({ title, children }: { title: string; children: React.ReactNode }) => (
-  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-white p-6 rounded-2xl border border-gray-200"><h3 className="col-span-2 font-bold text-lg text-gray-800">{title}</h3>{children}</div>
-);
+import { type StaffFormData } from "@/lib/mappers/staff.mapper";
+import { logger } from "@/lib/logger/logger";
+import { Input, Select, Section, DocumentUpload } from "@/components/staff/form-primitives";
 
 export default function AddStaffPage() {
   const router = useRouter();
   const { user } = useAuth();
   const createMutation = useCreateStaff();
   const { showToast } = useToast();
+  const { ocrUploading, openFilePicker } = useStaffOCR();
 
   const [activeTab, setActiveTab] = useState(0);
   const [error, setError] = useState("");
-  const [ocrUploading, setOcrUploading] = useState(false);
 
-  const [form, setForm] = useState<any>({
+  const [form, setForm] = useState<StaffFormData>({
     personal: { fullName: "", fatherName: "", cnic: "", dob: "", gender: "Male", bloodGroup: "", nationality: "", religion: "", maritalStatus: "Single", photo: "" },
     contact: { mobile: "", whatsapp: "", email: "", currentAddress: "", permanentAddress: "", city: "", province: "", country: "", postalCode: "" },
     professional: { personnelNo: "", employeeId: "", designation: "", department: "", role: "", employmentType: "", joiningDate: "", confirmationDate: "", experience: "", qualification: "" },
-    payroll: { basicSalary: 0, allowances: [{ name: "", amount: 0 }], deductions: [{ name: "", amount: 0 }], grossSalary: 0, bankName: "", accountNumber: "", iban: "", salaryPaymentMethod: "" },
-    education: [] as any[],
-    academic: { subjects: [] as string[], classesAssigned: [] as string[], timetable: "", sectionAssignment: "", classTeacher: false },
+    payroll: { basicSalary: 0, allowances: [], deductions: [], grossSalary: 0, bankName: "", accountNumber: "", iban: "", salaryPaymentMethod: "" },
+    academic: { subjects: [], classesAssigned: [], timetable: "", sectionAssignment: "", classTeacher: false },
     emergency: { name: "", relation: "", phone: "", alternatePhone: "" },
-    documents: { cnicFront: "", cnicBack: "", degreeCertificates: [] as string[], experienceCertificates: [] as string[], appointmentLetter: "", contract: "", cv: "" },
+    documents: { 
+      cnicFront: "", 
+      cnicBack: "", 
+      degree: "", 
+      experienceCert: "", 
+      cv: "" 
+    },
   });
 
-  const handleChange = (section: string, field: string, value: any) => {
-    setForm((prev: any) => ({ ...prev, [section]: { ...prev[section], [field]: value } }));
+  const handleChange = (section: string, field: string, value: unknown) => {
+    setForm((prev) => {
+      const key = section as keyof StaffFormData;
+      return { ...prev, [key]: { ...prev[key], [field]: value } };
+    });
   };
 
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -52,60 +52,18 @@ export default function AddStaffPage() {
     }
   };
 
-  // 🚀 Fast Server-Side OCR Handler (Google Vision API)
-  const handleOCRUpload = async () => {
-    const input = document.createElement("input");
-    input.type = "file";
-    input.accept = "image/*,application/pdf";
-    input.onchange = async (e: any) => {
-      const file = e.target.files[0];
-      if (!file) return;
-      
-      setOcrUploading(true);
-      showToast("Extracting data via Google Vision...", "info");
-      
-      try {
-        const formData = new FormData();
-        formData.append("file", file);
-        
-        // Call our Fast Backend API
-        const res = await fetch("/api/v1/staff/ocr", { method: "POST", body: formData });
-        const result = await res.json();
-        
-        if (res.ok && result.success && result.data) {
-          const extracted = result.data;
-          
-          // Auto-Fill the form with extracted data
-          setForm((prev: any) => ({
-            ...prev,
-            personal: {
-              ...prev.personal,
-              fullName: extracted.fullName || prev.personal.fullName,
-              cnic: extracted.cnic || prev.personal.cnic,
-              photo: extracted.photoBase64 || prev.personal.photo
-            },
-            contact: {
-              ...prev.contact,
-              mobile: extracted.phone || prev.contact.mobile,
-            },
-            professional: {
-              ...prev.professional,
-              designation: extracted.designation || prev.professional.designation,
-            }
-          }));
-          
-          showToast("Data extracted successfully! Please verify.", "success");
-          setActiveTab(0); // Switch to Basic Info tab
-        } else {
-          showToast(result.error || "Failed to extract data.", "error");
-        }
-      } catch (err) {
-        showToast("Network error during OCR.", "error");
-      } finally {
-        setOcrUploading(false);
-      }
-    };
-    input.click();
+  // OCR upload via shared hook
+  const handleOCRUpload = () => {
+    openFilePicker((staffFormData) => {
+      setForm((prev) => ({
+        ...prev,
+        personal: { ...prev.personal, ...staffFormData.personal },
+        contact: { ...prev.contact, ...staffFormData.contact },
+        professional: { ...prev.professional, ...staffFormData.professional },
+        payroll: { ...prev.payroll, ...staffFormData.payroll },
+      }));
+      setActiveTab(0);
+    });
   };
 
   const calcNetPay = () => {
@@ -122,8 +80,12 @@ export default function AddStaffPage() {
       return;
     }
     setError("");
+    const payload = { ...form, tenantId: user?.tenantId, createdBy: user?.uid };
+    logger.info("[AddStaff] Submitting payload", {
+      metadata: { payroll: payload.payroll, allowances: payload.payroll?.allowances, deductions: payload.payroll?.deductions },
+    });
     createMutation.mutate(
-      { ...form, tenantId: user?.tenantId, createdBy: user?.uid },
+      payload,
       { onSuccess: () => router.push("/staff") }
     );
   };
@@ -189,6 +151,7 @@ export default function AddStaffPage() {
             </div>
             <Input label="Father Name" value={form.personal.fatherName} onChange={e => handleChange("personal", "fatherName", e.target.value)} />
             <Input label="CNIC" value={form.personal.cnic} onChange={e => handleChange("personal", "cnic", e.target.value)} />
+            <Input label="Date of Birth" type="date" value={form.personal.dob} onChange={e => handleChange("personal", "dob", e.target.value)} />
             <Select label="Gender" value={form.personal.gender} onChange={e => handleChange("personal", "gender", e.target.value)} options={["Male", "Female", "Other"]} />
             <Input label="Mobile" value={form.contact.mobile} onChange={e => handleChange("contact", "mobile", e.target.value)} />
             <Input label="Email" value={form.contact.email} onChange={e => handleChange("contact", "email", e.target.value)} />
@@ -216,12 +179,16 @@ export default function AddStaffPage() {
           </Section>
         )}
 
-        {/* TAB 3: Documents */}
+        {/* TAB 3: Documents (Upload All Formats) */}
         {activeTab === 3 && (
-          <Section title="Documents Upload">
-            <div className="col-span-2"><label className="block text-sm font-medium text-gray-700 mb-1">CNIC Front (URL)</label><input value={form.documents.cnicFront} onChange={e => handleChange("documents", "cnicFront", e.target.value)} className="w-full p-2 border rounded-xl" /></div>
-            <div className="col-span-2"><label className="block text-sm font-medium text-gray-700 mb-1">CV (URL)</label><input value={form.documents.cv} onChange={e => handleChange("documents", "cv", e.target.value)} className="w-full p-2 border rounded-xl" /></div>
-          </Section>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-white p-6 rounded-2xl border border-gray-200">
+            <h3 className="col-span-2 font-bold text-lg text-gray-800">Credentials & Documents</h3>
+            <DocumentUpload label="CNIC Front" value={form.documents.cnicFront} onChange={(val) => handleChange("documents", "cnicFront", val)} />
+            <DocumentUpload label="CNIC Back" value={form.documents.cnicBack} onChange={(val) => handleChange("documents", "cnicBack", val)} />
+            <DocumentUpload label="Final Degree" value={form.documents.degree} onChange={(val) => handleChange("documents", "degree", val)} />
+            <DocumentUpload label="Experience Certificate" value={form.documents.experienceCert} onChange={(val) => handleChange("documents", "experienceCert", val)} />
+            <DocumentUpload label="CV / Resume" value={form.documents.cv} onChange={(val) => handleChange("documents", "cv", val)} />
+          </div>
         )}
 
         <div className="mt-6 flex gap-4">

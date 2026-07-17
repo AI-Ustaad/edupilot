@@ -1,51 +1,64 @@
-import { NextResponse } from "next/server";
-import { adminDb } from "@/lib/firebase-admin";
+export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
+
 import { withErrorHandler, withAuth, withTenant } from "@/route-helpers";
 import { withPermission } from "@/lib/auth/rbac";
 import { PERMISSIONS } from "@/lib/auth/permissions";
+import { StudentService } from "@/services/StudentService";
+import { createSuccessResponse, createErrorResponse } from "@/lib/api/response";
+import { logger } from "@/lib/logger/logger";
 import type { TenantContext } from "@/types/api";
 
 export const GET = withErrorHandler(
   withAuth(
     withTenant(
-      withPermission(PERMISSIONS.students.view)(async (req: Request, { tenantId }: TenantContext) => {
-        const url = new URL(req.url);
-        const studentId = url.pathname.split("/").pop();
+      withPermission(PERMISSIONS.students.view)(
+        async (req: Request, { tenantId }: TenantContext) => {
+          try {
+            const url = new URL(req.url);
 
-        if (!studentId) {
-          return NextResponse.json({ success: false, message: "Student ID required" }, { status: 400 });
+            const segments = url.pathname.split("/");
+            const timelineIndex = segments.indexOf("timeline");
+
+            const studentId =
+              timelineIndex > 0
+                ? segments[timelineIndex - 1]
+                : "";
+
+            if (!studentId) {
+              return createErrorResponse(400, "Student ID required");
+            }
+
+            const studentService = new StudentService();
+
+            const timeline = await studentService.getTimeline(
+              tenantId,
+              studentId
+            );
+
+            return createSuccessResponse(timeline);
+
+          } catch (error: any) {
+
+            logger.error("========== TIMELINE ERROR ==========", {
+              metadata: {
+                error,
+                message: error?.message,
+                stack: error?.stack,
+              },
+            });
+
+            console.error("========== TIMELINE ERROR ==========");
+            console.error(error);
+            console.error(error?.stack);
+
+            return createErrorResponse(
+              500,
+              error?.message || "Internal Server Error"
+            );
+          }
         }
-
-        try {
-          // 🛡️ Fetch logs where the student is the main entity OR mentioned in metadata
-          // Since Firestore doesn't support OR queries easily without composite indexes, 
-          // we fetch logs for this tenant and filter by studentId in memory (limited to recent 50 for performance).
-          
-          const logsSnap = await adminDb.collection("logs")
-            .where("tenantId", "==", tenantId)
-            .orderBy("createdAt", "desc")
-            .limit(100) // Fetch recent 100 logs for performance
-            .get();
-
-          // Filter logs relevant to this specific student
-          const studentLogs = logsSnap.docs
-            .map(doc => ({ id: doc.id, ...doc.data() }))
-            .filter((log: any) => {
-              // Check if log is directly about this student
-              if (log.entityType === 'student' && log.entityId === studentId) return true;
-              // Check if log is about marks/fees/attendance for this student
-              if (log.metadata?.studentId === studentId) return true;
-              return false;
-            })
-            .slice(0, 20); // Limit UI to last 20 actions
-
-          return NextResponse.json({ success: true, data: studentLogs });
-
-        } catch (error) {
-          console.error("Timeline API Error:", error);
-          return NextResponse.json({ success: false, message: "Internal server error" }, { status: 500 });
-        }
-      })
+      )
     )
   )
 );

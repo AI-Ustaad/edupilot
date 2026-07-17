@@ -1,175 +1,122 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { Trash2, UserPlus, Upload, Loader2, FileText, AlertCircle } from "lucide-react";
-import Link from "next/link";
-import { useAuth } from "@/context/AuthContext";
+import { Search, Users, ShieldCheck, Loader2, Filter } from "lucide-react";
+// 🟢 Enterprise Imports
+import { useStudentSync } from "@/hooks/api/useStudentSync";
+import { useStudentDomain } from "@/hooks/runtime/useStudentDomain";
 
-// 🚀 Layered Architecture Hooks
-import { useStudents, useDeleteStudent } from "@/hooks/useStudents";
-import RequirePermission from "@/components/RequirePermission";
-import { PERMISSIONS } from "@/lib/auth/permissions";
-import { useToast } from "@/components/ToastProvider";
-import { TableSkeleton } from "@/components/Skeletons";
+export default function StudentsDirectoryPage() {
+  // 1. ⚙️ THE MOTOR: Start syncing data in background
+  const { isSyncing, isError } = useStudentSync();
 
-export default function StudentsPage() {
-  const { user, loading: authLoading } = useAuth();
-  const router = useRouter();
-  const [ocrUploading, setOcrUploading] = useState(false);
+  // 2. 🚰 THE TAP: Access data via O(1) SDK (No Axios, No Direct API Calls)
+  const { studentsById, totalStudentsLoaded } = useStudentDomain();
 
-  // 1. Fetch Students using Custom Hook
-  const { data: studentsData, isLoading: isStudentsLoading, isError } = useStudents();
-  
-  // 🛡️ Fix: Ensure students is always an array (Crash-Proof against z.filter is not a function)
-  const students = Array.isArray(studentsData) ? studentsData : [];
-  
-  // 2. Delete Mutation (With Optimistic Update Built-in)
-  const deleteMutation = useDeleteStudent();
-  const { showToast } = useToast();
+  // Local UI State for Search
+  const [searchTerm, setSearchTerm] = useState("");
 
-  const handleDelete = (id: string) => {
-    if (!confirm("Are you sure?")) return;
-    deleteMutation.mutate(id);
-  };
+  // چونکہ ہمارا ڈیٹا Object (Record) میں ہے، ہم اسے دکھانے کے لیے Array میں بدل رہے ہیں
+  const allStudents = Object.values(studentsById);
 
-  const handleImportCSV = () => {
-    const input = document.createElement("input");
-    input.type = "file";
-    input.accept = ".csv";
-    input.onchange = async (e: any) => {
-      const file = e.target.files[0];
-      if (!file) return;
-      const formData = new FormData();
-      formData.append("file", file);
-      const res = await fetch("/api/v1/students/bulk", { method: "POST", body: formData });
-      if (res.ok) {
-        showToast("Students imported successfully!", "success");
-      } else {
-        showToast("Import failed", "error");
-      }
-    };
-    input.click();
-  };
+  // ⚡ Instant Local Filter (کیونکہ سارا ڈیٹا پہلے ہی Kernel میں موجود ہے)
+  const filteredStudents = allStudents.filter(
+    (std) =>
+      std.personal.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      std.identity.admissionNumber.includes(searchTerm)
+  );
 
-  const handleOCRUpload = async () => {
-    const input = document.createElement("input");
-    input.type = "file";
-    input.accept = "image/*,application/pdf,.docx";
-    input.onchange = async (e: any) => {
-      const file = e.target.files[0];
-      if (!file) return;
-      setOcrUploading(true);
-      const formData = new FormData();
-      formData.append("file", file);
-      try {
-        const res = await fetch("/api/v1/students/ocr-admission", { method: "POST", body: formData });
-        const result = await res.json();
-        if (result.success && result.data) {
-          sessionStorage.setItem("ocrStudentData", JSON.stringify(result.data));
-          router.push("/students/add?ocr=true");
-        } else {
-          showToast(result.error || "Failed to extract data", "error");
-        }
-      } catch (err) {
-        showToast("OCR processing failed.", "error");
-      } finally {
-        setOcrUploading(false);
-      }
-    };
-    input.click();
-  };
-
-  if (authLoading || isStudentsLoading) {
+  // Guard: Show full screen loader ONLY if we have no data at all and are syncing
+  if (isSyncing && totalStudentsLoaded === 0) {
     return (
-      <div className="p-8">
-        <TableSkeleton rows={8} cols={4} />
+      <div className="flex flex-col items-center justify-center min-h-[70vh]">
+        <Loader2 className="w-12 h-12 text-blue-600 animate-spin mb-4" />
+        <h2 className="text-xl font-bold text-slate-800">Hydrating Student Domain...</h2>
+        <p className="text-slate-500">Loading enterprise records into memory</p>
       </div>
     );
   }
 
-  if (isError) {
+  if (isError && totalStudentsLoaded === 0) {
     return (
-      <div className="p-8 text-center flex flex-col justify-center items-center h-[60vh] gap-4">
-        <AlertCircle className="text-red-500 w-12 h-12" />
-        <h2 className="text-xl font-bold text-slate-800">Failed to load students</h2>
-        <p className="text-slate-500">Please check your API or try refreshing.</p>
+      <div className="p-8 text-center bg-red-50 rounded-2xl text-red-600 border border-red-100">
+        <ShieldCheck className="w-12 h-12 mx-auto mb-3" />
+        <h2 className="text-xl font-bold">Domain Sync Failed</h2>
+        <p>Could not connect to the Student Repository.</p>
       </div>
     );
   }
 
   return (
-    <div className="p-4 md:p-8 space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div className="flex justify-between items-center flex-wrap gap-3">
-        <h1 className="text-3xl font-black text-slate-900">Students Directory</h1>
-        <div className="flex gap-3 flex-wrap">
-          <RequirePermission permissions={[PERMISSIONS.students.create]}>
-            <button onClick={handleOCRUpload} disabled={ocrUploading} className="bg-purple-600 text-white px-4 py-2 md:px-6 md:py-3 rounded-2xl flex items-center gap-2 hover:bg-purple-700 transition disabled:opacity-50 font-bold shadow-sm">
-              {ocrUploading ? <Loader2 size={18} className="animate-spin" /> : <FileText size={18} />}
-              {ocrUploading ? "Processing..." : "Upload OCR"}
-            </button>
-            <button onClick={handleImportCSV} className="bg-emerald-600 text-white px-4 py-2 md:px-6 md:py-3 rounded-2xl flex items-center gap-2 hover:bg-emerald-700 transition font-bold shadow-sm">
-              <Upload size={18}/> Import CSV
-            </button>
-            <button onClick={() => router.push("/students/add")} className="bg-blue-600 text-white px-4 py-2 md:px-6 md:py-3 rounded-2xl flex items-center gap-2 hover:bg-blue-700 transition font-bold shadow-sm">
-              <UserPlus size={18}/> Add New
-            </button>
-          </RequirePermission>
+    <div className="space-y-6">
+      {/* 🟢 Enterprise Header */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center">
+            <Users size={24} />
+          </div>
+          <div>
+            <h1 className="text-2xl font-black text-slate-800">Student Directory</h1>
+            <p className="text-sm text-slate-500 font-medium">
+              {totalStudentsLoaded} records loaded in Runtime Kernel
+              {isSyncing && <span className="ml-2 text-blue-500 animate-pulse">(Syncing changes...)</span>}
+            </p>
+          </div>
+        </div>
+        
+        {/* Instant Search Engine */}
+        <div className="relative w-full md:w-96">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
+          <input
+            type="text"
+            placeholder="Search by Name or Admission #..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
+          />
         </div>
       </div>
 
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left">
-            <thead className="bg-slate-50 border-b border-slate-100">
-              <tr>
-                <th className="p-5 font-bold text-slate-500 uppercase text-xs tracking-wider">Name</th>
-                <th className="p-5 font-bold text-slate-500 uppercase text-xs tracking-wider">Class</th>
-                <th className="p-5 font-bold text-slate-500 uppercase text-xs tracking-wider">Roll No</th>
-                <th className="p-5 font-bold text-slate-500 uppercase text-xs tracking-wider text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {students.map((s: any, idx: number) => (
-                <tr 
-                  key={s.id || idx} 
-                  className={`hover:bg-slate-50 transition-colors ${
-                    deleteMutation.isPending && deleteMutation.variables === s.id ? 'opacity-50 pointer-events-none' : ''
-                  }`}
-                >
-                  <td className="p-5 font-bold text-slate-800">{s.fullName || s.name || "N/A"}</td>
-                  <td className="p-5 text-slate-600 font-medium">
-                    <span className="bg-blue-50 text-blue-700 px-2 py-1 rounded-lg text-sm border border-blue-100">
-                      {s.classGrade || "N/A"}
-                    </span>
-                  </td>
-                  <td className="p-5 text-slate-600 font-medium">{s.rollNumber || "N/A"}</td>
-                  <td className="p-5 text-right">
-                    <div className="flex justify-end gap-4 items-center">
-                      <Link href={`/students/${s.id}`} className="text-blue-600 hover:text-blue-800 text-sm font-bold bg-blue-50 px-3 py-1.5 rounded-lg border border-blue-100 hover:bg-blue-100 transition">
-                        View 360°
-                      </Link>
-                      <RequirePermission permissions={[PERMISSIONS.students.delete]}>
-                        <button 
-                          onClick={() => handleDelete(s.id)} 
-                          className="text-red-500 hover:text-red-700 p-1.5 hover:bg-red-50 rounded-lg transition disabled:opacity-50"
-                          disabled={deleteMutation.isPending}
-                        >
-                          {deleteMutation.isPending && deleteMutation.variables === s.id ? 
-                            <Loader2 size={18} className="animate-spin"/> : <Trash2 size={18}/>
-                          }
-                        </button>
-                      </RequirePermission>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-              {students.length === 0 && (
-                <tr><td colSpan={4} className="p-12 text-center text-slate-400 font-medium">No students found. Add one to get started!</td></tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+      {/* 🟢 Data Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        {filteredStudents.length > 0 ? (
+          filteredStudents.map((student) => (
+            <div 
+              key={student.studentId} 
+              className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 hover:shadow-md transition-shadow cursor-pointer group"
+            >
+              <div className="flex justify-between items-start mb-4">
+                <div className="w-12 h-12 bg-gradient-to-br from-slate-100 to-slate-200 rounded-full flex items-center justify-center text-slate-600 font-bold text-lg">
+                  {student.personal.firstName.charAt(0)}
+                </div>
+                <span className={`px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${
+                  student.status === "Active" ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"
+                }`}>
+                  {student.status}
+                </span>
+              </div>
+              
+              <h3 className="text-lg font-bold text-slate-800 group-hover:text-blue-600 transition">
+                {student.personal.firstName} {student.personal.lastName}
+              </h3>
+              
+              <div className="mt-3 space-y-1.5">
+                <p className="text-xs text-slate-500 flex justify-between">
+                  <span>Admission No:</span>
+                  <span className="font-semibold text-slate-700">{student.identity.admissionNumber}</span>
+                </p>
+                <p className="text-xs text-slate-500 flex justify-between">
+                  <span>Gender:</span>
+                  <span className="font-semibold text-slate-700">{student.personal.gender}</span>
+                </p>
+              </div>
+            </div>
+          ))
+        ) : (
+          <div className="col-span-full py-12 text-center text-slate-500">
+            {totalStudentsLoaded === 0 ? "No students exist in the system." : "No matching students found."}
+          </div>
+        )}
       </div>
     </div>
   );

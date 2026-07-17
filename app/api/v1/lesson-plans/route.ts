@@ -1,55 +1,34 @@
 export const dynamic = 'force-dynamic';
-import { withErrorHandler } from "@/route-helpers";
-import { withAuthAndPermission } from "@/route-helpers/withAuthAndPermission";
+import { withAuth, withTenant, withErrorHandler } from "@/route-helpers";
+import { withPermission } from "@/lib/auth/rbac";
 import { PERMISSIONS } from "@/lib/auth/permissions";
-import { adminDb } from "@/lib/firebase-admin";
-import { successResponse, errorResponse } from "@/lib/utils/api-response";
+import { LessonPlanService } from "@/services/lesson-plan.service";
+import { createSuccessResponse, createApiResponse } from "@/lib/api/response";
+import type { TenantContext } from "@/types/api";
 
 export const GET = withErrorHandler(
-  withAuthAndPermission(
-    PERMISSIONS.lessonPlans.view,
-    async (req: Request, context: any) => {
-      const tenantId = context.user.tenantId;
-      if (!tenantId) return errorResponse("Tenant not found", 401);
-
-      const snapshot = await adminDb
-        .collection("lessonPlans")
-        .where("tenantId", "==", tenantId)
-        .orderBy("date", "desc")
-        .get();
-
-      const plans = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      return successResponse(plans, "Lesson plans fetched successfully");
-    }
+  withAuth(
+    withTenant(
+      withPermission(PERMISSIONS.lessonPlans.view)(async (req: Request, { tenantId }: TenantContext) => {
+        const service = new LessonPlanService();
+        const page = Number(new URL(req.url).searchParams.get("page") || 1);
+        const limit = Number(new URL(req.url).searchParams.get("limit") || 50);
+        const result = await service.listLessonPlans(tenantId, page, limit);
+        return createSuccessResponse(result, { message: "Lesson plans fetched successfully" });
+      })
+    )
   )
 );
 
 export const POST = withErrorHandler(
-  withAuthAndPermission(
-    PERMISSIONS.lessonPlans.create,
-    async (req: Request, context: any) => {
-      const tenantId = context.user.tenantId;
-      if (!tenantId) return errorResponse("Tenant not found", 401);
-
-      const body = await req.json();
-      const { date, topic, objective, materials, notes } = body;
-
-      if (!date || !topic || !objective) {
-        return errorResponse("Date, topic, and objective are required", 400);
-      }
-
-      const doc = await adminDb.collection("lessonPlans").add({
-        tenantId,
-        date,
-        topic,
-        objective,
-        materials: materials || "",
-        notes: notes || "",
-        createdBy: context.user.uid,
-        createdAt: new Date(),
-      });
-
-      return successResponse({ id: doc.id, ...body }, "Lesson plan created", 201);
-    }
+  withAuth(
+    withTenant(
+      withPermission(PERMISSIONS.lessonPlans.create)(async (req: Request, { tenantId, user }: TenantContext) => {
+        const service = new LessonPlanService();
+        const body = await req.json();
+        const plan = await service.createLessonPlan(body, tenantId, user.uid);
+        return createApiResponse(201, plan, "Lesson plan created");
+      })
+    )
   )
 );

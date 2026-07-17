@@ -2,7 +2,7 @@
 import { Check, X, Loader2 } from "lucide-react";
 import RequirePermission from "@/components/RequirePermission";
 import { PERMISSIONS } from "@/lib/auth/permissions";
-import { usePendingAdmissions, useUpdateAdmissionStatus } from "@/hooks/useAdmin";
+import { usePendingAdmissions, useUpdateAdmissionStatus } from "@/hooks/useAdmissions";
 import { TableSkeleton } from "@/components/Skeletons";
 
 export default function AdmissionsPage() {

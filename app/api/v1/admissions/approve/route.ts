@@ -1,26 +1,33 @@
 export const dynamic = 'force-dynamic';
-import { adminDb } from "@/lib/firebase-admin";
-import { withAuth, withTenant, withErrorHandler, withRole } from "@/route-helpers";
-import { createApiResponse } from "@/lib/response/apiResponse";
+import { withErrorHandler, withAuth, withTenant } from "@/route-helpers";
+import { withPermission } from "@/lib/auth/rbac";
+import { PERMISSIONS } from "@/lib/auth/permissions";
+import { StudentService } from "@/services/StudentService";
+import { createSuccessResponse, createErrorResponse } from "@/lib/api/response";
 import type { TenantContext } from "@/types/api";
 
 export const PUT = withErrorHandler(
   withAuth(
     withTenant(
-      withRole(["admin"])(async (req: Request, { tenantId, user }: TenantContext) => {
-        const { studentId, status } = await req.json(); // status: "approved" or "rejected"
+      withPermission(PERMISSIONS.students.update)(async (req: Request, { tenantId, user }: TenantContext) => {
+        const { studentId, status } = await req.json();
         if (!studentId || !status) {
-          return createApiResponse(400, null, "Missing fields");
+          return createErrorResponse(400, "Missing fields: studentId and status required");
         }
 
-        const studentRef = adminDb.collection("students").doc(studentId);
-        const studentDoc = await studentRef.get();
-        if (!studentDoc.exists || studentDoc.data()?.tenantId !== tenantId) {
-          return createApiResponse(404, null, "Student not found");
+        if (!["approved", "rejected"].includes(status)) {
+          return createErrorResponse(400, "Status must be 'approved' or 'rejected'");
         }
 
-        await studentRef.update({ admissionStatus: status, updatedAt: new Date() });
-        return createApiResponse(200, { success: true });
+        const service = new StudentService();
+
+        if (status === "approved") {
+          await service.approveAdmission(tenantId, studentId, user.uid);
+        } else {
+          await service.rejectAdmission(tenantId, studentId, user.uid);
+        }
+
+        return createSuccessResponse(null, { message: `Admission ${status} successfully` });
       })
     )
   )

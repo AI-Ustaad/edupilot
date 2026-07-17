@@ -1,6 +1,6 @@
 export const dynamic = 'force-dynamic';
 import { withAuth, withTenant, withErrorHandler } from "@/route-helpers";
-import { createApiResponse } from "@/lib/response/apiResponse";
+import { createSuccessResponse, createErrorResponse, createApiResponse } from "@/lib/api/response";
 import { FeatureFlagService } from "@/services/featureFlag.service";
 import { SubscriptionService } from "@/services/subscription.service";
 import { ALL_FEATURES } from "@/lib/features/featureFlags";
@@ -31,7 +31,7 @@ export const GET = withErrorHandler(
             effectiveFlags[feat] = planAllows && (manualOverride !== false);
           }
 
-          return createApiResponse(200, { features: effectiveFlags });
+          return createSuccessResponse({ features: effectiveFlags });
         }
       )
     )

@@ -10,7 +10,15 @@ export const useSchool = () => {
 
   return useQuery({
     queryKey: ["school", tenantId],
-    queryFn: async () => safeObject(await apiClient.get("/settings")),
+    queryFn: async () => {
+      const result = safeObject(await apiClient.get("/settings/school-configuration"));
+      const configuration = result.configuration || {};
+      return {
+        ...configuration,
+        classes: configuration.academicStructure?.classes?.map((item: any) => ({ name: item.name, sections: configuration.academicStructure?.sectionNames || [] })) || [],
+        subjects: configuration.academicStructure?.subjects || [],
+      };
+    },
     enabled: !!tenantId && tenantId !== "unknown",
   });
 };

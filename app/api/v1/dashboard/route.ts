@@ -1,6 +1,6 @@
 export const dynamic = 'force-dynamic';
 import { withAuth, withTenant, withErrorHandler } from "@/route-helpers";
-import { createApiResponse } from "@/lib/response/apiResponse";
+import { createSuccessResponse, createErrorResponse, createApiResponse } from "@/lib/api/response";
 import { DashboardService } from "@/services/dashboard.service";
 import type { TenantContext } from "@/types/api";
 import { withPermission } from "@/lib/auth/rbac";
@@ -16,7 +16,7 @@ export const GET = withErrorHandler(
           async (_req: Request, { tenantId }: TenantContext) => {
             const service = new DashboardService();
             const data = await service.getDashboardData(tenantId);
-            return createApiResponse(200, data);
+            return createSuccessResponse(data);
           }
         )
       )

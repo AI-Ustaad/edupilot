@@ -1,26 +1,21 @@
-// app/api/v1/ai/timetable/route.ts
-import { NextRequest, NextResponse } from "next/server";
-import { getSessionUser } from "@/lib/auth/auth-server";
-import { aiService } from "@/services/ai/ai.service";
-import * as Sentry from "@sentry/nextjs";
+export const dynamic = 'force-dynamic';
+import { withAuth, withTenant, withErrorHandler } from "@/route-helpers";
+import { createSuccessResponse, createErrorResponse } from "@/lib/api/response";
+import { TimetableService } from "@/services/ai/timetable.service";
+import type { TenantContext } from "@/types/api";
 
-export const runtime = "nodejs";
+const timetableService = new TimetableService();
 
-export async function POST(req: NextRequest) {
-  try {
-    const user = await getSessionUser();
-    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+export const POST = withErrorHandler(
+  withAuth(
+    withTenant(async (req: Request, { tenantId, user }: TenantContext) => {
+      const body = await req.json();
+      if (!body.classes || !body.subjects || !body.teachers) {
+        return createErrorResponse(400, "Missing required fields (classes, subjects, teachers)");
+      }
 
-    const body = await req.json();
-    if (!body.classes || !body.subjects || !body.teachers) {
-      return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
-    }
-
-    const result = await aiService.generateTimetable(body, user.tenantId, user.uid, user.role);
-    return NextResponse.json({ success: true, data: result });
-
-  } catch (error: any) {
-    Sentry.captureException(error);
-    return NextResponse.json({ success: false, message: error.message }, { status: 500 });
-  }
-}
+      const result = await timetableService.generateTimetable(body, tenantId, user.uid);
+      return createSuccessResponse(result);
+    })
+  )
+);

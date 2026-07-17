@@ -1,12 +1,13 @@
-import { NextRequest, NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebase-admin";
+import { stripe } from "@/lib/stripe";
+import { logger } from "@/lib/logger/logger";
+import { createSuccessResponse, createErrorResponse } from "@/lib/api/response";
+import { SubscriptionService } from "@/services/subscription.service";
 import Stripe from "stripe";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: "2023-10-16",
-});
+const subscriptionService = new SubscriptionService();
 
-export async function POST(req: NextRequest) {
+export async function POST(req: Request) {
   const body = await req.text();
   const signature = req.headers.get("stripe-signature") as string;
 
@@ -19,11 +20,10 @@ export async function POST(req: NextRequest) {
       process.env.STRIPE_WEBHOOK_SECRET!
     );
   } catch (error: any) {
-    console.error(`Webhook Error: ${error.message}`);
-    return NextResponse.json({ error: `Webhook Error: ${error.message}` }, { status: 400 });
+    logger.error("Webhook Error:", { metadata: { error: error.message } });
+    return createErrorResponse(400, `Webhook Error: ${error.message}`);
   }
 
-  // Handle the event
   try {
     switch (event.type) {
       case "checkout.session.completed": {
@@ -32,17 +32,12 @@ export async function POST(req: NextRequest) {
         const planId = session.metadata?.planId as string;
 
         if (tenantId && planId) {
-          // Update Subscription in Firestore
-          await adminDb.collection("subscriptions").doc(tenantId).set({
-            tenantId,
-            planId,
-            status: "active",
+          await subscriptionService.activateSubscription(tenantId, planId);
+          await subscriptionService.updateSubscription(tenantId, {
             stripeCustomerId: session.customer as string,
             stripeSubscriptionId: session.subscription as string,
-            updatedAt: new Date(),
-          }, { merge: true });
-          
-          console.log(`[Stripe] Tenant ${tenantId} upgraded to ${planId}`);
+          });
+          logger.info(`Tenant ${tenantId} upgraded to ${planId}`);
         }
         break;
       }
@@ -50,9 +45,8 @@ export async function POST(req: NextRequest) {
       case "invoice.payment_succeeded": {
         const invoice = event.data.object as Stripe.Invoice;
         const tenantId = invoice.metadata?.tenantId as string;
-        
+
         if (tenantId) {
-          // Save Invoice Record for Audit/Accounting
           await adminDb.collection("invoices").add({
             tenantId,
             stripeInvoiceId: invoice.id,
@@ -62,11 +56,8 @@ export async function POST(req: NextRequest) {
             periodEnd: new Date(invoice.period_end * 1000),
             createdAt: new Date(),
           });
-          
-          // Ensure status is active
-          await adminDb.collection("subscriptions").doc(tenantId).set({
-            status: "active"
-          }, { merge: true });
+
+          await subscriptionService.updateSubscription(tenantId, { status: "active" });
         }
         break;
       }
@@ -76,26 +67,19 @@ export async function POST(req: NextRequest) {
         const tenantId = subscription.metadata?.tenantId as string;
 
         if (tenantId) {
-          // Downgrade to Free Plan on Cancellation
-          await adminDb.collection("subscriptions").doc(tenantId).set({
-            planId: "free",
-            status: "canceled",
-            updatedAt: new Date(),
-          }, { merge: true });
-          
-          console.log(`[Stripe] Tenant ${tenantId} subscription canceled. Downgraded to free.`);
+          await subscriptionService.cancelSubscription(tenantId);
+          logger.info(`Tenant ${tenantId} subscription canceled. Downgraded to free.`);
         }
         break;
       }
 
       default:
-        // Unhandled event type
-        console.log(`Unhandled event type ${event.type}`);
+        logger.info(`Unhandled event type ${event.type}`);
     }
 
-    return NextResponse.json({ received: true });
+    return createSuccessResponse({ received: true });
   } catch (error: any) {
-    console.error(`[Stripe Webhook Processing Error]: ${error.message}`);
-    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+    logger.error("Stripe Webhook Processing Error:", { metadata: { error: error.message } });
+    return createErrorResponse(500, "Internal Server Error");
   }
 }

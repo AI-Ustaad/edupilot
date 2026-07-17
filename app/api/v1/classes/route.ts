@@ -1,13 +1,14 @@
-import { NextResponse } from "next/server";
-import { adminDb } from "@/lib/firebase-admin";
 import { FieldValue } from "firebase-admin/firestore";
 import { withErrorHandler, withAuth, withTenant } from "@/route-helpers";
 import { withPermission } from "@/lib/auth/rbac";
 import { PERMISSIONS } from "@/lib/auth/permissions";
-import { logAction } from "@/lib/audit";
+import { createSuccessResponse, createErrorResponse, createApiResponse } from "@/lib/api/response";
+import { AuditService } from "@/services/AuditService";
+import { SectionRepository } from "@/repositories/section.repository";
 import type { TenantContext } from "@/types/api";
 
 export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 // ==========================================
 // 1. GET: Fetch Sections Securely
@@ -16,17 +17,9 @@ export const GET = withErrorHandler(
   withAuth(
     withTenant(
       withPermission(PERMISSIONS.students.view)(async (req: Request, { tenantId }: TenantContext) => {
-        const snap = await adminDb.collection("sections")
-          .where("tenantId", "==", tenantId)
-          .get();
-        
-        // ✅ ULTIMATE FIX: Cast d.data() to 'any' to bypass strict type inference
-        const sections = snap.docs.map(d => ({ 
-          id: d.id, 
-          ...(d.data() as any) 
-        })).filter((s: any) => !s.deleted);
-
-        return NextResponse.json({ success: true, data: sections });
+        const sectionRepo = new SectionRepository();
+        const sections = await sectionRepo.findAllActive(tenantId);
+        return createSuccessResponse(sections);
       })
     )
   )
@@ -38,36 +31,28 @@ export const GET = withErrorHandler(
 export const POST = withErrorHandler(
   withAuth(
     withTenant(
-      withPermission(PERMISSIONS.students.update)(async (req: Request, { tenantId, user }: TenantContext) => {
+      withPermission(PERMISSIONS.classes.create)(async (req: Request, { tenantId, user }: TenantContext) => {
         const data = await req.json();
         const { classGrade, sectionName, subjects } = data;
 
         if (!classGrade || !sectionName) {
-          return NextResponse.json({ success: false, message: "Class and Section name required" }, { status: 400 });
+          return createErrorResponse(400, "Class and Section name required");
         }
 
-        const docRef = adminDb.collection("sections").doc();
-        await docRef.set({
-          classGrade,
-          sectionName,
-          subjects: subjects || { core: [], electives: [] },
-          tenantId,
-          deleted: false,
-          createdAt: FieldValue.serverTimestamp(),
-          createdBy: user.uid,
-        });
+        const sectionRepo = new SectionRepository();
+        const id = await sectionRepo.create({ classGrade, sectionName, subjects: subjects || { core: [], electives: [] }, tenantId, deleted: false, createdBy: user.uid } as any, tenantId);
 
-        // 🛡️ Audit Log
-        await logAction({
+        const audit = new AuditService();
+        await audit.log({
           action: "class.create",
           userId: user.uid,
           tenantId,
-          entityId: docRef.id,
+          entityId: id,
           entityType: "section",
           metadata: { classGrade, sectionName },
         });
 
-        return NextResponse.json({ success: true, id: docRef.id });
+        return createApiResponse(201, { id }, "Section created successfully");
       })
     )
   )
@@ -79,31 +64,19 @@ export const POST = withErrorHandler(
 export const DELETE = withErrorHandler(
   withAuth(
     withTenant(
-      withPermission(PERMISSIONS.students.update)(async (req: Request, { tenantId, user }: TenantContext) => {
+      withPermission(PERMISSIONS.classes.delete)(async (req: Request, { tenantId, user }: TenantContext) => {
         const { searchParams } = new URL(req.url);
         const sectionId = searchParams.get("id");
 
         if (!sectionId) {
-          return NextResponse.json({ success: false, message: "Section ID required" }, { status: 400 });
+          return createErrorResponse(400, "Section ID required");
         }
 
-        const docRef = adminDb.collection("sections").doc(sectionId);
-        const snap = await docRef.get();
+        const sectionRepo = new SectionRepository();
+        await sectionRepo.softDeleteBySectionId(sectionId, tenantId, user.uid);
 
-        // 🛡️ Verify ownership
-        if (!snap.exists || (snap.data() as any)?.tenantId !== tenantId) {
-          return NextResponse.json({ success: false, message: "Section not found" }, { status: 404 });
-        }
-
-        // 🛑 SOFT DELETE
-        await docRef.update({
-          deleted: true,
-          deletedAt: FieldValue.serverTimestamp(),
-          deletedBy: user.uid,
-        });
-
-        // 🛡️ Audit Log
-        await logAction({
+        const audit = new AuditService();
+        await audit.log({
           action: "class.delete",
           userId: user.uid,
           tenantId,
@@ -111,7 +84,7 @@ export const DELETE = withErrorHandler(
           entityType: "section",
         });
 
-        return NextResponse.json({ success: true, message: "Section archived" });
+        return createSuccessResponse(null, { message: "Section archived" });
       })
     )
   )

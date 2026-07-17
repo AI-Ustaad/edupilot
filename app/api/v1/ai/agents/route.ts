@@ -1,42 +1,39 @@
-// app/api/v1/ai/agents/route.ts
-import { NextRequest, NextResponse } from "next/server";
-import { adminDb } from "@/lib/firebase-admin";
-import { getSessionUser } from "@/lib/auth/auth-server";
-import { aiService } from "@/services/ai/ai.service";
-import * as Sentry from "@sentry/nextjs";
+export const dynamic = 'force-dynamic';
+import { withAuth, withTenant, withErrorHandler } from "@/route-helpers";
+import { createSuccessResponse, createErrorResponse } from "@/lib/api/response";
+import { agentRegistry, AgentNotFoundError } from "@/lib/ai/agents/AgentRegistry";
+import type { TenantContext } from "@/types/api";
 
-export const runtime = "nodejs";
+export const POST = withErrorHandler(
+  withAuth(
+    withTenant(async (req: Request, { tenantId, user }: TenantContext) => {
+      const { agentType, query } = await req.json();
+      if (!agentType) return createErrorResponse(400, "Agent type is required");
+      if (!query) return createErrorResponse(400, "Query is required");
 
-export async function POST(req: NextRequest) {
-  try {
-    const user = await getSessionUser();
-    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      try {
+        const result = await agentRegistry.execute(agentType, {
+          tenantId,
+          userId: user.uid,
+          userRole: user.role,
+          query,
+        });
+        return createSuccessResponse({ answer: result });
+      } catch (error) {
+        if (error instanceof AgentNotFoundError) {
+          return createErrorResponse(400, error.message);
+        }
+        throw error;
+      }
+    })
+  )
+);
 
-    const { agentType, context } = await req.json();
-
-    if (agentType === "principal") {
-      // Fetch School Data for Principal Agent
-      const [studentsSnap, feesSnap, attendanceSnap] = await Promise.all([
-        adminDb.collection("students").where("tenantId", "==", user.tenantId).get(),
-        adminDb.collection("fees").where("tenantId", "==", user.tenantId).limit(100).get(),
-        adminDb.collection("attendance").where("tenantId", "==", user.tenantId).limit(100).get(),
-      ]);
-
-      const schoolData = {
-        totalStudents: studentsSnap.size,
-        feesSummary: feesSnap.docs.map(d => d.data()),
-        attendanceSummary: attendanceSnap.docs.map(d => d.data()),
-        userQuery: context
-      };
-
-      const insights = await aiService.principalAgent(schoolData, user.tenantId, user.uid, user.role);
-      return NextResponse.json({ success: true, data: insights });
-    }
-
-    return NextResponse.json({ error: "Invalid agent type" }, { status: 400 });
-
-  } catch (error: any) {
-    Sentry.captureException(error);
-    return NextResponse.json({ success: false, message: error.message }, { status: 500 });
-  }
-}
+export const GET = withErrorHandler(
+  withAuth(
+    withTenant(async (_req: Request, _context: TenantContext) => {
+      const agents = agentRegistry.listAgents();
+      return createSuccessResponse(agents);
+    })
+  )
+);

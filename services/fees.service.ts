@@ -1,50 +1,80 @@
-import { invalidateCache } from "@/lib/cache";
+// services/fees.service.ts
 import { FeesRepository } from "@/repositories/fees.repository";
-import { Fee } from "@/types/fees";
-import { CreateFeeSchema, UpdateFeeSchema } from "@/lib/validation";
-import { ZodError } from "zod";
+import { AuditService } from "./AuditService";
+import { ValidationService } from "./ValidationService";
+import { CreateFeeSchema, UpdateFeeSchema } from "@/validators/fees";
+import { invalidateCache } from "@/lib/cache";
+import { eventBus } from "@/lib/events";
+import { EVENTS } from "@/lib/events/event-types";
+import type { IFeesRepository } from "@/interfaces/IFeesRepository";
+import type { Fee } from "@/types/fees";
 
 export class FeesService {
-  constructor(private repo: FeesRepository) {}
+  private audit: AuditService;
+  private validation: ValidationService;
 
-  async createFee(data: unknown, tenantId: string): Promise<Fee> {
-    let validated;
-    try {
-      validated = CreateFeeSchema.parse(data);
-    } catch (error) {
-      if (error instanceof ZodError) {
-        throw new Error(`Validation failed: ${error.errors.map(e => e.message).join(', ')}`);
-      }
-      throw error;
-    }
+  constructor(private repo: IFeesRepository = new FeesRepository()) {
+    this.audit = new AuditService();
+    this.validation = new ValidationService();
+  }
 
-    const createData = { ...validated, tenantId, createdAt: new Date() } as Omit<Fee, "id" | "updatedAt">;
+  async createFee(data: unknown, tenantId: string, userId?: string): Promise<Fee> {
+    const parsed = this.validation.validateOrThrow(CreateFeeSchema, data);
+
+    const createData = {
+      ...parsed,
+      tenantId,
+      createdAt: new Date(),
+    } as unknown as Omit<Fee, "id" | "updatedAt">;
+
     const id = await this.repo.create(createData as any, tenantId);
     const fee = await this.repo.findById(id, tenantId);
     if (!fee) throw new Error("Fee record created but could not be retrieved");
 
-    // Invalidate caches
-    if ((fee as any).studentId) {
+    await invalidateCache(`dashboard:${tenantId}`);
+    await invalidateCache(`fees:${tenantId}`);
+
+    if (userId) {
+      await this.audit.log({
+        action: "fee.created",
+        userId,
+        tenantId,
+        entityId: id,
+        entityType: "fee",
+        metadata: { studentId: parsed.studentId, amount: parsed.amountPaid, month: parsed.feeMonth },
+      });
     }
+
+    await eventBus.publish(EVENTS.FEE_COLLECTED, {
+      tenantId,
+      feeId: id,
+      studentId: parsed.studentId,
+      amount: parsed.amountPaid,
+      month: parsed.feeMonth,
+      collectedBy: userId,
+    });
 
     return fee as Fee;
   }
 
-  async getFeeById(id: string, tenantId: string): Promise<Fee | null> {
+  async getFeeById(id: string, tenantId: string): Promise<(Fee & { id: string }) | null> {
     return this.repo.findById(id, tenantId);
   }
 
   async listFees(tenantId: string, studentId?: string, page = 1, limit = 20) {
-    // (اختیاری: cache read)
-    let fees = await this.repo.findAll(tenantId);
+    let fees: (Fee & { id: string })[];
+
     if (studentId) {
-      fees = fees.filter(f => (f as any).studentId === studentId);
+      fees = await (this.repo as FeesRepository).findByStudent(tenantId, studentId, page * limit);
+    } else {
+      fees = await this.repo.findAll(tenantId);
+      fees.sort((a, b) => {
+        const dateA = (a as any).createdAt?.toDate?.() || 0;
+        const dateB = (b as any).createdAt?.toDate?.() || 0;
+        return dateB - dateA;
+      });
     }
-    fees.sort((a, b) => {
-      const dateA = (a as any).createdAt?.toDate?.() || 0;
-      const dateB = (b as any).createdAt?.toDate?.() || 0;
-      return dateB - dateA;
-    });
+
     const start = (page - 1) * limit;
     const end = start + limit;
     return {
@@ -56,57 +86,75 @@ export class FeesService {
     };
   }
 
-  async updateFee(id: string, data: unknown, tenantId: string): Promise<Fee> {
-    let validated;
-    try {
-      validated = UpdateFeeSchema.parse(data);
-    } catch (error) {
-      if (error instanceof ZodError) {
-        throw new Error(`Validation failed: ${error.errors.map(e => e.message).join(', ')}`);
-      }
-      throw error;
-    }
+  async updateFee(id: string, data: unknown, tenantId: string, userId?: string): Promise<Fee> {
+    const parsed = this.validation.validateOrThrow(UpdateFeeSchema, data);
 
-    await this.repo.update(id, validated, tenantId);
+    await this.repo.update(id, parsed, tenantId);
     const updated = await this.repo.findById(id, tenantId);
     if (!updated) throw new Error("Fee record not found after update");
 
-    // Invalidate caches
-    if ((updated as any).studentId) {
+    await invalidateCache(`dashboard:${tenantId}`);
+    await invalidateCache(`fees:${tenantId}`);
+
+    if (userId) {
+      await this.audit.log({
+        action: "fee.updated",
+        userId,
+        tenantId,
+        entityId: id,
+        entityType: "fee",
+        metadata: { updates: parsed },
+      });
     }
+
+    await eventBus.publish(EVENTS.FEE_UPDATED, {
+      tenantId,
+      feeId: id,
+      updates: parsed,
+      updatedBy: userId,
+    });
 
     return updated as Fee;
   }
 
-  async deleteFee(id: string, tenantId: string): Promise<void> {
-    // اصل دستاویز کی معلومات نکال لیں (بعد میں cache key بنانے کے لیے)
+  async deleteFee(id: string, tenantId: string, userId?: string): Promise<void> {
     const fee = await this.repo.findById(id, tenantId);
     await this.repo.delete(id, tenantId);
 
-    if (fee) {
-      if ((fee as any).studentId) {
-      }
+    await invalidateCache(`dashboard:${tenantId}`);
+    await invalidateCache(`fees:${tenantId}`);
+
+    if (userId) {
+      await this.audit.log({
+        action: "fee.deleted",
+        userId,
+        tenantId,
+        entityId: id,
+        entityType: "fee",
+        metadata: { studentName: (fee as any)?.studentName, amount: (fee as any)?.amountPaid },
+      });
     }
+
+    await eventBus.publish(EVENTS.FEE_DELETED, {
+      tenantId,
+      feeId: id,
+      studentId: (fee as any)?.studentId,
+      deletedBy: userId,
+    });
   }
 
   async getTotalRevenue(tenantId: string): Promise<number> {
-    const allFees = await this.repo.findAll(tenantId);
-    return allFees.reduce((sum, fee) => sum + ((fee as any).amountPaid || 0), 0);
+    return (this.repo as FeesRepository).getTotalRevenue(tenantId);
   }
 
   async getRecentPayments(tenantId: string, limit = 5): Promise<any[]> {
-    const allFees = await this.repo.findAll(tenantId);
-    allFees.sort((a, b) => {
-      const dateA = (a as any).createdAt?.toDate?.() || 0;
-      const dateB = (b as any).createdAt?.toDate?.() || 0;
-      return dateB - dateA;
-    });
-    return allFees.slice(0, limit).map(fee => ({
+    const fees = await (this.repo as FeesRepository).getRecentPayments(tenantId, limit);
+    return fees.map(fee => ({
       id: fee.id,
-      studentName: (fee as any).studentName || 'Unknown',
+      studentName: (fee as any).studentName || "Unknown",
       amount: (fee as any).amountPaid || 0,
-      date: (fee as any).feeMonth || '',
-      timestamp: (fee as any).createdAt?.toDate?.().toISOString() || '',
+      date: (fee as any).feeMonth || "",
+      timestamp: (fee as any).createdAt?.toDate?.().toISOString() || "",
     }));
   }
 }

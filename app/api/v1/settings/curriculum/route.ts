@@ -1,68 +1,30 @@
 // app/api/v1/settings/curriculum/route.ts
-import { NextRequest, NextResponse } from "next/server";
-import { adminDb } from "@/lib/firebase-admin";
-import { getSessionUser } from "@/lib/auth/auth-server";
+export const dynamic = 'force-dynamic';
+import { withAuth, withTenant, withErrorHandler } from "@/route-helpers";
+import { createSuccessResponse, createErrorResponse } from "@/lib/api/response";
+import { withPermission } from "@/lib/auth/rbac";
+import { PERMISSIONS } from "@/lib/auth/permissions";
+import { SchoolConfigurationSchema } from "@/lib/validation/school-configuration.schema";
+import { schoolConfigurationService } from "@/services/school-configuration.service";
+import type { TenantContext } from "@/types/api";
 
-export const runtime = "nodejs";
-
-export async function POST(req: NextRequest) {
-  try {
-    const user = await getSessionUser();
-    if (!user || !user.tenantId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const { classes, subjects, schoolType, curriculum, levels } = await req.json();
-
-    if (!classes || !subjects) {
-      return NextResponse.json({ error: "Classes and Subjects are required" }, { status: 400 });
-    }
-
-    const batch = adminDb.batch();
-
-    // 1. Settings Document (Classes & Subjects) اپ ڈیٹ کریں
-    const settingsRef = adminDb.collection("tenants").doc(user.tenantId).collection("settings").doc("config");
-    batch.set(settingsRef, {
-      classes: classes,
-      subjects: subjects,
-      updatedAt: new Date().toISOString()
-    }, { merge: true });
-
-    // 2. General Settings میں Type اور Curriculum سیٹ کریں
-    const generalRef = adminDb.collection("tenants").doc(user.tenantId).collection("settings").doc("general");
-    batch.set(generalRef, {
-      schoolType: schoolType,
-      affiliation: curriculum,
-      levelsOffered: levels,
-      updatedAt: new Date().toISOString()
-    }, { merge: true });
-
-    // 3. Sections Collection خودکار Popultate کریں
-    const sectionsRef = adminDb.collection("sections");
-    const oldSections = await sectionsRef.where("tenantId", "==", user.tenantId).get();
-    oldSections.docs.forEach(doc => batch.delete(doc.ref));
-
-    classes.forEach((cls: any) => {
-      if (cls.name) {
-        const newSecRef = sectionsRef.doc();
-        batch.set(newSecRef, {
-          tenantId: user.tenantId,
-          classGrade: cls.name,
-          sectionName: "A", // ڈیفالٹ سیکشن
-          createdAt: new Date().toISOString()
+export const POST = withErrorHandler(
+  withAuth(
+    withTenant(
+      withPermission(PERMISSIONS.curriculum.create)(async (req: Request, { tenantId, user }: TenantContext) => {
+        const body = await req.json();
+        const current = await schoolConfigurationService.getConfiguration(tenantId);
+        const parsed = SchoolConfigurationSchema.safeParse({
+          schoolName: body.schoolName || current.school.name,
+          schoolType: body.schoolType || current.school.type,
+          curriculumId: body.curriculumId || body.curriculum || current.school.curriculumId,
+          levels: body.levels || current.academicStructure.levels,
+          sectionNames: body.sectionNames || current.academicStructure.sectionNames,
         });
-      }
-    });
-
-    await batch.commit();
-
-    return NextResponse.json({ 
-      success: true, 
-      message: "Curriculum applied successfully! Classes and Subjects have been updated." 
-    });
-
-  } catch (error: any) {
-    console.error("Curriculum Apply Error:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
-  }
-}
+        if (!parsed.success) return createErrorResponse(400, "Invalid school configuration", parsed.error.errors);
+        const configuration = await schoolConfigurationService.saveConfiguration(parsed.data, tenantId, user.uid);
+        return createSuccessResponse(configuration, { message: "Curriculum applied through School Configuration." });
+      })
+    )
+  )
+);

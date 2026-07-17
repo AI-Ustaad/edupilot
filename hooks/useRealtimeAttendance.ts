@@ -3,10 +3,12 @@ import { useEffect, useState } from "react";
 import { collection, query, where, onSnapshot } from "firebase/firestore";
 import { db } from "@/lib/firebase"; // آپ کا Firebase Client Instance
 import { useAuth } from "@/context/AuthContext";
+import { logger } from "@/lib/logger/logger";
+import type { Attendance } from "@/types/attendance";
 
 export const useRealtimeAttendance = (classGrade: string, section: string, date: string) => {
   const { user } = useAuth();
-  const [records, setRecords] = useState<any[]>([]);
+  const [records, setRecords] = useState<(Attendance & { id: string })[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -29,11 +31,11 @@ export const useRealtimeAttendance = (classGrade: string, section: string, date:
 
     // 🔄 Live Listener
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Attendance & { id: string }));
       setRecords(data);
       setIsLoading(false);
     }, (error) => {
-      console.error("Realtime attendance error:", error);
+      logger.error("Realtime attendance error:", { metadata: { error } });
       setIsLoading(false);
     });
 

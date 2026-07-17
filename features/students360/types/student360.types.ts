@@ -1,6 +1,9 @@
+// Re-export canonical types from types/student.ts for backward compatibility
+import type { Student, TimelineEntry } from "@/types/student";
+
 export interface StudentProfile {
   id: string;
-  fullName: string;          // Changed from firstName/lastName to match your DB
+  fullName: string;
   fatherName?: string;
   cnic?: string;
   dob?: string;
@@ -9,7 +12,7 @@ export interface StudentProfile {
   nationality?: string;
   phone?: string;
   address?: string;
-  classGrade: string;        // Changed from class to classGrade
+  classGrade: string;
   section?: string;
   rollNumber: string | number;
   admissionNumber?: string;
@@ -19,7 +22,7 @@ export interface StudentProfile {
   guardianPhone?: string;
   bloodGroup?: string;
   medicalConditions?: string;
-  photoBase64?: string;      // Brought back the Base64 image support
+  photoBase64?: string;
   status?: 'Active' | 'Inactive' | 'Suspended';
   admissionDate?: string;
 }

@@ -1,55 +1,114 @@
 // services/parents.service.ts
 import { ParentsRepository } from "@/repositories/parents.repository";
 import { StudentRepository } from "@/repositories/student.repository";
-import { Student } from "@/types/student";
-import { Parent } from "@/types/parents";
+import { AuditService } from "./AuditService";
+import { eventBus } from "@/lib/events";
+import { EVENTS } from "@/lib/events/event-types";
+import { invalidateCache } from "@/lib/cache";
+import type { IParentRepository } from "@/interfaces/IParentRepository";
+import type { Parent } from "@/types/parents";
+import type { Student } from "@/types/student";
 
 export class ParentsService {
-  constructor(
-    private parentRepo: ParentsRepository,
-    private studentRepo: StudentRepository
-  ) {}
+  private audit: AuditService;
+  private studentRepo: StudentRepository;
 
-  /**
-   * والدین کی دستاویز حاصل کریں
-   */
-  async getParent(userId: string, tenantId: string): Promise<Parent | null> {
+  constructor(
+    private parentRepo: IParentRepository = new ParentsRepository(),
+    studentRepo?: StudentRepository
+  ) {
+    this.audit = new AuditService();
+    this.studentRepo = studentRepo ?? new StudentRepository();
+  }
+
+  async getParent(userId: string, tenantId: string): Promise<(Parent & { id: string }) | null> {
     return this.parentRepo.findById(userId, tenantId);
   }
 
-  /**
-   * والدین کے بچوں کی فہرست (Student[])
-   */
   async getChildren(userId: string, tenantId: string): Promise<Student[]> {
     const parent = await this.parentRepo.findById(userId, tenantId);
     if (!parent || !parent.studentIds || parent.studentIds.length === 0) {
       return [];
     }
 
-    // طلبہ کی ریپوزٹری سے ایک ایک کر کے معلومات لانا
-    const children: Student[] = [];
-    for (const studentId of parent.studentIds) {
-      const student = await this.studentRepo.findById(studentId, tenantId);
-      if (student) {
-        children.push(student as Student);
-      }
-    }
-    return children;
+    // Batch fetch all children in minimal queries (30 per batch) instead of N sequential queries
+    const children = await this.studentRepo.batchFindByIds(tenantId, parent.studentIds);
+    return children as Student[];
   }
 
-  /**
-   * بچوں کی IDs حاصل کریں (اگر صرف IDs چاہیے)
-   */
   async getChildIds(userId: string, tenantId: string): Promise<string[]> {
     const parent = await this.parentRepo.findById(userId, tenantId);
     return parent?.studentIds || [];
   }
 
-  /**
-   * چیک کریں کہ آیا یہ والدین فلاں طالب علم کا والد ہے
-   */
   async isParentOf(userId: string, studentId: string, tenantId: string): Promise<boolean> {
     const parent = await this.parentRepo.findById(userId, tenantId);
     return parent?.studentIds?.includes(studentId) ?? false;
   }
+
+  async createParent(
+    data: { email: string; fullName: string; phone?: string; studentIds: string[] },
+    tenantId: string,
+    userId: string
+  ): Promise<string> {
+    const parentData: Omit<Parent, "id" | "createdAt" | "updatedAt"> = {
+      tenantId,
+      studentIds: data.studentIds,
+      name: data.fullName,
+      email: data.email,
+      phone: data.phone || "",
+    };
+
+    const parentId = await this.parentRepo.create(parentData, tenantId);
+
+    await this.audit.log({
+      action: "parent.created",
+      userId,
+      tenantId,
+      entityId: parentId,
+      entityType: "parent",
+      metadata: { email: data.email, studentIds: data.studentIds },
+    });
+
+    await invalidateCache(`dashboard:${tenantId}`);
+
+    await eventBus.publish(EVENTS.PARENT_CREATED, {
+      tenantId,
+      parentId,
+      email: data.email,
+      studentIds: data.studentIds,
+      createdBy: userId,
+    });
+
+    return parentId;
+  }
+
+  async deleteParent(parentId: string, tenantId: string, userId: string): Promise<void> {
+    await this.parentRepo.delete(parentId, tenantId);
+
+    await this.audit.log({
+      action: "parent.deleted",
+      userId,
+      tenantId,
+      entityId: parentId,
+      entityType: "parent",
+    });
+
+    await invalidateCache(`dashboard:${tenantId}`);
+
+    await eventBus.publish(EVENTS.PARENT_DELETED, {
+      tenantId,
+      parentId,
+      deletedBy: userId,
+    });
+  }
+
+  async paginate(
+    tenantId: string,
+    page: number = 1,
+    limit: number = 50
+  ) {
+    return (this.parentRepo as ParentsRepository).paginate(tenantId, page, limit);
+  }
 }
+

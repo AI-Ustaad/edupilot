@@ -1,10 +1,11 @@
 export const dynamic = 'force-dynamic';
 
-import { NextResponse } from "next/server";
-import { adminDb } from "@/lib/firebase-admin";
 import { withErrorHandler, withAuth, withTenant } from "@/route-helpers";
 import { withPermission } from "@/lib/auth/rbac";
 import { PERMISSIONS } from "@/lib/auth/permissions";
+import { StudentService } from "@/services/StudentService";
+import { createSuccessResponse, createErrorResponse } from "@/lib/api/response";
+import { logger } from "@/lib/logger/logger";
 import type { TenantContext } from "@/types/api";
 
 export const runtime = 'nodejs';
@@ -18,41 +19,19 @@ export const GET = withErrorHandler(
           const studentId = searchParams.get("id");
 
           if (!studentId) {
-            return NextResponse.json({ success: false, error: "Student ID required" }, { status: 400 });
+            return createErrorResponse(400, "Student ID required");
           }
 
-          const studentSnap = await adminDb.collection("students").doc(studentId).get();
-          
-          if (!studentSnap.exists || studentSnap.data()?.tenantId !== tenantId) {
-            return NextResponse.json({ success: false, error: "Student not found" }, { status: 404 });
-          }
+          const studentService = new StudentService();
+          const data = await studentService.student360(tenantId, studentId);
 
-          const student = { id: studentSnap.id, ...studentSnap.data() };
-
-          // 🛡️ Simplified Queries (No Complex Index Required)
-          const [marksSnap, attendanceSnap, feesSnap] = await Promise.all([
-            adminDb.collection("marks").where("studentId", "==", studentId).limit(50).get(),
-            adminDb.collection("attendance").where("studentId", "==", studentId).limit(30).get(),
-            adminDb.collection("fees").where("studentId", "==", studentId).limit(20).get(),
-          ]);
-
-          // Filter by tenantId in memory to avoid composite indexes
-          const marks = marksSnap.docs.map(d => ({ id: d.id, ...d.data() })).filter((m: any) => m.tenantId === tenantId);
-          const attendance = attendanceSnap.docs.map(d => ({ id: d.id, ...d.data() })).filter((a: any) => a.tenantId === tenantId);
-          const fees = feesSnap.docs.map(d => ({ id: d.id, ...d.data() })).filter((f: any) => f.tenantId === tenantId);
-
-          return NextResponse.json({
-            success: true,
-            data: {
-              student,
-              academic: { marks },
-              attendance: { records: attendance },
-              financial: { records: fees },
-            },
-          });
+          return createSuccessResponse(data);
         } catch (error: any) {
-          console.error("Student 360 Error:", error);
-          return NextResponse.json({ success: false, error: "Internal Server Error" }, { status: 500 });
+          logger.error("Student 360 Error:", { metadata: { error } });
+          if (error.message === "Student not found") {
+            return createErrorResponse(404, "Student not found");
+          }
+          return createErrorResponse(500, "Internal Server Error");
         }
       })
     )

@@ -2,36 +2,37 @@ const withNextIntl = require("next-intl/plugin")("./i18n/request.ts");
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // 1. React Strict Mode: بمشکل Errors کو Debug کرنے میں مدد دیتا ہے
   reactStrictMode: true,
 
-  // 2. Image Optimization: Next.js Image Component کے لیے External Domains کی اجازت
-  // آپ یہاں اپنے Firebase Storage, AWS S3 یا دوسرے CDN کے Domains شامل کر سکتے ہیں
   images: {
     remotePatterns: [
       {
         protocol: 'https',
-        hostname: '**', // فی الحال سب کو اجازت ہے، after میں آپ اسے مخصوص کر سکتے ہیں
+        hostname: 'firebasestorage.googleapis.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'lh3.googleusercontent.com',
       },
     ],
   },
 
-  // 3. Security Headers (Enterprise SaaS کے لیے لازمی)
   async headers() {
     return [
       {
         source: '/(.*)',
         headers: [
-          { key: 'X-Frame-Options', value: 'SAMEORIGIN' }, // Clickjacking سے بچاؤ
+          { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
           { key: 'X-Content-Type-Options', value: 'nosniff' },
           { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
           { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
+          { key: 'Strict-Transport-Security', value: 'max-age=31536000; includeSubDomains' },
+          { key: 'X-DNS-Prefetch-Control', value: 'on' },
         ],
       },
     ];
   },
 
-  // 4. Webpack Config (xlsx کا مسئلہ محفوظ رکھنے کے لیے)
   webpack: (config, { isServer }) => {
     if (isServer) {
       config.externals = config.externals || [];

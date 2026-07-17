@@ -1,36 +1,34 @@
-// app/api/v1/settings/general/route.ts
-import { NextRequest, NextResponse } from "next/server";
-import { adminDb } from "@/lib/firebase-admin";
-import { getSessionUser } from "@/lib/auth/auth-server";
+import { withErrorHandler, withAuth, withTenant } from "@/route-helpers";
+import { withPermission } from "@/lib/auth/rbac";
+import { PERMISSIONS } from "@/lib/auth/permissions";
+import { createSuccessResponse } from "@/lib/api/response";
+import { SettingsRepository } from "@/repositories/settings.repository";
+import type { TenantContext } from "@/types/api";
 
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
-export async function GET(req: NextRequest) {
-  try {
-    const user = await getSessionUser();
-    if (!user || !user.tenantId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+const settingsRepo = new SettingsRepository();
 
-    const doc = await adminDb.collection("tenants").doc(user.tenantId).collection("settings").doc("general").get();
-    return NextResponse.json({ success: true, data: doc.exists ? doc.data() : {} });
-  } catch (error) {
-    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
-  }
-}
+export const GET = withErrorHandler(
+  withAuth(
+    withTenant(
+      withPermission(PERMISSIONS.settings.view)(async (_req: Request, { tenantId }: TenantContext) => {
+        const config = await settingsRepo.getGeneral(tenantId);
+        return createSuccessResponse(config || {});
+      })
+    )
+  )
+);
 
-export async function PUT(req: NextRequest) {
-  try {
-    const user = await getSessionUser();
-    if (!user || !user.tenantId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-    const body = await req.json();
-    
-    await adminDb.collection("tenants").doc(user.tenantId).collection("settings").doc("general").set({
-      ...body,
-      updatedAt: new Date().toISOString()
-    }, { merge: true });
-
-    return NextResponse.json({ success: true, message: "Settings updated successfully" });
-  } catch (error) {
-    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
-  }
-}
+export const PUT = withErrorHandler(
+  withAuth(
+    withTenant(
+      withPermission(PERMISSIONS.settings.update)(async (req: Request, { tenantId }: TenantContext) => {
+        const body = await req.json();
+        await settingsRepo.updateGeneral(tenantId, body);
+        return createSuccessResponse(null, { message: "Settings updated successfully" });
+      })
+    )
+  )
+);

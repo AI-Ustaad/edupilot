@@ -1,14 +1,18 @@
 export const dynamic = 'force-dynamic';
-import { adminDb } from "@/lib/firebase-admin";
-import { withAuth, withTenant, withErrorHandler, withRole } from "@/route-helpers";
-import { createApiResponse } from "@/lib/response/apiResponse";
+import { withAuth, withTenant, withErrorHandler } from "@/route-helpers";
+import { withPermission } from "@/lib/auth/rbac";
+import { PERMISSIONS } from "@/lib/auth/permissions";
+import { createSuccessResponse, createApiResponse } from "@/lib/api/response";
+import { MenuRepository } from "@/repositories/menu.repository";
 import type { TenantContext } from "@/types/api";
+
+const menuRepo = new MenuRepository();
 
 export const GET = withErrorHandler(
   withAuth(
     withTenant(async (req: Request, { tenantId }: TenantContext) => {
-      const doc = await adminDb.collection("customMenus").doc(tenantId).get();
-      return createApiResponse(200, doc.data() || {});
+      const menu = await menuRepo.getMenu(tenantId);
+      return createApiResponse(200, menu);
     })
   )
 );
@@ -16,10 +20,10 @@ export const GET = withErrorHandler(
 export const POST = withErrorHandler(
   withAuth(
     withTenant(
-      withRole(["admin"])(async (req: Request, { tenantId }: TenantContext) => {
+      withPermission(PERMISSIONS.menu.update)(async (req: Request, { tenantId }: TenantContext) => {
         const menu = await req.json();
-        await adminDb.collection("customMenus").doc(tenantId).set(menu, { merge: true });
-        return createApiResponse(200, null, "Menu saved");
+        await menuRepo.saveMenu(tenantId, menu);
+        return createSuccessResponse(null, { message: "Menu saved" });
       })
     )
   )

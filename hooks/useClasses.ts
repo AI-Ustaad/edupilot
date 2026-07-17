@@ -4,6 +4,7 @@ import apiClient from "@/lib/api/client";
 import { QueryKeys } from "@/lib/api/queryKeys";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/components/ToastProvider";
+import { logger } from "@/lib/logger/logger";
 
 // 🔄 Fetch All Classes (Crash-Proof)
 export const useClasses = () => {
@@ -19,7 +20,7 @@ export const useClasses = () => {
         if (!Array.isArray(data)) data = [];
         return data;
       } catch (error) {
-        console.error("Failed to fetch classes:", error);
+        logger.error("Failed to fetch classes:", { metadata: { error } });
         return [];
       }
     },

@@ -1,4 +1,5 @@
 // lib/config/env.ts
+import { logger } from "@/lib/logger/logger";
 
 // Required environment variables (must be present)
 const requiredEnvVars = [
@@ -19,6 +20,11 @@ const optionalEnvVars = [
   "NEXT_PUBLIC_DEMO_MODE",
   "STRIPE_SECRET_KEY",
   "STRIPE_WEBHOOK_SECRET",
+  "GEMINI_API_KEY",
+  "QSTASH_TOKEN",
+  "UPSTASH_REDIS_REST_URL",
+  "UPSTASH_REDIS_REST_TOKEN",
+  "RESEND_API_KEY",
 ] as const;
 
 type RequiredEnvVar = typeof requiredEnvVars[number];
@@ -38,8 +44,7 @@ class EnvConfig {
       }
     }
     if (this.missingVars.length > 0) {
-      console.error(`❌ Missing required environment variables: ${this.missingVars.join(", ")}`);
-      // In production, you may want to throw an error
+      logger.error(`Missing required environment variables: ${this.missingVars.join(", ")}`);
       if (this.isProduction()) {
         throw new Error(`Missing env vars: ${this.missingVars.join(", ")}`);
       }
@@ -66,7 +71,6 @@ class EnvConfig {
     return process.env.NODE_ENV === "development";
   }
 
-  // Firebase config object (for client-side)
   getFirebaseConfig() {
     return {
       apiKey: this.get("NEXT_PUBLIC_FIREBASE_API_KEY"),
@@ -76,7 +80,6 @@ class EnvConfig {
     };
   }
 
-  // Firebase Admin config (for server-side)
   getFirebaseAdminConfig() {
     return {
       projectId: this.get("FIREBASE_PROJECT_ID"),

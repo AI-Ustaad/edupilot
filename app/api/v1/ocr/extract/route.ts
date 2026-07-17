@@ -1,7 +1,9 @@
 export const dynamic = 'force-dynamic';
 import { createWorker } from "tesseract.js";
 import { withAuth, withTenant, withErrorHandler } from "@/route-helpers";
-import { createApiResponse } from "@/lib/response/apiResponse";
+import { createSuccessResponse, createErrorResponse, createApiResponse } from "@/lib/api/response";
+import { AuditService } from "@/services/AuditService";
+import { logger } from "@/lib/logger/logger";
 import type { TenantContext } from "@/types/api";
 
 function base64ToBuffer(base64: string): Buffer {
@@ -22,23 +24,33 @@ function extractSalaryFields(text: string) {
     doj: normalized.match(/(?:Joining Date|DOJ)[:\s]*([0-9\/\-]+)/i)?.[1] || "",
     bankName: normalized.match(/(?:Bank)[:\s]*([A-Za-z\s]+)/i)?.[1]?.trim() || "",
     accountNo: normalized.match(/(?:Account No|A\/C)[:\s]*([0-9\-]+)/i)?.[1] || "",
-    allowances: [{ name: "Basic Pay", amount: 50000 }],
-    deductions: [{ name: "GPF", amount: 5000 }],
+    allowances: [],
+    deductions: [],
   };
 }
 
 export const POST = withErrorHandler(
   withAuth(
-    withTenant(async (req: Request, { tenantId }: TenantContext) => {
+    withTenant(async (req: Request, { tenantId, user }: TenantContext) => {
       const { image, documentType } = await req.json();
-      if (!image) return createApiResponse(400, null, "No file");
-      if (documentType !== "salary_slip") return createApiResponse(400, null, "Unsupported type");
+      if (!image) return createErrorResponse(400, "No file");
+      if (documentType !== "salary_slip") return createErrorResponse(400, "Unsupported type");
 
       const buffer = base64ToBuffer(image);
-      let extractedText = "";
+      const audit = new AuditService();
+      const startTime = Date.now();
 
       const isPdf = buffer.slice(0, 4).toString() === "%PDF";
       if (isPdf) {
+        await audit.log({
+          action: "ocr.extracted",
+          userId: user.uid,
+          tenantId,
+          entityId: user.uid,
+          entityType: "ocr",
+          metadata: { documentType, provider: "fallback", processingTimeMs: Date.now() - startTime },
+        });
+
         return createApiResponse(200, {
           fullName: "Ahmed Raza",
           fatherName: "Muhammad Raza",
@@ -50,18 +62,32 @@ export const POST = withErrorHandler(
           doj: "2020-01-01",
           bankName: "UBL",
           accountNo: "123456789",
-          allowances: [{ name: "Basic Pay", amount: 50000 }],
-          deductions: [{ name: "GPF", amount: 5000 }],
+          allowances: [],
+          deductions: [],
         });
       }
 
       const worker = await createWorker("eng");
       const { data } = await worker.recognize(buffer);
       await worker.terminate();
-      extractedText = data.text;
 
-      const extractedData = extractSalaryFields(extractedText);
-      return createApiResponse(200, extractedData);
+      const extractedData = extractSalaryFields(data.text);
+      const processingTimeMs = Date.now() - startTime;
+
+      logger.info("[OCR] Document processed", {
+        metadata: { tenantId, userId: user.uid, documentType, processingTimeMs },
+      });
+
+      await audit.log({
+        action: "ocr.extracted",
+        userId: user.uid,
+        tenantId,
+        entityId: user.uid,
+        entityType: "ocr",
+        metadata: { documentType, provider: "tesseract", processingTimeMs },
+      });
+
+      return createSuccessResponse(extractedData);
     })
   )
 );

@@ -1,4 +1,5 @@
 import { Resend } from "resend";
+import { logger } from "@/lib/logger/logger";
 
 let resend: Resend | null = null;
 
@@ -22,7 +23,7 @@ export async function sendEmail(
   const client = getResend();
 
   if (!client) {
-    console.warn("RESEND_API_KEY not configured.");
+    logger.warn("RESEND_API_KEY not configured.");
     return {
       success: false,
       error: "Email service not configured",

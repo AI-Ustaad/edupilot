@@ -33,6 +33,7 @@ export const ROLE_PERMISSIONS: Record<string, string[]> = {
     "operations.view", "operations.manage",
     "communication.view", "communication.send", "communication.manage",
     "subscriptions.view", "subscriptions.create", "subscriptions.update",
+    "featureFlags.view", "featureFlags.update",
   ],
   teacher: [
     "students.view",

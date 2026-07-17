@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSessionUser } from "@/lib/auth/auth-server";
+import { logger } from "@/lib/logger/logger";
 
 export function withAuth(handler: Function) {
   return async (
@@ -26,9 +27,9 @@ export function withAuth(handler: Function) {
 
       return handler(req, context);
     } catch (error) {
-      console.error(
+      logger.error(
         "Authentication failed:",
-        error
+        { metadata: { error } }
       );
 
       return NextResponse.json(

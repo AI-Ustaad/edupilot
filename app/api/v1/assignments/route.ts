@@ -1,52 +1,34 @@
 export const dynamic = 'force-dynamic';
-import { withAuthAndPermission } from "@/route-helpers/withAuthAndPermission";
+import { withAuth, withTenant, withErrorHandler } from "@/route-helpers";
+import { withPermission } from "@/lib/auth/rbac";
 import { PERMISSIONS } from "@/lib/auth/permissions";
-import { adminDb } from "@/lib/firebase-admin";
-import { successResponse, errorResponse } from "@/lib/utils/api-response";
+import { AssignmentService } from "@/services/assignment.service";
+import { createSuccessResponse, createApiResponse } from "@/lib/api/response";
+import type { TenantContext } from "@/types/api";
 
-export const GET = withAuthAndPermission(
-  PERMISSIONS.assignments.view,
-  async (req: Request, context: any) => {
-    const tenantId = context.user.tenantId;
-    if (!tenantId) return errorResponse("Tenant not found", 401);
-
-    const snapshot = await adminDb
-      .collection("assignments")
-      .where("tenantId", "==", tenantId)
-      .orderBy("createdAt", "desc")
-      .get();
-
-    const assignments = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    return successResponse(assignments, "Assignments fetched successfully");
-  }
+export const GET = withErrorHandler(
+  withAuth(
+    withTenant(
+      withPermission(PERMISSIONS.assignments.view)(async (req: Request, { tenantId }: TenantContext) => {
+        const service = new AssignmentService();
+        const page = Number(new URL(req.url).searchParams.get("page") || 1);
+        const limit = Number(new URL(req.url).searchParams.get("limit") || 50);
+        const result = await service.listAssignments(tenantId, page, limit);
+        return createSuccessResponse(result, { message: "Assignments fetched successfully" });
+      })
+    )
+  )
 );
 
-export const POST = withAuthAndPermission(
-  PERMISSIONS.assignments.create,
-  async (req: Request, context: any) => {
-    const tenantId = context.user.tenantId;
-    if (!tenantId) return errorResponse("Tenant not found", 401);
-
-    const body = await req.json();
-    const { title, description, classGrade, section, subject, dueDate } = body;
-
-    if (!title || !classGrade || !section || !subject) {
-      return errorResponse("Missing required fields", 400);
-    }
-
-    const doc = await adminDb.collection("assignments").add({
-      tenantId,
-      title,
-      description: description || "",
-      classGrade,
-      section,
-      subject,
-      dueDate: dueDate || null,
-      createdBy: context.user.uid,
-      createdAt: new Date(),
-    });
-
-    const newAssignment = { id: doc.id, ...body };
-    return successResponse(newAssignment, "Assignment created successfully", 201);
-  }
+export const POST = withErrorHandler(
+  withAuth(
+    withTenant(
+      withPermission(PERMISSIONS.assignments.create)(async (req: Request, { tenantId, user }: TenantContext) => {
+        const service = new AssignmentService();
+        const body = await req.json();
+        const assignment = await service.createAssignment(body, tenantId, user.uid);
+        return createApiResponse(201, assignment, "Assignment created successfully");
+      })
+    )
+  )
 );

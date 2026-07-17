@@ -1,17 +1,19 @@
 export const dynamic = 'force-dynamic';
 import { adminDb } from "@/lib/firebase-admin";
 import { curriculumMap } from "@/lib/curriculum-data";
-import { withAuth, withTenant, withErrorHandler, withRole } from "@/route-helpers";
-import { createApiResponse } from "@/lib/response/apiResponse";
+import { withAuth, withTenant, withErrorHandler } from "@/route-helpers";
+import { withPermission } from "@/lib/auth/rbac";
+import { PERMISSIONS } from "@/lib/auth/permissions";
+import { createSuccessResponse, createErrorResponse, createApiResponse } from "@/lib/api/response";
 import type { TenantContext } from "@/types/api";
 
 export const POST = withErrorHandler(
   withAuth(
     withTenant(
-      withRole(["admin"])(async (req: Request, { tenantId }: TenantContext) => {
+      withPermission(PERMISSIONS.curriculum.create)(async (req: Request, { tenantId }: TenantContext) => {
         const { schoolType, level } = await req.json();
         const curriculum = curriculumMap[schoolType as keyof typeof curriculumMap]?.[level];
-        if (!curriculum) return createApiResponse(400, null, "Invalid school type or level");
+        if (!curriculum) return createErrorResponse(400, "Invalid school type or level");
 
         const settingsRef = adminDb.collection("settings").doc(tenantId);
         const existingData = (await settingsRef.get()).data() || {};
@@ -45,7 +47,7 @@ export const POST = withErrorHandler(
         }
         await batch.commit();
 
-        return createApiResponse(200, {
+        return createSuccessResponse({
           classes: uniqueClasses,
           subjects: uniqueSubjects,
           sectionsCreated: uniqueClasses.length,

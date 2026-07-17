@@ -6,6 +6,8 @@ import { PERMISSIONS } from "@/lib/auth/permissions";
 import { useAssignments, useDeleteAssignment } from "@/hooks/useTeacher";
 import { TableSkeleton } from "@/components/Skeletons";
 
+import type { Assignment } from "@/types/teacher";
+
 export default function TeacherAssignmentsPage() {
   const { data: assignments = [], isLoading } = useAssignments();
   const deleteMutation = useDeleteAssignment(); // 🚀 Delete Hook
@@ -44,7 +46,7 @@ export default function TeacherAssignmentsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {assignments.map((a: any) => (
+                {assignments.map((a) => (
                   <tr key={a.id} className={`hover:bg-gray-50 transition ${deleteMutation.isPending && deleteMutation.variables === a.id ? 'opacity-50' : ''}`}>
                     <td className="p-4 font-bold text-gray-900">{a.title}</td>
                     <td className="p-4 text-gray-600 font-medium">{a.classGrade} - {a.section}</td>

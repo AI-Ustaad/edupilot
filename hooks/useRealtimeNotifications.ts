@@ -5,6 +5,7 @@ import { collection, query, where, onSnapshot } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/components/ToastProvider";
+import { logger } from "@/lib/logger/logger";
 
 export const useRealtimeNotifications = () => {
   const { user } = useAuth();
@@ -42,7 +43,7 @@ export const useRealtimeNotifications = () => {
       });
     }, (error) => {
       // اگر پھر بھی Permission کی Error آئے تو خاموش رہیں (Console میں دکھائیں)
-      console.error("Realtime notifications error:", error.message);
+      logger.error("Realtime notifications error:", { metadata: { error: error.message } });
     });
 
     return () => unsubscribe();

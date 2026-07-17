@@ -1,6 +1,6 @@
 export const dynamic = 'force-dynamic';
 import { withAuth, withTenant, withErrorHandler } from "@/route-helpers";
-import { createApiResponse } from "@/lib/response/apiResponse";
+import { createSuccessResponse, createApiResponse } from "@/lib/api/response";
 import { TenantBrandingService } from "@/services/tenant-branding.service";
 import { TenantBrandingRepository } from "@/repositories/tenant-branding.repository";
 import type { TenantContext } from "@/types/api";
@@ -13,7 +13,7 @@ export const GET = withErrorHandler(
       withPermission(PERMISSIONS.settings.view)(async (req: Request, { tenantId }: TenantContext) => {
         const service = new TenantBrandingService(new TenantBrandingRepository());
         const branding = await service.getBranding(tenantId);
-        return createApiResponse(200, branding || {});
+        return createSuccessResponse(branding || {});
       })
     )
   )

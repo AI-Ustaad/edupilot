@@ -1,6 +1,7 @@
 // route-helpers/withRateLimit.ts
 import { Ratelimit } from "@upstash/ratelimit";
 import { NextResponse } from "next/server";
+import { logger } from "@/lib/logger/logger";
 
 export function withRateLimit(limiter: Ratelimit | null) {
   return (handler: Function) => {
@@ -21,7 +22,7 @@ export function withRateLimit(limiter: Ratelimit | null) {
         }
         return handler(req, context);
       } catch (error) {
-        console.error("Rate limiter error, bypassing:", error);
+        logger.error("Rate limiter error, bypassing:", { metadata: { error } });
         return handler(req, context);
       }
     };

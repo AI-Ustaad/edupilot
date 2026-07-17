@@ -1,124 +1,70 @@
-// app/api/v1/auth/login/route.ts
 import { NextResponse } from "next/server";
-import { adminAuth, adminDb } from "@/lib/firebase-admin";
+import { buildRequestContext } from "@/route-helpers/request-context";
+import { LoginRequestValidator } from "@/lib/auth/auth.validators";
+import { AuthService } from "@/services/auth.service";
+import { SessionService } from "@/services/session.service";
+import { BaseApplicationError } from "@/lib/errors/base.error";
+import { SESSION_EXPIRES_IN_DAYS } from "@/lib/auth/roles.config";
 import { checkAuthRateLimit } from "@/lib/ratelimit";
+import { logger } from "@/lib/logger/logger";
 
 export const runtime = "nodejs";
 
+// Instance creation for DI
+const authService = new AuthService();
+const sessionService = new SessionService();
+
 export async function POST(req: Request) {
+  const context = buildRequestContext(req);
+
   try {
-    // ✅ Rate Limit (fail-open)
     const { success, reset } = await checkAuthRateLimit();
     if (!success) {
-      const resetTime = new Date(reset).toLocaleTimeString();
       return NextResponse.json(
-        { success: false, error: `Too many login attempts. Try again at ${resetTime}.` },
+        { success: false, error: `Too many login attempts. Try again later.` },
         { status: 429, headers: { "Retry-After": "60" } }
       );
     }
 
-    const body = await req.json();
-    const { idToken, email, password } = body;
+    const body = await req.json().catch(() => ({}));
+    const authHeader = req.headers.get("authorization");
+    
+    const dto = {
+      idToken: body.idToken || (authHeader?.startsWith("Bearer ") ? authHeader.split(" ")[1] : undefined)
+    };
 
-    let uid: string;
-    let userEmail: string;
-    let finalIdToken: string = idToken;
+    const validatedRequest = LoginRequestValidator.parse(dto);
 
-    // Google OAuth
-    if (idToken) {
-      const decodedToken = await adminAuth.verifyIdToken(idToken);
-      uid = decodedToken.uid;
-      userEmail = decodedToken.email || "";
-    }
-    // Email/Password (فرنٹ اینڈ SDK کے بغیر Direct Login)
-    else if (email && password) {
-      // چونکہ Firebase Admin SDK براہ راست پاس ورڈ Verify نہیں کرتا،
-      // ہم یوزر کو Email سے تلاش کرتے ہیں اور پھر ایک Custom Token بنا کر
-      // اسے Session Cookie کی طرح استعمال کرتے ہیں۔
-      // (نوٹ: یہ ایک Workaround ہے، Ideal Case میں فرنٹ اینڈ ہمیشہ idToken بھیجتا ہے)
-      const userRecord = await adminAuth.getUserByEmail(email);
-      uid = userRecord.uid;
-      userEmail = userRecord.email || email;
-      
-      // اگر فرنٹ اینڈ نے idToken نہیں بھیجا، تو ہم backend پر ایک نیا Token بنا کر Cookie میں ڈالیں گے
-      if (!finalIdToken) {
-        finalIdToken = await adminAuth.createCustomToken(uid);
-      }
-    } else {
-      return NextResponse.json(
-        { success: false, error: "Email and password are required" },
-        { status: 400 }
-      );
-    }
+    // Orchestration
+    const loginResponse = await authService.processLogin(validatedRequest.idToken, context);
+    const sessionCookie = await sessionService.createCookie(validatedRequest.idToken);
 
-    // Firestore سے user data
-    const userDoc = await adminDb.collection("users").doc(uid).get();
-    const userData = userDoc.data();
-
-    if (!userData) {
-      return NextResponse.json(
-        { success: false, error: "User profile not found in database." },
-        { status: 404 }
-      );
-    }
-
-    // 🚀 CRITICAL: Set Custom Claims for Real-time Security Rules
-    await adminAuth.setCustomUserClaims(uid, {
-      tenantId: userData.tenantId,
-      role: userData.role,
-    });
-
-    // 🍪 Session cookie بنائیں
-    const expiresIn = 60 * 60 * 24 * 5 * 1000; // 5 days
-    let sessionCookie: string;
-
-    // اگر idToken (Google OAuth) موجود ہو، تو سیدھا Session Cookie بنائیں
-    if (idToken) {
-      sessionCookie = await adminAuth.createSessionCookie(idToken, { expiresIn });
-    } else {
-      // Email/Password کے لیے: ہم Custom Token کو Cookie میں ڈال دیں گے
-      // اور auth-server.ts میں اسے verifyIdToken سے چیک کریں گے۔
-      sessionCookie = finalIdToken;
-    }
-
-    const response = NextResponse.json({
-      success: true,
-      message: "Login successful",
-      uid,
-      email: userEmail,
-      role: userData?.role ?? "guest",
-      tenantId: userData?.tenantId ?? null,
-      onboardingRequired: userData?.onboardingRequired ?? true,
-    });
-
+    // Response & Cookie attachment
+    const response = NextResponse.json(loginResponse);
     response.cookies.set("session", sessionCookie, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
-      maxAge: 60 * 60 * 24 * 5,
+      maxAge: 60 * 60 * 24 * SESSION_EXPIRES_IN_DAYS,
       path: "/",
     });
 
     return response;
+
   } catch (error: any) {
-    console.error("Login API Error:", error);
+    logger.error("API_LOGIN_FAILED", {
+      requestId: context.requestId, ip: context.ip, userAgent: context.userAgent, route: "/api/v1/auth/login", method: "POST", errorName: error.name, errorMessage: error.message,
+    });
 
-    if (error.code === "auth/user-not-found" || error.code === "auth/invalid-email") {
-      return NextResponse.json(
-        { success: false, error: "Invalid email or password" },
-        { status: 401 }
-      );
-    }
-    if (error.code === "auth/id-token-expired") {
-      return NextResponse.json(
-        { success: false, error: "Session expired. Please login again." },
-        { status: 401 }
-      );
+    // Global Error Framework catching
+    if (error instanceof BaseApplicationError) {
+      return NextResponse.json({ success: false, error: error.message, code: error.code }, { status: error.statusCode });
     }
 
-    return NextResponse.json(
-      { success: false, error: "Internal server error" },
-      { status: 500 }
-    );
+    if (error.errors && error.errors.length > 0) {
+      return NextResponse.json({ success: false, error: error.errors[0].message }, { status: 400 });
+    }
+
+    return NextResponse.json({ success: false, error: "Internal server error" }, { status: 500 });
   }
 }

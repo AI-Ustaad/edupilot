@@ -1,49 +1,22 @@
 export const dynamic = 'force-dynamic';
-import { adminDb } from "@/lib/firebase-admin";
-import { sendEmail } from "@/lib/email";
-import { withAuth, withTenant, withErrorHandler, withRole } from "@/route-helpers";
-import { createApiResponse } from "@/lib/response/apiResponse";
+import { withAuth, withTenant, withErrorHandler } from "@/route-helpers";
+import { createSuccessResponse, createErrorResponse } from "@/lib/api/response";
+import { withPermission } from "@/lib/auth/rbac";
+import { PERMISSIONS } from "@/lib/auth/permissions";
+import { MarksService } from "@/services/marks.service";
 import type { TenantContext } from "@/types/api";
 
 export const POST = withErrorHandler(
   withAuth(
     withTenant(
-      withRole(["admin"])(async (req: Request, { tenantId }: TenantContext) => {
-        const { classGrade, section, term } = await req.json();
-        if (!classGrade || !section || !term) {
-          return createApiResponse(400, null, "Missing parameters");
+      withPermission(PERMISSIONS.marks.manage)(async (req: Request, { tenantId, user }: TenantContext) => {
+        const body = await req.json();
+        if (!body.classGrade || !body.section || !body.term) {
+          return createErrorResponse(400, "classGrade, section, and term are required");
         }
-
-        const studentsSnap = await adminDb.collection("students")
-          .where("tenantId", "==", tenantId)
-          .where("classGrade", "==", classGrade)
-          .where("section", "==", section)
-          .get();
-
-        const students = studentsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })) as any[];
-        const parentEmails: { email: string; studentName: string }[] = [];
-
-        for (const student of students) {
-          const studentName = student.fullName || student.name || "Unknown Student";
-          const parentEmail = student.parentEmail || student.parent_email || student.email;
-          if (parentEmail) {
-            parentEmails.push({ email: parentEmail, studentName });
-          }
-        }
-
-        // والدین کو ای میل
-        for (const parent of parentEmails) {
-          sendEmail(
-            parent.email,
-            `Exam Results Published - ${term}`,
-            `<p>Dear Parent,</p><p>Results for <strong>${parent.studentName}</strong> in <strong>${term}</strong> are now available.</p>`
-          ).catch(console.error);
-        }
-
-        return createApiResponse(200, {
-          students: students.length,
-          emailsSent: parentEmails.length,
-        });
+        const service = new MarksService();
+        const result = await service.publishResults(body, tenantId, user.uid);
+        return createSuccessResponse(result);
       })
     )
   )

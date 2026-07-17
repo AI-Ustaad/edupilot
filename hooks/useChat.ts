@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { collection, query, where, onSnapshot, orderBy, addDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/context/AuthContext";
+import { logger } from "@/lib/logger/logger";
 
 // 🔄 Real-time Chat Listener
 export const useRealtimeChat = (otherUserId: string) => {
@@ -23,6 +24,7 @@ export const useRealtimeChat = (otherUserId: string) => {
     const q = query(
       collection(db, "chat_messages"),
       where("chatId", "==", chatId),
+      where("tenantId", "==", user.tenantId),
       orderBy("createdAt", "asc")
     );
 
@@ -32,7 +34,7 @@ export const useRealtimeChat = (otherUserId: string) => {
       setMessages(msgs);
       setLoading(false);
     }, (error) => {
-      console.error("Chat listener error:", error);
+      logger.error("Chat listener error:", { metadata: { error } });
       setLoading(false);
     });
 

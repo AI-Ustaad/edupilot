@@ -1,162 +1,73 @@
 "use client";
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { Loader2, School, BookOpen, CheckCircle, ArrowRight, ArrowLeft } from "lucide-react";
+
+import { useEffect, useMemo, useState } from "react";
+import { CheckCircle2, History, Loader2, School, Settings2 } from "lucide-react";
 import RequirePermission from "@/components/RequirePermission";
 import { PERMISSIONS } from "@/lib/auth/permissions";
-import apiClient from "@/lib/api/client";
 import { CURRICULUMS } from "@/lib/curriculum-data";
-import { useToast } from "@/components/ToastProvider";
+import { useSaveSchoolConfiguration, useSchoolConfiguration } from "@/hooks/useSchoolConfiguration";
+import type { SchoolType } from "@/types/school-configuration";
 
-export default function SchoolSetupWizard() {
-  const router = useRouter();
-  const { showToast } = useToast();
-  const [step, setStep] = useState(1);
-  const [loading, setLoading] = useState(false);
+const levels = [
+  ["early_childhood", "Early Childhood"], ["primary", "Primary"], ["middle", "Middle"],
+  ["secondary", "Secondary"], ["higher_secondary", "Higher Secondary"], ["madrissa", "Madrissa"],
+] as const;
 
-  const [schoolType, setSchoolType] = useState<"Private" | "Government" | "Madrissa">("Private");
-  const [curriculumId, setCurriculumId] = useState<string>("federal");
+export default function SchoolConfigurationPage() {
+  const { data, isLoading } = useSchoolConfiguration();
+  const save = useSaveSchoolConfiguration();
+  const configuration = data?.configuration;
+  const [editing, setEditing] = useState(false);
+  const [schoolName, setSchoolName] = useState("");
+  const [schoolType, setSchoolType] = useState<SchoolType>("Private");
+  const [curriculumId, setCurriculumId] = useState("federal");
   const [selectedLevels, setSelectedLevels] = useState<string[]>([]);
+  const [sections, setSections] = useState("A");
 
-  // If Govt -> Only Federal & Punjab. If Madrissa -> Only Wifaq. If Private -> All + Custom
-  const availableCurriculums = CURRICULUMS.filter(c => {
-    if (schoolType === "Government") return c.id === "federal" || c.id === "punjab";
-    if (schoolType === "Madrissa") return false; // Madrissa logic can be added later if data exists
-    return true; 
-  });
+  useEffect(() => {
+    if (!configuration) return;
+    setSchoolName(configuration.school?.name || "");
+    setSchoolType(configuration.school?.type || "Private");
+    setCurriculumId(configuration.school?.curriculumId || "federal");
+    setSelectedLevels(configuration.academicStructure?.levels || []);
+    setSections((configuration.academicStructure?.sectionNames || ["A"]).join(", "));
+  }, [configuration]);
 
-  const availableLevels = [
-    { key: "early_childhood", label: "Early Childhood (Play Group - Prep)" },
-    { key: "primary", label: "Primary (Class 1 - 5)" },
-    { key: "middle", label: "Middle (Class 6 - 8)" },
-    { key: "secondary", label: "Secondary (Class 9 - 10)" },
-    { key: "higher_secondary", label: "Higher Secondary (Class 11 - 12)" }
-  ];
+  const curriculums = useMemo(() => CURRICULUMS.filter((curriculum) => {
+    if (schoolType === "Government") return ["federal", "punjab"].includes(curriculum.id);
+    if (schoolType === "Madrissa") return curriculum.id === "wifaq";
+    return curriculum.id !== "wifaq";
+  }), [schoolType]);
+  const supportedLevels = useMemo(() => new Set(Object.keys(CURRICULUMS.find((item) => item.id === curriculumId)?.levels || {})), [curriculumId]);
+  const configured = configuration?.status === "configured";
 
-  const handleApply = async () => {
-    setLoading(true);
-    try {
-      const curriculum = CURRICULUMS.find(c => c.id === curriculumId);
-      let classesToCreate: any[] = [];
-      let subjectsToCreate = new Set<string>();
-
-      if (curriculum) {
-        selectedLevels.forEach(levelKey => {
-          const levelData = curriculum.levels[levelKey as keyof typeof curriculum.levels];
-          if (levelData) {
-            levelData.forEach(cls => {
-              classesToCreate.push({ name: cls.name, sections: [] });
-              cls.subjects.forEach(sub => subjectsToCreate.add(sub.name));
-            });
-          }
-        });
-      }
-
-      if (classesToCreate.length === 0) {
-        showToast("No classes found for selected levels.", "error");
-        setLoading(false);
-        return;
-      }
-
-      await apiClient.post("/settings/curriculum", { 
-        schoolType, 
-        curriculum: curriculumId, 
-        levels: selectedLevels,
-        classes: classesToCreate, 
-        subjects: Array.from(subjectsToCreate) 
-      });
-
-      showToast("School setup completed successfully! Syllabus updated.", "success");
-      setTimeout(() => router.push("/settings"), 2000);
-
-    } catch (err) {
-      showToast("Failed to apply settings.", "error");
-      setLoading(false);
-    }
+  const setType = (nextType: SchoolType) => {
+    setSchoolType(nextType);
+    const next = CURRICULUMS.find((item) => nextType === "Madrissa" ? item.id === "wifaq" : nextType === "Government" ? ["federal", "punjab"].includes(item.id) : item.id !== "wifaq");
+    if (next) setCurriculumId(next.id);
+    setSelectedLevels([]);
   };
+  const submit = () => save.mutate({ schoolName, schoolType, curriculumId, levels: selectedLevels, sectionNames: sections.split(",").map((item) => item.trim()).filter(Boolean) });
 
-  return (
-    <RequirePermission permissions={[PERMISSIONS.settings.manage]}>
-      <div className="max-w-3xl mx-auto p-6 space-y-8">
-        <div>
-          <h1 className="text-2xl font-black text-gray-900 flex items-center gap-2">
-            <School className="text-blue-600" /> School Setup Wizard
-          </h1>
-          <p className="text-gray-500 text-sm mt-1">Automatically configure Classes and Subjects based on your school type.</p>
-        </div>
+  if (isLoading) return <div className="flex h-72 items-center justify-center"><Loader2 className="animate-spin text-blue-600" /></div>;
+  return <RequirePermission permissions={[PERMISSIONS.settings.manage]}><div className="max-w-5xl mx-auto space-y-6">
+    <header className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+      <div><h1 className="text-2xl font-black text-slate-900 flex items-center gap-2"><School className="text-blue-600" /> {configured ? "School Configuration" : "Complete School Setup"}</h1><p className="text-sm text-slate-500 mt-1">Your permanent, tenant-scoped academic configuration.</p></div>
+      {configured && !editing && <button onClick={() => setEditing(true)} className="bg-blue-600 text-white px-4 py-2.5 rounded-xl font-bold flex gap-2 items-center"><Settings2 size={17} /> Edit Configuration</button>}
+    </header>
 
-        {step === 1 && (
-          <div className="bg-white p-8 rounded-2xl border shadow-sm space-y-6">
-            <h2 className="text-lg font-bold">Step 1: Select School Type</h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {["Private", "Government", "Madrissa"].map((type) => (
-                <button
-                  key={type}
-                  onClick={() => { 
-                    setSchoolType(type as any); 
-                    setCurriculumId(type === "Government" ? "punjab" : "federal");
-                    setSelectedLevels([]);
-                  }}
-                  className={`p-6 rounded-xl border-2 font-bold transition ${schoolType === type ? 'border-blue-600 bg-blue-50 text-blue-600' : 'border-gray-200 text-gray-600 hover:border-gray-300'}`}
-                >
-                  {type}
-                </button>
-              ))}
-            </div>
-            <button onClick={() => setStep(2)} className="w-full bg-blue-600 text-white p-4 rounded-xl font-bold flex items-center justify-center gap-2">
-              Next <ArrowRight size={18} />
-            </button>
-          </div>
-        )}
-
-        {step === 2 && (
-          <div className="bg-white p-8 rounded-2xl border shadow-sm space-y-6">
-            <h2 className="text-lg font-bold">Step 2: Curriculum & Levels</h2>
-            
-            <div>
-              <label className="text-sm font-bold text-gray-700 block mb-2">Education Board</label>
-              <select 
-                value={curriculumId} 
-                onChange={(e) => setCurriculumId(e.target.value)}
-                className="w-full p-4 rounded-xl border-2 border-gray-200 focus:border-blue-500 outline-none"
-                disabled={availableCurriculums.length === 0}
-              >
-                {availableCurriculums.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                {schoolType === "Private" && <option value="custom">Custom / Private Board</option>}
-              </select>
-            </div>
-
-            <div>
-              <label className="text-sm font-bold text-gray-700 block mb-2">Levels Offered</label>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {availableLevels.map((level) => (
-                  <button
-                    key={level.key}
-                    onClick={() => setSelectedLevels(prev => prev.includes(level.key) ? prev.filter(l => l !== level.key) : [...prev, level.key])}
-                    className={`p-4 rounded-xl border-2 font-bold text-sm transition ${selectedLevels.includes(level.key) ? 'border-green-600 bg-green-50 text-green-600' : 'border-gray-200 text-gray-600'}`}
-                  >
-                    {level.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="flex gap-4">
-              <button onClick={() => setStep(1)} className="w-full bg-gray-200 text-gray-700 p-4 rounded-xl font-bold flex items-center justify-center gap-2">
-                <ArrowLeft size={18} /> Back
-              </button>
-              <button 
-                onClick={handleApply} 
-                disabled={loading || selectedLevels.length === 0 || !curriculumId}
-                className="w-full bg-green-600 text-white p-4 rounded-xl font-bold flex items-center justify-center gap-2 disabled:opacity-50"
-              >
-                {loading ? <Loader2 className="animate-spin" /> : <CheckCircle />}
-                {loading ? "Applying Settings..." : "Apply Configuration"}
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
-    </RequirePermission>
-  );
+    {configured && !editing ? <div className="grid md:grid-cols-3 gap-4">
+      <Summary title="School Profile" values={[configuration.school.name, configuration.school.type, configuration.school.boardName]} />
+      <Summary title="Academic Structure" values={[`${configuration.academicStructure.classes.length} classes`, `${configuration.academicStructure.sectionNames.length} section template(s)`, `${configuration.academicStructure.subjects.length} subjects`]} />
+      <Summary title="Configuration Status" values={["Configured", `Version ${configuration.version}`, configuration.completedAt ? `Completed ${new Date(configuration.completedAt).toLocaleDateString()}` : "Migrated configuration"]} />
+      <div className="md:col-span-3 bg-white border rounded-2xl p-6"><h2 className="font-bold flex gap-2 items-center"><History size={18} /> Configuration History</h2><div className="mt-3 text-sm text-slate-600">{data?.history?.length ? data.history.map((item: any) => <p key={item.id}>Version {item.version}: {item.action?.replace("configuration.", "")}.</p>) : "No configuration changes have been recorded yet."}</div></div>
+    </div> : <div className="bg-white border shadow-sm rounded-2xl p-6 md:p-8 space-y-7">
+      <section className="grid md:grid-cols-2 gap-5"><Field label="School name"><input value={schoolName} onChange={(event) => setSchoolName(event.target.value)} className="field" placeholder="School name" /></Field><Field label="School type"><select value={schoolType} onChange={(event) => setType(event.target.value as SchoolType)} className="field">{["Private", "Government", "Madrissa"].map((type) => <option key={type}>{type}</option>)}</select></Field><Field label="Education board / curriculum"><select value={curriculumId} onChange={(event) => { setCurriculumId(event.target.value); setSelectedLevels([]); }} className="field">{curriculums.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></Field><Field label="Default sections"><input value={sections} onChange={(event) => setSections(event.target.value)} className="field" placeholder="A, B, C" /><p className="text-xs text-slate-500 mt-1">Comma-separated; existing sections are never removed automatically.</p></Field></section>
+      <section><h2 className="font-bold text-slate-800">Academic levels offered</h2><div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3 mt-3">{levels.filter(([key]) => supportedLevels.has(key)).map(([key, label]) => <button type="button" key={key} onClick={() => setSelectedLevels((current) => current.includes(key) ? current.filter((item) => item !== key) : [...current, key])} className={`p-4 rounded-xl border-2 text-left font-semibold ${selectedLevels.includes(key) ? "border-blue-600 bg-blue-50 text-blue-700" : "border-slate-200 text-slate-600"}`}>{label}</button>)}</div></section>
+      <div className="flex justify-end gap-3"><button type="button" onClick={() => setEditing(false)} className="px-4 py-3 font-bold text-slate-600">Cancel</button><button type="button" onClick={submit} disabled={save.isPending || !schoolName.trim() || !selectedLevels.length} className="bg-green-600 text-white px-5 py-3 rounded-xl font-bold disabled:opacity-50 flex items-center gap-2">{save.isPending ? <Loader2 className="animate-spin" size={18} /> : <CheckCircle2 size={18} />} {configured ? "Save Configuration" : "Complete Setup"}</button></div>
+    </div>}
+  </div></RequirePermission>;
 }
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) { return <label className="block text-sm font-bold text-slate-700">{label}{children}</label>; }
+function Summary({ title, values }: { title: string; values: string[] }) { return <section className="bg-white border rounded-2xl p-5"><h2 className="font-bold text-slate-800">{title}</h2><div className="mt-3 space-y-1 text-sm text-slate-600">{values.map((value) => <p key={value}>{value}</p>)}</div></section>; }

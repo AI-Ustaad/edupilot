@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { getRedirectResult, onAuthStateChanged, User } from "firebase/auth";
 import { auth } from "@/lib/firebase";
+import { logger } from "@/lib/logger/logger";
 
 export default function CallbackPage() {
   const router = useRouter();
@@ -50,7 +51,7 @@ export default function CallbackPage() {
         window.location.replace("/dashboard");
 
       } catch (err) {
-        console.error("Callback Error:", err);
+        logger.error("Callback Error:", { metadata: { error: err } });
         router.replace("/login");
       }
     };

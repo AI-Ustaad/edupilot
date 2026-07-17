@@ -1,8 +1,7 @@
 export const dynamic = 'force-dynamic';
 import { withAuth, withTenant, withErrorHandler } from "@/route-helpers";
-import { createApiResponse } from "@/lib/response/apiResponse";
-import { StudentService } from "@/services/student.service";
-import { StudentRepository } from "@/repositories/student.repository";
+import { createSuccessResponse, createErrorResponse, createApiResponse } from "@/lib/api/response";
+import { StudentService } from "@/services/StudentService";
 import { AttendanceService } from "@/services/attendance.service";
 import { AttendanceRepository } from "@/repositories/attendance.repository";
 import { FeesService } from "@/services/fees.service";
@@ -22,17 +21,16 @@ export const GET = withErrorHandler(
     withTenant(
       withPermission(PERMISSIONS.students.view)(async (req: Request, { tenantId }: TenantContext) => {
         const id = getIdFromUrl(req);
-        const studentService = new StudentService(new StudentRepository());
-        const student = await studentService.getStudentById(id, tenantId);
-        if (!student) return createApiResponse(404, null, "Student not found");
+                const studentService = new StudentService();
+        const student = await studentService.getById(tenantId, id);
+        if (!student) return createErrorResponse(404, "Student not found");
 
         const attendanceService = new AttendanceService(new AttendanceRepository());
-        const allAttendance = await attendanceService.listAttendance(tenantId);
-        const studentAttendance = allAttendance.filter(r => (r as any).studentId === id);
+        const studentAttendance = await attendanceService.findByStudentId(tenantId, id);
 
         const feesService = new FeesService(new FeesRepository());
-        const allFees = await feesService.listFees(tenantId);
-        const studentFees = allFees.data.filter(f => (f as any).studentId === id);
+        const studentFeesResult = await feesService.listFees(tenantId, id, 1, 9999);
+        const studentFees = studentFeesResult.data;
 
         // Add more data types as needed
 
@@ -42,7 +40,7 @@ export const GET = withErrorHandler(
           fees: studentFees,
         };
 
-        return createApiResponse(200, exportData);
+        return createSuccessResponse(exportData);
       })
     )
   )

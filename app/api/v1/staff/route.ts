@@ -1,30 +1,60 @@
-export const dynamic = 'force-dynamic';
-import { invalidateCache } from "@/lib/cache";
-import { withAuth, withTenant, withErrorHandler } from "@/route-helpers";
-import { createApiResponse } from "@/lib/response/apiResponse";
-import { StaffService } from "@/services/staff.service";
-import { StaffRepository } from "@/repositories/staff.repository";
+export const dynamic = "force-dynamic";
+
+import { withAuth, withTenant, withErrorHandler, withRateLimit } from "@/route-helpers";
+import { createSuccessResponse, createApiResponse } from "@/lib/api/response";
+import { StaffService } from "@/services/StaffService";
+import { standardRateLimit } from "@/lib/ratelimit";
 import { SubscriptionService } from "@/services/subscription.service";
 import type { TenantContext } from "@/types/api";
 import { withPermission } from "@/lib/auth/rbac";
 import { PERMISSIONS } from "@/lib/auth/permissions";
-import { standardRateLimit } from "@/lib/ratelimit";
-import { withRateLimit } from "@/route-helpers";
+import { logger } from "@/lib/logger/logger";
 
 const subscriptionService = new SubscriptionService();
 
 export const GET = withErrorHandler(
   withAuth(
     withTenant(
-      withPermission(PERMISSIONS.staff.view)(async (req: Request, { tenantId }: TenantContext) => {
-        const url = new URL(req.url);
-        const page = parseInt(url.searchParams.get('page') || '1');
-        const limit = parseInt(url.searchParams.get('limit') || '20');
-        const service = new StaffService();
-        const result = await service.listStaff(tenantId, page, limit);
-    await invalidateCache(`dashboard:${tenantId}`);
-        return createApiResponse(200, result);
-      })
+      withPermission(PERMISSIONS.staff.view)(
+        async (req: Request, { tenantId }: TenantContext) => {
+          const url = new URL(req.url);
+          const page = parseInt(url.searchParams.get("page") || "1");
+          const limit = parseInt(url.searchParams.get("limit") || "20");
+          const search = url.searchParams.get("search") || undefined;
+          const category = url.searchParams.get("category") || undefined;
+          const department = url.searchParams.get("department") || undefined;
+          const designation = url.searchParams.get("designation") || undefined;
+          const status = url.searchParams.get("status") || undefined;
+          const campus = url.searchParams.get("campus") || undefined;
+          const gender = url.searchParams.get("gender") || undefined;
+          const employmentType = url.searchParams.get("employmentType") || undefined;
+          const orderBy = url.searchParams.get("orderBy") || undefined;
+          const direction = url.searchParams.get("direction") as "asc" | "desc" | undefined;
+
+          const service = new StaffService();
+
+          // If any filter is provided, use advancedFilter
+          const hasFilters = search || category || department || designation || status || campus || gender || employmentType;
+
+          if (hasFilters) {
+            const result = await service.advancedFilter(tenantId, {
+              search, category, department, designation, status, campus, gender, employmentType,
+              page, limit, orderBy, direction,
+            });
+            return createApiResponse(200, result, "Staff filtered results", {
+              page, limit, total: result.total, totalPages: result.totalPages,
+            });
+          }
+
+          const result = await service.paginate(tenantId, page, limit);
+          return createApiResponse(200, result, "Staff list fetched", {
+            page,
+            limit,
+            total: result.total,
+            totalPages: result.totalPages,
+          });
+        }
+      )
     )
   )
 );
@@ -33,19 +63,30 @@ export const POST = withRateLimit(standardRateLimit)(
   withErrorHandler(
     withAuth(
       withTenant(
-        withPermission(PERMISSIONS.staff.create)(async (req: Request, { tenantId, user }: TenantContext) => {
-          const limits = await subscriptionService.getPlanLimits(tenantId);
-          const service = new StaffService();
-          const currentCount = await service.countStaff(tenantId);
-          if (currentCount >= limits.maxStaff) {
-    await invalidateCache(`dashboard:${tenantId}`);
-            return createApiResponse(403, null, `Staff limit reached (${limits.maxStaff}). Please upgrade your plan.`);
+        withPermission(PERMISSIONS.staff.create)(
+          async (req: Request, { tenantId, user }: TenantContext) => {
+            const body = await req.json();
+            const service = new StaffService();
+
+            // Check subscription limits (resilient — never block staff creation due to subscription service errors)
+            try {
+              const limits = await subscriptionService.getPlanLimits(tenantId);
+              await service.checkSubscriptionLimit(tenantId, limits.maxStaff);
+            } catch (err: any) {
+              // If it's a SubscriptionLimitException, re-throw (legitimate limit reached)
+              if (err.code === "SUBSCRIPTION_LIMIT") {
+                throw err;
+              }
+              // For any other error (Firestore down, tenant not found, etc.), log and continue
+              logger.error("[Staff POST] Subscription check failed, bypassing:", {
+                metadata: { error: err.message, tenantId },
+              });
+            }
+
+            const id = await service.create(body, tenantId, user.uid);
+            return createApiResponse(201, { id }, "Staff added successfully");
           }
-          const body = await req.json();
-          const staff = await service.createStaff(body, tenantId, user.uid);
-    await invalidateCache(`dashboard:${tenantId}`);
-          return createApiResponse(201, staff, "Staff added successfully");
-        })
+        )
       )
     )
   )

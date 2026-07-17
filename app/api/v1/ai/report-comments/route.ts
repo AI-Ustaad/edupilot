@@ -1,26 +1,27 @@
-// app/api/v1/ai/report-comments/route.ts
-import { NextRequest, NextResponse } from "next/server";
-import { getSessionUser } from "@/lib/auth/auth-server";
-import { aiService } from "@/services/ai/ai.service";
-import * as Sentry from "@sentry/nextjs";
+export const dynamic = 'force-dynamic';
+import { withAuth, withTenant, withErrorHandler } from "@/route-helpers";
+import { createSuccessResponse, createErrorResponse } from "@/lib/api/response";
+import { agentRegistry } from "@/lib/ai/agents/AgentRegistry";
+import type { TenantContext } from "@/types/api";
 
-export const runtime = "nodejs";
+export const POST = withErrorHandler(
+  withAuth(
+    withTenant(async (req: Request, { tenantId, user }: TenantContext) => {
+      const body = await req.json();
+      if (!body.studentName || !body.subject) {
+        return createErrorResponse(400, "Missing required fields (studentName, subject)");
+      }
 
-export async function POST(req: NextRequest) {
-  try {
-    const user = await getSessionUser();
-    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      const query = `Write a personalized report card comment for ${body.studentName} (Class ${body.grade || "N/A"}, Subject ${body.subject}). Marks: ${body.marks || "N/A"}%, Attendance: ${body.attendance || "N/A"}%.`;
 
-    const body = await req.json();
-    if (!body.studentName || !body.subject) {
-      return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
-    }
+      const result = await agentRegistry.execute("teacher", {
+        tenantId,
+        userId: user.uid,
+        userRole: user.role,
+        query,
+      });
 
-    const result = await aiService.generateReportComments(body, user.tenantId, user.uid, user.role);
-    return NextResponse.json({ success: true, data: { comment: result } });
-
-  } catch (error: any) {
-    Sentry.captureException(error);
-    return NextResponse.json({ success: false, message: error.message }, { status: 500 });
-  }
-}
+      return createSuccessResponse({ comment: result });
+    })
+  )
+);

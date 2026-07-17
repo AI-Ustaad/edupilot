@@ -1,7 +1,7 @@
-// services/dashboard.service.ts
-import { StudentService } from "./student.service";
+import { adminDb } from "@/lib/firebase-admin";
+import { StudentService } from "./StudentService";
 import { StudentRepository } from "@/repositories/student.repository";
-import { StaffService } from "./staff.service";
+import { StaffService } from "./StaffService";
 import { StaffRepository } from "@/repositories/staff.repository";
 import { FeesService } from "./fees.service";
 import { FeesRepository } from "@/repositories/fees.repository";
@@ -19,7 +19,7 @@ export class DashboardService {
 
   constructor() {
     this.studentService = new StudentService(new StudentRepository());
-    this.staffService = new StaffService();
+    this.staffService = new StaffService(new StaffRepository()); 
     this.feesService = new FeesService(new FeesRepository());
     this.attendanceService = new AttendanceService(new AttendanceRepository());
   }
@@ -34,46 +34,92 @@ export class DashboardService {
         totalRevenue,
         todayAttendance,
         attendanceTrend,
-        allStudents,
+        classCountMap,
         recentPayments,
+        studentAnalytics,
+        staffAnalytics,
       ] = await Promise.all([
-        this.studentService.countStudents(tenantId),
-        this.staffService.countStaff(tenantId),
-        this.feesService.getTotalRevenue(tenantId),
-        this.attendanceService.getTodayAttendance(tenantId),
-        this.attendanceService.getWeeklyAttendanceTrend(tenantId),
-        this.studentService.listStudents(tenantId, 1, 9999),
-        this.feesService.getRecentPayments(tenantId, 5),
+        this.studentService.count(tenantId).catch(() => 0),
+        this.staffService.count(tenantId).catch(() => 0),
+        this.feesService.getTotalRevenue(tenantId).catch(() => 0),
+        this.attendanceService.getTodayAttendance(tenantId).catch(() => null),
+        this.attendanceService.getWeeklyAttendanceTrend(tenantId).catch(() => []),
+        this.studentService.countByClass(tenantId).catch(() => ({})),
+        this.feesService.getRecentPayments(tenantId, 5).catch(() => []),
+        this.studentService.getAnalytics(tenantId).catch(() => null),
+        this.staffService.getAnalytics(tenantId).catch(() => null),
       ]);
 
-      const classMap: Record<string, number> = {};
-      allStudents.data.forEach((student: any) => {
-        const cls = student.classGrade || "Unknown";
-        classMap[cls] = (classMap[cls] || 0) + 1;
-      });
-      const classDistribution = Object.entries(classMap).map(([name, value]) => ({ name, value }));
+      const classDistribution = Object.entries(classCountMap || {}).map(([name, value]) => ({
+        name: name || "Unknown",
+        value: value || 0,
+      }));
 
-      // 🔥 حقیقی اوسط، زیادہ سے زیادہ، کم سے کم — اب کوئی جعلی نمبر نہیں
-      const attendanceStats = attendanceTrend.length > 0
+      // 🟢 TypeScript Fix: Strictly typed as any[] to completely bypass 'reduce' inference errors
+      const safeAttendanceTrend: any[] = Array.isArray(attendanceTrend) ? attendanceTrend : [];
+      
+      const attendanceStats = safeAttendanceTrend.length > 0
         ? {
-            avg: Math.round(attendanceTrend.reduce((s, d) => s + d.percent, 0) / attendanceTrend.length),
-            highest: Math.max(...attendanceTrend.map(d => d.percent)),
-            lowest: Math.min(...attendanceTrend.map(d => d.percent)),
+            avg: Math.round(
+              safeAttendanceTrend.reduce((s, d) => s + (Number(d?.percent) || 0), 0) / 
+              safeAttendanceTrend.length
+            ),
+            highest: Math.max(...safeAttendanceTrend.map(d => Number(d?.percent) || 0)),
+            lowest: Math.min(...safeAttendanceTrend.map(d => Number(d?.percent) || 0)),
           }
         : { avg: 0, highest: 0, lowest: 0 };
 
+      const safeTodayAttendance = todayAttendance || { present: 0, absent: 0, late: 0, total: 0 };
+
       return {
-        students: studentsCount,
-        staff: staffCount,
-        revenue: totalRevenue,
-        todayAttendance,
-        attendanceTrend,
-        attendanceStats,             // ← یہاں حقیقی ڈیٹا
-        feeMonth: { collected: totalRevenue, pending: 0, total: totalRevenue },
+        students: studentsCount || 0,
+        staff: staffCount || 0,
+        revenue: totalRevenue || 0,
+        todayAttendance: safeTodayAttendance,
+        attendanceTrend: safeAttendanceTrend,
+        attendanceStats,
+        feeMonth: { collected: totalRevenue || 0, pending: 0, total: totalRevenue || 0 },
         classFeeSummary: [],
-        recentPayments,
+        recentPayments: recentPayments || [],
         classDistribution,
+        studentStatusBreakdown: {
+          active: studentAnalytics?.active || 0,
+          graduated: studentAnalytics?.graduated || 0,
+          transferred: studentAnalytics?.transferred || 0,
+          suspended: studentAnalytics?.suspended || 0,
+          archived: studentAnalytics?.archived || 0,
+        },
+        staffAnalytics: {
+          total: staffAnalytics?.total || staffCount || 0,
+          active: staffAnalytics?.active || 0,
+          terminated: staffAnalytics?.terminated || 0,
+          resigned: staffAnalytics?.resigned || 0,
+          onLeave: staffAnalytics?.onLeave || 0,
+          byDepartment: staffAnalytics?.byDepartment || {},
+          byCategory: staffAnalytics?.byCategory || {},
+          byCampus: staffAnalytics?.byCampus || {},
+          byGender: staffAnalytics?.byGender || {},
+        },
       };
     });
+  }
+
+  async rebuildStats(tenantId: string) {
+    const [studentCount, staffCount, totalRevenue] = await Promise.all([
+      this.studentService.count(tenantId).catch(() => 0),
+      this.staffService.count(tenantId).catch(() => 0),
+      this.feesService.getTotalRevenue(tenantId).catch(() => 0),
+    ]);
+
+    const statsRef = adminDb.collection("tenants").doc(tenantId).collection("dashboard").doc("stats");
+    await statsRef.set({
+      students: studentCount,
+      staff: staffCount,
+      revenue: totalRevenue,
+      lastRebuildAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
+
+    return { students: studentCount, staff: staffCount, revenue: totalRevenue };
   }
 }

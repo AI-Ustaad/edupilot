@@ -15,11 +15,11 @@ export default function LessonPlannerPage() {
   const subjects = settings?.subjects || [];
   const createMutation = useCreateLessonPlan();
 
-  const [form, setForm] = useState({ date: new Date().toISOString().slice(0, 10), classGrade: "", subject: "", topic: "", objective: "" });
+  const [form, setForm] = useState({ date: new Date().toISOString().slice(0, 10), classGrade: "", subject: "", topic: "", objective: "", materials: "", notes: "" });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    createMutation.mutate(form, { onSuccess: () => setForm({ date: new Date().toISOString().slice(0, 10), classGrade: "", subject: "", topic: "", objective: "" }) });
+    createMutation.mutate(form, { onSuccess: () => setForm({ date: new Date().toISOString().slice(0, 10), classGrade: "", subject: "", topic: "", objective: "", materials: "", notes: "" }) });
   };
 
   if (isLoading) return <div className="p-8"><TableSkeleton rows={4} cols={3} /></div>;

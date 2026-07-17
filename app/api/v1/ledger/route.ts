@@ -2,7 +2,8 @@ export const dynamic = 'force-dynamic';
 // app/api/ledger/route.ts
 import { adminDb } from "@/lib/firebase-admin";
 import { withAuth, withTenant, withErrorHandler } from "@/route-helpers";
-import { createApiResponse } from "@/lib/response/apiResponse";
+import { createSuccessResponse, createErrorResponse, createApiResponse } from "@/lib/api/response";
+import { logger } from "@/lib/logger/logger";
 
 interface WithTenantContext {
   tenantId: string;
@@ -24,10 +25,10 @@ export const GET = withErrorHandler(
           .orderBy("createdAt", "desc")
           .get();
         const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        return createApiResponse(200, data);
+        return createSuccessResponse(data);
       } catch (err: any) {
-        console.error("Error fetching ledger:", err);
-        return createApiResponse(500, null, "Failed to fetch ledger");
+        logger.error("Error fetching ledger:", { metadata: { error: err.message } });
+        return createErrorResponse(500, "Failed to fetch ledger");
       }
     })
   )
@@ -39,7 +40,7 @@ export const POST = withErrorHandler(
       try {
         const body = await req.json();
         if (!body.type || !body.description || !body.amount) {
-          return createApiResponse(400, null, "Missing required fields");
+          return createErrorResponse(400, "Missing required fields");
         }
 
         const docRef = await adminDb.collection("ledger").add({
@@ -51,8 +52,8 @@ export const POST = withErrorHandler(
         });
         return createApiResponse(201, { id: docRef.id }, "Ledger entry added");
       } catch (err: any) {
-        console.error("Error adding ledger entry:", err);
-        return createApiResponse(500, null, "Failed to add ledger entry");
+        logger.error("Error adding ledger entry:", { metadata: { error: err.message } });
+        return createErrorResponse(500, "Failed to add ledger entry");
       }
     })
   )

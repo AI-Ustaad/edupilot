@@ -47,12 +47,10 @@ export interface Staff {
 
   payroll?: {
     basicSalary?: number;
-    allowances?: {
-      houseRent?: number;
-      medical?: number;
-      transport?: number;
-    };
+    allowances?: { name: string; amount: number }[];
+    deductions?: { name: string; amount: number }[];
     grossSalary?: number;
+    netSalary?: number;
     bankName?: string;
     accountNumber?: string;
     iban?: string;
@@ -107,4 +105,52 @@ export interface Staff {
     promotions?: string[];
     trainingHistory?: string[];
   };
+
+  status?: 'active' | 'terminated' | 'resigned' | 'suspended' | 'on-leave' | 'archived';
+  campus?: string;
+  category?: string;
+  statusHistory?: StatusChangeRecord[];
+}
+
+export interface StatusChangeRecord {
+  fromStatus: string;
+  toStatus: string;
+  changedAt: string;
+  changedBy: string;
+  reason?: string;
+}
+
+export interface StaffFilter {
+  category?: string;
+  department?: string;
+  designation?: string;
+  status?: string;
+  campus?: string;
+  gender?: string;
+  employmentType?: string;
+  search?: string;
+  page?: number;
+  limit?: number;
+  orderBy?: string;
+  direction?: 'asc' | 'desc';
+}
+
+export interface StaffAnalytics {
+  total: number;
+  active: number;
+  terminated: number;
+  resigned: number;
+  onLeave: number;
+  byDepartment: Record<string, number>;
+  byCategory: Record<string, number>;
+  byCampus: Record<string, number>;
+  byGender: Record<string, number>;
+}
+
+export interface StaffTimelineEntry {
+  date: string;
+  type: string;
+  title: string;
+  description: string;
+  metadata?: Record<string, any>;
 }

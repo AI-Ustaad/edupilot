@@ -1,33 +1,41 @@
 export const dynamic = 'force-dynamic';
+import { withAuth, withTenant, withErrorHandler } from "@/route-helpers";
+import { withPermission } from "@/lib/auth/rbac";
+import { PERMISSIONS } from "@/lib/auth/permissions";
+import { createSuccessResponse } from "@/lib/api/response";
+import { StudentRepository } from "@/repositories/student.repository";
+import { StaffRepository } from "@/repositories/staff.repository";
+import { FeesService } from "@/services/fees.service";
 import { adminDb } from "@/lib/firebase-admin";
-import { withAuth, withTenant, withErrorHandler, withRole } from "@/route-helpers";
-import { createApiResponse } from "@/lib/response/apiResponse";
 import type { TenantContext } from "@/types/api";
 
 export const GET = withErrorHandler(
   withAuth(
     withTenant(
-      withRole(["admin"])(async (req: Request, { tenantId }: TenantContext) => {
+      withPermission(PERMISSIONS.analytics.view)(async (req: Request, { tenantId }: TenantContext) => {
         const tenantsSnap = await adminDb.collection("tenants").get();
+        const studentRepo = new StudentRepository();
+        const staffRepo = new StaffRepository();
+        const feesService = new FeesService();
+
         const tenants = await Promise.all(
           tenantsSnap.docs.map(async (doc) => {
             const tid = doc.id;
-            const [students, staff, fees] = await Promise.all([
-              adminDb.collection("students").where("tenantId", "==", tid).count().get(),
-              adminDb.collection("staff").where("tenantId", "==", tid).count().get(),
-              adminDb.collection("fees").where("tenantId", "==", tid).get(),
+            const [students, staff, revenue] = await Promise.all([
+              studentRepo.count(tid),
+              staffRepo.count(tid),
+              feesService.getTotalRevenue(tid),
             ]);
-            const revenue = fees.docs.reduce((sum, f) => sum + (f.data().amountPaid || 0), 0);
             return {
               tenantId: tid,
               name: doc.data().name,
-              students: students.data().count,
-              staff: staff.data().count,
+              students,
+              staff,
               revenue,
             };
           })
         );
-        return createApiResponse(200, { tenants });
+        return createSuccessResponse({ tenants });
       })
     )
   )

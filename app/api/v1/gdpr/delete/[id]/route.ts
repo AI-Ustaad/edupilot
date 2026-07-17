@@ -1,13 +1,12 @@
 export const dynamic = 'force-dynamic';
 import { withAuth, withTenant, withErrorHandler } from "@/route-helpers";
-import { createApiResponse } from "@/lib/response/apiResponse";
-import { StudentService } from "@/services/student.service";
-import { StudentRepository } from "@/repositories/student.repository";
+import { createSuccessResponse, createErrorResponse, createApiResponse } from "@/lib/api/response";
+import { StudentService } from "@/services/StudentService";
 import { AttendanceService } from "@/services/attendance.service";
 import { AttendanceRepository } from "@/repositories/attendance.repository";
 import { FeesService } from "@/services/fees.service";
 import { FeesRepository } from "@/repositories/fees.repository";
-import { logAction } from "@/lib/audit";
+import { AuditService } from "@/services/AuditService";
 import type { TenantContext } from "@/types/api";
 import { withPermission } from "@/lib/auth/rbac";
 import { PERMISSIONS } from "@/lib/auth/permissions";
@@ -24,30 +23,30 @@ export const DELETE = withErrorHandler(
       withPermission(PERMISSIONS.students.delete)(async (req: Request, { tenantId, user }: TenantContext) => {
         const id = getIdFromUrl(req);
 
-        const studentService = new StudentService(new StudentRepository());
-        const student = await studentService.getStudentById(id, tenantId);
-        if (!student) return createApiResponse(404, null, "Student not found");
+                const studentService = new StudentService();
+        const student = await studentService.getById(tenantId, id);
+        if (!student) return createErrorResponse(404, "Student not found");
 
         // Delete attendance records
         const attendanceService = new AttendanceService(new AttendanceRepository());
-        const allAttendance = await attendanceService.listAttendance(tenantId);
-        const studentAttendance = allAttendance.filter(r => (r as any).studentId === id);
+        const studentAttendance = await attendanceService.findByStudentId(tenantId, id);
         for (const rec of studentAttendance) {
-          await attendanceService.deleteAttendance(rec.id as string, tenantId);
+          await attendanceService.deleteAttendance(rec.id, tenantId);
         }
 
         // Delete fee records
         const feesService = new FeesService(new FeesRepository());
-        const allFees = await feesService.listFees(tenantId);
-        const studentFees = allFees.data.filter(f => (f as any).studentId === id);
+        const studentFeesResult = await feesService.listFees(tenantId, id, 1, 9999);
+        const studentFees = studentFeesResult.data;
         for (const fee of studentFees) {
           await feesService.deleteFee(fee.id, tenantId);
         }
 
         // Finally delete the student
-        await studentService.deleteStudent(id, tenantId);  // soft delete
+        await studentService.delete(tenantId, id, user.uid);
 
-        await logAction({
+        const audit = new AuditService();
+        await audit.log({
           action: "GDPR_DELETION",
           userId: user.uid,
           tenantId,
@@ -56,7 +55,7 @@ export const DELETE = withErrorHandler(
           metadata: { name: student.fullName },
         });
 
-        return createApiResponse(200, null, "Student data permanently deleted");
+        return createSuccessResponse(null, { message: "Student data permanently deleted" });
       })
     )
   )

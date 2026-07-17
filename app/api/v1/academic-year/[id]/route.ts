@@ -1,9 +1,8 @@
 export const dynamic = 'force-dynamic';
 
-import { NextResponse } from "next/server";
-import { adminDb } from "@/lib/firebase-admin";
 import { withAuth, withTenant, withErrorHandler } from "@/route-helpers";
-import { createApiResponse } from "@/lib/response/apiResponse";
+import { createSuccessResponse, createErrorResponse } from "@/lib/api/response";
+import { AcademicYearRepository } from "@/repositories/academic-year.repository";
 
 export const GET = withAuth(
   withTenant(
@@ -12,25 +11,17 @@ export const GET = withAuth(
       const { id } = params || {};
 
       if (!id) {
-        return NextResponse.json(
-          createApiResponse(400, "Academic year ID is missing"), 
-          { status: 400 }
-        );
+        return createErrorResponse(400, "Academic year ID is missing");
       }
 
-      const docRef = adminDb.collection(`tenants/${tenantId}/academicYears`).doc(id);
-      const doc = await docRef.get();
+      const repo = new AcademicYearRepository();
+      const doc = await repo.findById(id, tenantId);
 
-      if (!doc.exists) {
-        return NextResponse.json(
-          createApiResponse(404, "Academic year not found"), 
-          { status: 404 }
-        );
+      if (!doc) {
+        return createErrorResponse(404, "Academic year not found");
       }
 
-      return NextResponse.json(
-        createApiResponse(200, "Academic year retrieved", { id: doc.id, ...doc.data() })
-      );
+      return createSuccessResponse({ ...doc, id: doc.id }, { message: "Academic year retrieved" });
     })
   )
 );

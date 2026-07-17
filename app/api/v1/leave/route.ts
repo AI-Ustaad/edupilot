@@ -1,47 +1,34 @@
-// 🆕 Force dynamic rendering because this route uses cookies (session auth)
 export const dynamic = 'force-dynamic';
 
-import { NextResponse } from "next/server";
-import { adminDb } from "@/lib/firebase-admin";
 import { withErrorHandler, withAuth, withTenant } from "@/route-helpers";
+import { createSuccessResponse } from "@/lib/api/response";
 import { withPermission } from "@/lib/auth/rbac";
 import { PERMISSIONS } from "@/lib/auth/permissions";
+import { LeaveRepository } from "@/repositories/leave.repository";
+import { StaffRepository } from "@/repositories/staff.repository";
 import type { TenantContext } from "@/types/api";
 
-// ==========================================
-// 🛡️ SECURE GET: Fetches ONLY pending leaves for the current tenant
-// ==========================================
 export const GET = withErrorHandler(
   withAuth(
     withTenant(
       withPermission(PERMISSIONS.staff.view)(async (req: Request, { tenantId }: TenantContext) => {
-        // 1. Fetch pending leave requests for THIS tenant only
-        const leavesSnap = await adminDb.collection("leave_requests")
-          .where("tenantId", "==", tenantId)
-          .where("status", "==", "pending")
-          .get();
+        const leaveRepo = new LeaveRepository();
+        const leaves = await leaveRepo.findPendingByTenant(tenantId);
 
-        // ✅ Explicitly type as any[] because Firestore data has no strict schema
-        const leaves: any[] = leavesSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-
-        // 2. Fetch staff for THIS tenant only (to map teacher names)
-        const staffSnap = await adminDb.collection("staff")
-          .where("tenantId", "==", tenantId)
-          .get();
+        const staffRepo = new StaffRepository();
+        const staffList = await staffRepo.findAll(tenantId);
 
         const staffMap: Record<string, string> = {};
-        staffSnap.docs.forEach(d => {
-          const data = d.data();
-          staffMap[d.id] = data.personal?.fullName || data.fullName || "Unknown";
+        staffList.forEach(s => {
+          staffMap[s.id] = s.personal?.fullName || "Unknown";
         });
 
-        // 3. Merge data safely
         const enrichedLeaves = leaves.map(leave => ({
           ...leave,
-          teacherName: staffMap[leave.teacherId] || "Unknown Teacher"
+          teacherName: staffMap[(leave as any).teacherId] || "Unknown Teacher"
         }));
 
-        return NextResponse.json({ success: true, data: enrichedLeaves });
+        return createSuccessResponse(enrichedLeaves);
       })
     )
   )

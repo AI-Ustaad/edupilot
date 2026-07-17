@@ -1,112 +1,73 @@
-// app/api/v1/attendance/route.ts
-import { NextRequest, NextResponse } from "next/server";
-import { adminDb } from "@/lib/firebase-admin";
-import { getSessionUser } from "@/lib/auth/auth-server";
-import { executeWorkflows } from "@/lib/automation/workflow-engine";
+export const dynamic = 'force-dynamic';
+import { withAuth, withTenant, withErrorHandler } from "@/route-helpers";
+import { withPermission } from "@/lib/auth/rbac";
+import { PERMISSIONS } from "@/lib/auth/permissions";
+import { AttendanceService } from "@/services/attendance.service";
+import { createSuccessResponse, createApiResponse } from "@/lib/api/response";
+import { GetAttendanceQuerySchema } from "@/validators/attendance";
+import type { TenantContext } from "@/types/api";
 
-export const runtime = "nodejs";
+export const GET = withErrorHandler(
+  withAuth(
+    withTenant(
+      withPermission(PERMISSIONS.attendance.view)(async (req: Request, { tenantId }: TenantContext) => {
+        const url = new URL(req.url);
+        const queryParams = {
+          date: url.searchParams.get("date") || undefined,
+          classGrade: url.searchParams.get("classGrade") || undefined,
+          section: url.searchParams.get("section") || undefined,
+          studentId: url.searchParams.get("studentId") || undefined,
+          page: url.searchParams.get("page") || undefined,
+          limit: url.searchParams.get("limit") || undefined,
+        };
 
-export async function POST(req: NextRequest) {
-  try {
-    const user = await getSessionUser();
-    if (!user) {
-      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
-    }
+        const validation = GetAttendanceQuerySchema.safeParse(queryParams);
+        if (!validation.success) {
+          return createSuccessResponse([]);
+        }
 
-    const body = await req.json();
-    const { studentId, studentName, classGrade, section, date, status } = body;
+        const { page, limit, ...filters } = validation.data;
+        const service = new AttendanceService();
+        const records = await service.listAttendance(tenantId, filters);
 
-    if (!studentId || !date || !status) {
-      return NextResponse.json({ success: false, error: "Missing required fields" }, { status: 400 });
-    }
+        // Pagination
+        if (page && limit) {
+          const pageNum = parseInt(page, 10);
+          const limitNum = parseInt(limit, 10);
+          const start = (pageNum - 1) * limitNum;
+          const end = start + limitNum;
+          return createSuccessResponse({
+            data: records.slice(start, end),
+            pagination: {
+              page: pageNum,
+              limit: limitNum,
+              total: records.length,
+              totalPages: Math.ceil(records.length / limitNum),
+            },
+          });
+        }
 
-    // 1. Attendance Record Save یا Update کریں
-    const attendanceRef = adminDb.collection("attendance").doc();
-    
-    await attendanceRef.set({
-      tenantId: user.tenantId,
-      studentId,
-      studentName: studentName || "",
-      classGrade: classGrade || "",
-      section: section || "",
-      date,
-      status,
-      createdBy: user.uid,
-      createdAt: new Date(),
-      deleted: false,
-    });
+        return createSuccessResponse(records);
+      })
+    )
+  )
+);
 
-    // 2. 🚀 Workflow Automation Trigger
-    // اگر سٹوڈنٹ Absent ہوا ہو، تو Parent کو Email بھیجیں
-    if (status === "Absent") {
-      
-      // سٹوڈنٹ کا ڈاکیومنٹ Fetch کریں تاکہ Parent کی Email مل سکے
-      const studentDoc = await adminDb.collection("students").doc(studentId).get();
-      const studentData = studentDoc.data();
-      
-      // سٹوڈنٹ کے ریکارڈ سے Parent کی Email Extract کریں
-      const parentEmail = studentData?.guardianEmail || studentData?.parentEmail || null;
+export const POST = withErrorHandler(
+  withAuth(
+    withTenant(
+      withPermission(PERMISSIONS.attendance.create)(async (req: Request, { tenantId, user }: TenantContext) => {
+        const body = await req.json();
+        const service = new AttendanceService();
 
-      // اگر Parent کی Email موجود ہو، تو Workflow Engine کو Trigger کریں
-      if (parentEmail) {
-        await executeWorkflows({
-          tenantId: user.tenantId,
-          trigger: "attendance.absent",
-          data: {
-            studentName: studentName || studentData?.fullName || "Student",
-            parentEmail: parentEmail,
-            date: date
-          }
-        });
-      }
-    }
+        if (Array.isArray(body)) {
+          const result = await service.createBulk(body, tenantId, user.uid);
+          return createApiResponse(201, result);
+        }
 
-    return NextResponse.json({ 
-      success: true, 
-      message: "Attendance saved successfully",
-      data: { id: attendanceRef.id } 
-    });
-
-  } catch (error: any) {
-    console.error("[Attendance API Error]:", error);
-    return NextResponse.json(
-      { success: false, error: "Internal server error" },
-      { status: 500 }
-    );
-  }
-}
-
-// GET Request (اگر آپ کے پاس پہلے سے موجود ہو)
-export async function GET(req: NextRequest) {
-  try {
-    const user = await getSessionUser();
-    if (!user) {
-      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
-    }
-
-    const { searchParams } = new URL(req.url);
-    const classGrade = searchParams.get("classGrade");
-    const section = searchParams.get("section");
-    const date = searchParams.get("date");
-
-    if (!classGrade || !section || !date) {
-      return NextResponse.json({ success: false, error: "Missing query parameters" }, { status: 400 });
-    }
-
-    const snapshot = await adminDb.collection("attendance")
-      .where("tenantId", "==", user.tenantId)
-      .where("classGrade", "==", classGrade)
-      .where("section", "==", section)
-      .where("date", "==", date)
-      .where("deleted", "==", false)
-      .get();
-
-    const records = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-
-    return NextResponse.json({ success: true, data: records });
-
-  } catch (error: any) {
-    console.error("[Attendance GET API Error]:", error);
-    return NextResponse.json({ success: false, error: "Internal server error" }, { status: 500 });
-  }
-}
+        const record = await service.createSingle(body, tenantId, user.uid);
+        return createApiResponse(201, record, "Attendance saved");
+      })
+    )
+  )
+);
