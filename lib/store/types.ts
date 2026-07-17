@@ -1,6 +1,7 @@
 import { MasterSchoolConfiguration } from "@/types/configuration";
+// 🟢 NEW: Import the Student Slice interface
+import { StudentSlice } from "./slices/student.slice";
 
-// Kernel State (Phase 1)
 export interface KernelSlice {
   isInitialized: boolean;
   syncStatus: "idle" | "syncing" | "error";
@@ -11,7 +12,6 @@ export interface KernelSlice {
   setSyncStatus: (status: "idle" | "syncing" | "error") => void;
 }
 
-// School Domain State
 export interface SchoolSlice {
   name: string;
   type: string;
@@ -20,7 +20,6 @@ export interface SchoolSlice {
   country: string;
 }
 
-// Academic Domain State
 export interface AcademicSlice {
   levels: string[];
   classes: Array<{ id: string; name: string; level: string }>;
@@ -28,11 +27,10 @@ export interface AcademicSlice {
   defaultSections: string[];
 }
 
-// Feature Registry State
 export interface FeatureSlice {
   enabledModules: string[];
   isFeatureEnabled: (featureName: string) => boolean;
 }
 
-// The Master Store Interface
-export type EnterpriseRuntimeStore = KernelSlice & SchoolSlice & AcademicSlice & FeatureSlice;
+// 🟢 FIXED: Added StudentSlice to the Master Store Interface
+export type EnterpriseRuntimeStore = KernelSlice & SchoolSlice & AcademicSlice & FeatureSlice & StudentSlice;
