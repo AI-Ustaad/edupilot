@@ -11,11 +11,13 @@ import RequirePermission from "@/components/RequirePermission";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 import Image from "next/image";
 
-// 🟢 Enterprise SDKs
+// 🟢 Enterprise SDKs & Sync Engines
 import { useStudentDomain } from "@/hooks/runtime/useStudentDomain";
 import { useStudentSync } from "@/hooks/api/useStudentSync";
 import { useAttendanceDomain } from "@/hooks/runtime/useAttendanceDomain";
 import { useFeesDomain } from "@/hooks/runtime/useFeesDomain";
+import { useAttendanceSync } from "@/hooks/api/useAttendanceSync"; // NEW
+import { useFeesSync } from "@/hooks/api/useFeesSync"; // NEW
 
 const TABS = [
   { key: "overview", label: "Overview", icon: User },
@@ -35,8 +37,10 @@ export default function Student360Page() {
   const studentId = params?.id as string;
   const [activeTab, setActiveTab] = useState<string>("overview");
 
-  // 1. ⚙️ THE ENGINE: Check background sync
+  // 1. ⚙️ THE ENGINES: Background Synchronization
   const { isSyncing } = useStudentSync();
+  useAttendanceSync(studentId); // 🟢 Starts fetching attendance silently in background
+  useFeesSync(studentId);       // 🟢 Starts fetching fees silently in background
 
   // 2. 🚰 THE SDK: Instant O(1) Lookups
   const { getStudent } = useStudentDomain();
