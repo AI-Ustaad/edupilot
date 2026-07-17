@@ -1,6 +1,7 @@
 import { MasterSchoolConfiguration } from "@/types/configuration";
-// 🟢 NEW: Import the Student Slice interface
 import { StudentSlice } from "./slices/student.slice";
+import { AttendanceSlice } from "./slices/attendance.slice";
+import { FeesSlice } from "./slices/fees.slice";
 
 export interface KernelSlice {
   isInitialized: boolean;
@@ -32,5 +33,11 @@ export interface FeatureSlice {
   isFeatureEnabled: (featureName: string) => boolean;
 }
 
-// 🟢 FIXED: Added StudentSlice to the Master Store Interface
-export type EnterpriseRuntimeStore = KernelSlice & SchoolSlice & AcademicSlice & FeatureSlice & StudentSlice;
+// 🟢 REGISTERED: Student, Attendance, and Fees Slices are now part of the Master Store
+export type EnterpriseRuntimeStore = KernelSlice & 
+  SchoolSlice & 
+  AcademicSlice & 
+  FeatureSlice & 
+  StudentSlice & 
+  AttendanceSlice & 
+  FeesSlice;
