@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation"; // 🟢 NEW: Added useRouter
+import { useRouter } from "next/navigation"; 
 import { 
   CheckCircle2, Loader2, School, Settings2, ShieldAlert, 
   Building2, GraduationCap, BookOpen, Layers, Plus, Trash2, Globe 
@@ -12,36 +12,35 @@ import apiClient from "@/lib/api/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/components/ToastProvider";
 
-// 🟢 Enterprise Syllabus Database
 const CURRICULUMS = [
   {
     id: "punjab_snc",
     name: "Punjab Single National Curriculum (SNC)",
     levels: {
       early_childhood: [
-        { name: "Playgroup", subjects: [{ name: "Early Childhood Care & Education (ECCE)", type: "Compulsory" }] },
+        { name: "Playgroup", subjects: [{ name: "ECCE", type: "Compulsory" }] },
         { name: "Nursery", subjects: [{ name: "English Phonics", type: "Compulsory" }, { name: "Urdu Huroof", type: "Compulsory" }, { name: "Basic Math", type: "Compulsory" }] },
         { name: "Prep (KG)", subjects: [{ name: "English", type: "Compulsory" }, { name: "Urdu", type: "Compulsory" }, { name: "Mathematics", type: "Compulsory" }, { name: "Nazra Quran", type: "Compulsory" }] }
       ],
       primary: [
-        { name: "Class 1", subjects: [{ name: "English", type: "Compulsory" }, { name: "Urdu", type: "Compulsory" }, { name: "Mathematics", type: "Compulsory" }, { name: "General Knowledge", type: "Compulsory" }, { name: "Islamiyat", type: "Compulsory" }, { name: "Nazra Quran", type: "Compulsory" }] },
-        { name: "Class 2", subjects: [{ name: "English", type: "Compulsory" }, { name: "Urdu", type: "Compulsory" }, { name: "Mathematics", type: "Compulsory" }, { name: "General Knowledge", type: "Compulsory" }, { name: "Islamiyat", type: "Compulsory" }, { name: "Nazra Quran", type: "Compulsory" }] },
-        { name: "Class 3", subjects: [{ name: "English", type: "Compulsory" }, { name: "Urdu", type: "Compulsory" }, { name: "Mathematics", type: "Compulsory" }, { name: "General Knowledge", type: "Compulsory" }, { name: "Islamiyat", type: "Compulsory" }, { name: "Nazra Quran", type: "Compulsory" }] },
-        { name: "Class 4", subjects: [{ name: "English", type: "Compulsory" }, { name: "Urdu", type: "Compulsory" }, { name: "Mathematics", type: "Compulsory" }, { name: "General Science", type: "Compulsory" }, { name: "Social Studies", type: "Compulsory" }, { name: "Islamiyat", type: "Compulsory" }, { name: "Nazra Quran", type: "Compulsory" }] },
-        { name: "Class 5", subjects: [{ name: "English", type: "Compulsory" }, { name: "Urdu", type: "Compulsory" }, { name: "Mathematics", type: "Compulsory" }, { name: "General Science", type: "Compulsory" }, { name: "Social Studies", type: "Compulsory" }, { name: "Islamiyat", type: "Compulsory" }, { name: "Nazra Quran", type: "Compulsory" }] }
+        { name: "Class 1", subjects: [{ name: "English", type: "Compulsory" }, { name: "Urdu", type: "Compulsory" }, { name: "Mathematics", type: "Compulsory" }, { name: "General Knowledge", type: "Compulsory" }, { name: "Islamiyat", type: "Compulsory" }] },
+        { name: "Class 2", subjects: [{ name: "English", type: "Compulsory" }, { name: "Urdu", type: "Compulsory" }, { name: "Mathematics", type: "Compulsory" }, { name: "General Knowledge", type: "Compulsory" }, { name: "Islamiyat", type: "Compulsory" }] },
+        { name: "Class 3", subjects: [{ name: "English", type: "Compulsory" }, { name: "Urdu", type: "Compulsory" }, { name: "Mathematics", type: "Compulsory" }, { name: "General Knowledge", type: "Compulsory" }, { name: "Islamiyat", type: "Compulsory" }] },
+        { name: "Class 4", subjects: [{ name: "English", type: "Compulsory" }, { name: "Urdu", type: "Compulsory" }, { name: "Mathematics", type: "Compulsory" }, { name: "General Science", type: "Compulsory" }, { name: "Social Studies", type: "Compulsory" }, { name: "Islamiyat", type: "Compulsory" }] },
+        { name: "Class 5", subjects: [{ name: "English", type: "Compulsory" }, { name: "Urdu", type: "Compulsory" }, { name: "Mathematics", type: "Compulsory" }, { name: "General Science", type: "Compulsory" }, { name: "Social Studies", type: "Compulsory" }, { name: "Islamiyat", type: "Compulsory" }] }
       ],
       middle: [
-        { name: "Class 6", subjects: [{ name: "English", type: "Compulsory" }, { name: "Urdu", type: "Compulsory" }, { name: "Mathematics", type: "Compulsory" }, { name: "General Science", type: "Compulsory" }, { name: "History", type: "Compulsory" }, { name: "Geography", type: "Compulsory" }, { name: "Computer Science", type: "Compulsory" }, { name: "Islamiyat", type: "Compulsory" }, { name: "Tarjuma-tul-Quran", type: "Compulsory" }] },
-        { name: "Class 7", subjects: [{ name: "English", type: "Compulsory" }, { name: "Urdu", type: "Compulsory" }, { name: "Mathematics", type: "Compulsory" }, { name: "General Science", type: "Compulsory" }, { name: "History", type: "Compulsory" }, { name: "Geography", type: "Compulsory" }, { name: "Computer Science", type: "Compulsory" }, { name: "Islamiyat", type: "Compulsory" }, { name: "Tarjuma-tul-Quran", type: "Compulsory" }] },
-        { name: "Class 8", subjects: [{ name: "English", type: "Compulsory" }, { name: "Urdu", type: "Compulsory" }, { name: "Mathematics", type: "Compulsory" }, { name: "General Science", type: "Compulsory" }, { name: "History", type: "Compulsory" }, { name: "Geography", type: "Compulsory" }, { name: "Computer Science", type: "Compulsory" }, { name: "Islamiyat", type: "Compulsory" }, { name: "Tarjuma-tul-Quran", type: "Compulsory" }] }
+        { name: "Class 6", subjects: [{ name: "English", type: "Compulsory" }, { name: "Urdu", type: "Compulsory" }, { name: "Mathematics", type: "Compulsory" }, { name: "General Science", type: "Compulsory" }, { name: "History & Geo", type: "Compulsory" }, { name: "Computer", type: "Compulsory" }, { name: "Islamiyat", type: "Compulsory" }] },
+        { name: "Class 7", subjects: [{ name: "English", type: "Compulsory" }, { name: "Urdu", type: "Compulsory" }, { name: "Mathematics", type: "Compulsory" }, { name: "General Science", type: "Compulsory" }, { name: "History & Geo", type: "Compulsory" }, { name: "Computer", type: "Compulsory" }, { name: "Islamiyat", type: "Compulsory" }] },
+        { name: "Class 8", subjects: [{ name: "English", type: "Compulsory" }, { name: "Urdu", type: "Compulsory" }, { name: "Mathematics", type: "Compulsory" }, { name: "General Science", type: "Compulsory" }, { name: "History & Geo", type: "Compulsory" }, { name: "Computer", type: "Compulsory" }, { name: "Islamiyat", type: "Compulsory" }] }
       ],
       secondary: [
-        { name: "Class 9", subjects: [{ name: "English", type: "Compulsory" }, { name: "Urdu", type: "Compulsory" }, { name: "Mathematics", type: "Compulsory" }, { name: "Physics", type: "Compulsory" }, { name: "Chemistry", type: "Compulsory" }, { name: "Biology / Computer", type: "Optional" }, { name: "Islamiyat", type: "Compulsory" }, { name: "Tarjuma-tul-Quran", type: "Compulsory" }] },
-        { name: "Class 10", subjects: [{ name: "English", type: "Compulsory" }, { name: "Urdu", type: "Compulsory" }, { name: "Mathematics", type: "Compulsory" }, { name: "Physics", type: "Compulsory" }, { name: "Chemistry", type: "Compulsory" }, { name: "Biology / Computer", type: "Optional" }, { name: "Pakistan Studies", type: "Compulsory" }, { name: "Tarjuma-tul-Quran", type: "Compulsory" }] }
+        { name: "Class 9", subjects: [{ name: "English", type: "Compulsory" }, { name: "Urdu", type: "Compulsory" }, { name: "Mathematics", type: "Compulsory" }, { name: "Physics", type: "Compulsory" }, { name: "Chemistry", type: "Compulsory" }, { name: "Biology / Computer", type: "Optional" }, { name: "Islamiyat", type: "Compulsory" }] },
+        { name: "Class 10", subjects: [{ name: "English", type: "Compulsory" }, { name: "Urdu", type: "Compulsory" }, { name: "Mathematics", type: "Compulsory" }, { name: "Physics", type: "Compulsory" }, { name: "Chemistry", type: "Compulsory" }, { name: "Biology / Computer", type: "Optional" }, { name: "Pakistan Studies", type: "Compulsory" }] }
       ],
       higher_secondary: [
-        { name: "Class 11", subjects: [{ name: "English", type: "Compulsory" }, { name: "Urdu", type: "Compulsory" }, { name: "Islamiyat", type: "Compulsory" }, { name: "Physics", type: "Optional" }, { name: "Chemistry / Computer", type: "Optional" }, { name: "Mathematics / Biology", type: "Optional" }, { name: "Tarjuma-tul-Quran", type: "Compulsory" }] },
-        { name: "Class 12", subjects: [{ name: "English", type: "Compulsory" }, { name: "Urdu", type: "Compulsory" }, { name: "Pakistan Studies", type: "Compulsory" }, { name: "Physics", type: "Optional" }, { name: "Chemistry / Computer", type: "Optional" }, { name: "Mathematics / Biology", type: "Optional" }, { name: "Tarjuma-tul-Quran", type: "Compulsory" }] }
+        { name: "Class 11", subjects: [{ name: "English", type: "Compulsory" }, { name: "Urdu", type: "Compulsory" }, { name: "Islamiyat", type: "Compulsory" }, { name: "Physics", type: "Optional" }, { name: "Chemistry / Computer", type: "Optional" }, { name: "Mathematics / Biology", type: "Optional" }] },
+        { name: "Class 12", subjects: [{ name: "English", type: "Compulsory" }, { name: "Urdu", type: "Compulsory" }, { name: "Pakistan Studies", type: "Compulsory" }, { name: "Physics", type: "Optional" }, { name: "Chemistry / Computer", type: "Optional" }, { name: "Mathematics / Biology", type: "Optional" }] }
       ]
     }
   },
@@ -50,24 +49,19 @@ const CURRICULUMS = [
     name: "Oxford / Private Systems",
     levels: {
       early_childhood: [
-        { name: "Nursery", subjects: [{ name: "English Phonics", type: "Compulsory" }, { name: "Numbers", type: "Compulsory" }, { name: "Urdu", type: "Compulsory" }, { name: "Art & Craft", type: "Compulsory" }] },
-        { name: "Prep", subjects: [{ name: "Oxford English", type: "Compulsory" }, { name: "New Countdown", type: "Compulsory" }, { name: "Urdu", type: "Compulsory" }, { name: "General Knowledge", type: "Compulsory" }] }
+        { name: "Nursery", subjects: [{ name: "English Phonics", type: "Compulsory" }, { name: "Numbers", type: "Compulsory" }, { name: "Urdu", type: "Compulsory" }] },
+        { name: "Prep", subjects: [{ name: "Oxford English", type: "Compulsory" }, { name: "New Countdown", type: "Compulsory" }, { name: "Urdu", type: "Compulsory" }] }
       ],
       primary: [
-        { name: "Class 1", subjects: [{ name: "Oxford English", type: "Compulsory" }, { name: "New Countdown", type: "Compulsory" }, { name: "Urdu", type: "Compulsory" }, { name: "Amazing Science", type: "Compulsory" }, { name: "Social Studies", type: "Compulsory" }, { name: "Islamiyat", type: "Compulsory" }] },
-        { name: "Class 2", subjects: [{ name: "Oxford English", type: "Compulsory" }, { name: "New Countdown", type: "Compulsory" }, { name: "Urdu", type: "Compulsory" }, { name: "Amazing Science", type: "Compulsory" }, { name: "Social Studies", type: "Compulsory" }, { name: "Islamiyat", type: "Compulsory" }] },
-        { name: "Class 3", subjects: [{ name: "Oxford English", type: "Compulsory" }, { name: "New Countdown", type: "Compulsory" }, { name: "Urdu", type: "Compulsory" }, { name: "Amazing Science", type: "Compulsory" }, { name: "Social Studies", type: "Compulsory" }, { name: "Islamiyat", type: "Compulsory" }] },
-        { name: "Class 4", subjects: [{ name: "Oxford English", type: "Compulsory" }, { name: "New Countdown", type: "Compulsory" }, { name: "Urdu", type: "Compulsory" }, { name: "Amazing Science", type: "Compulsory" }, { name: "Social Studies", type: "Compulsory" }, { name: "Islamiyat", type: "Compulsory" }, { name: "Computer", type: "Compulsory" }] },
-        { name: "Class 5", subjects: [{ name: "Oxford English", type: "Compulsory" }, { name: "New Countdown", type: "Compulsory" }, { name: "Urdu", type: "Compulsory" }, { name: "Amazing Science", type: "Compulsory" }, { name: "Social Studies", type: "Compulsory" }, { name: "Islamiyat", type: "Compulsory" }, { name: "Computer", type: "Compulsory" }] }
+        { name: "Class 1", subjects: [{ name: "Oxford English", type: "Compulsory" }, { name: "New Countdown", type: "Compulsory" }, { name: "Urdu", type: "Compulsory" }, { name: "Amazing Science", type: "Compulsory" }] },
+        { name: "Class 5", subjects: [{ name: "Oxford English", type: "Compulsory" }, { name: "New Countdown", type: "Compulsory" }, { name: "Urdu", type: "Compulsory" }, { name: "Amazing Science", type: "Compulsory" }] }
       ],
       middle: [
-        { name: "Class 6", subjects: [{ name: "Oxford English", type: "Compulsory" }, { name: "New Countdown", type: "Compulsory" }, { name: "Urdu", type: "Compulsory" }, { name: "Amazing Science", type: "Compulsory" }, { name: "History & Geography", type: "Compulsory" }, { name: "Computer Science", type: "Compulsory" }, { name: "Islamiyat", type: "Compulsory" }] },
-        { name: "Class 7", subjects: [{ name: "Oxford English", type: "Compulsory" }, { name: "New Countdown", type: "Compulsory" }, { name: "Urdu", type: "Compulsory" }, { name: "Amazing Science", type: "Compulsory" }, { name: "History & Geography", type: "Compulsory" }, { name: "Computer Science", type: "Compulsory" }, { name: "Islamiyat", type: "Compulsory" }] },
-        { name: "Class 8", subjects: [{ name: "Oxford English", type: "Compulsory" }, { name: "New Countdown", type: "Compulsory" }, { name: "Urdu", type: "Compulsory" }, { name: "Amazing Science", type: "Compulsory" }, { name: "History & Geography", type: "Compulsory" }, { name: "Computer Science", type: "Compulsory" }, { name: "Islamiyat", type: "Compulsory" }] }
+        { name: "Class 8", subjects: [{ name: "Oxford English", type: "Compulsory" }, { name: "New Countdown", type: "Compulsory" }, { name: "Urdu", type: "Compulsory" }, { name: "Amazing Science", type: "Compulsory" }, { name: "Computer Science", type: "Compulsory" }] }
       ],
       secondary: [
-        { name: "Class 9", subjects: [{ name: "English", type: "Compulsory" }, { name: "Urdu", type: "Compulsory" }, { name: "Mathematics", type: "Compulsory" }, { name: "Physics", type: "Compulsory" }, { name: "Chemistry", type: "Compulsory" }, { name: "Biology / Computer", type: "Optional" }, { name: "Islamiyat", type: "Compulsory" }] },
-        { name: "Class 10", subjects: [{ name: "English", type: "Compulsory" }, { name: "Urdu", type: "Compulsory" }, { name: "Mathematics", type: "Compulsory" }, { name: "Physics", type: "Compulsory" }, { name: "Chemistry", type: "Compulsory" }, { name: "Biology / Computer", type: "Optional" }, { name: "Pakistan Studies", type: "Compulsory" }] }
+        { name: "Class 9", subjects: [{ name: "English", type: "Compulsory" }, { name: "Mathematics", type: "Compulsory" }, { name: "Physics", type: "Compulsory" }, { name: "Chemistry", type: "Compulsory" }] },
+        { name: "Class 10", subjects: [{ name: "English", type: "Compulsory" }, { name: "Mathematics", type: "Compulsory" }, { name: "Physics", type: "Compulsory" }, { name: "Chemistry", type: "Compulsory" }] }
       ]
     }
   }
@@ -77,13 +71,12 @@ type TabType = "profile" | "classes" | "subjects" | "sections";
 
 export default function EnterpriseSchoolConfigurationPage() {
   const queryClient = useQueryClient();
-  const router = useRouter(); // 🟢 NEW: Added Router to control Next.js Cache
+  const router = useRouter(); 
   const { showToast } = useToast();
   
   const [editing, setEditing] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>("profile");
   
-  // SSOT State
   const [schoolName, setSchoolName] = useState("");
   const [schoolType, setSchoolType] = useState<"Private" | "Government" | "Madrissa">("Private");
   const [curriculumId, setCurriculumId] = useState("punjab_snc");
@@ -102,7 +95,8 @@ export default function EnterpriseSchoolConfigurationPage() {
     }
   });
 
-  const isConfigured = data?.status === "configured" || data?.state === "Published" || data?.state === "Locked";
+  // 🟢 BULLETPROOF CHECK: If data exists and has a school name, it IS configured!
+  const isConfigured = !!data?.school?.name;
 
   useEffect(() => {
     if (data && editing) {
@@ -144,21 +138,20 @@ export default function EnterpriseSchoolConfigurationPage() {
     mutationFn: async (payloadData: any) => {
       return await apiClient.post("/settings/school-configuration", {
         action: "save_and_publish",
-        reason: editReason || "Automated sync of Syllabus & Subjects across SaaS",
+        reason: editReason || "Initial SSOT Configuration Setup",
         payload: payloadData
       });
     },
-    onSuccess: () => {
-      // 🟢 FIX 1: Clear React Query Cache completely
-      queryClient.invalidateQueries(); 
-      queryClient.clear(); 
-
-      // 🟢 FIX 2: Bust the stubborn Next.js Server Cache!
+    onSuccess: (resData) => {
+      // 1. Manually update the cache immediately so the UI flips to "View Mode" instantly
+      queryClient.setQueryData(["schoolConfiguration"], resData.data);
+      
+      // 2. Instruct Next.js to bust its hard server cache in the background
       router.refresh(); 
 
-      // 🟢 FIX 3: Stay on the page and show Success Dashboard
-      showToast("Global Sync Complete: Settings applied to Admissions, Fees, Exams & AI!", "success");
-      setEditing(false); // Close edit mode to reveal the dashboard
+      // 3. Keep user ON THIS PAGE and close the editing wizard
+      setEditing(false);
+      showToast("System Configured! Enterprise SAAS Modules are now unlocked.", "success");
     },
     onError: (err: any) => {
       showToast(err.response?.data?.error || "Failed to synchronize configuration", "error");
@@ -170,7 +163,7 @@ export default function EnterpriseSchoolConfigurationPage() {
     if (selectedLevels.length === 0) return showToast("Please select at least one Academic Level.", "error");
 
     const payload = {
-      status: "configured", // 🟢 FIX 4: Explicitly force status for the backend schema
+      status: "configured", 
       state: "Published",
       school: {
         name: schoolName,
@@ -193,7 +186,7 @@ export default function EnterpriseSchoolConfigurationPage() {
     return (
       <div className="flex h-96 flex-col items-center justify-center gap-3">
         <Loader2 className="animate-spin text-blue-600" size={48} />
-        <p className="text-slate-500 font-bold">Synchronizing SaaS Modules...</p>
+        <p className="text-slate-500 font-bold">Checking Enterprise Kernel State...</p>
       </div>
     );
   }
@@ -244,7 +237,7 @@ export default function EnterpriseSchoolConfigurationPage() {
               <div>
                 <h2 className="font-bold text-green-900">SaaS Ecosystem is Fully Interlinked!</h2>
                 <p className="text-sm text-green-700 mt-1">
-                  آپ کا اسکول کامیابی کے ساتھ رجسٹر ہو چکا ہے۔ آپ کا منتخب کردہ سلیبس (Syllabus) اب Admissions، Attendance، Exams اور Finance کے تمام ماڈیولز میں استعمال کے لیے تیار ہے۔ آپ بائیں جانب موجود مینیو سے ایپ کا استعمال شروع کر سکتے ہیں۔
+                  آپ کا اسکول کامیابی کے ساتھ رجسٹر ہو چکا ہے اور آپ اسی ڈیش بورڈ پر موجود ہیں۔ آپ کا منتخب کردہ سلیبس اب Admissions، Attendance اور Exams میں استعمال کے لیے تیار ہے۔ اب آپ بائیں جانب موجود مینیو سے 'Students' یا کسی بھی دوسرے فیچر پر جا سکتے ہیں، تمام فیچرز ان لاک ہو چکے ہیں۔
                 </p>
               </div>
             </div>
@@ -387,8 +380,7 @@ export default function EnterpriseSchoolConfigurationPage() {
               {activeTab === "sections" && (
                 <div className="space-y-6">
                   <Field label="Synchronization Log Note (Required) *">
-                    <input type="text" value={editReason} onChange={(e) => setEditReason(e.target.value)} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition" placeholder="e.g. Re-mapped Oxford Syllabus for Primary Level" required />
-                    <p className="text-xs text-slate-400 mt-1">This log will be attached to all modules (Fees, Attendance) that get synced by this action.</p>
+                    <input type="text" value={editReason} onChange={(e) => setEditReason(e.target.value)} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition" placeholder="e.g. Initial School Setup with Syllabus" required />
                   </Field>
                   <div className="space-y-3">
                     <h3 className="font-bold text-slate-800">Global Section Identifiers</h3>
