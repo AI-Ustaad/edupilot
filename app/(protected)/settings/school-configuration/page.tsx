@@ -329,7 +329,7 @@ export default function EnterpriseSchoolConfigurationPage() {
                       </thead>
                       <tbody className="divide-y divide-slate-100">
                         {configuredClasses.length === 0 ? (
-                          <tr><td colSpan={4} className="p-8 text-center text-slate-400">No classes configured yet. Click "Run DNA Auto-Gen".</td></tr>
+                          <tr><td colSpan={4} className="p-8 text-center text-slate-400">No classes configured yet. Click &quot;Run DNA Auto-Gen&quot;.</td></tr>
                         ) : configuredClasses.map((cls, idx) => (
                           <tr key={idx}>
                             <td className="p-3 font-semibold text-slate-800">{cls.name}</td>
