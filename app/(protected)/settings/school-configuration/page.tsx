@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation"; 
 import { 
   CheckCircle2, Loader2, School, Settings2, ShieldAlert, 
   Building2, GraduationCap, BookOpen, Layers, Plus, Trash2, Globe 
@@ -71,7 +70,6 @@ type TabType = "profile" | "classes" | "subjects" | "sections";
 
 export default function EnterpriseSchoolConfigurationPage() {
   const queryClient = useQueryClient();
-  const router = useRouter(); 
   const { showToast } = useToast();
   
   const [editing, setEditing] = useState(false);
@@ -95,6 +93,7 @@ export default function EnterpriseSchoolConfigurationPage() {
     }
   });
 
+  // 🟢 The source of truth for the UI view mode
   const isConfigured = !!data?.school?.name;
 
   useEffect(() => {
@@ -141,11 +140,22 @@ export default function EnterpriseSchoolConfigurationPage() {
         payload: payloadData
       });
     },
-    onSuccess: (resData) => {
-      queryClient.setQueryData(["schoolConfiguration"], resData.data);
-      router.refresh(); 
-      setEditing(false);
+    onSuccess: async () => {
       showToast("System Configured! Enterprise SAAS Modules are now unlocked.", "success");
+      
+      // 1. Force React Query to wipe old cache and fetch fresh data from backend
+      await queryClient.invalidateQueries({ queryKey: ["schoolConfiguration"] });
+
+      if (!isConfigured) {
+        // 2. Initial Setup Reboot: Give user 1.5 seconds to see the success toast, 
+        // then HARD RELOAD the window. This completely destroys the old red screen RAM memory.
+        setTimeout(() => {
+          window.location.reload();
+        }, 1500);
+      } else {
+        // 3. Just an edit/upgrade: Simply close the editing form to show dashboard
+        setEditing(false);
+      }
     },
     onError: (err: any) => {
       showToast(err.response?.data?.error || "Failed to synchronize configuration", "error");
