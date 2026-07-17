@@ -2,8 +2,9 @@ import { create } from "zustand";
 import { devtools } from "zustand/middleware";
 import { EnterpriseRuntimeStore } from "./types";
 import { createKernelSlice } from "./slices/kernel.slice";
+// 🟢 NEW: Import the Student Slice creator
+import { createStudentSlice } from "./slices/student.slice";
 
-// ✅ FIXED: Added get and api arguments to satisfy TypeScript
 const createSchoolSlice = (set: any, get: any, api: any) => ({
   name: "", 
   type: "", 
@@ -19,7 +20,7 @@ const createAcademicSlice = (set: any, get: any, api: any) => ({
 });
 
 const createFeatureSlice = (set: any, get: any, api: any) => ({
-  enabledModules: ["attendance", "exams", "fees"], // یہ بعد میں API سے آئیں گے
+  enabledModules: ["attendance", "exams", "fees"], 
   isFeatureEnabled: (featureName: string) => get().enabledModules.includes(featureName),
 });
 
@@ -31,6 +32,7 @@ export const useRuntimeStore = create<EnterpriseRuntimeStore>()(
       ...createSchoolSlice(...a),
       ...createAcademicSlice(...a),
       ...createFeatureSlice(...a),
+      ...createStudentSlice(...a), // 🟢 FIXED: Registered Student Slice here
     }),
     { name: "EduPilot-Runtime-Kernel" }
   )
