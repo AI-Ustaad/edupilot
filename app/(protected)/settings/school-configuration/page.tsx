@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation"; // 🟢 NEW: Added useRouter
 import { 
   CheckCircle2, Loader2, School, Settings2, ShieldAlert, 
   Building2, GraduationCap, BookOpen, Layers, Plus, Trash2, Globe 
@@ -76,6 +77,7 @@ type TabType = "profile" | "classes" | "subjects" | "sections";
 
 export default function EnterpriseSchoolConfigurationPage() {
   const queryClient = useQueryClient();
+  const router = useRouter(); // 🟢 NEW: Added Router to control Next.js Cache
   const { showToast } = useToast();
   
   const [editing, setEditing] = useState(false);
@@ -100,7 +102,6 @@ export default function EnterpriseSchoolConfigurationPage() {
     }
   });
 
-  // 🟢 FIX 1: Accurate State Check based on Database Schema
   const isConfigured = data?.status === "configured" || data?.state === "Published" || data?.state === "Locked";
 
   useEffect(() => {
@@ -148,21 +149,16 @@ export default function EnterpriseSchoolConfigurationPage() {
       });
     },
     onSuccess: () => {
-      // 🟢 FIX 2: Global Cache Invalidation to fix Red Screen
+      // 🟢 FIX 1: Clear React Query Cache completely
       queryClient.invalidateQueries(); 
-      queryClient.clear(); // Destroy old empty cache
+      queryClient.clear(); 
 
+      // 🟢 FIX 2: Bust the stubborn Next.js Server Cache!
+      router.refresh(); 
+
+      // 🟢 FIX 3: Stay on the page and show Success Dashboard
       showToast("Global Sync Complete: Settings applied to Admissions, Fees, Exams & AI!", "success");
-      
-      // 🟢 FIX 3: Kernel Reboot on Initial Setup
-      if (!isConfigured) {
-        setTimeout(() => {
-          // Hard redirect to force the entire app to re-fetch the new configuration
-          window.location.href = "/students";
-        }, 1200);
-      } else {
-        setEditing(false);
-      }
+      setEditing(false); // Close edit mode to reveal the dashboard
     },
     onError: (err: any) => {
       showToast(err.response?.data?.error || "Failed to synchronize configuration", "error");
@@ -174,6 +170,8 @@ export default function EnterpriseSchoolConfigurationPage() {
     if (selectedLevels.length === 0) return showToast("Please select at least one Academic Level.", "error");
 
     const payload = {
+      status: "configured", // 🟢 FIX 4: Explicitly force status for the backend schema
+      state: "Published",
       school: {
         name: schoolName,
         type: schoolType,
@@ -225,10 +223,10 @@ export default function EnterpriseSchoolConfigurationPage() {
         </header>
 
         {isConfigured && !editing ? (
-          <div className="space-y-6">
+          <div className="space-y-6 animate-in fade-in duration-500">
             <div className="grid md:grid-cols-3 gap-5">
-              <SummaryCard title="School Profile" icon={<Building2 size={18} />} values={[data.school?.name, `${data.school?.type} School`, `Syllabus System: ${data.school?.curriculumId}`]} />
-              <SummaryCard title="Academic Setup" icon={<GraduationCap size={18} />} values={[`Levels Offered: ${data.academic?.levels?.length || 0}`, `Active Classes: ${data.academic?.classes?.length || 0}`, `Default Sections: ${data.academic?.defaultSections?.join(", ") || "A"}`]} />
+              <SummaryCard title="School Profile" icon={<Building2 size={18} />} values={[data.school?.name || schoolName, `${data.school?.type || schoolType} School`, `Syllabus System: ${data.school?.curriculumId || curriculumId}`]} />
+              <SummaryCard title="Academic Setup" icon={<GraduationCap size={18} />} values={[`Levels Offered: ${data.academic?.levels?.length || selectedLevels.length}`, `Active Classes: ${data.academic?.classes?.length || configuredClasses.length}`, `Default Sections: ${data.academic?.defaultSections?.join(", ") || "A, B"}`]} />
               <SummaryCard 
                 title="Global Sync Status" 
                 icon={<Layers size={18} />}
@@ -246,7 +244,7 @@ export default function EnterpriseSchoolConfigurationPage() {
               <div>
                 <h2 className="font-bold text-green-900">SaaS Ecosystem is Fully Interlinked!</h2>
                 <p className="text-sm text-green-700 mt-1">
-                  آپ کا منتخب کردہ سلیبس (Syllabus/System) کامیابی سے Admissions، Attendance، Exams اور Finance کے تمام ماڈیولز میں خودکار طریقے سے اپڈیٹ اور لنک کر دیا گیا ہے۔
+                  آپ کا اسکول کامیابی کے ساتھ رجسٹر ہو چکا ہے۔ آپ کا منتخب کردہ سلیبس (Syllabus) اب Admissions، Attendance، Exams اور Finance کے تمام ماڈیولز میں استعمال کے لیے تیار ہے۔ آپ بائیں جانب موجود مینیو سے ایپ کا استعمال شروع کر سکتے ہیں۔
                 </p>
               </div>
             </div>
