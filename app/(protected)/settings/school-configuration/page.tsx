@@ -12,14 +12,10 @@ import apiClient from "@/lib/api/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/components/ToastProvider";
 
-const CURRICULUMS = [
-  { id: "punjab_snc", name: "Punjab Single National Curriculum (SNC)" },
-  { id: "oxford", name: "Oxford / Private Systems" },
-  { id: "federal", name: "Federal Government (FBISE)" },
-  { id: "wifaq", name: "Wifaq-ul-Madaris Al-Arabia" }
-];
+import { CURRICULUMS } from "@/lib/curriculum-data";
 
 type TabType = "profile" | "classes" | "sections";
+type SchoolType = "Private" | "Government" | "Madrissa";
 
 export default function EnterpriseSchoolConfigurationPage() {
   const queryClient = useQueryClient();
@@ -29,10 +25,11 @@ export default function EnterpriseSchoolConfigurationPage() {
   const [editing, setEditing] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>("profile");
   
-  // DTO States (Only UI Inputs)
+  // 🟢 Pure UI DTO States
   const [schoolName, setSchoolName] = useState("");
-  const [schoolType, setSchoolType] = useState<"Private" | "Government" | "Madrissa">("Private");
-  const [curriculumId, setCurriculumId] = useState("punjab_snc");
+  // 🟢 Madrissa option restored
+  const [schoolType, setSchoolType] = useState<SchoolType>("Private");
+  const [curriculumId, setCurriculumId] = useState("punjab"); 
   const [selectedLevels, setSelectedLevels] = useState<string[]>([]);
   
   const [sectionNames, setSectionNames] = useState<string[]>(["A"]);
@@ -46,16 +43,14 @@ export default function EnterpriseSchoolConfigurationPage() {
     }
   });
 
-  // 🟢 Source of truth uses status: "configured"
   const isConfigured = data?.status === "configured";
 
   useEffect(() => {
     if (data && editing) {
       setSchoolName(data.school?.name || "");
-      setSchoolType(data.school?.type || "Private");
-      setCurriculumId(data.school?.curriculumId || "punjab_snc");
+      setSchoolType((data.school?.type as SchoolType) || "Private");
+      setCurriculumId(data.school?.curriculumId || "punjab");
       
-      // 🟢 Using academicStructure as instructed
       setSelectedLevels(data.academicStructure?.levels || []);
       setSectionNames(data.academicStructure?.sectionNames || ["A"]);
     }
@@ -63,18 +58,12 @@ export default function EnterpriseSchoolConfigurationPage() {
 
   const saveMutation = useMutation({
     mutationFn: async (payloadData: any) => {
-      // 🟢 Directly hitting the unified endpoint with PUT
       return await apiClient.put("/settings/school-configuration", payloadData);
     },
     onSuccess: () => {
       showToast("System Configured! Enterprise SAAS Modules are now unlocked.", "success");
-      
-      // 🟢 Safe React Query Cache Invalidation (No window.location.reload)
       queryClient.invalidateQueries({ queryKey: ["schoolConfiguration"] });
-      
-      // 🟢 Background Server Refresh
       router.refresh(); 
-
       setEditing(false);
     },
     onError: (err: any) => {
@@ -86,7 +75,6 @@ export default function EnterpriseSchoolConfigurationPage() {
     if (!schoolName.trim()) return showToast("School Name is required.", "error");
     if (selectedLevels.length === 0) return showToast("Please select at least one Academic Level.", "error");
 
-    // 🟢 Pure UI DTO: No status, state, action, or academicStructure generation here.
     const payload = {
       schoolName,
       schoolType,
@@ -97,6 +85,36 @@ export default function EnterpriseSchoolConfigurationPage() {
 
     saveMutation.mutate(payload);
   };
+
+  // 🟢 FIX 1: Filter Curriculums based on selected School Type
+  const availableCurriculums = CURRICULUMS.filter((c) => {
+    if (schoolType === "Government") {
+      return ["punjab", "federal"].includes(c.id);
+    }
+    if (schoolType === "Madrissa") {
+      return c.id === "wifaq";
+    }
+    // For Private, show all except wifaq (or whatever logic you prefer)
+    return c.id !== "wifaq";
+  });
+
+  // 🟢 FIX 2: Handle School Type Change (Auto-switch curriculum to prevent validation errors)
+  const handleSchoolTypeChange = (newType: SchoolType) => {
+    setSchoolType(newType);
+    if (newType === "Government") {
+      setCurriculumId("punjab");
+    } else if (newType === "Madrissa") {
+      setCurriculumId("wifaq");
+    } else {
+      setCurriculumId("oxford");
+    }
+    // Clear selected levels since new curriculum might have different levels
+    setSelectedLevels([]);
+  };
+
+  // 🟢 FIX 3 & 4: Get Dynamic Levels for the selected Curriculum
+  const selectedCurriculumObj = CURRICULUMS.find(c => c.id === curriculumId);
+  const availableLevels = selectedCurriculumObj ? Object.keys(selectedCurriculumObj.levels) : [];
 
   if (isLoading) {
     return (
@@ -134,13 +152,13 @@ export default function EnterpriseSchoolConfigurationPage() {
         {isConfigured && !editing ? (
           <div className="space-y-6 animate-in fade-in duration-500">
             <div className="grid md:grid-cols-3 gap-5">
-              <SummaryCard title="School Profile" icon={<Building2 size={18} />} values={[data.school?.name, `${data.school?.type} School`, `Syllabus System: ${data.school?.curriculumId}`]} />
-              <SummaryCard title="Academic Setup" icon={<GraduationCap size={18} />} values={[`Levels Offered: ${data.academicStructure?.levels?.length || 0}`, `Active Classes: ${data.academicStructure?.classes?.length || 0}`, `Sections Configured: ${data.academicStructure?.sectionNames?.length || 0}`]} />
+              <SummaryCard title="School Profile" icon={<Building2 size={18} />} values={[data.school?.name, `${data.school?.type} School`, `Syllabus System: ${data.school?.boardName || data.school?.curriculumId}`]} />
+              <SummaryCard title="Academic Setup" icon={<GraduationCap size={18} />} values={[`Levels Offered: ${data.academicStructure?.levels?.length || 0}`, `Active Classes: ${data.academicStructure?.classes?.length || 0}`, `Subjects Loaded: ${data.academicStructure?.subjects?.length || 0}`]} />
               <SummaryCard 
                 title="Global Sync Status" 
                 icon={<Layers size={18} />}
                 values={[
-                  `Status: ${data.status}`, 
+                  `Status: ${data.status.toUpperCase()}`, 
                   `Configuration Version: v${data.version || 1}`, 
                   `Updated: ${data.updatedAt ? new Date(data.updatedAt).toLocaleDateString() : 'N/A'}`
                 ]} 
@@ -176,15 +194,18 @@ export default function EnterpriseSchoolConfigurationPage() {
                       <input type="text" value={schoolName} onChange={(e) => setSchoolName(e.target.value)} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition" placeholder="e.g. The Educators" />
                     </Field>
                     <Field label="School Type">
-                      <select value={schoolType} onChange={(e) => setSchoolType(e.target.value as any)} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition">
+                      <select value={schoolType} onChange={(e) => handleSchoolTypeChange(e.target.value as SchoolType)} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition">
                         <option value="Private">Private / Trust</option>
                         <option value="Government">Government / Public</option>
                         <option value="Madrissa">Madrissa / Islamic Center</option>
                       </select>
                     </Field>
                     <Field label="Syllabus / Region / System *">
-                      <select value={curriculumId} onChange={(e) => setCurriculumId(e.target.value)} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition">
-                        {CURRICULUMS.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                      <select value={curriculumId} onChange={(e) => {
+                          setCurriculumId(e.target.value);
+                          setSelectedLevels([]); // Clear levels when syllabus changes
+                        }} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition">
+                        {availableCurriculums.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                       </select>
                     </Field>
                   </div>
@@ -196,11 +217,11 @@ export default function EnterpriseSchoolConfigurationPage() {
                 <div className="space-y-6">
                   <div className="bg-blue-50 p-4 rounded-xl border border-blue-100 mb-4">
                     <p className="text-sm text-blue-800 font-bold">
-                      لیول (Level) منتخب کریں۔ سسٹم خودکار طور پر بیک اینڈ سروس کے ذریعے کلاسز اور مضامین جنریٹ کر لے گا۔
+                      لیول (Level) منتخب کریں۔ ہمارا اسمارٹ انجن خودکار طور پر منتخب شدہ سلیبس کی کلاسز اور مضامین جنریٹ کر لے گا۔
                     </p>
                   </div>
                   <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                    {["early_childhood", "primary", "middle", "secondary", "higher_secondary", "madrissa"].map((level) => (
+                    {availableLevels.map((level) => (
                       <button
                         type="button"
                         key={level}
