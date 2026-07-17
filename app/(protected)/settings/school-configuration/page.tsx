@@ -49,8 +49,8 @@ const CURRICULUMS = [
     name: "Oxford / Private Systems",
     levels: {
       early_childhood: [
-        { name: "Nursery", subjects: [{ name: "English Phonics", type: "Compulsory" }, { name: "Numbers", type: "Compulsory" }, { name: "Urdu", type: "Compulsory" }] },
-        { name: "Prep", subjects: [{ name: "Oxford English", type: "Compulsory" }, { name: "New Countdown", type: "Compulsory" }, { name: "Urdu", type: "Compulsory" }] }
+        { name: "Nursery", subjects: [{ name: "English Phonics", type: "Compulsory" }, { name: "Numbers", type: "Compulsory" }, { name: "Urdu", type: "Compulsory" }, { name: "Art & Craft", type: "Compulsory" }] },
+        { name: "Prep", subjects: [{ name: "Oxford English", type: "Compulsory" }, { name: "New Countdown", type: "Compulsory" }, { name: "Urdu", type: "Compulsory" }, { name: "General Knowledge", type: "Compulsory" }] }
       ],
       primary: [
         { name: "Class 1", subjects: [{ name: "Oxford English", type: "Compulsory" }, { name: "New Countdown", type: "Compulsory" }, { name: "Urdu", type: "Compulsory" }, { name: "Amazing Science", type: "Compulsory" }] },
@@ -95,7 +95,6 @@ export default function EnterpriseSchoolConfigurationPage() {
     }
   });
 
-  // 🟢 BULLETPROOF CHECK: If data exists and has a school name, it IS configured!
   const isConfigured = !!data?.school?.name;
 
   useEffect(() => {
@@ -143,13 +142,8 @@ export default function EnterpriseSchoolConfigurationPage() {
       });
     },
     onSuccess: (resData) => {
-      // 1. Manually update the cache immediately so the UI flips to "View Mode" instantly
       queryClient.setQueryData(["schoolConfiguration"], resData.data);
-      
-      // 2. Instruct Next.js to bust its hard server cache in the background
       router.refresh(); 
-
-      // 3. Keep user ON THIS PAGE and close the editing wizard
       setEditing(false);
       showToast("System Configured! Enterprise SAAS Modules are now unlocked.", "success");
     },
@@ -237,7 +231,7 @@ export default function EnterpriseSchoolConfigurationPage() {
               <div>
                 <h2 className="font-bold text-green-900">SaaS Ecosystem is Fully Interlinked!</h2>
                 <p className="text-sm text-green-700 mt-1">
-                  آپ کا اسکول کامیابی کے ساتھ رجسٹر ہو چکا ہے اور آپ اسی ڈیش بورڈ پر موجود ہیں۔ آپ کا منتخب کردہ سلیبس اب Admissions، Attendance اور Exams میں استعمال کے لیے تیار ہے۔ اب آپ بائیں جانب موجود مینیو سے 'Students' یا کسی بھی دوسرے فیچر پر جا سکتے ہیں، تمام فیچرز ان لاک ہو چکے ہیں۔
+                  آپ کا اسکول کامیابی کے ساتھ رجسٹر ہو چکا ہے اور آپ اسی ڈیش بورڈ پر موجود ہیں۔ آپ کا منتخب کردہ سلیبس اب Admissions، Attendance اور Exams میں استعمال کے لیے تیار ہے۔ اب آپ بائیں جانب موجود مینیو سے &apos;Students&apos; یا کسی بھی دوسرے فیچر پر جا سکتے ہیں، تمام فیچرز ان لاک ہو چکے ہیں۔
                 </p>
               </div>
             </div>
