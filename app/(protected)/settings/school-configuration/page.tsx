@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation"; 
 import { 
   CheckCircle2, Loader2, School, Settings2, 
-  Building2, GraduationCap, Layers 
+  Building2, GraduationCap, Layers, Globe 
 } from "lucide-react";
 import RequirePermission from "@/components/RequirePermission";
 import { PERMISSIONS } from "@/lib/auth/permissions";
