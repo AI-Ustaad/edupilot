@@ -1,87 +1,148 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CheckCircle2, History, Loader2, School, Settings2, ShieldAlert } from "lucide-react";
+import { 
+  CheckCircle2, Loader2, School, Settings2, ShieldAlert, 
+  Building2, GraduationCap, BookOpen, Layers, Plus, Trash2, HelpCircle 
+} from "lucide-react";
 import RequirePermission from "@/components/RequirePermission";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 import apiClient from "@/lib/api/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/components/ToastProvider";
 
-// 🟢 Note: Ensure CURRICULUMS is imported from your actual path
-import { CURRICULUMS } from "@/lib/data/curriculums"; 
+// 🟢 Fallback Mock Curriculums Database if the import fails
+import { CURRICULUMS as IMPORTED_CURRICULUMS } from "@/lib/data/curriculums";
+
+const DEFAULT_CURRICULUMS = [
+  {
+    id: "federal",
+    name: "Federal Government (FBISE)",
+    levels: {
+      primary: [
+        { name: "Class 1", subjects: [{ name: "English", type: "Compulsory" }, { name: "Mathematics", type: "Compulsory" }, { name: "Urdu", type: "Compulsory" }] },
+        { name: "Class 5", subjects: [{ name: "English", type: "Compulsory" }, { name: "Mathematics", type: "Compulsory" }, { name: "Urdu", type: "Compulsory" }, { name: "General Science", type: "Compulsory" }] }
+      ],
+      secondary: [
+        { name: "Class 9", subjects: [{ name: "Physics", type: "Compulsory" }, { name: "Chemistry", type: "Compulsory" }, { name: "Biology", type: "Optional" }] },
+        { name: "Class 10", subjects: [{ name: "Physics", type: "Compulsory" }, { name: "Chemistry", type: "Compulsory" }, { name: "Computer Science", type: "Optional" }] }
+      ]
+    }
+  },
+  {
+    id: "wifaq-ul-madaris",
+    name: "Wifaq-ul-Madaris Al-Arabia",
+    levels: {
+      madrissa: [
+        { name: "Al-Ibtidaiyah", subjects: [{ name: "Quran Hifz", type: "Compulsory" }, { name: "Arabic Grammar", type: "Compulsory" }] },
+        { name: "Al-Mutawassitah", subjects: [{ name: "Tajweed", type: "Compulsory" }, { name: "Nahw", type: "Compulsory" }, { name: "Sarf", type: "Compulsory" }] }
+      ]
+    }
+  }
+];
+
+const CURRICULUMS = IMPORTED_CURRICULUMS || DEFAULT_CURRICULUMS;
+
+type TabType = "profile" | "classes" | "subjects" | "sections";
 
 export default function EnterpriseSchoolConfigurationPage() {
   const queryClient = useQueryClient();
   const { showToast } = useToast();
   
   const [editing, setEditing] = useState(false);
+  const [activeTab, setActiveTab] = useState<TabType>("profile");
   
-  // Form State
+  // Form States (SSOT Structure)
   const [schoolName, setSchoolName] = useState("");
-  const [schoolType, setSchoolType] = useState("Private");
+  const [schoolType, setSchoolType] = useState<"Private" | "Government" | "Madrissa">("Private");
   const [curriculumId, setCurriculumId] = useState("federal");
   const [selectedLevels, setSelectedLevels] = useState<string[]>([]);
   const [editReason, setEditReason] = useState("");
+  
+  // Advanced Dynamic States
+  const [configuredClasses, setConfiguredClasses] = useState<any[]>([]);
+  const [sectionNames, setSectionNames] = useState<string[]>(["A", "B"]);
+  const [newSectionInput, setNewSectionInput] = useState("");
 
-  // 1. Fetch Active Configuration (React Query)
+  // 1. Fetch Active Configuration from API
   const { data, isLoading } = useQuery({
     queryKey: ["schoolConfiguration"],
     queryFn: async () => {
       const res = await apiClient.get("/settings/school-configuration");
-      return res.data?.configuration; // MasterSchoolConfiguration
+      return res.data?.configuration; 
     }
   });
 
-  // 2. Populate Form when Editing starts
+  // 2. Populate Form on Edit Start
   useEffect(() => {
     if (data && editing) {
       setSchoolName(data.school?.name || "");
       setSchoolType(data.school?.type || "Private");
       setCurriculumId(data.school?.curriculumId || "federal");
       setSelectedLevels(data.academic?.levels || []);
-      setEditReason(""); // Reset reason for new edit
+      
+      // Load classes directly if present in database configuration
+      if (data.academic?.classes) {
+        setConfiguredClasses(data.academic.classes);
+      }
+      if (data.academic?.defaultSections) {
+        setSectionNames(data.academic.defaultSections);
+      }
+      setEditReason("");
     }
   }, [data, editing]);
 
-  // 3. Save Mutation
+  // Dynamic Class Generator when curriculum or level selection changes
+  const runAutoGeneration = () => {
+    const selectedCurriculum = CURRICULUMS.find(c => c.id === curriculumId);
+    if (!selectedCurriculum) return;
+
+    let generated: any[] = [];
+    selectedLevels.forEach(levelKey => {
+      const levelClasses = selectedCurriculum.levels[levelKey as keyof typeof selectedCurriculum.levels] as any[];
+      if (levelClasses) {
+        levelClasses.forEach((cls) => {
+          generated.push({
+            name: cls.name,
+            level: levelKey,
+            subjects: cls.subjects || []
+          });
+        });
+      }
+    });
+    setConfiguredClasses(generated);
+    showToast("Classes & subjects regenerated from Curriculum DNA!", "success");
+  };
+
+  // 3. Save & Publish Mutation
   const saveMutation = useMutation({
     mutationFn: async (payloadData: any) => {
       return await apiClient.post("/settings/school-configuration", {
         action: "save_and_publish",
-        reason: editReason || "Admin updated configuration",
+        reason: editReason || "Admin upgraded system configuration",
         payload: payloadData
       });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["schoolConfiguration"] });
-      showToast("School Configuration upgraded successfully! New version created.", "success");
+      showToast("School SSOT updated successfully! New version launched.", "success");
       setEditing(false);
     },
     onError: (err: any) => {
-      showToast(err.response?.data?.error || "Failed to update configuration", "error");
+      showToast(err.response?.data?.error || "Failed to upgrade configuration", "error");
     }
   });
 
   const handleSave = () => {
-    // Generate Classes based on selected levels and curriculum
-    const curriculum = CURRICULUMS.find(c => c.id === curriculumId);
-    let generatedClasses: any[] = [];
-    let generatedSubjects = new Set<string>();
-
-    if (curriculum) {
-      selectedLevels.forEach(levelKey => {
-        const levelData = curriculum.levels[levelKey as keyof typeof curriculum.levels];
-        if (levelData) {
-          levelData.forEach((cls: any) => {
-            generatedClasses.push({ id: cls.name.toLowerCase().replace(/\s/g, '-'), name: cls.name, level: levelKey });
-            cls.subjects?.forEach((sub: any) => generatedSubjects.add(sub.name));
-          });
-        }
-      });
+    if (!schoolName.trim()) {
+      showToast("School Name is required.", "error");
+      return;
+    }
+    if (selectedLevels.length === 0) {
+      showToast("Please select at least one Academic Level.", "error");
+      return;
     }
 
-    // Build the Enterprise Payload
     const payload = {
       school: {
         name: schoolName,
@@ -91,9 +152,9 @@ export default function EnterpriseSchoolConfigurationPage() {
       },
       academic: {
         levels: selectedLevels,
-        classes: generatedClasses,
-        subjects: Array.from(generatedSubjects).map(name => ({ name, type: "Compulsory" })),
-        defaultSections: data?.academic?.defaultSections || ["A"] // Keep existing or default
+        classes: configuredClasses,
+        subjects: Array.from(new Set(configuredClasses.flatMap(c => c.subjects.map((s: any) => s.name)))),
+        defaultSections: sectionNames
       }
     };
 
@@ -101,7 +162,12 @@ export default function EnterpriseSchoolConfigurationPage() {
   };
 
   if (isLoading) {
-    return <div className="flex h-72 items-center justify-center"><Loader2 className="animate-spin text-blue-600" size={40} /></div>;
+    return (
+      <div className="flex h-96 flex-col items-center justify-center gap-3">
+        <Loader2 className="animate-spin text-blue-600" size={48} />
+        <p className="text-slate-500 font-bold">Hydrating Master Configuration...</p>
+      </div>
+    );
   }
 
   const isConfigured = data?.state === "Published" || data?.state === "Locked";
@@ -109,121 +175,315 @@ export default function EnterpriseSchoolConfigurationPage() {
   return (
     <RequirePermission permissions={[PERMISSIONS.settings.manage]}>
       <div className="max-w-5xl mx-auto space-y-6">
-        <header className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-black text-slate-900 flex items-center gap-2">
-              <School className="text-blue-600" /> School Configuration
-            </h1>
-            <p className="text-sm text-slate-500 mt-1">Single Source of Truth for your institution.</p>
+        
+        {/* Header Block */}
+        <header className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center">
+              <School size={24} />
+            </div>
+            <div>
+              <h1 className="text-2xl font-black text-slate-900">School Configuration</h1>
+              <p className="text-sm text-slate-500 mt-0.5">EduPilot SaaS Single Source of Truth (SSOT)</p>
+            </div>
           </div>
           {isConfigured && !editing && (
             <button 
               onClick={() => setEditing(true)} 
-              className="bg-blue-600 text-white px-4 py-2.5 rounded-xl font-bold flex gap-2 items-center hover:bg-blue-700 transition"
+              className="bg-blue-600 text-white px-5 py-2.5 rounded-xl font-bold flex gap-2 items-center hover:bg-blue-700 transition shadow-sm"
             >
-              <Settings2 size={17} /> Edit Configuration
+              <Settings2 size={17} /> Upgrade Configuration
             </button>
           )}
         </header>
 
         {isConfigured && !editing ? (
-          // VIEW MODE
-          <div className="grid md:grid-cols-3 gap-4">
-            <SummaryCard title="School Profile" values={[data.school?.name, `${data.school?.type} School`, `Curriculum: ${data.school?.curriculumId}`]} />
-            <SummaryCard title="Academic Structure" values={[`Levels: ${data.academic?.levels?.length || 0}`, `Classes: ${data.academic?.classes?.length || 0}`, `Subjects: ${data.academic?.subjects?.length || 0}`]} />
-            <SummaryCard 
-              title="Version Control" 
-              values={[
-                `State: ${data.state}`, 
-                `Current Version: v${data.version?.number}`, 
-                `Updated: ${new Date(data.version?.createdAt).toLocaleDateString()}`
-              ]} 
-              highlight={true}
-            />
-            
-            {/* Version History Note */}
-            <div className="md:col-span-3 bg-blue-50 border border-blue-100 rounded-2xl p-6 flex items-start gap-4">
-               <ShieldAlert className="text-blue-600 mt-1" />
-               <div>
-                 <h2 className="font-bold text-blue-900">Enterprise Configuration Engine Active</h2>
-                 <p className="text-sm text-blue-700 mt-1">
-                   Editing this configuration will safely create Version {data.version?.number + 1}. All dependent modules (Fees, Attendance, Exams) will automatically sync to the new version without data loss.
-                 </p>
-               </div>
+          /* =========================================================================
+             VIEW MODE
+             ========================================================================= */
+          <div className="space-y-6">
+            <div className="grid md:grid-cols-3 gap-5">
+              <SummaryCard title="School Profile" icon={<Building2 size={18} />} values={[data.school?.name, `${data.school?.type} School`, `Curriculum ID: ${data.school?.curriculumId}`]} />
+              <SummaryCard title="Academic Setup" icon={<GraduationCap size={18} />} values={[`Levels Offered: ${data.academic?.levels?.length || 0}`, `Active Classes: ${data.academic?.classes?.length || 0}`, `Default Sections: ${data.academic?.defaultSections?.join(", ") || "A"}`]} />
+              <SummaryCard 
+                title="Version Control" 
+                icon={<Layers size={18} />}
+                values={[
+                  `System Status: ${data.state}`, 
+                  `Configuration Version: v${data.version?.number}`, 
+                  `Updated: ${new Date(data.version?.createdAt).toLocaleDateString()}`
+                ]} 
+                highlight={true}
+              />
+            </div>
+
+            {/* Version Warning Note */}
+            <div className="bg-blue-50 border border-blue-100 rounded-2xl p-6 flex items-start gap-4">
+              <ShieldAlert className="text-blue-600 mt-1 shrink-0" />
+              <div>
+                <h2 className="font-bold text-blue-900">System Lock Active</h2>
+                <p className="text-sm text-blue-700 mt-1">
+                  پوری ایپلیکیشن کا تمام ڈیٹا اس وقت اسی ورژن کے ساتھ ہم آہنگ (Synced) ہے۔ اگر آپ اس میں ترمیم کریں گے، تو سسٹم خود بخود ایک نیا آڈٹ ورژن تیار کر دے گا۔
+                </p>
+              </div>
             </div>
           </div>
         ) : (
-          // EDIT / SETUP MODE
-          <div className="bg-white border shadow-sm rounded-2xl p-6 md:p-8 space-y-7">
-            <section className="grid md:grid-cols-2 gap-5">
-              <Field label="School Name">
-                <input 
-                  id="schoolName"
-                  name="schoolName"
-                  value={schoolName} 
-                  onChange={(e) => setSchoolName(e.target.value)} 
-                  className="w-full p-3 border rounded-lg outline-none focus:border-blue-500" 
-                  placeholder="e.g. City Public School" 
-                />
-              </Field>
-              <Field label="School Type">
-                <select 
-                  id="schoolType"
-                  name="schoolType"
-                  value={schoolType} 
-                  onChange={(e) => setSchoolType(e.target.value)} 
-                  className="w-full p-3 border rounded-lg outline-none focus:border-blue-500"
-                >
-                  <option value="Private">Private</option>
-                  <option value="Government">Government</option>
-                  <option value="Madrissa">Madrissa</option>
-                </select>
-              </Field>
-              <Field label="Curriculum / Board">
-                <select 
-                  id="curriculumId"
-                  name="curriculumId"
-                  value={curriculumId} 
-                  onChange={(e) => setCurriculumId(e.target.value)} 
-                  className="w-full p-3 border rounded-lg outline-none focus:border-blue-500"
-                >
-                  {CURRICULUMS.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                </select>
-              </Field>
-              <Field label="Reason for Edit (Audit Log)">
-                <input 
-                  id="editReason"
-                  name="editReason"
-                  value={editReason} 
-                  onChange={(e) => setEditReason(e.target.value)} 
-                  className="w-full p-3 border rounded-lg outline-none focus:border-blue-500" 
-                  placeholder="e.g. Added Higher Secondary Classes" 
-                  required 
-                />
-              </Field>
-            </section>
+          /* =========================================================================
+             EDIT / SETUP MODE (Tabbed Wizard)
+             ========================================================================= */
+          <div className="bg-white border border-slate-100 shadow-sm rounded-2xl overflow-hidden">
+            
+            {/* Tab Navigation */}
+            <div className="flex border-b border-slate-100 bg-slate-50/50 p-2 gap-1 overflow-x-auto">
+              <TabButton active={activeTab === "profile"} onClick={() => setActiveTab("profile")} label="1. School Profile" icon={<Building2 size={16} />} />
+              <TabButton active={activeTab === "classes"} onClick={() => setActiveTab("classes")} label="2. Classes" icon={<GraduationCap size={16} />} />
+              <TabButton active={activeTab === "subjects"} onClick={() => setActiveTab("subjects")} label="3. Subjects" icon={<BookOpen size={16} />} />
+              <TabButton active={activeTab === "sections"} onClick={() => setActiveTab("sections")} label="4. Sections & Audit" icon={<Layers size={16} />} />
+            </div>
 
-            <section>
-              <h2 className="font-bold text-slate-800 mb-3">Academic Levels Offered</h2>
-              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                {["early_childhood", "primary", "middle", "secondary", "higher_secondary", "madrissa"].map((level) => (
-                  <button
-                    type="button"
-                    key={level}
-                    onClick={() => setSelectedLevels((prev) => prev.includes(level) ? prev.filter(l => l !== level) : [...prev, level])}
-                    className={`p-4 rounded-xl border-2 text-left font-semibold capitalize transition ${
-                      selectedLevels.includes(level) ? "border-blue-600 bg-blue-50 text-blue-700" : "border-slate-200 text-slate-600 hover:border-slate-300"
-                    }`}
-                  >
-                    {level.replace("_", " ")}
-                  </button>
-                ))}
-              </div>
-            </section>
+            <div className="p-6 md:p-8 space-y-8">
+              
+              {/* TAB 1: PROFILE */}
+              {activeTab === "profile" && (
+                <div className="space-y-6">
+                  <div className="grid md:grid-cols-2 gap-6">
+                    <Field label="School Name *">
+                      <input 
+                        type="text" 
+                        value={schoolName} 
+                        onChange={(e) => setSchoolName(e.target.value)} 
+                        className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition" 
+                        placeholder="e.g. Govt High School Sahiwal" 
+                      />
+                    </Field>
+                    <Field label="School Type">
+                      <select 
+                        value={schoolType} 
+                        onChange={(e) => setSchoolType(e.target.value as any)} 
+                        className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition"
+                      >
+                        <option value="Private">Private</option>
+                        <option value="Government">Government</option>
+                        <option value="Madrissa">Madrissa</option>
+                      </select>
+                    </Field>
+                    <Field label="Curriculum / Board">
+                      <select 
+                        value={curriculumId} 
+                        onChange={(e) => setCurriculumId(e.target.value)} 
+                        className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition"
+                      >
+                        {CURRICULUMS.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                      </select>
+                    </Field>
+                  </div>
 
-            <div className="flex justify-end gap-3 pt-4 border-t">
+                  <div className="space-y-3">
+                    <h3 className="font-bold text-slate-800">Academic Levels Offered</h3>
+                    <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                      {["early_childhood", "primary", "middle", "secondary", "higher_secondary", "madrissa"].map((level) => (
+                        <button
+                          type="button"
+                          key={level}
+                          onClick={() => {
+                            setSelectedLevels((prev) => prev.includes(level) ? prev.filter(l => l !== level) : [...prev, level]);
+                          }}
+                          className={`p-4 rounded-xl border-2 text-left font-semibold capitalize transition ${
+                            selectedLevels.includes(level) ? "border-blue-600 bg-blue-50 text-blue-700" : "border-slate-200 text-slate-600 hover:border-slate-300"
+                          }`}
+                        >
+                          {level.replace("_", " ")}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 2: CLASSES */}
+              {activeTab === "classes" && (
+                <div className="space-y-6">
+                  <div className="flex justify-between items-center bg-blue-50 p-4 rounded-xl border border-blue-100">
+                    <p className="text-sm text-blue-800 font-medium">
+                      کلک کریں تا کہ منتخب کردہ Curriculum کی کلاسز اور مضامین خودکار طور پر جنریٹ ہوں۔
+                    </p>
+                    <button 
+                      type="button" 
+                      onClick={runAutoGeneration} 
+                      className="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-blue-700 transition shrink-0"
+                    >
+                      Run DNA Auto-Gen
+                    </button>
+                  </div>
+
+                  <div className="border border-slate-100 rounded-xl overflow-hidden">
+                    <table className="w-full text-sm">
+                      <thead className="bg-slate-50 text-slate-700 font-bold border-b">
+                        <tr>
+                          <th className="p-3 text-left">Class Name</th>
+                          <th className="p-3 text-left">Level</th>
+                          <th className="p-3 text-right">Subjects Configured</th>
+                          <th className="p-3 text-center">Action</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {configuredClasses.length === 0 ? (
+                          <tr><td colSpan={4} className="p-8 text-center text-slate-400">No classes configured yet. Click "Run DNA Auto-Gen".</td></tr>
+                        ) : configuredClasses.map((cls, idx) => (
+                          <tr key={idx}>
+                            <td className="p-3 font-semibold text-slate-800">{cls.name}</td>
+                            <td className="p-3 capitalize text-slate-500">{cls.level.replace("_", " ")}</td>
+                            <td className="p-3 text-right font-bold text-blue-600">{cls.subjects?.length || 0} subjects</td>
+                            <td className="p-3 text-center">
+                              <button 
+                                type="button" 
+                                onClick={() => setConfiguredClasses(prev => prev.filter((_, i) => i !== idx))}
+                                className="text-red-500 hover:text-red-700 p-1"
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 3: SUBJECTS */}
+              {activeTab === "subjects" && (
+                <div className="space-y-6">
+                  <h3 className="font-bold text-slate-800">Assign Classes & Core Subjects</h3>
+                  <div className="space-y-4">
+                    {configuredClasses.map((cls, classIdx) => (
+                      <div key={classIdx} className="bg-slate-50 p-5 rounded-xl border border-slate-100 space-y-3">
+                        <div className="flex justify-between items-center">
+                          <span className="font-black text-slate-800">{cls.name} <span className="text-xs text-slate-400 capitalize">({cls.level})</span></span>
+                          <button 
+                            type="button" 
+                            onClick={() => {
+                              const subName = prompt("Enter Subject Name:");
+                              if (subName) {
+                                const updated = [...configuredClasses];
+                                updated[classIdx].subjects.push({ name: subName, type: "Compulsory" });
+                                setConfiguredClasses(updated);
+                              }
+                            }}
+                            className="text-xs font-bold bg-blue-50 text-blue-600 px-3 py-1.5 rounded-lg border border-blue-100 hover:bg-blue-100 transition flex items-center gap-1"
+                          >
+                            <Plus size={12} /> Add Subject
+                          </button>
+                        </div>
+
+                        {/* Subject Badges */}
+                        <div className="flex flex-wrap gap-2">
+                          {cls.subjects.map((sub: any, subIdx: number) => (
+                            <div key={subIdx} className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-lg border border-slate-200 shadow-sm text-xs">
+                              <span className="font-semibold text-slate-700">{sub.name}</span>
+                              <select 
+                                value={sub.type}
+                                onChange={(e) => {
+                                  const updated = [...configuredClasses];
+                                  updated[classIdx].subjects[subIdx].type = e.target.value;
+                                  setConfiguredClasses(updated);
+                                }}
+                                className="bg-slate-50 border-none font-bold text-blue-600 focus:ring-0 cursor-pointer text-[10px] p-0"
+                              >
+                                <option value="Compulsory">Compulsory</option>
+                                <option value="Optional">Optional</option>
+                                <option value="Practical">Practical</option>
+                              </select>
+                              <button 
+                                type="button" 
+                                onClick={() => {
+                                  const updated = [...configuredClasses];
+                                  updated[classIdx].subjects = updated[classIdx].subjects.filter((_: any, i: number) => i !== subIdx);
+                                  setConfiguredClasses(updated);
+                                }}
+                                className="text-slate-400 hover:text-red-500"
+                              >
+                                &times;
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 4: SECTIONS & AUDIT */}
+              {activeTab === "sections" && (
+                <div className="space-y-6">
+                  {/* Audit Logging input */}
+                  <Field label="Reason for Edit (Audit Log) *">
+                    <input 
+                      type="text" 
+                      value={editReason} 
+                      onChange={(e) => setEditReason(e.target.value)} 
+                      className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition" 
+                      placeholder="e.g. Upgraded FBISE Science Subject Syllabus for Matric Classes" 
+                      required 
+                    />
+                    <p className="text-xs text-slate-400 mt-1">ایک محفوظ اور منظم آڈٹ سسٹم کے لیے تبدیلی کی وجہ لکھنا لازمی ہے۔</p>
+                  </Field>
+
+                  {/* Section Managers */}
+                  <div className="space-y-3">
+                    <h3 className="font-bold text-slate-800">Master Section Names</h3>
+                    <div className="flex gap-2 max-w-md">
+                      <input 
+                        type="text" 
+                        value={newSectionInput}
+                        onChange={(e) => setNewSectionInput(e.target.value.toUpperCase())}
+                        placeholder="e.g. C" 
+                        className="flex-1 px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none"
+                      />
+                      <button 
+                        type="button" 
+                        onClick={() => {
+                          if (newSectionInput.trim() && !sectionNames.includes(newSectionInput)) {
+                            setSectionNames([...sectionNames, newSectionInput.trim()]);
+                            setNewSectionInput("");
+                          }
+                        }}
+                        className="bg-blue-600 text-white px-4 py-2.5 rounded-xl font-bold hover:bg-blue-700 transition"
+                      >
+                        Add Section
+                      </button>
+                    </div>
+
+                    <div className="flex flex-wrap gap-2 pt-2">
+                      {sectionNames.map((sec) => (
+                        <span key={sec} className="bg-slate-50 text-slate-700 px-3 py-1.5 rounded-lg border font-bold text-sm flex items-center gap-2">
+                          Section {sec}
+                          <button 
+                            type="button" 
+                            onClick={() => setSectionNames(sectionNames.filter(s => s !== sec))}
+                            className="text-slate-400 hover:text-red-500 font-bold"
+                          >
+                            &times;
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+            </div>
+
+            {/* Save Action Panel */}
+            <div className="px-8 py-5 bg-slate-50 border-t border-slate-100 flex justify-end gap-3">
               {isConfigured && (
-                <button type="button" onClick={() => setEditing(false)} className="px-4 py-3 font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition">
+                <button 
+                  type="button" 
+                  onClick={() => setEditing(false)} 
+                  className="px-5 py-2.5 font-bold text-slate-600 hover:bg-slate-200 rounded-xl transition"
+                >
                   Cancel
                 </button>
               )}
@@ -231,12 +491,13 @@ export default function EnterpriseSchoolConfigurationPage() {
                 type="button" 
                 onClick={handleSave} 
                 disabled={saveMutation.isPending || !schoolName.trim() || selectedLevels.length === 0 || (isConfigured && !editReason.trim())} 
-                className="bg-green-600 text-white px-6 py-3 rounded-xl font-bold disabled:opacity-50 flex items-center gap-2 hover:bg-green-700 transition shadow-sm"
+                className="bg-green-600 hover:bg-green-700 text-white px-6 py-2.5 rounded-xl font-bold flex items-center gap-2 transition disabled:opacity-50"
               >
                 {saveMutation.isPending ? <Loader2 className="animate-spin" size={18} /> : <CheckCircle2 size={18} />} 
                 {isConfigured ? "Save & Upgrade Version" : "Complete Setup"}
               </button>
             </div>
+
           </div>
         )}
       </div>
@@ -244,16 +505,35 @@ export default function EnterpriseSchoolConfigurationPage() {
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) { 
-  return <label className="block text-sm font-bold text-slate-700 space-y-1">{label}{children}</label>; 
+// Helper Components
+function TabButton({ active, onClick, label, icon }: { active: boolean; onClick: () => void; label: string; icon: React.ReactNode }) {
+  return (
+    <button 
+      type="button" 
+      onClick={onClick}
+      className={`flex items-center gap-2 px-5 py-3 rounded-xl font-bold text-sm whitespace-nowrap transition-colors ${
+        active 
+          ? "bg-white text-blue-600 shadow-sm border border-slate-100" 
+          : "text-slate-500 hover:text-slate-700 hover:bg-slate-100/50"
+      }`}
+    >
+      {icon} {label}
+    </button>
+  );
 }
 
-function SummaryCard({ title, values, highlight = false }: { title: string; values: string[], highlight?: boolean }) { 
+function Field({ label, children }: { label: string; children: React.ReactNode }) { 
+  return <label className="block text-sm font-bold text-slate-700 space-y-2">{label}{children}</label>; 
+}
+
+function SummaryCard({ title, icon, values, highlight = false }: { title: string; icon: React.ReactNode, values: string[], highlight?: boolean }) { 
   return (
-    <section className={`border rounded-2xl p-5 ${highlight ? 'bg-slate-900 text-white' : 'bg-white'}`}>
-      <h2 className={`font-bold ${highlight ? 'text-blue-400' : 'text-slate-800'}`}>{title}</h2>
-      <div className={`mt-3 space-y-2 text-sm ${highlight ? 'text-slate-300' : 'text-slate-600'}`}>
-        {values.map((value, i) => <p key={i} className="font-medium">{value}</p>)}
+    <section className={`border rounded-2xl p-6 ${highlight ? 'bg-slate-900 text-white' : 'bg-white border-slate-100 shadow-sm'}`}>
+      <h2 className={`font-bold flex items-center gap-2 ${highlight ? 'text-blue-400' : 'text-slate-800'}`}>
+        {icon} {title}
+      </h2>
+      <div className={`mt-4 space-y-2 text-sm ${highlight ? 'text-slate-300' : 'text-slate-600'}`}>
+        {values.map((value, i) => <p key={i} className="font-semibold">{value}</p>)}
       </div>
     </section>
   ); 
