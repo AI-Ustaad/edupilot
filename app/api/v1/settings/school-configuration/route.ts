@@ -4,8 +4,17 @@ import { NextResponse } from "next/server";
 import { withAuth, withTenant, withErrorHandler } from "@/route-helpers";
 import { schoolConfigurationService } from "@/services/school-configuration.service"; 
 import { createSuccessResponse } from "@/lib/api/response";
-import { SchoolConfigurationSchema } from "@/types/school-configuration";
 import type { TenantContext } from "@/types/api";
+import { z } from "zod";
+
+// 🟢 FIX: Inline Zod Schema to prevent export/import errors
+const SchoolConfigurationSchema = z.object({
+  schoolName: z.string().trim().min(2, "School name is required"),
+  schoolType: z.enum(["Private", "Government", "Madrissa"]),
+  curriculumId: z.string().trim().min(1, "Curriculum is required"),
+  levels: z.array(z.string().trim().min(1)).min(1, "Select at least one level"),
+  sectionNames: z.array(z.string().trim().min(1)).optional(),
+});
 
 // 🟢 GET: Fetch Active Configuration (Reads Single Source of Truth)
 export const GET = withErrorHandler(
@@ -28,7 +37,7 @@ export const POST = withErrorHandler(
       
       const body = await req.json();
       
-      // 🚀 Zod Validation: Ensuring strict DTO compliance before hitting the service
+      // 🚀 Zod Validation
       const input = SchoolConfigurationSchema.parse(body);
 
       const configuration = await schoolConfigurationService.saveConfiguration(
@@ -44,5 +53,4 @@ export const POST = withErrorHandler(
   )
 );
 
-// 🟢 Map PUT to POST as requested
 export const PUT = POST;
