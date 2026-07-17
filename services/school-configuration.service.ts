@@ -40,8 +40,10 @@ export class SchoolConfigurationService {
     const classes = selectedLevels.flatMap((level) => (curriculum.levels[level as keyof typeof curriculum.levels] || []).map((item) => ({
       name: item.name,
       level,
-      subjects: item.subjects,
+      // 🟢 FIX: Strict Type Assertion added here
+      subjects: item.subjects as { name: string; type: "Compulsory" | "Optional" | "Practical" }[],
     })));
+    
     if (!classes.length) throw new Error("The selected board does not define classes for the selected levels");
 
     const sectionNames = [...new Set((input.sectionNames?.length ? input.sectionNames : previous.academicStructure.sectionNames.length ? previous.academicStructure.sectionNames : defaultSectionNames).map((name) => name.trim()).filter(Boolean))];
@@ -71,6 +73,7 @@ export class SchoolConfigurationService {
       changedBy: userId,
       summary: { schoolName: input.schoolName, curriculumId: curriculum.id, levels: selectedLevels },
     });
+    
     await this.settingsRepository.updateGeneral(tenantId, {
       schoolName: input.schoolName,
       schoolType: input.schoolType,
@@ -86,6 +89,7 @@ export class SchoolConfigurationService {
         electives: item.subjects.filter((subject) => subject.type === "Optional").map((subject) => subject.name),
       },
     }))), userId);
+    
     await this.auditService.log({ action: "school.configuration.saved", userId, tenantId, entityType: "schoolConfiguration", metadata: { version: configuration.version } });
     return configuration;
   }
