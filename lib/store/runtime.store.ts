@@ -1,9 +1,14 @@
 import { create } from "zustand";
 import { devtools } from "zustand/middleware";
 import { EnterpriseRuntimeStore } from "./types";
+
+// 🟢 Core Slices
 import { createKernelSlice } from "./slices/kernel.slice";
-// 🟢 NEW: Import the Student Slice creator
 import { createStudentSlice } from "./slices/student.slice";
+
+// 🟢 Relational Domain Slices
+import { createAttendanceSlice } from "./slices/attendance.slice";
+import { createFeesSlice } from "./slices/fees.slice";
 
 const createSchoolSlice = (set: any, get: any, api: any) => ({
   name: "", 
@@ -28,11 +33,16 @@ const createFeatureSlice = (set: any, get: any, api: any) => ({
 export const useRuntimeStore = create<EnterpriseRuntimeStore>()(
   devtools(
     (...a) => ({
+      // 1. Kernel & Configurations
       ...createKernelSlice(...a),
       ...createSchoolSlice(...a),
       ...createAcademicSlice(...a),
       ...createFeatureSlice(...a),
-      ...createStudentSlice(...a), // 🟢 FIXED: Registered Student Slice here
+      
+      // 2. Enterprise Domains
+      ...createStudentSlice(...a),
+      ...createAttendanceSlice(...a),
+      ...createFeesSlice(...a),
     }),
     { name: "EduPilot-Runtime-Kernel" }
   )
