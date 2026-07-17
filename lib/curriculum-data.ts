@@ -72,3 +72,8 @@ export const CURRICULUMS = [
     }
   }
 ];
+// For backward compatibility with old API routes
+export const curriculumMap = CURRICULUMS.reduce((map: any, curr: any) => {
+  map[curr.id] = curr;
+  return map;
+}, {});
