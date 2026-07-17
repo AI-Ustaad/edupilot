@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation"; 
 import { 
-  CheckCircle2, Loader2, School, Settings2, ShieldAlert, 
-  Building2, GraduationCap, BookOpen, Layers, Plus, Trash2, Globe 
+  CheckCircle2, Loader2, School, Settings2, 
+  Building2, GraduationCap, Layers 
 } from "lucide-react";
 import RequirePermission from "@/components/RequirePermission";
 import { PERMISSIONS } from "@/lib/auth/permissions";
@@ -12,77 +13,29 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/components/ToastProvider";
 
 const CURRICULUMS = [
-  {
-    id: "punjab_snc",
-    name: "Punjab Single National Curriculum (SNC)",
-    levels: {
-      early_childhood: [
-        { name: "Playgroup", subjects: [{ name: "ECCE", type: "Compulsory" }] },
-        { name: "Nursery", subjects: [{ name: "English Phonics", type: "Compulsory" }, { name: "Urdu Huroof", type: "Compulsory" }, { name: "Basic Math", type: "Compulsory" }] },
-        { name: "Prep (KG)", subjects: [{ name: "English", type: "Compulsory" }, { name: "Urdu", type: "Compulsory" }, { name: "Mathematics", type: "Compulsory" }, { name: "Nazra Quran", type: "Compulsory" }] }
-      ],
-      primary: [
-        { name: "Class 1", subjects: [{ name: "English", type: "Compulsory" }, { name: "Urdu", type: "Compulsory" }, { name: "Mathematics", type: "Compulsory" }, { name: "General Knowledge", type: "Compulsory" }, { name: "Islamiyat", type: "Compulsory" }] },
-        { name: "Class 2", subjects: [{ name: "English", type: "Compulsory" }, { name: "Urdu", type: "Compulsory" }, { name: "Mathematics", type: "Compulsory" }, { name: "General Knowledge", type: "Compulsory" }, { name: "Islamiyat", type: "Compulsory" }] },
-        { name: "Class 3", subjects: [{ name: "English", type: "Compulsory" }, { name: "Urdu", type: "Compulsory" }, { name: "Mathematics", type: "Compulsory" }, { name: "General Knowledge", type: "Compulsory" }, { name: "Islamiyat", type: "Compulsory" }] },
-        { name: "Class 4", subjects: [{ name: "English", type: "Compulsory" }, { name: "Urdu", type: "Compulsory" }, { name: "Mathematics", type: "Compulsory" }, { name: "General Science", type: "Compulsory" }, { name: "Social Studies", type: "Compulsory" }, { name: "Islamiyat", type: "Compulsory" }] },
-        { name: "Class 5", subjects: [{ name: "English", type: "Compulsory" }, { name: "Urdu", type: "Compulsory" }, { name: "Mathematics", type: "Compulsory" }, { name: "General Science", type: "Compulsory" }, { name: "Social Studies", type: "Compulsory" }, { name: "Islamiyat", type: "Compulsory" }] }
-      ],
-      middle: [
-        { name: "Class 6", subjects: [{ name: "English", type: "Compulsory" }, { name: "Urdu", type: "Compulsory" }, { name: "Mathematics", type: "Compulsory" }, { name: "General Science", type: "Compulsory" }, { name: "History & Geo", type: "Compulsory" }, { name: "Computer", type: "Compulsory" }, { name: "Islamiyat", type: "Compulsory" }] },
-        { name: "Class 7", subjects: [{ name: "English", type: "Compulsory" }, { name: "Urdu", type: "Compulsory" }, { name: "Mathematics", type: "Compulsory" }, { name: "General Science", type: "Compulsory" }, { name: "History & Geo", type: "Compulsory" }, { name: "Computer", type: "Compulsory" }, { name: "Islamiyat", type: "Compulsory" }] },
-        { name: "Class 8", subjects: [{ name: "English", type: "Compulsory" }, { name: "Urdu", type: "Compulsory" }, { name: "Mathematics", type: "Compulsory" }, { name: "General Science", type: "Compulsory" }, { name: "History & Geo", type: "Compulsory" }, { name: "Computer", type: "Compulsory" }, { name: "Islamiyat", type: "Compulsory" }] }
-      ],
-      secondary: [
-        { name: "Class 9", subjects: [{ name: "English", type: "Compulsory" }, { name: "Urdu", type: "Compulsory" }, { name: "Mathematics", type: "Compulsory" }, { name: "Physics", type: "Compulsory" }, { name: "Chemistry", type: "Compulsory" }, { name: "Biology / Computer", type: "Optional" }, { name: "Islamiyat", type: "Compulsory" }] },
-        { name: "Class 10", subjects: [{ name: "English", type: "Compulsory" }, { name: "Urdu", type: "Compulsory" }, { name: "Mathematics", type: "Compulsory" }, { name: "Physics", type: "Compulsory" }, { name: "Chemistry", type: "Compulsory" }, { name: "Biology / Computer", type: "Optional" }, { name: "Pakistan Studies", type: "Compulsory" }] }
-      ],
-      higher_secondary: [
-        { name: "Class 11", subjects: [{ name: "English", type: "Compulsory" }, { name: "Urdu", type: "Compulsory" }, { name: "Islamiyat", type: "Compulsory" }, { name: "Physics", type: "Optional" }, { name: "Chemistry / Computer", type: "Optional" }, { name: "Mathematics / Biology", type: "Optional" }] },
-        { name: "Class 12", subjects: [{ name: "English", type: "Compulsory" }, { name: "Urdu", type: "Compulsory" }, { name: "Pakistan Studies", type: "Compulsory" }, { name: "Physics", type: "Optional" }, { name: "Chemistry / Computer", type: "Optional" }, { name: "Mathematics / Biology", type: "Optional" }] }
-      ]
-    }
-  },
-  {
-    id: "oxford",
-    name: "Oxford / Private Systems",
-    levels: {
-      early_childhood: [
-        { name: "Nursery", subjects: [{ name: "English Phonics", type: "Compulsory" }, { name: "Numbers", type: "Compulsory" }, { name: "Urdu", type: "Compulsory" }, { name: "Art & Craft", type: "Compulsory" }] },
-        { name: "Prep", subjects: [{ name: "Oxford English", type: "Compulsory" }, { name: "New Countdown", type: "Compulsory" }, { name: "Urdu", type: "Compulsory" }, { name: "General Knowledge", type: "Compulsory" }] }
-      ],
-      primary: [
-        { name: "Class 1", subjects: [{ name: "Oxford English", type: "Compulsory" }, { name: "New Countdown", type: "Compulsory" }, { name: "Urdu", type: "Compulsory" }, { name: "Amazing Science", type: "Compulsory" }] },
-        { name: "Class 5", subjects: [{ name: "Oxford English", type: "Compulsory" }, { name: "New Countdown", type: "Compulsory" }, { name: "Urdu", type: "Compulsory" }, { name: "Amazing Science", type: "Compulsory" }] }
-      ],
-      middle: [
-        { name: "Class 8", subjects: [{ name: "Oxford English", type: "Compulsory" }, { name: "New Countdown", type: "Compulsory" }, { name: "Urdu", type: "Compulsory" }, { name: "Amazing Science", type: "Compulsory" }, { name: "Computer Science", type: "Compulsory" }] }
-      ],
-      secondary: [
-        { name: "Class 9", subjects: [{ name: "English", type: "Compulsory" }, { name: "Mathematics", type: "Compulsory" }, { name: "Physics", type: "Compulsory" }, { name: "Chemistry", type: "Compulsory" }] },
-        { name: "Class 10", subjects: [{ name: "English", type: "Compulsory" }, { name: "Mathematics", type: "Compulsory" }, { name: "Physics", type: "Compulsory" }, { name: "Chemistry", type: "Compulsory" }] }
-      ]
-    }
-  }
+  { id: "punjab_snc", name: "Punjab Single National Curriculum (SNC)" },
+  { id: "oxford", name: "Oxford / Private Systems" },
+  { id: "federal", name: "Federal Government (FBISE)" },
+  { id: "wifaq", name: "Wifaq-ul-Madaris Al-Arabia" }
 ];
 
-type TabType = "profile" | "classes" | "subjects" | "sections";
+type TabType = "profile" | "classes" | "sections";
 
 export default function EnterpriseSchoolConfigurationPage() {
   const queryClient = useQueryClient();
+  const router = useRouter(); 
   const { showToast } = useToast();
   
   const [editing, setEditing] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>("profile");
   
+  // DTO States (Only UI Inputs)
   const [schoolName, setSchoolName] = useState("");
   const [schoolType, setSchoolType] = useState<"Private" | "Government" | "Madrissa">("Private");
   const [curriculumId, setCurriculumId] = useState("punjab_snc");
   const [selectedLevels, setSelectedLevels] = useState<string[]>([]);
-  const [editReason, setEditReason] = useState("");
   
-  const [configuredClasses, setConfiguredClasses] = useState<any[]>([]);
-  const [sectionNames, setSectionNames] = useState<string[]>(["A", "B"]);
+  const [sectionNames, setSectionNames] = useState<string[]>(["A"]);
   const [newSectionInput, setNewSectionInput] = useState("");
 
   const { data, isLoading } = useQuery({
@@ -93,69 +46,36 @@ export default function EnterpriseSchoolConfigurationPage() {
     }
   });
 
-  // 🟢 The source of truth for the UI view mode
-  const isConfigured = !!data?.school?.name;
+  // 🟢 Source of truth uses status: "configured"
+  const isConfigured = data?.status === "configured";
 
   useEffect(() => {
     if (data && editing) {
       setSchoolName(data.school?.name || "");
       setSchoolType(data.school?.type || "Private");
       setCurriculumId(data.school?.curriculumId || "punjab_snc");
-      setSelectedLevels(data.academic?.levels || []);
       
-      if (data.academic?.classes) setConfiguredClasses(data.academic.classes);
-      if (data.academic?.defaultSections) setSectionNames(data.academic.defaultSections);
-      setEditReason("");
+      // 🟢 Using academicStructure as instructed
+      setSelectedLevels(data.academicStructure?.levels || []);
+      setSectionNames(data.academicStructure?.sectionNames || ["A"]);
     }
   }, [data, editing]);
 
-  useEffect(() => {
-    if (!editing && isConfigured) return; 
-
-    const selectedCurriculum = CURRICULUMS.find(c => c.id === curriculumId);
-    if (!selectedCurriculum) return;
-
-    let autoGenerated: any[] = [];
-    selectedLevels.forEach(levelKey => {
-      const levelClasses = selectedCurriculum.levels[levelKey as keyof typeof selectedCurriculum.levels] as any[];
-      if (levelClasses) {
-        levelClasses.forEach((cls) => {
-          autoGenerated.push({
-            name: cls.name,
-            level: levelKey,
-            subjects: JSON.parse(JSON.stringify(cls.subjects || [])) 
-          });
-        });
-      }
-    });
-
-    setConfiguredClasses(autoGenerated);
-  }, [selectedLevels, curriculumId, editing, isConfigured]);
-
   const saveMutation = useMutation({
     mutationFn: async (payloadData: any) => {
-      return await apiClient.post("/settings/school-configuration", {
-        action: "save_and_publish",
-        reason: editReason || "Initial SSOT Configuration Setup",
-        payload: payloadData
-      });
+      // 🟢 Directly hitting the unified endpoint with PUT
+      return await apiClient.put("/settings/school-configuration", payloadData);
     },
-    onSuccess: async () => {
+    onSuccess: () => {
       showToast("System Configured! Enterprise SAAS Modules are now unlocked.", "success");
       
-      // 1. Force React Query to wipe old cache and fetch fresh data from backend
-      await queryClient.invalidateQueries({ queryKey: ["schoolConfiguration"] });
+      // 🟢 Safe React Query Cache Invalidation (No window.location.reload)
+      queryClient.invalidateQueries({ queryKey: ["schoolConfiguration"] });
+      
+      // 🟢 Background Server Refresh
+      router.refresh(); 
 
-      if (!isConfigured) {
-        // 2. Initial Setup Reboot: Give user 1.5 seconds to see the success toast, 
-        // then HARD RELOAD the window. This completely destroys the old red screen RAM memory.
-        setTimeout(() => {
-          window.location.reload();
-        }, 1500);
-      } else {
-        // 3. Just an edit/upgrade: Simply close the editing form to show dashboard
-        setEditing(false);
-      }
+      setEditing(false);
     },
     onError: (err: any) => {
       showToast(err.response?.data?.error || "Failed to synchronize configuration", "error");
@@ -166,21 +86,13 @@ export default function EnterpriseSchoolConfigurationPage() {
     if (!schoolName.trim()) return showToast("School Name is required.", "error");
     if (selectedLevels.length === 0) return showToast("Please select at least one Academic Level.", "error");
 
+    // 🟢 Pure UI DTO: No status, state, action, or academicStructure generation here.
     const payload = {
-      status: "configured", 
-      state: "Published",
-      school: {
-        name: schoolName,
-        type: schoolType,
-        curriculumId: curriculumId,
-        country: "PK"
-      },
-      academic: {
-        levels: selectedLevels,
-        classes: configuredClasses,
-        subjects: Array.from(new Set(configuredClasses.flatMap(c => c.subjects.map((s: any) => s.name)))),
-        defaultSections: sectionNames
-      }
+      schoolName,
+      schoolType,
+      curriculumId,
+      levels: selectedLevels,
+      sectionNames
     };
 
     saveMutation.mutate(payload);
@@ -222,15 +134,15 @@ export default function EnterpriseSchoolConfigurationPage() {
         {isConfigured && !editing ? (
           <div className="space-y-6 animate-in fade-in duration-500">
             <div className="grid md:grid-cols-3 gap-5">
-              <SummaryCard title="School Profile" icon={<Building2 size={18} />} values={[data.school?.name || schoolName, `${data.school?.type || schoolType} School`, `Syllabus System: ${data.school?.curriculumId || curriculumId}`]} />
-              <SummaryCard title="Academic Setup" icon={<GraduationCap size={18} />} values={[`Levels Offered: ${data.academic?.levels?.length || selectedLevels.length}`, `Active Classes: ${data.academic?.classes?.length || configuredClasses.length}`, `Default Sections: ${data.academic?.defaultSections?.join(", ") || "A, B"}`]} />
+              <SummaryCard title="School Profile" icon={<Building2 size={18} />} values={[data.school?.name, `${data.school?.type} School`, `Syllabus System: ${data.school?.curriculumId}`]} />
+              <SummaryCard title="Academic Setup" icon={<GraduationCap size={18} />} values={[`Levels Offered: ${data.academicStructure?.levels?.length || 0}`, `Active Classes: ${data.academicStructure?.classes?.length || 0}`, `Sections Configured: ${data.academicStructure?.sectionNames?.length || 0}`]} />
               <SummaryCard 
                 title="Global Sync Status" 
                 icon={<Layers size={18} />}
                 values={[
-                  `App Status: Fully Synced`, 
-                  `Configuration Version: v${data.version?.number || 1}`, 
-                  `Updated: ${new Date(data.version?.createdAt || new Date()).toLocaleDateString()}`
+                  `Status: ${data.status}`, 
+                  `Configuration Version: v${data.version || 1}`, 
+                  `Updated: ${data.updatedAt ? new Date(data.updatedAt).toLocaleDateString() : 'N/A'}`
                 ]} 
                 highlight={true}
               />
@@ -241,7 +153,7 @@ export default function EnterpriseSchoolConfigurationPage() {
               <div>
                 <h2 className="font-bold text-green-900">SaaS Ecosystem is Fully Interlinked!</h2>
                 <p className="text-sm text-green-700 mt-1">
-                  آپ کا اسکول کامیابی کے ساتھ رجسٹر ہو چکا ہے اور آپ اسی ڈیش بورڈ پر موجود ہیں۔ آپ کا منتخب کردہ سلیبس اب Admissions، Attendance اور Exams میں استعمال کے لیے تیار ہے۔ اب آپ بائیں جانب موجود مینیو سے &apos;Students&apos; یا کسی بھی دوسرے فیچر پر جا سکتے ہیں، تمام فیچرز ان لاک ہو چکے ہیں۔
+                  آپ کا اسکول کامیابی کے ساتھ رجسٹر ہو چکا ہے۔ آپ کا منتخب کردہ سلیبس اب Admissions، Attendance اور Exams میں استعمال کے لیے تیار ہے۔ تمام فیچرز ان لاک ہو چکے ہیں۔
                 </p>
               </div>
             </div>
@@ -251,8 +163,7 @@ export default function EnterpriseSchoolConfigurationPage() {
             <div className="flex border-b border-slate-100 bg-slate-50/50 p-2 gap-1 overflow-x-auto">
               <TabButton active={activeTab === "profile"} onClick={() => setActiveTab("profile")} label="1. SAAS Base Setup" icon={<Building2 size={16} />} />
               <TabButton active={activeTab === "classes"} onClick={() => setActiveTab("classes")} label="2. Classes & Levels" icon={<GraduationCap size={16} />} />
-              <TabButton active={activeTab === "subjects"} onClick={() => setActiveTab("subjects")} label="3. Auto-Generated Subjects" icon={<BookOpen size={16} />} />
-              <TabButton active={activeTab === "sections"} onClick={() => setActiveTab("sections")} label="4. Global Sync" icon={<Layers size={16} />} />
+              <TabButton active={activeTab === "sections"} onClick={() => setActiveTab("sections")} label="3. Sections Config" icon={<Layers size={16} />} />
             </div>
 
             <div className="p-6 md:p-8 space-y-8">
@@ -285,11 +196,11 @@ export default function EnterpriseSchoolConfigurationPage() {
                 <div className="space-y-6">
                   <div className="bg-blue-50 p-4 rounded-xl border border-blue-100 mb-4">
                     <p className="text-sm text-blue-800 font-bold">
-                      لیول (Level) منتخب کریں، کلاسز اور مضامین خودکار طور پر 1 سے 12 تک جنریٹ ہو جائیں گے!
+                      لیول (Level) منتخب کریں۔ سسٹم خودکار طور پر بیک اینڈ سروس کے ذریعے کلاسز اور مضامین جنریٹ کر لے گا۔
                     </p>
                   </div>
                   <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                    {["early_childhood", "primary", "middle", "secondary", "higher_secondary"].map((level) => (
+                    {["early_childhood", "primary", "middle", "secondary", "higher_secondary", "madrissa"].map((level) => (
                       <button
                         type="button"
                         key={level}
@@ -302,90 +213,12 @@ export default function EnterpriseSchoolConfigurationPage() {
                       </button>
                     ))}
                   </div>
-
-                  {configuredClasses.length > 0 && (
-                    <div className="border border-slate-100 rounded-xl overflow-hidden mt-6">
-                      <table className="w-full text-sm">
-                        <thead className="bg-slate-50 text-slate-700 font-bold border-b">
-                          <tr><th className="p-3 text-left">Auto-Generated Class</th><th className="p-3 text-left">Level</th><th className="p-3 text-right">Subjects Synced</th></tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100">
-                          {configuredClasses.map((cls, idx) => (
-                            <tr key={idx}>
-                              <td className="p-3 font-semibold text-slate-800">{cls.name}</td>
-                              <td className="p-3 capitalize text-slate-500">{cls.level.replace("_", " ")}</td>
-                              <td className="p-3 text-right font-bold text-green-600">{cls.subjects?.length || 0} Auto-Mapped</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
                 </div>
               )}
 
               {/* TAB 3 */}
-              {activeTab === "subjects" && (
-                <div className="space-y-6">
-                  <h3 className="font-bold text-slate-800">Review Auto-Generated Syllabus</h3>
-                  <div className="space-y-4">
-                    {configuredClasses.length === 0 && <p className="text-slate-500">Please select an Academic Level from Tab 2 first.</p>}
-                    {configuredClasses.map((cls, classIdx) => (
-                      <div key={classIdx} className="bg-slate-50 p-5 rounded-xl border border-slate-100 space-y-3">
-                        <div className="flex justify-between items-center">
-                          <span className="font-black text-slate-800">{cls.name} <span className="text-xs text-slate-400 capitalize">({cls.level})</span></span>
-                          <button 
-                            type="button" 
-                            onClick={() => {
-                              const subName = prompt("Add Custom Subject to Syllabus:");
-                              if (subName) {
-                                const updated = [...configuredClasses];
-                                updated[classIdx].subjects.push({ name: subName, type: "Compulsory" });
-                                setConfiguredClasses(updated);
-                              }
-                            }}
-                            className="text-xs font-bold bg-blue-50 text-blue-600 px-3 py-1.5 rounded-lg border border-blue-100 hover:bg-blue-100 transition flex items-center gap-1"
-                          >
-                            <Plus size={12} /> Custom Subject
-                          </button>
-                        </div>
-                        <div className="flex flex-wrap gap-2">
-                          {cls.subjects.map((sub: any, subIdx: number) => (
-                            <div key={subIdx} className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-lg border border-slate-200 shadow-sm text-xs">
-                              <span className="font-semibold text-slate-700">{sub.name}</span>
-                              <select 
-                                value={sub.type}
-                                onChange={(e) => {
-                                  const updated = [...configuredClasses];
-                                  updated[classIdx].subjects[subIdx].type = e.target.value;
-                                  setConfiguredClasses(updated);
-                                }}
-                                className="bg-slate-50 border-none font-bold text-blue-600 focus:ring-0 cursor-pointer text-[10px] p-0"
-                              >
-                                <option value="Compulsory">Compulsory</option>
-                                <option value="Optional">Optional</option>
-                                <option value="Practical">Practical</option>
-                              </select>
-                              <button type="button" onClick={() => {
-                                  const updated = [...configuredClasses];
-                                  updated[classIdx].subjects = updated[classIdx].subjects.filter((_: any, i: number) => i !== subIdx);
-                                  setConfiguredClasses(updated);
-                                }} className="text-slate-400 hover:text-red-500">&times;</button>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* TAB 4 */}
               {activeTab === "sections" && (
                 <div className="space-y-6">
-                  <Field label="Synchronization Log Note (Required) *">
-                    <input type="text" value={editReason} onChange={(e) => setEditReason(e.target.value)} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition" placeholder="e.g. Initial School Setup with Syllabus" required />
-                  </Field>
                   <div className="space-y-3">
                     <h3 className="font-bold text-slate-800">Global Section Identifiers</h3>
                     <div className="flex gap-2 max-w-md">
@@ -412,9 +245,9 @@ export default function EnterpriseSchoolConfigurationPage() {
 
             <div className="px-8 py-5 bg-slate-50 border-t border-slate-100 flex justify-end gap-3">
               {isConfigured && <button type="button" onClick={() => setEditing(false)} className="px-5 py-2.5 font-bold text-slate-600 hover:bg-slate-200 rounded-xl transition">Cancel</button>}
-              <button type="button" onClick={handleSave} disabled={saveMutation.isPending || !schoolName.trim() || selectedLevels.length === 0 || (isConfigured && !editReason.trim())} className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-xl font-bold flex items-center gap-2 transition disabled:opacity-50">
+              <button type="button" onClick={handleSave} disabled={saveMutation.isPending || !schoolName.trim() || selectedLevels.length === 0} className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-xl font-bold flex items-center gap-2 transition disabled:opacity-50">
                 {saveMutation.isPending ? <Loader2 className="animate-spin" size={18} /> : <CheckCircle2 size={18} />} 
-                {saveMutation.isPending ? "Syncing SAAS Globally..." : isConfigured ? "Publish & Sync Data" : "Initialize SSOT Engine"}
+                {saveMutation.isPending ? "Syncing SAAS Globally..." : isConfigured ? "Save Configuration" : "Initialize SSOT Engine"}
               </button>
             </div>
           </div>
