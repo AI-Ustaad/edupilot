@@ -16,7 +16,7 @@ const levels = [
 ] as const;
 
 export default function SchoolConfigurationPage() {
-  // 🟢 FIX: Fetching config and history directly from Context
+  // 🟢 FIX: Fetching config and history directly from Typed Context
   const { config: configuration, history, isLoading } = useConfiguration();
   const save = useSaveSchoolConfiguration();
   
@@ -93,7 +93,7 @@ export default function SchoolConfigurationPage() {
             <div className="md:col-span-3 bg-white border rounded-2xl p-6">
               <h2 className="font-bold flex gap-2 items-center"><History size={18} /> Configuration History</h2>
               <div className="mt-3 text-sm text-slate-600">
-                {history.length ? history.map((item: any, index: number) => (
+                {history.length ? history.map((item, index) => (
                   <p key={item?.id || index}>
                     Version {item?.version?.number || "Unknown"}: {item?.version?.reason || "Updated"}.
                   </p>
@@ -150,4 +150,21 @@ export default function SchoolConfigurationPage() {
           </div>
         )}
       </div>
-    </Require
+    </RequirePermission>
+  );
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) { 
+  return <label className="block text-sm font-bold text-slate-700">{label}{children}</label>; 
+}
+
+function Summary({ title, values }: { title: string; values: string[] }) { 
+  return (
+    <section className="bg-white border rounded-2xl p-5">
+      <h2 className="font-bold text-slate-800">{title}</h2>
+      <div className="mt-3 space-y-1 text-sm text-slate-600">
+        {values.map((value) => <p key={value}>{value}</p>)}
+      </div>
+    </section>
+  ); 
+}
