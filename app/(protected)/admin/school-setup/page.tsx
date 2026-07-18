@@ -1,4 +1,3 @@
-// app/(protected)/admin/school-setup/page.tsx
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
@@ -6,7 +5,9 @@ import { CheckCircle2, History, Loader2, School, Settings2 } from "lucide-react"
 import RequirePermission from "@/components/RequirePermission";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 import { CURRICULUMS } from "@/lib/curriculum-data";
-import { useSaveSchoolConfiguration, useSchoolConfiguration } from "@/hooks/useSchoolConfiguration";
+import { useSaveSchoolConfiguration } from "@/hooks/useSchoolConfiguration";
+// 🟢 FIX: Using Context instead of dual hook
+import { useConfiguration } from "@/app/(protected)/providers/ConfigurationProvider";
 import type { SchoolType } from "@/types/school-configuration";
 
 const levels = [
@@ -15,10 +16,9 @@ const levels = [
 ] as const;
 
 export default function SchoolConfigurationPage() {
-  const { data, isLoading } = useSchoolConfiguration();
+  // 🟢 FIX: Fetching config and history directly from Context
+  const { config: configuration, history, isLoading } = useConfiguration();
   const save = useSaveSchoolConfiguration();
-  const configuration = data?.configuration;
-  const history = data?.history || [];
   
   const [editing, setEditing] = useState(false);
   const [schoolName, setSchoolName] = useState("");
@@ -32,7 +32,6 @@ export default function SchoolConfigurationPage() {
     setSchoolName(configuration.school?.name || "");
     setSchoolType(configuration.school?.type || "Private");
     setCurriculumId(configuration.school?.curriculumId || "federal");
-    // 🟢 FIX: Using academic instead of academicStructure
     setSelectedLevels(configuration.academic?.levels || []);
     setSections((configuration.academic?.sectionNames || ["A"]).join(", "));
   }, [configuration]);
@@ -44,7 +43,6 @@ export default function SchoolConfigurationPage() {
   }), [schoolType]);
   
   const supportedLevels = useMemo(() => new Set(Object.keys(CURRICULUMS.find((item) => item.id === curriculumId)?.levels || {})), [curriculumId]);
-  // 🟢 FIX: Using state instead of status
   const configured = configuration?.state === "Published";
 
   const setType = (nextType: SchoolType) => {
@@ -77,14 +75,28 @@ export default function SchoolConfigurationPage() {
 
         {configured && !editing ? (
           <div className="grid md:grid-cols-3 gap-4">
-            <Summary title="School Profile" values={[configuration?.school?.name || "", configuration?.school?.type || "", configuration?.school?.boardName || ""]} />
+            <Summary title="School Profile" values={[configuration?.school?.name || "N/A", configuration?.school?.type || "N/A", configuration?.school?.boardName || "N/A"]} />
             <Summary title="Academic Structure" values={[`${configuration?.academic?.classes?.length || 0} classes`, `${configuration?.academic?.sectionNames?.length || 0} section template(s)`, `${configuration?.academic?.subjects?.length || 0} subjects`]} />
-            <Summary title="Configuration Status" values={["Published", `Version ${configuration?.version?.number || 1}`, configuration?.version?.publishedAt ? `Completed ${new Date(configuration.version.publishedAt).toLocaleDateString()}` : "Migrated configuration"]} />
+            
+            {/* 🟢 FIX: Extract version.number and publishedAt safely to prevent React Error #31 */}
+            <Summary 
+              title="Configuration Status" 
+              values={[
+                configuration?.state || "Draft", 
+                `Version ${configuration?.version?.number || 1}`, 
+                configuration?.version?.publishedAt 
+                  ? `Completed ${new Date(configuration.version.publishedAt).toLocaleDateString()}` 
+                  : "Migrated configuration"
+              ]} 
+            />
+            
             <div className="md:col-span-3 bg-white border rounded-2xl p-6">
               <h2 className="font-bold flex gap-2 items-center"><History size={18} /> Configuration History</h2>
               <div className="mt-3 text-sm text-slate-600">
-                {history.length ? history.map((item: any) => (
-                  <p key={item.id}>Version {item.version?.number}: {item.version?.reason || "Updated"}.</p>
+                {history.length ? history.map((item: any, index: number) => (
+                  <p key={item?.id || index}>
+                    Version {item?.version?.number || "Unknown"}: {item?.version?.reason || "Updated"}.
+                  </p>
                 )) : "No configuration changes have been recorded yet."}
               </div>
             </div>
@@ -138,21 +150,4 @@ export default function SchoolConfigurationPage() {
           </div>
         )}
       </div>
-    </RequirePermission>
-  );
-}
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) { 
-  return <label className="block text-sm font-bold text-slate-700">{label}{children}</label>; 
-}
-
-function Summary({ title, values }: { title: string; values: string[] }) { 
-  return (
-    <section className="bg-white border rounded-2xl p-5">
-      <h2 className="font-bold text-slate-800">{title}</h2>
-      <div className="mt-3 space-y-1 text-sm text-slate-600">
-        {values.map((value) => <p key={value}>{value}</p>)}
-      </div>
-    </section>
-  ); 
-}
+    </Require
