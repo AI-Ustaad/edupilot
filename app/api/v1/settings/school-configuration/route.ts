@@ -17,7 +17,6 @@ const SchoolConfigurationSchema = z.object({
   country: z.string().optional(),
 });
 
-// 🟢 GET: Fetch Active Configuration (Reads Single Source of Truth)
 export const GET = withErrorHandler(
   withAuth(
     withTenant(async (_req: Request, { tenantId }: TenantContext) => {
@@ -29,7 +28,6 @@ export const GET = withErrorHandler(
   )
 );
 
-// 🟢 POST / PUT: Save Configuration (Domain Logic is handled by Service)
 export const POST = withErrorHandler(
   withAuth(
     async (req: Request, context: any) => {
