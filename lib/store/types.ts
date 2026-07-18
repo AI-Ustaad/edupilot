@@ -1,4 +1,5 @@
-import { MasterSchoolConfiguration } from "@/types/configuration";
+// 🟢 FIX 1: Import the new Unified School Configuration
+import { SchoolConfiguration } from "@/types/school-configuration";
 import { StudentSlice } from "./slices/student.slice";
 import { AttendanceSlice } from "./slices/attendance.slice";
 import { FeesSlice } from "./slices/fees.slice";
@@ -9,7 +10,8 @@ export interface KernelSlice {
   lastSyncedAt: string | null;
   currentVersion: number;
   tenantId: string | null;
-  initializeKernel: (tenantId: string, config: MasterSchoolConfiguration) => void;
+  // 🟢 FIX 2: Updated to use SchoolConfiguration
+  initializeKernel: (tenantId: string, config: SchoolConfiguration) => void;
   setSyncStatus: (status: "idle" | "syncing" | "error") => void;
 }
 
@@ -23,8 +25,10 @@ export interface SchoolSlice {
 
 export interface AcademicSlice {
   levels: string[];
-  classes: Array<{ id: string; name: string; level: string }>;
-  subjects: Array<{ name: string; type: string }>;
+  // 🟢 FIX 3: Generalized classes to avoid strict type mismatch with backend
+  classes: any[]; 
+  // 🟢 FIX 4: Subjects are now an array of strings in the new Architecture
+  subjects: string[];
   defaultSections: string[];
 }
 
