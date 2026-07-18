@@ -1,5 +1,5 @@
 // services/menu.service.ts
-import { MENU_CONFIG, getFilteredMenu } from "@/lib/config/menu.config"; 
+import { getFilteredMenu } from "@/lib/config/menu.config"; 
 import type { Permission } from "@/lib/auth/permissions";
 import { ROLE_PERMISSIONS } from "@/lib/auth/roles";
 
