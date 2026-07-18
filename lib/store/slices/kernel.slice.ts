@@ -1,7 +1,8 @@
+// lib/store/slices/kernel.slice.ts
 import { StateCreator } from "zustand";
 import { EnterpriseRuntimeStore, KernelSlice } from "../types";
-// 🟢 FIX 1: Import the correct Unified Configuration Model
-import type { SchoolConfiguration } from "@/types/school-configuration";
+// 🟢 FIX: Import the new Enterprise Configuration Model
+import type { MasterSchoolConfiguration } from "@/types/configuration";
 
 export const createKernelSlice: StateCreator<EnterpriseRuntimeStore, [], [], KernelSlice> = (set) => ({
   isInitialized: false,
@@ -9,28 +10,32 @@ export const createKernelSlice: StateCreator<EnterpriseRuntimeStore, [], [], Ker
   lastSyncedAt: null,
   currentVersion: 0,
   tenantId: null,
+  config: null,
 
-  // 🟢 FIX 2: Updated Signature to use SchoolConfiguration
-  initializeKernel: (tenantId: string, config: SchoolConfiguration) => {
+  // 🟢 FIX: Accept MasterSchoolConfiguration
+  initializeKernel: (tenantId: string, config: MasterSchoolConfiguration) => {
     set((state) => ({
       ...state,
       isInitialized: true,
       syncStatus: "idle",
       lastSyncedAt: new Date().toISOString(),
       
-      // 🟢 FIX 3: Corrected version mapping (number instead of object)
-      currentVersion: config.version,
+      // 🟢 FIX: version is now an object, so we extract the number
+      currentVersion: config.version?.number || 1,
       tenantId: tenantId,
+      config: config, // Save the entire config object
       
-      name: config.school.name,
-      type: config.school.type,
-      curriculumId: config.school.curriculumId,
+      // 🟢 FIX: Map School Profile
+      name: config.school?.name || "",
+      type: config.school?.type || "Private",
+      curriculumId: config.school?.curriculumId || "",
+      country: config.school?.country || "PK",
       
-      // 🟢 FIX 4: Replaced 'academic' with 'academicStructure' and matched correct keys
-      levels: config.academicStructure.levels,
-      classes: config.academicStructure.classes,
-      subjects: config.academicStructure.subjects,
-      defaultSections: config.academicStructure.sectionNames,
+      // 🟢 FIX: Map Academic Structure (academic instead of academicStructure)
+      levels: config.academic?.levels || [],
+      classes: config.academic?.classes || [],
+      subjects: config.academic?.subjects || [],
+      defaultSections: config.academic?.sectionNames || ["A"],
     }));
   },
 
