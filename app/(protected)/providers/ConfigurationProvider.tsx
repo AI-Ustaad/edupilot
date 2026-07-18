@@ -5,11 +5,21 @@ import { useQuery } from "@tanstack/react-query";
 import apiClient from "@/lib/api/client";
 import { MasterSchoolConfiguration } from "@/types/configuration";
 
+// 🟢 Enterprise Type for History
+interface ConfigurationHistory {
+  id: string;
+  version: {
+    number: number;
+    reason?: string;
+    createdAt?: string;
+  };
+}
+
 interface ConfigContextType {
   config: MasterSchoolConfiguration | null;
-  history: any[];
+  history: ConfigurationHistory[];
   isLoading: boolean;
-  error: any;
+  error: Error | null; // 🟢 Strict Error Type
 }
 
 const ConfigurationContext = createContext<ConfigContextType>({
@@ -27,7 +37,7 @@ export function ConfigurationProvider({ children }: { children: ReactNode }) {
       const payload = res.data?.data ?? res.data;
       return {
         configuration: payload?.configuration as MasterSchoolConfiguration | undefined,
-        history: payload?.history || []
+        history: (payload?.history || []) as ConfigurationHistory[]
       };
     },
     staleTime: 5 * 60 * 1000,
@@ -39,7 +49,7 @@ export function ConfigurationProvider({ children }: { children: ReactNode }) {
       config: data?.configuration || null, 
       history: data?.history || [], 
       isLoading, 
-      error 
+      error: error as Error | null
     }}>
       {children}
     </ConfigurationContext.Provider>
