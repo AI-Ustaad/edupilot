@@ -22,11 +22,13 @@ export function ConfigurationProvider({ children }: { children: ReactNode }) {
   const { data, isLoading, error } = useQuery({
     queryKey: ["enterprise-runtime-config"],
     queryFn: async () => {
+      // 🚀 apiClient already has /api/v1 as baseURL, so we just use /settings/school-configuration
       const res = await apiClient.get("/settings/school-configuration");
+      
       const payload = res.data?.data ?? res.data;
       return payload?.configuration as MasterSchoolConfiguration | undefined;
     },
-    staleTime: 5 * 60 * 1000,
+    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
     retry: 1,
   });
 
