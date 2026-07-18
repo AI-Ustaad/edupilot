@@ -54,8 +54,8 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
   useEffect(() => {
     if (!user?.tenantId) return;
     
-    // 🚀 FIX: Added v1 to the API path
-    apiClient.get("/api/v1/admin/feature-flags")
+    // 🚀 FIX: Removed /api/v1 because apiClient already has it as baseURL
+    apiClient.get("/admin/feature-flags")
       .then(res => {
         const data = safeObject(res);
         if (data && Object.keys(data).length > 0) setFeatureFlags(data);
@@ -76,8 +76,8 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
   const handleLogout = async () => {
     try {
       await signOut(auth);
-      // 🚀 FIX: Added v1 to the API path
-      await apiClient.post("/api/v1/auth/logout"); 
+      // 🚀 FIX: Removed /api/v1 because apiClient already has it as baseURL
+      await apiClient.post("/auth/logout"); 
       window.location.href = "/";
     } catch (error) {
       logger.error("Logout error:", { metadata: { error } });
@@ -97,7 +97,6 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
   }
 
   // 2. Wrap the ENTIRE Layout with ConfigurationProvider and RuntimeProvider
-  // یہ سائیڈ بار اور مین کنٹینٹ کو تب تک روکے رکھے گا جب تک Kernel ڈیٹا بیس سے کنفیگریشن لوڈ نہ کر لے۔
   return (
     <ConfigurationProvider>
       <RuntimeProvider>
