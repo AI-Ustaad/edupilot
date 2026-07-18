@@ -415,15 +415,25 @@ const ALL_MENU_GROUPS: MenuGroupDef[] = [
   },
 ];
 
+// 🚀 FIX: Added 'userRole' as the first parameter to prevent TS Error
 export function getFilteredMenu(
+  userRole: string,
   permissions: string[],
   featureFlags: Record<string, boolean>
 ): MenuGroupDef[] {
   return ALL_MENU_GROUPS.map((group) => {
     const filteredItems = group.items.filter((item) => {
+      // 1. Super Admin Bypass
+      if (userRole === 'superAdmin' || userRole === 'super_admin' || userRole === 'admin') {
+        return true;
+      }
+
+      // 2. Check Permission
       if (item.requiredPermission && !permissions.includes(item.requiredPermission)) {
         return false;
       }
+      
+      // 3. Check Feature Flag
       if (
         item.featureFlag &&
         featureFlags.hasOwnProperty(item.featureFlag) &&
