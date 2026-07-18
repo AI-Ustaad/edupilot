@@ -23,11 +23,15 @@ export function mapToMasterConfiguration(
   const legacy = rawDoc as LegacySchoolConfiguration;
   
   const defaultFeatures: FeatureRegistry = {
-    aiAssistant: true,
-    aiExamGenerator: true,
-    transport: false,
-    hostel: false,
-    onlinePayments: true,
+    ai: {
+      enabled: true, version: "1.0", permissions: ["admin", "teacher"], beta: false,
+      providers: ["gemini"], activeProvider: "gemini", quota: 1000
+    },
+    library: { enabled: true, version: "1.0", permissions: ["admin", "teacher"], beta: false },
+    transport: { enabled: false, version: "1.0", permissions: ["admin"], beta: false },
+    fees: { enabled: true, version: "1.0", permissions: ["admin", "accountant"], beta: false },
+    attendance: { enabled: true, version: "1.0", permissions: ["admin", "teacher"], beta: false },
+    exams: { enabled: true, version: "1.0", permissions: ["admin", "teacher"], beta: false },
   };
 
   // 3. Map the simple number version to the Version Object
