@@ -14,10 +14,13 @@ export function useSchoolConfiguration() {
     queryKey: key(user?.tenantId),
     queryFn: async () => {
       const res = await apiClient.get("/settings/school-configuration");
-      
-      // 🚀 FIX: Safely unwrap the API response (res.data.data.configuration)
       const payload = res.data?.data ?? res.data;
-      return payload?.configuration as MasterSchoolConfiguration | undefined;
+      
+      // Return both configuration and history
+      return {
+        configuration: payload?.configuration as MasterSchoolConfiguration | undefined,
+        history: payload?.history || []
+      };
     },
     enabled: Boolean(user?.tenantId),
     staleTime: 60_000,
@@ -30,7 +33,6 @@ export function useSaveSchoolConfiguration() {
   const { showToast } = useToast();
   
   return useMutation({
-    // 🚀 FIX: Using POST instead of PUT to match our API route
     mutationFn: (input: SchoolConfigurationInput) => 
       apiClient.post("/settings/school-configuration", input),
     onSuccess: () => {
