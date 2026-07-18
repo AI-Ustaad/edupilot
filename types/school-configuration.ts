@@ -1,3 +1,5 @@
+// types/school-configuration.ts
+
 export type SchoolType = "Private" | "Government" | "Madrissa";
 
 export interface ConfiguredSubject {
@@ -11,7 +13,8 @@ export interface ConfiguredClass {
   subjects: ConfiguredSubject[];
 }
 
-export interface SchoolConfiguration {
+// 🟢 LEGACY MODEL (Used by Mapper for reading old DB data)
+export interface LegacySchoolConfiguration {
   schemaVersion: 1;
   status: "draft" | "configured";
   school: {
@@ -36,7 +39,8 @@ export interface SchoolConfiguration {
   updatedAt?: unknown;
 }
 
-export interface LegacySchoolConfiguration {
+// 🟢 INPUT MODEL (Used by UI forms to send data to API)
+export interface SchoolConfigurationInput {
   schoolName: string;
   schoolType: SchoolType;
   curriculumId: string;
