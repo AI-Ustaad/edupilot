@@ -36,7 +36,7 @@ export interface SchoolConfiguration {
   updatedAt?: unknown;
 }
 
-export interface SchoolConfigurationInput {
+export interface LegacySchoolConfiguration {
   schoolName: string;
   schoolType: SchoolType;
   curriculumId: string;
