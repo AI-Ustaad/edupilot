@@ -1,3 +1,5 @@
+// types/configuration/core.ts
+
 export type ConfigurationState = "Draft" | "Validated" | "Published" | "Locked" | "Archived";
 
 export interface ConfigurationVersion {
@@ -10,7 +12,7 @@ export interface ConfigurationVersion {
   reason: string;
   comment?: string;
   rollbackTo?: string;
-  checksum: string;
+  checksum: string; // For data integrity checks
 }
 
 export interface ConfigurationMetadata {
