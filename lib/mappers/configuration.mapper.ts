@@ -1,6 +1,6 @@
 // lib/mappers/configuration.mapper.ts
 
-import { SchoolConfiguration as LegacySchoolConfiguration } from "@/types/school-configuration";
+import { LegacySchoolConfiguration } from "@/types/school-configuration";
 import { MasterSchoolConfiguration, ConfigurationState, ConfigurationVersion, ConfigurationMetadata, AcademicStructure, FeatureRegistry } from "@/types/configuration";
 
 /**
