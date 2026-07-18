@@ -16,7 +16,7 @@ const levels = [
 export default function SchoolConfigurationPage() {
   const { data, isLoading } = useSchoolConfiguration();
   const save = useSaveSchoolConfiguration();
-  const configuration = data?.configuration;
+  const configuration = data; // data is already MasterSchoolConfiguration
   const [editing, setEditing] = useState(false);
   const [schoolName, setSchoolName] = useState("");
   const [schoolType, setSchoolType] = useState<SchoolType>("Private");
