@@ -1,5 +1,7 @@
+// repositories/configuration.repository.ts
 import { adminDb } from "@/lib/firebase-admin"; 
 import { MasterSchoolConfiguration } from "@/types/configuration";
+import { mapToMasterConfiguration, mapToDbDocument } from "@/lib/mappers/configuration.mapper";
 
 export class ConfigurationRepository {
   private db = adminDb;
@@ -12,23 +14,25 @@ export class ConfigurationRepository {
       .doc("current")
       .get();
 
-    if (!doc.exists) {
-      return null;
-    }
+    if (!doc.exists) return null;
 
-    return doc.data() as MasterSchoolConfiguration;
+    // 🚀 RULE 19: Mapper is used right after DB read
+    return mapToMasterConfiguration(doc.data(), tenantId);
   }
 
   async saveConfiguration(tenantId: string, config: MasterSchoolConfiguration): Promise<void> {
     const batch = this.db.batch();
     
+    // 🚀 RULE 19: Mapper converts MasterConfig to DB document before saving
+    const dbData = mapToDbDocument(config);
+
     // 1. Save to current SSOT
     const currentRef = this.db
       .collection("tenants")
       .doc(tenantId)
       .collection("configuration")
       .doc("current");
-    batch.set(currentRef, config);
+    batch.set(currentRef, dbData);
 
     // 2. Save to History
     const historyRef = this.db
@@ -36,7 +40,7 @@ export class ConfigurationRepository {
       .doc(tenantId)
       .collection("config_history")
       .doc(`v${config.version.number}`);
-    batch.set(historyRef, config);
+    batch.set(historyRef, dbData);
 
     // 3. Update Tenant Meta
     const tenantRef = this.db.collection("tenants").doc(tenantId);
@@ -57,6 +61,6 @@ export class ConfigurationRepository {
       .orderBy("version.createdAt", "desc")
       .get();
 
-    return snapshot.docs.map(doc => doc.data() as MasterSchoolConfiguration);
+    return snapshot.docs.map(doc => mapToMasterConfiguration(doc.data(), tenantId));
   }
 }
