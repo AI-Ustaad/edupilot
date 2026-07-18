@@ -23,7 +23,7 @@ export class MenuService {
     }
 
     // Delegate to the single source of truth
-    return getFilteredMenu(effectivePermissions, featureFlags);
+    return getFilteredMenu(currentRole, effectivePermissions, featureFlags);
   }
 }
 
