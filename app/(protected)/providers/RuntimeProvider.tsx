@@ -1,4 +1,3 @@
-// app/(protected)/providers/RuntimeProvider.tsx
 "use client";
 
 import React, { useEffect } from "react";
@@ -28,7 +27,11 @@ export function RuntimeProvider({ children }: { children: React.ReactNode }) {
     );
   }
 
-  const isSetupPage = pathname?.includes("/settings/school-configuration");
+  // 🟢 FIX 1: Added /admin/school-setup to bypass
+  const isSetupPage = 
+    pathname?.includes("/admin/school-setup") || 
+    pathname?.includes("/settings/school-configuration");
+    
   if (isSetupPage) {
     return <>{children}</>;
   }
@@ -52,7 +55,7 @@ export function RuntimeProvider({ children }: { children: React.ReactNode }) {
         </div>
 
         <button 
-          onClick={() => window.location.href = "/settings/school-configuration"}
+          onClick={() => window.location.href = "/admin/school-setup"}
           className="mt-6 bg-red-600 text-white px-6 py-2.5 rounded-xl font-bold hover:bg-red-700 transition flex items-center gap-2"
         >
           Go to Configuration Setup
