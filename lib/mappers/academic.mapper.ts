@@ -9,7 +9,7 @@ export function mapAcademic(config: MasterSchoolConfiguration) {
   return {
     levels: config.academic?.levels || [],
     classes: classes.map(c => ({ name: c.name, subjects: c.subjects || [] })),
-    sectionNames: sections,
+    sectionNames: sections, // 🚀 FIX: Ensuring sectionNames is passed to ViewModel
     subjects: subjects,
     classCount: classes.length,
     subjectCount: subjects.length,
