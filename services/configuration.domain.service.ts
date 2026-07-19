@@ -34,9 +34,17 @@ export class ConfigurationDomainService {
     if (!classes.length) throw new Error("The selected board does not define classes for the selected levels");
 
     const sectionNames = input.sectionNames?.length ? input.sectionNames : ["A"];
-    const subjects = [...new Set(classes.flatMap(c => c.subjects))];
+       const subjects = [...new Set(classes.flatMap((c: any) => c.subjects))];
 
-    return { levels, classes, sectionNames, subjects };
+    // 🚀 FIX: Return requiredLabs and requiredTeachers to satisfy AcademicStructure type
+    return { 
+      levels, 
+      classes: classes as any, 
+      sectionNames, 
+      subjects,
+      requiredLabs: [], 
+      requiredTeachers: {} 
+    };
   }
 
   getDefaultFeatures(): FeatureRegistry {
