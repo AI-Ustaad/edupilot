@@ -11,7 +11,7 @@ import { SchoolProfileCard } from "./components/SchoolProfileCard";
 import { AcademicStructureCard } from "./components/AcademicStructureCard";
 import { ConfigurationStatusCard } from "./components/ConfigurationStatusCard";
 import { ConfigurationHistoryCard } from "./components/ConfigurationHistoryCard";
-import { ConfigurationEditor } from "./components/ConfigurationEditor";
+import { CurriculumWizard } from "./components/CurriculumWizard";
 
 export default function SchoolConfigurationPage() {
   const { data, isLoading } = useSchoolConfiguration();
@@ -24,6 +24,13 @@ export default function SchoolConfigurationPage() {
   const isConfigured = config?.state === "Published";
 
   if (isLoading) return <div className="flex h-72 items-center justify-center"><Loader2 className="animate-spin text-blue-600" /></div>;
+
+  const handleWizardComplete = (payload: any) => {
+    // This function receives the dynamic data from the Wizard and saves it
+    saveMutation.mutate(payload, {
+      onSuccess: () => setEditing(false)
+    });
+  };
 
   return (
     <RequirePermission permissions={[PERMISSIONS.settings.manage]}>
@@ -40,13 +47,16 @@ export default function SchoolConfigurationPage() {
             <ConfigurationHistoryCard history={history} />
           </>
         ) : (
-          <ConfigurationEditor 
-            initialData={config || null} 
-            onSave={(input) => {
-              saveMutation.mutate(input, { onSuccess: () => setEditing(false) });
-            }} 
-            isSaving={saveMutation.isPending} 
-          />
+          <div className="space-y-6">
+            {/* 🚀 THE NEW CURRICULUM INTELLIGENCE WIZARD */}
+            <CurriculumWizard onGenerated={handleWizardComplete} />
+            
+            {saveMutation.isPending && (
+              <div className="flex justify-center items-center text-blue-600 font-bold text-lg">
+                <Loader2 className="animate-spin mr-2" /> Saving Autonomous Configuration...
+              </div>
+            )}
+          </div>
         )}
       </div>
     </RequirePermission>
