@@ -47,7 +47,8 @@ export class ConfigurationService {
     const previousVersion = previous?.version?.number || 0;
 
     // Build Academic Structure
-    const levels = [...new Set(input.levels)];
+    // 🚀 FIX: Explicitly cast to string[] to satisfy TypeScript strict mode
+    const levels: string[] = [...new Set(input.levels as string[])];
     const classes = levels.flatMap((level: string) => 
       (curriculum.levels[level as keyof typeof curriculum.levels] || []).map((item: any) => ({
         id: `cls_${level}_${item.name}`.toLowerCase(),
@@ -59,8 +60,9 @@ export class ConfigurationService {
 
     if (!classes.length) throw new Error("The selected board does not define classes for the selected levels");
 
-    const sectionNames = input.sectionNames?.length ? input.sectionNames : ["A"];
-    const subjects = [...new Set(classes.flatMap((c: any) => c.subjects))];
+    // 🚀 FIX: Explicitly cast to string[]
+    const sectionNames: string[] = input.sectionNames?.length ? input.sectionNames as string[] : ["A"];
+    const subjects: string[] = [...new Set(classes.flatMap((c: any) => c.subjects))];
 
     // Build new Master Configuration Object
     const now = new Date().toISOString();
