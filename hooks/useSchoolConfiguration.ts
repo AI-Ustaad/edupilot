@@ -4,7 +4,8 @@ import apiClient from "@/lib/api/client";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/components/ToastProvider";
 import type { SchoolConfigurationInput } from "@/types/school-configuration";
-import type { SchoolConfigurationViewModel, ConfigurationHistoryViewModel } from "@/types/viewmodels/school-configuration.viewmodel";
+import type { SchoolConfigurationViewModel } from "@/types/viewmodels/school-configuration.viewmodel";
+import type { ConfigurationHistoryViewModel } from "@/types/viewmodels/configuration-history.viewmodel";
 
 const key = (tenantId?: string) => ["schoolConfigurationViewModel", tenantId];
 
