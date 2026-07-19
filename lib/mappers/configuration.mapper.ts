@@ -71,6 +71,10 @@ export function mapToMasterConfiguration(
     })) || [],
     sectionNames: legacy.academicStructure?.sectionNames || ['A'],
     subjects: legacy.academicStructure?.subjects || [],
+    
+    // 🚀 FIX: Provide default empty values for new Intelligence Engine properties
+    requiredLabs: [],
+    requiredTeachers: {},
   };
 
   // 6. Determine State based on legacy status
