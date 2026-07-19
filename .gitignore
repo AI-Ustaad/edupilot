@@ -11,3 +11,4 @@ build
 .env.sentry-build-plugin
 .vercel
 .env*
+.env.local
