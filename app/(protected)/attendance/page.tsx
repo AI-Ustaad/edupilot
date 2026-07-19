@@ -46,7 +46,8 @@ export default function AttendancePage() {
         classGrade: selectedClass,
         section: selectedSection,
         date: selectedDate,
-        status: entries[student.id] || "Absent",
+        // 🚀 FIX: Cast status to specific union type to satisfy TypeScript
+        status: (entries[student.id] || "Absent") as "Present" | "Absent" | "Leave" | "Late" | "HalfDay" | "Holiday",
       }));
       await saveMutation.mutateAsync(bulkData);
       showToast("Attendance saved successfully!", "success");
