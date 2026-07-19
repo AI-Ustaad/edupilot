@@ -1,5 +1,7 @@
 // types/curriculum/catalog.ts
+import { AcademicLevel } from "./academic";
 
+export type EducationSystemType = ...
 export type EducationSystemType = 
   | "National" 
   | "International" 
