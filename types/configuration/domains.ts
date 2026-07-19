@@ -21,4 +21,8 @@ export interface AcademicStructure {
   classes: AcademicClass[];
   sectionNames: string[];
   subjects: string[];
+  
+  // 🚀 NEW: Intelligence Engine Outputs
+  requiredLabs: string[];
+  requiredTeachers: Record<string, number>;
 }
