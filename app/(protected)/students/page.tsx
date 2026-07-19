@@ -1,123 +1,106 @@
+// app/(protected)/students/page.tsx
 "use client";
+import { useStudents } from "@/hooks/useStudents";
+import { useAuth } from "@/context/AuthContext";
+import { AlertTriangle, Loader2, Users, PlusCircle, Upload } from "lucide-react";
+import Link from "next/link";
+import RequirePermission from "@/components/RequirePermission";
+import { PERMISSIONS } from "@/lib/auth/permissions";
 
-import { useState } from "react";
-import { Search, Users, ShieldCheck, Loader2, Filter } from "lucide-react";
-// 🟢 Enterprise Imports
-import { useStudentSync } from "@/hooks/api/useStudentSync";
-import { useStudentDomain } from "@/hooks/runtime/useStudentDomain";
+export default function StudentsPage() {
+  const { user, loading: authLoading } = useAuth();
+  const { data: students, isLoading, error } = useStudents();
 
-export default function StudentsDirectoryPage() {
-  // 1. ⚙️ THE MOTOR: Start syncing data in background
-  const { isSyncing, isError } = useStudentSync();
-
-  // 2. 🚰 THE TAP: Access data via O(1) SDK (No Axios, No Direct API Calls)
-  const { studentsById, totalStudentsLoaded } = useStudentDomain();
-
-  // Local UI State for Search
-  const [searchTerm, setSearchTerm] = useState("");
-
-  // چونکہ ہمارا ڈیٹا Object (Record) میں ہے، ہم اسے دکھانے کے لیے Array میں بدل رہے ہیں
-  const allStudents = Object.values(studentsById);
-
-  // ⚡ Instant Local Filter (کیونکہ سارا ڈیٹا پہلے ہی Kernel میں موجود ہے)
-  const filteredStudents = allStudents.filter(
-    (std) =>
-      std.personal.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      std.identity.admissionNumber.includes(searchTerm)
-  );
-
-  // Guard: Show full screen loader ONLY if we have no data at all and are syncing
-  if (isSyncing && totalStudentsLoaded === 0) {
+  if (authLoading || isLoading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[70vh]">
-        <Loader2 className="w-12 h-12 text-blue-600 animate-spin mb-4" />
-        <h2 className="text-xl font-bold text-slate-800">Hydrating Student Domain...</h2>
-        <p className="text-slate-500">Loading enterprise records into memory</p>
+      <div className="p-8 flex flex-col items-center justify-center min-h-[60vh]">
+        <Loader2 className="animate-spin text-blue-600 mb-4" size={40} />
+        <p className="text-gray-500 font-medium">Loading students...</p>
       </div>
     );
   }
 
-  if (isError && totalStudentsLoaded === 0) {
+  if (error || !students) {
     return (
-      <div className="p-8 text-center bg-red-50 rounded-2xl text-red-600 border border-red-100">
-        <ShieldCheck className="w-12 h-12 mx-auto mb-3" />
-        <h2 className="text-xl font-bold">Domain Sync Failed</h2>
-        <p>Could not connect to the Student Repository.</p>
+      <div className="p-8 text-center min-h-[60vh] flex flex-col items-center justify-center">
+        <AlertTriangle className="mx-auto text-red-500 mb-4" size={48} />
+        <h2 className="text-xl font-bold text-red-600">Could not load students.</h2>
+        <p className="text-gray-500 mt-2 max-w-md">
+          There was an issue connecting to the Student Repository. Please check your network connection or ensure the database indexes are created in Firebase.
+        </p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      {/* 🟢 Enterprise Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center">
-            <Users size={24} />
-          </div>
-          <div>
-            <h1 className="text-2xl font-black text-slate-800">Student Directory</h1>
-            <p className="text-sm text-slate-500 font-medium">
-              {totalStudentsLoaded} records loaded in Runtime Kernel
-              {isSyncing && <span className="ml-2 text-blue-500 animate-pulse">(Syncing changes...)</span>}
-            </p>
-          </div>
+    <div className="p-6 max-w-6xl mx-auto space-y-6">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+          <h1 className="text-2xl font-black text-gray-900 flex items-center gap-2 mb-1">
+            <Users className="text-blue-600" /> Students Directory
+          </h1>
+          <p className="text-sm text-gray-500">Manage student admissions, profiles, and records.</p>
         </div>
         
-        {/* Instant Search Engine */}
-        <div className="relative w-full md:w-96">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
-          <input
-            type="text"
-            placeholder="Search by Name or Admission #..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
-          />
+        <div className="flex gap-2">
+          <RequirePermission permissions={[PERMISSIONS.students.create]}>
+            <Link 
+              href="/students/add" 
+              className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 transition shadow-sm"
+            >
+              <PlusCircle size={18} /> Add Student
+            </Link>
+          </RequirePermission>
         </div>
       </div>
 
-      {/* 🟢 Data Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-        {filteredStudents.length > 0 ? (
-          filteredStudents.map((student) => (
-            <div 
-              key={student.studentId} 
-              className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 hover:shadow-md transition-shadow cursor-pointer group"
-            >
-              <div className="flex justify-between items-start mb-4">
-                <div className="w-12 h-12 bg-gradient-to-br from-slate-100 to-slate-200 rounded-full flex items-center justify-center text-slate-600 font-bold text-lg">
-                  {student.personal.firstName.charAt(0)}
-                </div>
-                <span className={`px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${
-                  student.status === "Active" ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"
-                }`}>
-                  {student.status}
-                </span>
-              </div>
-              
-              <h3 className="text-lg font-bold text-slate-800 group-hover:text-blue-600 transition">
-                {student.personal.firstName} {student.personal.lastName}
-              </h3>
-              
-              <div className="mt-3 space-y-1.5">
-                <p className="text-xs text-slate-500 flex justify-between">
-                  <span>Admission No:</span>
-                  <span className="font-semibold text-slate-700">{student.identity.admissionNumber}</span>
-                </p>
-                <p className="text-xs text-slate-500 flex justify-between">
-                  <span>Gender:</span>
-                  <span className="font-semibold text-slate-700">{student.personal.gender}</span>
-                </p>
-              </div>
-            </div>
-          ))
-        ) : (
-          <div className="col-span-full py-12 text-center text-slate-500">
-            {totalStudentsLoaded === 0 ? "No students exist in the system." : "No matching students found."}
+      {students.length === 0 ? (
+        <div className="bg-white border border-gray-200 rounded-2xl p-12 text-center text-gray-400 font-medium shadow-sm">
+          <Users className="mx-auto mb-4 text-gray-300" size={48} />
+          <h3 className="text-lg font-bold text-gray-600 mb-1">No students found</h3>
+          <p className="text-sm">Add students manually or use bulk import to get started.</p>
+        </div>
+      ) : (
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left">
+              <thead className="bg-gray-50 border-b border-gray-200">
+                <tr>
+                  <th className="p-4 font-bold text-gray-600 text-sm uppercase tracking-wider">Name</th>
+                  <th className="p-4 font-bold text-gray-600 text-sm uppercase tracking-wider">Class</th>
+                  <th className="p-4 font-bold text-gray-600 text-sm uppercase tracking-wider">Section</th>
+                  <th className="p-4 font-bold text-gray-600 text-sm uppercase tracking-wider">Roll No</th>
+                  <th className="p-4 font-bold text-gray-600 text-sm uppercase tracking-wider hidden md:table-cell">Guardian</th>
+                  <th className="p-4 font-bold text-gray-600 text-sm uppercase tracking-wider hidden md:table-cell">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {students.map((s: any) => (
+                  <tr key={s.id} className="hover:bg-gray-50 transition-colors">
+                    <td className="p-4 font-bold text-gray-900">
+                      <Link href={`/students/${s.id}`} className="hover:text-blue-600 hover:underline">
+                        {s.fullName || s.name || "N/A"}
+                      </Link>
+                    </td>
+                    <td className="p-4 text-gray-600 font-medium">{s.classGrade || "N/A"}</td>
+                    <td className="p-4 text-gray-600 font-medium">{s.section || "N/A"}</td>
+                    <td className="p-4 text-gray-600 font-medium">{s.rollNumber || "N/A"}</td>
+                    <td className="p-4 text-gray-600 font-medium hidden md:table-cell">{s.guardianName || s.fatherName || "N/A"}</td>
+                    <td className="p-4 hidden md:table-cell">
+                      <Link 
+                        href={`/students/${s.id}`}
+                        className="text-blue-600 hover:text-blue-800 font-bold text-sm hover:underline"
+                      >
+                        View Profile
+                      </Link>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }
