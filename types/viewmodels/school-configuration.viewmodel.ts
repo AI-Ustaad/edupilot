@@ -17,6 +17,7 @@ export interface SchoolConfigurationViewModel extends BaseViewModel {
   classSummary: string; // e.g., "24 Classes"
   subjectCount: number;
   sectionCount: number;
+  sectionNames: string[]; // 🚀 FIX: Added for ConfigurationEditor to pre-fill form
   
   // Version Info
   versionNumber: number;
