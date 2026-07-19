@@ -1,7 +1,9 @@
+// lib/firebase-admin.ts
 import { getApps, initializeApp, cert, App } from 'firebase-admin/app';
 import { getFirestore, Firestore, FieldValue } from 'firebase-admin/firestore';
 import { getAuth, Auth } from 'firebase-admin/auth';
 import { getStorage, Storage } from 'firebase-admin/storage';
+import { serverEnv } from '@/lib/env';
 
 let app: App | undefined;
 let db: Firestore | undefined;
@@ -10,29 +12,31 @@ let storage: Storage | undefined;
 
 function initAdmin() {
   if (getApps().length === 0) {
-    if (process.env.FIREBASE_PRIVATE_KEY) {
+    if (serverEnv.privateKey && serverEnv.clientEmail) {
       app = initializeApp({
         credential: cert({
-          projectId: process.env.FIREBASE_PROJECT_ID,
-          clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-          privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+          projectId: serverEnv.projectId,
+          clientEmail: serverEnv.clientEmail,
+          privateKey: serverEnv.privateKey,
         }),
-        storageBucket: process.env.FIREBASE_STORAGE_BUCKET,
+        storageBucket: serverEnv.storageBucket,
       });
     } else {
+      // Fallback for Vercel/Google Cloud which uses Application Default Credentials
       app = initializeApp();
     }
   } else {
     app = getApps()[0];
   }
+  
   db = getFirestore(app);
   db.settings({ ignoreUndefinedProperties: true });
   auth = getAuth(app);
   storage = getStorage(app);
+  
   return { db, auth, storage };
 }
 
-// Named exports – these are used across all API routes
 export const adminDb = (() => {
   if (!db) initAdmin();
   return db!;
@@ -49,5 +53,4 @@ export const adminStorage = (() => {
 })();
 
 export const dbTimestamp = FieldValue.serverTimestamp();
-
 export { initAdmin };
