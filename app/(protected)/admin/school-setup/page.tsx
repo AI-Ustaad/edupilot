@@ -165,4 +165,3 @@ function Summary({ title, values }: { title: string; values: string[] }) {
     </section>
   ); 
 }
-EOF
