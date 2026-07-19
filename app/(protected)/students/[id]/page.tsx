@@ -24,7 +24,7 @@ export default function StudentProfilePage({ params }: { params: { id: string } 
         <AlertTriangle className="mx-auto text-red-500 mb-4" size={48} />
         <h2 className="text-xl font-bold text-red-600">Student Not Found</h2>
         <p className="text-gray-500 mt-2 max-w-md">
-          We couldn't load the profile for this student. They may not exist in the database or there was a network error.
+                    We couldn&apos;t load the profile for this student. They may not exist in the database or there was a network error.
         </p>
         <button 
           onClick={() => router.push("/students")}
