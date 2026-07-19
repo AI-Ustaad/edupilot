@@ -1,4 +1,3 @@
-// repositories/configuration.repository.ts
 import { adminDb } from "@/lib/firebase-admin"; 
 import { MasterSchoolConfiguration } from "@/types/configuration";
 import { mapToMasterConfiguration, mapToDbDocument } from "@/lib/mappers/configuration.mapper";
@@ -15,15 +14,11 @@ export class ConfigurationRepository {
       .get();
 
     if (!doc.exists) return null;
-
-    // 🚀 RULE 19: Mapper is used right after DB read
     return mapToMasterConfiguration(doc.data(), tenantId);
   }
 
   async saveConfiguration(tenantId: string, config: MasterSchoolConfiguration): Promise<void> {
     const batch = this.db.batch();
-    
-    // 🚀 RULE 19: Mapper converts MasterConfig to DB document before saving
     const dbData = mapToDbDocument(config);
 
     // 1. Save to current SSOT
@@ -49,6 +44,25 @@ export class ConfigurationRepository {
       configVersion: config.version.number,
       updatedAt: new Date().toISOString()
     }, { merge: true });
+
+    // 🚀 CRITICAL FIX: Sync Classes & Sections to 'classes' collection!
+    // Delete old classes for this tenant to avoid duplicates
+    const oldClassesSnap = await this.db.collection("classes").where("tenantId", "==", tenantId).get();
+    oldClassesSnap.forEach(doc => batch.delete(doc.ref));
+
+    // Insert new classes and sections
+    config.academic.classes.forEach((cls: any) => {
+      config.academic.sectionNames.forEach((sectionName: string) => {
+        const newClassRef = this.db.collection("classes").doc();
+        batch.set(newClassRef, {
+          tenantId: tenantId,
+          classGrade: cls.name,
+          sectionName: sectionName,
+          subjects: cls.subjects || [],
+          createdAt: new Date().toISOString()
+        });
+      });
+    });
 
     await batch.commit();
   }
