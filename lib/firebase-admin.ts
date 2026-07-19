@@ -3,7 +3,7 @@ import { getApps, initializeApp, cert, App } from 'firebase-admin/app';
 import { getFirestore, Firestore, FieldValue } from 'firebase-admin/firestore';
 import { getAuth, Auth } from 'firebase-admin/auth';
 import { getStorage, Storage } from 'firebase-admin/storage';
-import { serverEnv } from '@/lib/env';
+import { serverEnv } from '@/lib/env.server'; // 🟢 یہ تبدیلی ضروری ہے
 
 let app: App | undefined;
 let db: Firestore | undefined;
@@ -22,7 +22,6 @@ function initAdmin() {
         storageBucket: serverEnv.storageBucket,
       });
     } else {
-      // Fallback for Vercel/Google Cloud which uses Application Default Credentials
       app = initializeApp();
     }
   } else {
