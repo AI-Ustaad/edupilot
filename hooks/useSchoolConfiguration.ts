@@ -4,9 +4,9 @@ import apiClient from "@/lib/api/client";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/components/ToastProvider";
 import type { SchoolConfigurationInput } from "@/types/school-configuration";
-import type { MasterSchoolConfiguration } from "@/types/configuration";
+import type { SchoolConfigurationViewModel, ConfigurationHistoryViewModel } from "@/types/viewmodels/school-configuration.viewmodel";
 
-const key = (tenantId?: string) => ["schoolConfiguration", tenantId];
+const key = (tenantId?: string) => ["schoolConfigurationViewModel", tenantId];
 
 export function useSchoolConfiguration() {
   const { user } = useAuth();
@@ -15,11 +15,9 @@ export function useSchoolConfiguration() {
     queryFn: async () => {
       const res = await apiClient.get("/settings/school-configuration");
       const payload = res.data?.data ?? res.data;
-      
-      // Return both configuration and history
       return {
-        configuration: payload?.configuration as MasterSchoolConfiguration | undefined,
-        history: payload?.history || []
+        configuration: payload?.configuration as SchoolConfigurationViewModel | undefined,
+        history: (payload?.history || []) as ConfigurationHistoryViewModel[]
       };
     },
     enabled: Boolean(user?.tenantId),
@@ -37,10 +35,8 @@ export function useSaveSchoolConfiguration() {
       apiClient.post("/settings/school-configuration", input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: key(user?.tenantId) });
-      queryClient.invalidateQueries({ queryKey: ["school", user?.tenantId] });
-      queryClient.invalidateQueries({ queryKey: ["generalSettings", user?.tenantId] });
-      queryClient.invalidateQueries({ queryKey: ["classes", user?.tenantId] });
-      showToast("School configuration saved successfully.", "success");
+      queryClient.invalidateQueries({ queryKey: ["enterprise-runtime-config"] }); // Refresh Runtime
+      showToast("School configuration published successfully.", "success");
     },
     onError: () => showToast("Unable to save school configuration.", "error"),
   });
