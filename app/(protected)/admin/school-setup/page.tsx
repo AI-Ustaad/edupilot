@@ -76,7 +76,7 @@ export default function SchoolConfigurationPage() {
             <Summary title="School Profile" values={[configuration?.school?.name || "N/A", configuration?.school?.type || "N/A", configuration?.school?.boardName || "N/A"]} />
             <Summary title="Academic Structure" values={[`${configuration?.academic?.classes?.length || 0} classes`, `${configuration?.academic?.sectionNames?.length || 0} section template(s)`, `${configuration?.academic?.subjects?.length || 0} subjects`]} />
             
-            {/* 🚀 FIX: React Error #31 resolved here */}
+            {/* 🚀 FIX: Extract version.number and publishedAt safely to prevent React Error #31 */}
             <Summary 
               title="Configuration Status" 
               values={[
@@ -91,7 +91,7 @@ export default function SchoolConfigurationPage() {
             <div className="md:col-span-3 bg-white border rounded-2xl p-6">
               <h2 className="font-bold flex gap-2 items-center"><History size={18} /> Configuration History</h2>
               <div className="mt-3 text-sm text-slate-600">
-                {/* 🚀 FIX: React Error #31 resolved here too */}
+                {/* 🚀 FIX: Extract version.number safely to prevent React Error #31 */}
                 {history.length ? history.map((item, index) => (
                   <p key={item?.id || index}>
                     Version {item?.version?.number || "Unknown"}: {item?.version?.reason || "Updated"}.
