@@ -20,11 +20,9 @@ export const useStudents = (params?: { classGrade?: string; section?: string }) 
         const url = `/students${queryString ? `?${queryString}` : ""}`;
         const response = await apiClient.get(url);
         
-        // 🛡️ Bulletproof Array Extraction
-        let data = Array.isArray(response) ? response : (response?.data || []);
-        if (!Array.isArray(data)) data = [];
-        
-        return data;
+        // 🛡️ Bulletproof Array Extraction (Axios + API Wrapper fix)
+        const payload = response?.data?.data ?? response?.data ?? [];
+        return Array.isArray(payload) ? payload : [];
       } catch (error) {
         logger.error("Failed to fetch students:", { metadata: { error } });
         return [];
@@ -43,7 +41,8 @@ export const useStudent = (id: string) => {
     queryKey: QueryKeys.student(tenantId, id),
     queryFn: async () => {
       const response = await apiClient.get(`/students/${id}`);
-      return safeObject(response);
+      const payload = response?.data?.data ?? response?.data ?? {};
+      return safeObject(payload);
     },
     enabled: !!id && !!tenantId,
   });
@@ -58,7 +57,8 @@ export const useStudent360 = (id: string) => {
     queryKey: ["students", tenantId, id, "360"],
     queryFn: async () => {
       const response = await apiClient.get(`/students/360?id=${id}`);
-      return safeObject(response);
+      const payload = response?.data?.data ?? response?.data ?? {};
+      return safeObject(payload);
     },
     enabled: !!id && !!tenantId,
   });
@@ -113,7 +113,7 @@ export const useDeleteStudent = () => {
       await queryClient.cancelQueries({ queryKey: QueryKeys.students(tenantId) });
       const previousStudents = queryClient.getQueryData(QueryKeys.students(tenantId));
       queryClient.setQueryData(QueryKeys.students(tenantId), (old: any[]) => 
-        old.filter((s: any) => s.id !== deletedId)
+        old?.filter((s: any) => s.id !== deletedId) || []
       );
       return { previousStudents };
     },
@@ -154,11 +154,13 @@ export const useStudentDirectory = (filters?: Record<string, any>) => {
         const queryString = params.toString();
         const url = `/students${queryString ? `?${queryString}` : ""}`;
         const response = await apiClient.get(url);
-        const data = response?.data || response;
-        if (data?.data && Array.isArray(data.data)) {
-          return { data: data.data, total: data.total || 0, page: data.page || 1, totalPages: data.totalPages || 1 };
+        
+        const payload = response?.data?.data ?? response?.data;
+        
+        if (payload?.data && Array.isArray(payload.data)) {
+          return { data: payload.data, total: payload.total || 0, page: payload.page || 1, totalPages: payload.totalPages || 1 };
         }
-        const arr = Array.isArray(data) ? data : [];
+        const arr = Array.isArray(payload) ? payload : [];
         return { data: arr, total: arr.length, page: 1, totalPages: 1 };
       } catch (error) {
         logger.error("Failed to fetch student directory:", { metadata: { error } });
@@ -179,7 +181,8 @@ export const useStudentAnalytics = () => {
     queryFn: async () => {
       try {
         const response = await apiClient.get("/students/analytics");
-        return safeObject(response);
+        const payload = response?.data?.data ?? response?.data ?? {};
+        return safeObject(payload);
       } catch (error) {
         logger.error("Failed to fetch student analytics:", { metadata: { error } });
         return {};
@@ -230,7 +233,8 @@ export const useStudentTimeline = (studentId: string) => {
     queryKey: ["students", tenantId, studentId, "timeline"],
     queryFn: async () => {
       const response = await apiClient.get(`/students/${studentId}/timeline`);
-      return safeArray(response);
+      const payload = response?.data?.data ?? response?.data ?? [];
+      return safeArray(payload);
     },
     enabled: !!studentId && !!tenantId,
   });
