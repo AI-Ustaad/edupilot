@@ -1,6 +1,7 @@
+// repositories/configuration.repository.ts
 import { adminDb } from "@/lib/firebase-admin"; 
 import { MasterSchoolConfiguration } from "@/types/configuration";
-import { mapToMasterConfiguration, mapToDbDocument } from "@/lib/mappers/configuration.mapper";
+import { mapToMasterConfiguration } from "@/lib/mappers/configuration.mapper";
 
 export class ConfigurationRepository {
   private db = adminDb;
@@ -14,55 +15,37 @@ export class ConfigurationRepository {
       .get();
 
     if (!doc.exists) return null;
+
+    // Rule: Mapping raw DB data to Domain Model happens right here
     return mapToMasterConfiguration(doc.data(), tenantId);
   }
 
   async saveConfiguration(tenantId: string, config: MasterSchoolConfiguration): Promise<void> {
     const batch = this.db.batch();
-    const dbData = mapToDbDocument(config);
-
-    // 1. Save to current SSOT
+    
+    // Save to current SSOT
     const currentRef = this.db
       .collection("tenants")
       .doc(tenantId)
       .collection("configuration")
       .doc("current");
-    batch.set(currentRef, dbData);
+    batch.set(currentRef, config);
 
-    // 2. Save to History
+    // Save to History
     const historyRef = this.db
       .collection("tenants")
       .doc(tenantId)
       .collection("config_history")
       .doc(`v${config.version.number}`);
-    batch.set(historyRef, dbData);
+    batch.set(historyRef, config);
 
-    // 3. Update Tenant Meta
+    // Update Tenant Meta
     const tenantRef = this.db.collection("tenants").doc(tenantId);
     batch.set(tenantRef, { 
       status: config.state === "Published" ? "active" : "configuring",
       configVersion: config.version.number,
       updatedAt: new Date().toISOString()
     }, { merge: true });
-
-    // 🚀 CRITICAL FIX: Sync Classes & Sections to 'classes' collection!
-    // Delete old classes for this tenant to avoid duplicates
-    const oldClassesSnap = await this.db.collection("classes").where("tenantId", "==", tenantId).get();
-    oldClassesSnap.forEach(doc => batch.delete(doc.ref));
-
-    // Insert new classes and sections
-    config.academic.classes.forEach((cls: any) => {
-      config.academic.sectionNames.forEach((sectionName: string) => {
-        const newClassRef = this.db.collection("classes").doc();
-        batch.set(newClassRef, {
-          tenantId: tenantId,
-          classGrade: cls.name,
-          sectionName: sectionName,
-          subjects: cls.subjects || [],
-          createdAt: new Date().toISOString()
-        });
-      });
-    });
 
     await batch.commit();
   }
