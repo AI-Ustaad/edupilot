@@ -3,7 +3,8 @@ import { MasterSchoolConfiguration } from "@/types/configuration";
 
 export function mapHistory(historyDocs: MasterSchoolConfiguration[] = []) {
   return historyDocs.map((item, index) => {
-    const versionNum = item.version?.number || index + 1;
+      // 🚀 FIX: Force convert to number to prevent [object Object]
+  const versionNum = Number(item.version?.number) || index + 1;
     const createdAt = item.version?.createdAt || new Date().toISOString();
     
     return {
