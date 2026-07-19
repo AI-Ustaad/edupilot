@@ -1,4 +1,3 @@
-cat > "app/(protected)/admin/school-setup/page.tsx" << 'EOF'
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
