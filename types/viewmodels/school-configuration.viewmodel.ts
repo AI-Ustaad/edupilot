@@ -4,7 +4,7 @@ import { ConfigurationState } from "@/types/configuration/core";
 
 export interface SchoolConfigurationViewModel extends BaseViewModel {
   state: ConfigurationState;
-  stateLabel: string;
+  stateLabel: string; // e.g., "Published", "Draft"
   
   // School Profile
   schoolName: string;
@@ -13,18 +13,22 @@ export interface SchoolConfigurationViewModel extends BaseViewModel {
   
   // Academic Structure
   levels: string[];
-  classes: { id: string; name: string }[]; // 🚀 NEW: Added for dropdowns
+  classes: { id: string; name: string }[]; // For UI dropdowns
   classCount: number;
-  classSummary: string;
+  classSummary: string; // e.g., "24 Classes"
   subjectCount: number;
   sectionCount: number;
-  sectionNames: string[]; // 🚀 NEW: Explicitly added for dropdowns
+  sectionNames: string[]; // For UI dropdowns
+  
+  // 🚀 NEW: Intelligence Engine Outputs
+  requiredLabs: string[];
+  requiredTeachers: Record<string, number>;
   
   // Version Info
   versionNumber: number;
-  versionLabel: string;
+  versionLabel: string; // e.g., "Version 4"
   publishedAt?: string;
-  completionLabel: string;
+  completionLabel: string; // e.g., "Completed 15 July 2026"
   
   // Features
   enabledFeatures: string[];
