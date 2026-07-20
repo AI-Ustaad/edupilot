@@ -8,7 +8,6 @@ export function mapAcademic(config: MasterSchoolConfiguration) {
   
   return {
     levels: config.academic?.levels || [],
-    // 🚀 FIX: Map classes to { id, name } for UI dropdowns
     classes: classes.map(c => ({ id: c.id || c.name, name: c.name })),
     sectionNames: sections,
     subjects: subjects,
@@ -16,5 +15,9 @@ export function mapAcademic(config: MasterSchoolConfiguration) {
     subjectCount: subjects.length,
     sectionCount: sections.length,
     classSummary: `${classes.length} Classes`,
+    
+    // 🚀 FIX: Map requiredLabs and requiredTeachers from config
+    requiredLabs: config.academic?.requiredLabs || [],
+    requiredTeachers: config.academic?.requiredTeachers || {},
   };
 }
