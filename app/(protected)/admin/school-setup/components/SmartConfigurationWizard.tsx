@@ -16,8 +16,9 @@ export function SmartConfigurationWizard({ onGenerated }: { onGenerated: (data: 
   const [institutionType, setInstitutionType] = useState("School"); // School / Madrassah
   const [countryId, setCountryId] = useState("pk");
   
-  // 🚀 NEW: Manual Sections Input
+  // 🚀 NEW: Manual Inputs
   const [sections, setSections] = useState("A, B"); 
+  const [facilities, setFacilities] = useState(""); // For Grounds, Rooms, etc.
   
   // Step 2: Cascading Selections
   const [authorityId, setAuthorityId] = useState("");
@@ -68,8 +69,16 @@ export function SmartConfigurationWizard({ onGenerated }: { onGenerated: (data: 
       return;
     }
 
-    // 🚀 Parse manual sections input (e.g., "A, B, C" -> ["A", "B", "C"])
     const parsedSections = sections.split(",").map(s => s.trim()).filter(Boolean);
+    
+    // 🚀 NEW: Parse manual facilities
+    const parsedFacilities = facilities.split(",").map(f => f.trim()).filter(Boolean);
+
+    // Merge auto-generated labs with manually entered facilities
+    const allLabsAndFacilities = [
+      ...(generatedData.requiredLabs || []),
+      ...parsedFacilities
+    ];
 
     onGenerated({
       schoolProfile: {
@@ -78,9 +87,13 @@ export function SmartConfigurationWizard({ onGenerated }: { onGenerated: (data: 
         curriculumId: systemId,
         boardName: authorities.find(a => a.id === authorityId)?.name || "Custom Board",
         country: countryId,
-        sections: parsedSections // 🚀 Pass manual sections
+        sections: parsedSections
       },
-      academicStructure: generatedData
+      academicStructure: {
+        ...generatedData,
+        // 🚀 Override requiredLabs with merged list
+        requiredLabs: allLabsAndFacilities 
+      }
     });
   };
 
@@ -124,6 +137,18 @@ export function SmartConfigurationWizard({ onGenerated }: { onGenerated: (data: 
             className="w-full border p-2.5 rounded-xl" 
             placeholder="e.g. A, B, C" 
           />
+        </div>
+        
+        {/* 🚀 NEW: Manual Facilities Input Field */}
+        <div className="md:col-span-2">
+          <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Additional Facilities (Labs, Grounds, Rooms)</label>
+          <input 
+            value={facilities} 
+            onChange={(e) => setFacilities(e.target.value)} 
+            className="w-full border p-2.5 rounded-xl" 
+            placeholder="e.g. Football Ground, Library Hall, Music Room" 
+          />
+          <p className="text-[10px] text-gray-400 mt-1">Separate multiple facilities with commas. Auto-generated labs (like Physics Lab) will be added automatically.</p>
         </div>
       </div>
 
@@ -193,7 +218,7 @@ export function SmartConfigurationWizard({ onGenerated }: { onGenerated: (data: 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div><span className="font-bold text-gray-900">{generatedData.grades.length}</span> Classes</div>
             <div><span className="font-bold text-gray-900">{generatedData.allSubjects.length}</span> Subjects</div>
-            <div><span className="font-bold text-gray-900">{generatedData.requiredLabs.length}</span> Labs Required</div>
+            <div><span className="font-bold text-gray-900">{allLabsAndFacilities ? allLabsAndFacilities.length : generatedData.requiredLabs.length}</span> Labs/Facilities</div>
             <div><span className="font-bold text-gray-900">{generatedData.departments.length}</span> Departments</div>
           </div>
         </div>
