@@ -1,25 +1,16 @@
+// app/(protected)/providers/ConfigurationProvider.tsx
 "use client";
 
 import React, { createContext, useContext, ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import apiClient from "@/lib/api/client";
-import { MasterSchoolConfiguration } from "@/types/configuration";
-
-// 🟢 Enterprise Type for History
-interface ConfigurationHistory {
-  id: string;
-  version: {
-    number: number;
-    reason?: string;
-    createdAt?: string;
-  };
-}
+import { SchoolConfigurationViewModel } from "@/types/viewmodels/school-configuration.viewmodel";
 
 interface ConfigContextType {
-  config: MasterSchoolConfiguration | null;
-  history: ConfigurationHistory[];
+  config: SchoolConfigurationViewModel | null; // 🚀 FIX: Changed Type to ViewModel
+  history: any[];
   isLoading: boolean;
-  error: Error | null; // 🟢 Strict Error Type
+  error: Error | null;
 }
 
 const ConfigurationContext = createContext<ConfigContextType>({
@@ -36,8 +27,8 @@ export function ConfigurationProvider({ children }: { children: ReactNode }) {
       const res = await apiClient.get("/settings/school-configuration");
       const payload = res.data?.data ?? res.data;
       return {
-        configuration: payload?.configuration as MasterSchoolConfiguration | undefined,
-        history: (payload?.history || []) as ConfigurationHistory[]
+        configuration: payload?.configuration as SchoolConfigurationViewModel | undefined,
+        history: payload?.history || []
       };
     },
     staleTime: 5 * 60 * 1000,
