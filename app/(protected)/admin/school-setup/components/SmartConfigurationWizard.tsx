@@ -218,7 +218,7 @@ export function SmartConfigurationWizard({ onGenerated }: { onGenerated: (data: 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div><span className="font-bold text-gray-900">{generatedData.grades.length}</span> Classes</div>
             <div><span className="font-bold text-gray-900">{generatedData.allSubjects.length}</span> Subjects</div>
-            <div><span className="font-bold text-gray-900">{allLabsAndFacilities ? allLabsAndFacilities.length : generatedData.requiredLabs.length}</span> Labs/Facilities</div>
+            <div><span className="font-bold text-gray-900">{generatedData.requiredLabs.length + (facilities ? facilities.split(',').filter(Boolean).length : 0)}</span> Labs/Facilities</div>
             <div><span className="font-bold text-gray-900">{generatedData.departments.length}</span> Departments</div>
           </div>
         </div>
