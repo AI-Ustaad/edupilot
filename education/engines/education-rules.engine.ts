@@ -1,10 +1,11 @@
 // education/engines/education-rules.engine.ts
 import { MASTER_CATALOG, ALL_SUBJECTS, EducationAuthority, EducationSystem, CurriculumVersion, AcademicLevel, Grade, Subject } from "@/education/catalog";
 import { PAKISTAN_CATALOG, PAKISTAN_SUBJECTS } from "@/education/catalog/data/pakistan.catalog";
+import { UAE_CATALOG, GULF_SUBJECTS } from "@/education/catalog/data/gulf.catalog";
 
-// Initialize Master Catalog (In future, this comes from Firestore)
-const CATALOG = [PAKISTAN_CATALOG];
-const SUBJECTS_DB = [...ALL_SUBJECTS, ...PAKISTAN_SUBJECTS];
+// Initialize Master Catalog
+const CATALOG = [PAKISTAN_CATALOG, UAE_CATALOG];
+const SUBJECTS_DB = [...ALL_SUBJECTS, ...PAKISTAN_SUBJECTS, ...GULF_SUBJECTS];
 
 export class EducationRulesEngine {
 
@@ -19,16 +20,22 @@ export class EducationRulesEngine {
     return country?.Provinces || [];
   }
 
-  // Rule 3: Get Authorities based on Country and Ownership Type (Public/Private)
-  getAuthorities(countryId: string, ownershipType?: string): EducationAuthority[] {
+  // Rule 3: Get Authorities based on Country, Ownership Type, AND Institution Type
+  getAuthorities(countryId: string, ownershipType?: string, institutionType?: string): EducationAuthority[] {
     const country = CATALOG.find(c => c.id === countryId);
     if (!country) return [];
     
     // @ts-ignore
     let authorities = country.authorities || [];
     if (ownershipType) {
-      authorities = authorities.filter(a => a.ownershipType === ownershipType);
+      authorities = authorities.filter((a: any) => a.ownershipType === ownershipType);
     }
+    
+    // 🚀 NEW: Filter by Institution Type (School, Madrassah, etc.)
+    if (institutionType) {
+      authorities = authorities.filter((a: any) => a.institutionType === institutionType);
+    }
+    
     return authorities;
   }
 
@@ -36,7 +43,7 @@ export class EducationRulesEngine {
   getSystems(authorityId: string): EducationSystem[] {
     for (const country of CATALOG) {
       // @ts-ignore
-      const auth = country.authorities?.find(a => a.id === authorityId);
+      const auth = country.authorities?.find((a: any) => a.id === authorityId);
       if (auth) return auth.systems;
     }
     return [];
@@ -47,7 +54,7 @@ export class EducationRulesEngine {
     for (const country of CATALOG) {
       // @ts-ignore
       for (const auth of country.authorities || []) {
-        const sys = auth.systems.find(s => s.id === systemId);
+        const sys = auth.systems.find((s: any) => s.id === systemId);
         if (sys) return sys.versions;
       }
     }
@@ -60,7 +67,7 @@ export class EducationRulesEngine {
       // @ts-ignore
       for (const auth of country.authorities || []) {
         for (const sys of auth.systems) {
-          const ver = sys.versions.find(v => v.id === versionId);
+          const ver = sys.versions.find((v: any) => v.id === versionId);
           if (ver) return ver.levels;
         }
       }
