@@ -13,8 +13,9 @@ export const PAKISTAN_SUBJECTS: Subject[] = [
   { id: "cs", name: "Computer Science", code: "CS", department: "Computer Science", requiresLab: true },
   { id: "isl", name: "Islamiyat", code: "ISL", department: "Religious", requiresLab: false },
   { id: "pst", name: "Pakistan Studies", code: "PST", department: "Humanities", requiresLab: false },
+  { id: "ss", name: "Social Studies", code: "SST", department: "Humanities", requiresLab: false },
   
-  // 🚀 NEW: Madrassah Subjects
+  // Madrassah Subjects
   { id: "nazra", name: "Nazra Quran", code: "NZR", department: "Religious", requiresLab: false },
   { id: "tajweed", name: "Tajweed", code: "TJW", department: "Religious", requiresLab: false },
   { id: "duas", name: "Daily Duas", code: "DUAS", department: "Religious", requiresLab: false },
@@ -56,12 +57,78 @@ export const PAKISTAN_CATALOG: Country = {
               name: "SNC 2024",
               year: "2024",
               levels: [
+                // Primary
                 { id: "primary", name: "Primary", grades: [
-                  { id: "grade_1", name: "Grade 1", order: 1, schemeOfStudy: { subjects: [{ subjectId: "eng", category: "Compulsory", defaultPeriods: 6 }, { subjectId: "urd", category: "Compulsory", defaultPeriods: 6 }, { subjectId: "math", category: "Compulsory", defaultPeriods: 6 }, { subjectId: "isl", category: "Compulsory", defaultPeriods: 3 }] } },
-                  { id: "grade_5", name: "Grade 5", order: 5, schemeOfStudy: { subjects: [{ subjectId: "eng", category: "Compulsory", defaultPeriods: 6 }, { subjectId: "urd", category: "Compulsory", defaultPeriods: 6 }, { subjectId: "math", category: "Compulsory", defaultPeriods: 6 }, { subjectId: "sci", category: "Compulsory", defaultPeriods: 5 }, { subjectId: "pst", category: "Compulsory", defaultPeriods: 4 }, { subjectId: "isl", category: "Compulsory", defaultPeriods: 3 }] } }
+                  { id: "grade_1", name: "Grade 1", order: 1, levelId: "primary", schemeOfStudy: { subjects: [
+                    { subjectId: "eng", category: "Compulsory", defaultPeriods: 6 }, 
+                    { subjectId: "urd", category: "Compulsory", defaultPeriods: 6 }, 
+                    { subjectId: "math", category: "Compulsory", defaultPeriods: 6 }, 
+                    { subjectId: "isl", category: "Compulsory", defaultPeriods: 3 }
+                  ] } },
+                  { id: "grade_5", name: "Grade 5", order: 5, levelId: "primary", schemeOfStudy: { subjects: [
+                    { subjectId: "eng", category: "Compulsory", defaultPeriods: 6 }, 
+                    { subjectId: "urd", category: "Compulsory", defaultPeriods: 6 }, 
+                    { subjectId: "math", category: "Compulsory", defaultPeriods: 6 }, 
+                    { subjectId: "sci", category: "Compulsory", defaultPeriods: 5 }, 
+                    { subjectId: "pst", category: "Compulsory", defaultPeriods: 4 }, 
+                    { subjectId: "isl", category: "Compulsory", defaultPeriods: 3 }
+                  ] } }
                 ]},
+                // Elementary (Middle)
+                { id: "elementary", name: "Elementary (Middle)", grades: [
+                  { id: "grade_6", name: "Grade 6", order: 6, levelId: "elementary", schemeOfStudy: { subjects: [
+                    { subjectId: "eng", category: "Compulsory", defaultPeriods: 6 }, 
+                    { subjectId: "urd", category: "Compulsory", defaultPeriods: 6 }, 
+                    { subjectId: "math", category: "Compulsory", defaultPeriods: 6 }, 
+                    { subjectId: "sci", category: "Compulsory", defaultPeriods: 5 }, 
+                    { subjectId: "ss", category: "Compulsory", defaultPeriods: 4 }, 
+                    { subjectId: "cs", category: "Compulsory", defaultPeriods: 3 }, 
+                    { subjectId: "isl", category: "Compulsory", defaultPeriods: 3 }
+                  ] } },
+                  { id: "grade_8", name: "Grade 8", order: 8, levelId: "elementary", schemeOfStudy: { subjects: [
+                    { subjectId: "eng", category: "Compulsory", defaultPeriods: 6 }, 
+                    { subjectId: "urd", category: "Compulsory", defaultPeriods: 6 }, 
+                    { subjectId: "math", category: "Compulsory", defaultPeriods: 6 }, 
+                    { subjectId: "sci", category: "Compulsory", defaultPeriods: 5 }, 
+                    { subjectId: "ss", category: "Compulsory", defaultPeriods: 4 }, 
+                    { subjectId: "cs", category: "Compulsory", defaultPeriods: 3 }, 
+                    { subjectId: "isl", category: "Compulsory", defaultPeriods: 3 }
+                  ] } }
+                ]},
+                // Secondary
                 { id: "secondary", name: "Secondary", grades: [
-                  { id: "grade_9", name: "Grade 9", order: 9, schemeOfStudy: { subjects: [{ subjectId: "eng", category: "Compulsory", defaultPeriods: 6 }, { subjectId: "urd", category: "Compulsory", defaultPeriods: 6 }, { subjectId: "math", category: "Compulsory", defaultPeriods: 6 }, { subjectId: "phy", category: "Compulsory", defaultPeriods: 4 }, { subjectId: "chem", category: "Compulsory", defaultPeriods: 4 }, { subjectId: "bio", category: "Elective", defaultPeriods: 4 }, { subjectId: "cs", category: "Elective", defaultPeriods: 4 }, { subjectId: "pst", category: "Compulsory", defaultPeriods: 3 }, { subjectId: "isl", category: "Compulsory", defaultPeriods: 3 }] } }
+                  { id: "grade_9", name: "Grade 9", order: 9, levelId: "secondary", schemeOfStudy: { subjects: [
+                    { subjectId: "eng", category: "Compulsory", defaultPeriods: 6 }, 
+                    { subjectId: "urd", category: "Compulsory", defaultPeriods: 6 }, 
+                    { subjectId: "math", category: "Compulsory", defaultPeriods: 6 }, 
+                    { subjectId: "phy", category: "Compulsory", defaultPeriods: 4 }, 
+                    { subjectId: "chem", category: "Compulsory", defaultPeriods: 4 }, 
+                    { subjectId: "bio", category: "Elective", defaultPeriods: 4 }, 
+                    { subjectId: "cs", category: "Elective", defaultPeriods: 4 }, 
+                    { subjectId: "pst", category: "Compulsory", defaultPeriods: 3 }, 
+                    { subjectId: "isl", category: "Compulsory", defaultPeriods: 3 }
+                  ] } }
+                ]},
+                // Higher Secondary
+                { id: "higher_secondary", name: "Higher Secondary", grades: [
+                  { id: "grade_11", name: "Grade 11 (FSc Part 1)", order: 11, levelId: "higher_secondary", schemeOfStudy: { subjects: [
+                    { subjectId: "eng", category: "Compulsory", defaultPeriods: 6 }, 
+                    { subjectId: "urd", category: "Compulsory", defaultPeriods: 6 }, 
+                    { subjectId: "phy", category: "Compulsory", defaultPeriods: 6 }, 
+                    { subjectId: "chem", category: "Compulsory", defaultPeriods: 6 }, 
+                    { subjectId: "bio", category: "Elective", defaultPeriods: 6 }, 
+                    { subjectId: "cs", category: "Elective", defaultPeriods: 6 }, 
+                    { subjectId: "isl", category: "Compulsory", defaultPeriods: 3 }
+                  ] } },
+                  { id: "grade_12", name: "Grade 12 (FSc Part 2)", order: 12, levelId: "higher_secondary", schemeOfStudy: { subjects: [
+                    { subjectId: "eng", category: "Compulsory", defaultPeriods: 6 }, 
+                    { subjectId: "urd", category: "Compulsory", defaultPeriods: 6 }, 
+                    { subjectId: "phy", category: "Compulsory", defaultPeriods: 6 }, 
+                    { subjectId: "chem", category: "Compulsory", defaultPeriods: 6 }, 
+                    { subjectId: "bio", category: "Elective", defaultPeriods: 6 }, 
+                    { subjectId: "cs", category: "Elective", defaultPeriods: 6 }, 
+                    { subjectId: "pst", category: "Compulsory", defaultPeriods: 3 }
+                  ] } }
                 ]}
               ]
             }
@@ -69,7 +136,47 @@ export const PAKISTAN_CATALOG: Country = {
         }
       ]
     },
-    // 2. Cambridge International (School)
+    // 2. Federal Board (FBISE)
+    {
+      id: "federal_gov",
+      name: "Federal Board (FBISE)",
+      countryId: "pk",
+      ownershipType: "Public",
+      institutionType: "School",
+      systems: [
+        {
+          id: "fbise",
+          name: "Federal Board of Intermediate and Secondary Education",
+          type: "National",
+          versions: [
+            {
+              id: "fbise_2024",
+              name: "FBISE 2024",
+              year: "2024",
+              levels: [
+                { id: "primary", name: "Primary", grades: [
+                  { id: "fed_g1", name: "Class 1", order: 1, levelId: "primary", schemeOfStudy: { subjects: [
+                    { subjectId: "eng", category: "Compulsory", defaultPeriods: 6 }, 
+                    { subjectId: "urd", category: "Compulsory", defaultPeriods: 6 }, 
+                    { subjectId: "math", category: "Compulsory", defaultPeriods: 6 }
+                  ] } }
+                ]},
+                { id: "secondary", name: "Secondary", grades: [
+                  { id: "fed_g9", name: "Class 9", order: 9, levelId: "secondary", schemeOfStudy: { subjects: [
+                    { subjectId: "eng", category: "Compulsory", defaultPeriods: 6 }, 
+                    { subjectId: "urd", category: "Compulsory", defaultPeriods: 6 }, 
+                    { subjectId: "math", category: "Compulsory", defaultPeriods: 6 }, 
+                    { subjectId: "phy", category: "Compulsory", defaultPeriods: 4 }, 
+                    { subjectId: "chem", category: "Compulsory", defaultPeriods: 4 }
+                  ] } }
+                ]}
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    // 3. Cambridge International (Pakistan)
     {
       id: "cambridge_pk",
       name: "Cambridge International (Pakistan)",
@@ -88,7 +195,14 @@ export const PAKISTAN_CATALOG: Country = {
               year: "2023",
               levels: [
                 { id: "igcse", name: "IGCSE", grades: [
-                  { id: "year_10", name: "Year 10", order: 10, schemeOfStudy: { subjects: [{ subjectId: "eng", category: "Core", defaultPeriods: 5 }, { subjectId: "math", category: "Core", defaultPeriods: 5 }, { subjectId: "phy", category: "Core", defaultPeriods: 4 }, { subjectId: "chem", category: "Core", defaultPeriods: 4 }, { subjectId: "bio", category: "Core", defaultPeriods: 4 }, { subjectId: "cs", category: "Core", defaultPeriods: 3 }] } }
+                  { id: "year_10", name: "Year 10", order: 10, levelId: "igcse", schemeOfStudy: { subjects: [
+                    { subjectId: "eng", category: "Core", defaultPeriods: 5 }, 
+                    { subjectId: "math", category: "Core", defaultPeriods: 5 }, 
+                    { subjectId: "phy", category: "Core", defaultPeriods: 4 }, 
+                    { subjectId: "chem", category: "Core", defaultPeriods: 4 }, 
+                    { subjectId: "bio", category: "Core", defaultPeriods: 4 }, 
+                    { subjectId: "cs", category: "Core", defaultPeriods: 3 }
+                  ] } }
                 ]}
               ]
             }
@@ -96,7 +210,7 @@ export const PAKISTAN_CATALOG: Country = {
         }
       ]
     },
-    // 🚀 NEW: 3. Wifaq-ul-Madaris (Madrassah)
+    // 4. Wifaq-ul-Madaris (Madrassah)
     {
       id: "wifaq_ul_madaris",
       name: "Wifaq-ul-Madaris Al-Arabia Pakistan",
@@ -136,7 +250,7 @@ export const PAKISTAN_CATALOG: Country = {
         }
       ]
     },
-    // 🚀 NEW: 4. Integrated Islamic School (Madrassah + School)
+    // 5. Integrated Islamic School (Madrassah + School)
     {
       id: "integrated_islamic_pk",
       name: "Integrated Islamic School (SNC + Islamic Studies)",
