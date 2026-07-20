@@ -12,13 +12,13 @@ export function useAiContext() {
     };
   }
 
-  // Generate the AI Context dynamically on the client
-  const schoolInfo = `School: ${config.schoolName} | Board: ${config.boardName}`;
-  const classes = config.levels.join(", ");
+  // 🚀 FIX: Access nested properties correctly (config.school.name, config.academic.levels)
+  const schoolInfo = `School: ${config.school?.name} | Board: ${config.school?.boardName}`;
+  const classes = config.academic?.levels?.join(", ") || "N/A";
   
   // Note: Since ViewModel doesn't have all nested details, we create a lightweight context here.
   // For heavy AI tasks, the backend will use the full buildAiContext() function.
-  const context = `[SYSTEM CONTEXT] The user belongs to "${config.schoolName}" (${config.schoolType}), following the ${config.boardName} curriculum. Offered Levels: ${classes}.`;
+  const context = `[SYSTEM CONTEXT] The user belongs to "${config.school?.name}" (${config.school?.type}), following the ${config.school?.boardName} curriculum. Offered Levels: ${classes}.`;
   
   return {
     context,
