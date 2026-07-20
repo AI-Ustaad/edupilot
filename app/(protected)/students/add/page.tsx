@@ -159,7 +159,7 @@ export default function AddStudentPage() {
           <Input label="Email" value={form.email} onChange={e => handleChange("email", e.target.value)} placeholder="student@example.com" />
           <Input label="Address" value={form.address} onChange={e => handleChange("address", e.target.value)} placeholder="123 Main Street" />
           
-          {/* 🚀 DYNAMIC CLASSES DROPDOWN (Correct Path: config.academic.classes) */}
+          {/* 🚀 DYNAMIC CLASSES DROPDOWN (Final Fix: config.classes) */}
           <div>
             <label className="text-sm font-bold text-gray-700 mb-1.5 block">Class / Grade *</label>
             <select 
@@ -169,13 +169,13 @@ export default function AddStudentPage() {
               className="w-full border border-gray-200 bg-gray-50 rounded-xl p-2.5 text-gray-900 focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition"
             >
               <option value="">-- Select Class --</option>
-              {config?.academic?.classes?.map((cls: any) => (
+              {config?.classes?.map((cls: any) => (
                 <option key={cls.id} value={cls.name}>{cls.name}</option>
               ))}
             </select>
           </div>
           
-          {/* 🚀 DYNAMIC SECTIONS DROPDOWN (Correct Path: config.academic.sectionNames) */}
+          {/* 🚀 DYNAMIC SECTIONS DROPDOWN (Final Fix: config.sectionNames) */}
           <div>
             <label className="text-sm font-bold text-gray-700 mb-1.5 block">Section</label>
             <select 
@@ -184,7 +184,7 @@ export default function AddStudentPage() {
               className="w-full border border-gray-200 bg-gray-50 rounded-xl p-2.5 text-gray-900 focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition"
             >
               <option value="">-- Select Section --</option>
-              {config?.academic?.sectionNames?.map((sec: string) => (
+              {config?.sectionNames?.map((sec: string) => (
                 <option key={sec} value={sec}>{sec}</option>
               ))}
             </select>
