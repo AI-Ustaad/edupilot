@@ -8,6 +8,7 @@ import Image from "next/image";
 
 // 🚀 Layered Architecture Hooks
 import { useStudentMutations } from "@/hooks/api/useStudentMutations";
+import { useConfiguration } from "@/app/(protected)/providers/ConfigurationProvider";
 
 export default function AddStudentPage() {
   const router = useRouter();
@@ -15,8 +16,11 @@ export default function AddStudentPage() {
   
   const [error, setError] = useState("");
 
-  // 🟢 The Enterprise Mutation Engine (Handles Cache Injection automatically)
+  // 🟢 The Enterprise Mutation Engine
   const { createStudent, isCreating } = useStudentMutations();
+  
+  // 🟢 Fetch School Configuration for Dynamic Classes & Sections
+  const { config, isLoading: configLoading } = useConfiguration();
 
   const [form, setForm] = useState({
     fullName: "", fatherName: "", cnic: "", dob: "",
@@ -49,12 +53,10 @@ export default function AddStudentPage() {
     setError("");
 
     try {
-      // 🟢 Name Splitting Logic
       const nameParts = form.fullName.trim().split(" ");
       const firstName = nameParts[0];
       const lastName = nameParts.slice(1).join(" ");
 
-      // 🟢 Strict Domain Mapping (Enterprise Rule 15 Enforced)
       await createStudent({
         identity: {
           admissionNumber: form.admissionNumber || `ADM-${Date.now().toString().slice(-6)}`,
@@ -75,17 +77,15 @@ export default function AddStudentPage() {
           admissionDate: new Date().toISOString(),
         },
         parentReferences: {
-          primaryParentId: `parent-${Date.now()}`, // Placeholder until Parent Module is built
+          primaryParentId: `parent-${Date.now()}`,
           emergencyContactPhone: form.guardianPhone || form.phone,
         },
         status: "Active",
-        
-        // 🟢 Saving all extra UI fields safely inside metadata
         metadata: {
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
           version: 1,
-          //@ts-ignore - Temporary extended data mapping
+          //@ts-ignore
           extendedData: {
             bloodGroup: form.bloodGroup,
             religion: form.religion,
@@ -101,13 +101,14 @@ export default function AddStudentPage() {
         }
       });
 
-      // 🚀 Zero-Lag Redirect: The Kernel is already updated!
       router.push("/students");
 
     } catch (err: any) {
       setError(err.response?.data?.message || "Failed to admit student to the Enterprise Domain.");
     }
   };
+
+  if (configLoading) return <div className="p-8 flex justify-center"><Loader2 className="animate-spin text-blue-600" size={32} /></div>;
 
   return (
     <div className="max-w-4xl mx-auto p-6 space-y-6">
@@ -157,8 +158,38 @@ export default function AddStudentPage() {
           <Input label="Phone" value={form.phone} onChange={e => handleChange("phone", e.target.value)} placeholder="0300-0000000" />
           <Input label="Email" value={form.email} onChange={e => handleChange("email", e.target.value)} placeholder="student@example.com" />
           <Input label="Address" value={form.address} onChange={e => handleChange("address", e.target.value)} placeholder="123 Main Street" />
-          <Input label="Class / Grade *" value={form.classGrade} onChange={e => handleChange("classGrade", e.target.value)} required placeholder="Class-10" />
-          <Input label="Section" value={form.section} onChange={e => handleChange("section", e.target.value)} placeholder="A" />
+          
+          {/* 🚀 DYNAMIC CLASSES DROPDOWN */}
+          <div>
+            <label className="text-sm font-bold text-gray-700 mb-1.5 block">Class / Grade *</label>
+            <select 
+              value={form.classGrade} 
+              onChange={e => handleChange("classGrade", e.target.value)} 
+              required
+              className="w-full border border-gray-200 bg-gray-50 rounded-xl p-2.5 text-gray-900 focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition"
+            >
+              <option value="">-- Select Class --</option>
+              {config?.academic?.classes?.map((cls: any) => (
+                <option key={cls.id} value={cls.name}>{cls.name}</option>
+              ))}
+            </select>
+          </div>
+          
+          {/* 🚀 DYNAMIC SECTIONS DROPDOWN */}
+          <div>
+            <label className="text-sm font-bold text-gray-700 mb-1.5 block">Section</label>
+            <select 
+              value={form.section} 
+              onChange={e => handleChange("section", e.target.value)} 
+              className="w-full border border-gray-200 bg-gray-50 rounded-xl p-2.5 text-gray-900 focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition"
+            >
+              <option value="">-- Select Section --</option>
+              {config?.academic?.sectionNames?.map((sec: string) => (
+                <option key={sec} value={sec}>{sec}</option>
+              ))}
+            </select>
+          </div>
+          
           <Input label="Roll Number" value={form.rollNumber} onChange={e => handleChange("rollNumber", e.target.value)} placeholder="101" />
           <Input label="Admission Number" value={form.admissionNumber} onChange={e => handleChange("admissionNumber", e.target.value)} placeholder="Leave blank to auto-generate" />
           <Input label="Guardian Name" value={form.guardianName} onChange={e => handleChange("guardianName", e.target.value)} />
@@ -183,7 +214,6 @@ export default function AddStudentPage() {
   );
 }
 
-// Reusable Input & Select components
 function Input({ label, ...props }: { label: string } & React.InputHTMLAttributes<HTMLInputElement>) {
   return (
     <div>
