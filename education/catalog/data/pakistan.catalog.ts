@@ -2,6 +2,7 @@
 import { Country, Subject } from "../types.catalog";
 
 export const PAKISTAN_SUBJECTS: Subject[] = [
+  // General Subjects
   { id: "eng", name: "English", code: "ENG", department: "Languages", requiresLab: false },
   { id: "urd", name: "Urdu", code: "URD", department: "Languages", requiresLab: false },
   { id: "math", name: "Mathematics", code: "MTH", department: "Sciences", requiresLab: false },
@@ -12,8 +13,16 @@ export const PAKISTAN_SUBJECTS: Subject[] = [
   { id: "cs", name: "Computer Science", code: "CS", department: "Computer Science", requiresLab: true },
   { id: "isl", name: "Islamiyat", code: "ISL", department: "Religious", requiresLab: false },
   { id: "pst", name: "Pakistan Studies", code: "PST", department: "Humanities", requiresLab: false },
-  { id: "ss", name: "Social Studies", code: "SST", department: "Humanities", requiresLab: false },
-  { id: "quran", name: "Nazra Quran", code: "QUR", department: "Religious", requiresLab: false },
+  
+  // 🚀 NEW: Madrassah Subjects
+  { id: "nazra", name: "Nazra Quran", code: "NZR", department: "Religious", requiresLab: false },
+  { id: "tajweed", name: "Tajweed", code: "TJW", department: "Religious", requiresLab: false },
+  { id: "duas", name: "Daily Duas", code: "DUAS", department: "Religious", requiresLab: false },
+  { id: "quran", name: "Quran (Hifz/Tafseer)", code: "QRN", department: "Religious", requiresLab: false },
+  { id: "fiqh", name: "Fiqh", code: "FQH", department: "Religious", requiresLab: false },
+  { id: "arabic_lang", name: "Arabic Language", code: "ARA", department: "Languages", requiresLab: false },
+  { id: "hadith", name: "Hadith", code: "HDT", department: "Religious", requiresLab: false },
+  { id: "aqeedah", name: "Aqeedah", code: "AQD", department: "Religious", requiresLab: false },
 ];
 
 export const PAKISTAN_CATALOG: Country = {
@@ -28,13 +37,14 @@ export const PAKISTAN_CATALOG: Country = {
   ],
   // @ts-ignore
   authorities: [
-    // 1. Punjab Government
+    // 1. Punjab Government (School)
     {
       id: "punjab_gov",
       name: "Punjab Government (PCTB)",
       countryId: "pk",
       provinceId: "punjab",
       ownershipType: "Public",
+      institutionType: "School",
       systems: [
         {
           id: "pctb_snc",
@@ -59,41 +69,13 @@ export const PAKISTAN_CATALOG: Country = {
         }
       ]
     },
-    // 2. Federal Government (FBISE)
-    {
-      id: "federal_gov",
-      name: "Federal Board (FBISE)",
-      countryId: "pk",
-      ownershipType: "Public",
-      systems: [
-        {
-          id: "fbise",
-          name: "Federal Board of Intermediate and Secondary Education",
-          type: "National",
-          versions: [
-            {
-              id: "fbise_2024",
-              name: "FBISE 2024",
-              year: "2024",
-              levels: [
-                { id: "primary", name: "Primary", grades: [
-                  { id: "fed_g1", name: "Class 1", order: 1, schemeOfStudy: { subjects: [{ subjectId: "eng", category: "Compulsory", defaultPeriods: 6 }, { subjectId: "urd", category: "Compulsory", defaultPeriods: 6 }, { subjectId: "math", category: "Compulsory", defaultPeriods: 6 }] } }
-                ]},
-                { id: "secondary", name: "Secondary", grades: [
-                  { id: "fed_g9", name: "Class 9", order: 9, schemeOfStudy: { subjects: [{ subjectId: "eng", category: "Compulsory", defaultPeriods: 6 }, { subjectId: "urd", category: "Compulsory", defaultPeriods: 6 }, { subjectId: "math", category: "Compulsory", defaultPeriods: 6 }, { subjectId: "phy", category: "Compulsory", defaultPeriods: 4 }, { subjectId: "chem", category: "Compulsory", defaultPeriods: 4 }] } }
-                ]}
-              ]
-            }
-          ]
-        }
-      ]
-    },
-    // 3. Cambridge International (Pakistan)
+    // 2. Cambridge International (School)
     {
       id: "cambridge_pk",
       name: "Cambridge International (Pakistan)",
       countryId: "pk",
       ownershipType: "Private",
+      institutionType: "School",
       systems: [
         {
           id: "cambridge_cie",
@@ -107,6 +89,79 @@ export const PAKISTAN_CATALOG: Country = {
               levels: [
                 { id: "igcse", name: "IGCSE", grades: [
                   { id: "year_10", name: "Year 10", order: 10, schemeOfStudy: { subjects: [{ subjectId: "eng", category: "Core", defaultPeriods: 5 }, { subjectId: "math", category: "Core", defaultPeriods: 5 }, { subjectId: "phy", category: "Core", defaultPeriods: 4 }, { subjectId: "chem", category: "Core", defaultPeriods: 4 }, { subjectId: "bio", category: "Core", defaultPeriods: 4 }, { subjectId: "cs", category: "Core", defaultPeriods: 3 }] } }
+                ]}
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    // 🚀 NEW: 3. Wifaq-ul-Madaris (Madrassah)
+    {
+      id: "wifaq_ul_madaris",
+      name: "Wifaq-ul-Madaris Al-Arabia Pakistan",
+      countryId: "pk",
+      ownershipType: "Private",
+      institutionType: "Madrassah",
+      madrassahCategory: "Dars-e-Nizami",
+      systems: [
+        {
+          id: "wifaq_dars_e_nizami",
+          name: "Dars-e-Nizami (Aalim Course)",
+          type: "Religious",
+          versions: [
+            {
+              id: "dars_2024",
+              name: "Dars-e-Nizami 2024",
+              year: "2024",
+              levels: [
+                { id: "foundation", name: "Foundation (Nazra)", grades: [
+                  { id: "nazra_1", name: "Nazra Level 1", order: 1, levelId: "foundation", schemeOfStudy: { subjects: [
+                    { subjectId: "nazra", category: "Core", defaultPeriods: 8 }, 
+                    { subjectId: "tajweed", category: "Core", defaultPeriods: 4 },
+                    { subjectId: "duas", category: "Core", defaultPeriods: 2 }
+                  ] } }
+                ]},
+                { id: "mutawassitah", name: "Mutawassitah", grades: [
+                  { id: "mut_1", name: "Mutawassitah Year 1", order: 2, levelId: "mutawassitah", schemeOfStudy: { subjects: [
+                    { subjectId: "quran", category: "Core", defaultPeriods: 6 },
+                    { subjectId: "fiqh", category: "Core", defaultPeriods: 6 },
+                    { subjectId: "arabic_lang", category: "Core", defaultPeriods: 4 },
+                    { subjectId: "hadith", category: "Core", defaultPeriods: 3 }
+                  ] } }
+                ]}
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    // 🚀 NEW: 4. Integrated Islamic School (Madrassah + School)
+    {
+      id: "integrated_islamic_pk",
+      name: "Integrated Islamic School (SNC + Islamic Studies)",
+      countryId: "pk",
+      ownershipType: "Private",
+      institutionType: "Madrassah",
+      madrassahCategory: "Integrated School + Madrassah",
+      systems: [
+        {
+          id: "integrated_sys",
+          name: "Punjab SNC + Islamic Studies",
+          type: "National",
+          versions: [
+            {
+              id: "int_snc_2024",
+              name: "Integrated SNC 2024",
+              year: "2024",
+              levels: [
+                { id: "primary", name: "Primary", grades: [
+                  { id: "int_g1", name: "Grade 1", order: 1, levelId: "primary", schemeOfStudy: { subjects: [
+                    { subjectId: "eng", category: "Core", defaultPeriods: 5 },
+                    { subjectId: "math", category: "Core", defaultPeriods: 5 },
+                    { subjectId: "nazra", category: "Core", defaultPeriods: 5 }, 
+                    { subjectId: "isl", category: "Core", defaultPeriods: 4 }
+                  ] } }
                 ]}
               ]
             }
