@@ -26,6 +26,7 @@ export const UAE_CATALOG: Country = {
       name: "UAE Ministry of Education (MOE)",
       countryId: "ae",
       ownershipType: "Public",
+      institutionType: "School", // 🚀 NEW
       systems: [
         {
           id: "moe_uae",
@@ -52,6 +53,7 @@ export const UAE_CATALOG: Country = {
       name: "Cambridge International (UAE)",
       countryId: "ae",
       ownershipType: "Private",
+      institutionType: "School", // 🚀 NEW
       systems: [
         {
           id: "cambridge_uae_sys",
@@ -65,32 +67,6 @@ export const UAE_CATALOG: Country = {
               levels: [
                 { id: "igcse", name: "IGCSE", grades: [
                   { id: "uae_y10", name: "Year 10", order: 10, schemeOfStudy: { subjects: [{ subjectId: "eng", category: "Core", defaultPeriods: 5 }, { subjectId: "ms_math", category: "Core", defaultPeriods: 5 }, { subjectId: "ms_sci", category: "Core", defaultPeriods: 5 }, { subjectId: "arabic", category: "Compulsory", defaultPeriods: 4 }] } }
-                ]}
-              ]
-            }
-          ]
-        }
-      ]
-    },
-    // 3. Indian CBSE (UAE)
-    {
-      id: "cbse_uae",
-      name: "Central Board of Secondary Education (CBSE)",
-      countryId: "ae",
-      ownershipType: "Private",
-      systems: [
-        {
-          id: "cbse_uae_sys",
-          name: "Indian Curriculum (CBSE)",
-          type: "International",
-          versions: [
-            {
-              id: "cbse_2024",
-              name: "CBSE 2024",
-              year: "2024",
-              levels: [
-                { id: "secondary", name: "Secondary", grades: [
-                  { id: "cbse_g9", name: "Grade 9", order: 9, schemeOfStudy: { subjects: [{ subjectId: "eng", category: "Compulsory", defaultPeriods: 6 }, { subjectId: "ms_math", category: "Compulsory", defaultPeriods: 6 }, { subjectId: "ms_sci", category: "Compulsory", defaultPeriods: 6 }, { subjectId: "social_studies", category: "Compulsory", defaultPeriods: 5 }] } }
                 ]}
               ]
             }
