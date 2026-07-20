@@ -8,8 +8,9 @@ export function mapAcademic(config: MasterSchoolConfiguration) {
   
   return {
     levels: config.academic?.levels || [],
-    classes: classes.map(c => ({ name: c.name, subjects: c.subjects || [] })),
-    sectionNames: sections, // 🚀 FIX: Ensuring sectionNames is passed to ViewModel
+    // 🚀 FIX: Map classes to { id, name } for UI dropdowns
+    classes: classes.map(c => ({ id: c.id || c.name, name: c.name })),
+    sectionNames: sections,
     subjects: subjects,
     classCount: classes.length,
     subjectCount: subjects.length,
