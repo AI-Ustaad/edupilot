@@ -169,7 +169,7 @@ export default function AddStudentPage() {
               className="w-full border border-gray-200 bg-gray-50 rounded-xl p-2.5 text-gray-900 focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition"
             >
               <option value="">-- Select Class --</option>
-              {config?.academic?.classes?.map((cls: any) => (
+              {config?.classes?.map((cls: any) => (
                 <option key={cls.id} value={cls.name}>{cls.name}</option>
               ))}
             </select>
@@ -184,7 +184,7 @@ export default function AddStudentPage() {
               className="w-full border border-gray-200 bg-gray-50 rounded-xl p-2.5 text-gray-900 focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition"
             >
               <option value="">-- Select Section --</option>
-              {config?.academic?.sectionNames?.map((sec: string) => (
+              {config?.sectionNames?.map((sec: string) => (
                 <option key={sec} value={sec}>{sec}</option>
               ))}
             </select>
