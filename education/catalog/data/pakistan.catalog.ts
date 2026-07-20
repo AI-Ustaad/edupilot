@@ -6,6 +6,7 @@ export const PAKISTAN_SUBJECTS: Subject[] = [
   { id: "eng", name: "English", code: "ENG", department: "Languages", requiresLab: false },
   { id: "urd", name: "Urdu", code: "URD", department: "Languages", requiresLab: false },
   { id: "math", name: "Mathematics", code: "MTH", department: "Sciences", requiresLab: false },
+  { id: "gk", name: "General Knowledge", code: "GK", department: "Humanities", requiresLab: false },
   { id: "sci", name: "General Science", code: "SCI", department: "Sciences", requiresLab: true },
   { id: "phy", name: "Physics", code: "PHY", department: "Sciences", requiresLab: true },
   { id: "chem", name: "Chemistry", code: "CHM", department: "Sciences", requiresLab: true },
@@ -57,26 +58,63 @@ export const PAKISTAN_CATALOG: Country = {
               name: "SNC 2024",
               year: "2024",
               levels: [
-                // Primary
+                // Primary (5 Classes)
                 { id: "primary", name: "Primary", grades: [
                   { id: "grade_1", name: "Grade 1", order: 1, levelId: "primary", schemeOfStudy: { subjects: [
                     { subjectId: "eng", category: "Compulsory", defaultPeriods: 6 }, 
                     { subjectId: "urd", category: "Compulsory", defaultPeriods: 6 }, 
                     { subjectId: "math", category: "Compulsory", defaultPeriods: 6 }, 
-                    { subjectId: "isl", category: "Compulsory", defaultPeriods: 3 }
+                    { subjectId: "gk", category: "Compulsory", defaultPeriods: 4 },
+                    { subjectId: "isl", category: "Compulsory", defaultPeriods: 3 },
+                    { subjectId: "nazra", category: "Compulsory", defaultPeriods: 3 }
+                  ] } },
+                  { id: "grade_2", name: "Grade 2", order: 2, levelId: "primary", schemeOfStudy: { subjects: [
+                    { subjectId: "eng", category: "Compulsory", defaultPeriods: 6 }, 
+                    { subjectId: "urd", category: "Compulsory", defaultPeriods: 6 }, 
+                    { subjectId: "math", category: "Compulsory", defaultPeriods: 6 }, 
+                    { subjectId: "gk", category: "Compulsory", defaultPeriods: 4 },
+                    { subjectId: "isl", category: "Compulsory", defaultPeriods: 3 },
+                    { subjectId: "nazra", category: "Compulsory", defaultPeriods: 3 }
+                  ] } },
+                  { id: "grade_3", name: "Grade 3", order: 3, levelId: "primary", schemeOfStudy: { subjects: [
+                    { subjectId: "eng", category: "Compulsory", defaultPeriods: 6 }, 
+                    { subjectId: "urd", category: "Compulsory", defaultPeriods: 6 }, 
+                    { subjectId: "math", category: "Compulsory", defaultPeriods: 6 }, 
+                    { subjectId: "gk", category: "Compulsory", defaultPeriods: 4 },
+                    { subjectId: "isl", category: "Compulsory", defaultPeriods: 3 },
+                    { subjectId: "nazra", category: "Compulsory", defaultPeriods: 3 }
+                  ] } },
+                  { id: "grade_4", name: "Grade 4", order: 4, levelId: "primary", schemeOfStudy: { subjects: [
+                    { subjectId: "eng", category: "Compulsory", defaultPeriods: 6 }, 
+                    { subjectId: "urd", category: "Compulsory", defaultPeriods: 6 }, 
+                    { subjectId: "math", category: "Compulsory", defaultPeriods: 6 }, 
+                    { subjectId: "sci", category: "Compulsory", defaultPeriods: 5 }, 
+                    { subjectId: "ss", category: "Compulsory", defaultPeriods: 4 }, 
+                    { subjectId: "isl", category: "Compulsory", defaultPeriods: 3 },
+                    { subjectId: "nazra", category: "Compulsory", defaultPeriods: 3 }
                   ] } },
                   { id: "grade_5", name: "Grade 5", order: 5, levelId: "primary", schemeOfStudy: { subjects: [
                     { subjectId: "eng", category: "Compulsory", defaultPeriods: 6 }, 
                     { subjectId: "urd", category: "Compulsory", defaultPeriods: 6 }, 
                     { subjectId: "math", category: "Compulsory", defaultPeriods: 6 }, 
                     { subjectId: "sci", category: "Compulsory", defaultPeriods: 5 }, 
-                    { subjectId: "pst", category: "Compulsory", defaultPeriods: 4 }, 
-                    { subjectId: "isl", category: "Compulsory", defaultPeriods: 3 }
+                    { subjectId: "ss", category: "Compulsory", defaultPeriods: 4 }, 
+                    { subjectId: "isl", category: "Compulsory", defaultPeriods: 3 },
+                    { subjectId: "nazra", category: "Compulsory", defaultPeriods: 3 }
                   ] } }
                 ]},
-                // Elementary (Middle)
+                // Elementary (3 Classes)
                 { id: "elementary", name: "Elementary (Middle)", grades: [
                   { id: "grade_6", name: "Grade 6", order: 6, levelId: "elementary", schemeOfStudy: { subjects: [
+                    { subjectId: "eng", category: "Compulsory", defaultPeriods: 6 }, 
+                    { subjectId: "urd", category: "Compulsory", defaultPeriods: 6 }, 
+                    { subjectId: "math", category: "Compulsory", defaultPeriods: 6 }, 
+                    { subjectId: "sci", category: "Compulsory", defaultPeriods: 5 }, 
+                    { subjectId: "ss", category: "Compulsory", defaultPeriods: 4 }, 
+                    { subjectId: "cs", category: "Compulsory", defaultPeriods: 3 }, 
+                    { subjectId: "isl", category: "Compulsory", defaultPeriods: 3 }
+                  ] } },
+                  { id: "grade_7", name: "Grade 7", order: 7, levelId: "elementary", schemeOfStudy: { subjects: [
                     { subjectId: "eng", category: "Compulsory", defaultPeriods: 6 }, 
                     { subjectId: "urd", category: "Compulsory", defaultPeriods: 6 }, 
                     { subjectId: "math", category: "Compulsory", defaultPeriods: 6 }, 
@@ -95,7 +133,7 @@ export const PAKISTAN_CATALOG: Country = {
                     { subjectId: "isl", category: "Compulsory", defaultPeriods: 3 }
                   ] } }
                 ]},
-                // Secondary
+                // Secondary (2 Classes)
                 { id: "secondary", name: "Secondary", grades: [
                   { id: "grade_9", name: "Grade 9", order: 9, levelId: "secondary", schemeOfStudy: { subjects: [
                     { subjectId: "eng", category: "Compulsory", defaultPeriods: 6 }, 
@@ -105,11 +143,20 @@ export const PAKISTAN_CATALOG: Country = {
                     { subjectId: "chem", category: "Compulsory", defaultPeriods: 4 }, 
                     { subjectId: "bio", category: "Elective", defaultPeriods: 4 }, 
                     { subjectId: "cs", category: "Elective", defaultPeriods: 4 }, 
-                    { subjectId: "pst", category: "Compulsory", defaultPeriods: 3 }, 
                     { subjectId: "isl", category: "Compulsory", defaultPeriods: 3 }
+                  ] } },
+                  { id: "grade_10", name: "Grade 10", order: 10, levelId: "secondary", schemeOfStudy: { subjects: [
+                    { subjectId: "eng", category: "Compulsory", defaultPeriods: 6 }, 
+                    { subjectId: "urd", category: "Compulsory", defaultPeriods: 6 }, 
+                    { subjectId: "math", category: "Compulsory", defaultPeriods: 6 }, 
+                    { subjectId: "phy", category: "Compulsory", defaultPeriods: 4 }, 
+                    { subjectId: "chem", category: "Compulsory", defaultPeriods: 4 }, 
+                    { subjectId: "bio", category: "Elective", defaultPeriods: 4 }, 
+                    { subjectId: "cs", category: "Elective", defaultPeriods: 4 }, 
+                    { subjectId: "pst", category: "Compulsory", defaultPeriods: 3 }
                   ] } }
                 ]},
-                // Higher Secondary
+                // Higher Secondary (2 Classes)
                 { id: "higher_secondary", name: "Higher Secondary", grades: [
                   { id: "grade_11", name: "Grade 11 (FSc Part 1)", order: 11, levelId: "higher_secondary", schemeOfStudy: { subjects: [
                     { subjectId: "eng", category: "Compulsory", defaultPeriods: 6 }, 
