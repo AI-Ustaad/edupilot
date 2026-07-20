@@ -49,7 +49,40 @@ export class StudentService {
   }
 
   async create(data: any, tenantId: string, userId: string): Promise<Student & { id: string }> {
-    const validation = this.validation.validate(CreateStudentSchema, data);
+    // 🚀 Flatten the Domain Model for DB validation
+    const flatData: any = {
+      fullName: data.personal?.firstName ? `${data.personal.firstName} ${data.personal.lastName || ""}`.trim() : data.fullName,
+      fatherName: data.metadata?.extendedData?.fatherName || "",
+      cnic: data.identity?.cnicOrBForm || "",
+      dateOfBirth: data.personal?.dateOfBirth || "",
+      gender: data.personal?.gender || "Male",
+      phone: data.metadata?.extendedData?.phone || "",
+      email: data.metadata?.extendedData?.email || "",
+      address: data.metadata?.extendedData?.address || "",
+      
+      classGrade: data.academic?.classId || data.classGrade,
+      section: data.academic?.sectionId || "A",
+      rollNumber: data.identity?.rollNumber,
+      admissionNumber: data.identity?.admissionNumber,
+      
+      guardianName: data.metadata?.extendedData?.guardianName || "",
+      guardianRelation: data.metadata?.extendedData?.guardianRelation || "",
+      guardianPhone: data.metadata?.extendedData?.guardianPhone || data.parentReferences?.emergencyContactPhone || "",
+      
+      bloodGroup: data.metadata?.extendedData?.bloodGroup || "",
+      religion: data.metadata?.extendedData?.religion || "Islam",
+      nationality: data.metadata?.extendedData?.nationality || "",
+      previousSchool: data.metadata?.extendedData?.previousSchool || "",
+      medicalConditions: data.metadata?.extendedData?.medicalConditions || "",
+      
+      photoBase64: data.personal?.avatarUrl || "",
+      status: data.status || "Active",
+    };
+
+    // Remove undefined values so Zod defaults can take over
+    Object.keys(flatData).forEach(key => flatData[key] === undefined && delete flatData[key]);
+
+    const validation = this.validation.validate(CreateStudentSchema, flatData);
     if (!validation.success) {
       throw new ValidationError("Validation failed", validation.errors);
     }
@@ -71,6 +104,7 @@ export class StudentService {
       ...validation.data,
       tenantId,
       createdBy: userId,
+      admissionStatus: "approved", // Auto-approve if created from Add Student page
     };
 
     const id = await this.repository.create(docData, tenantId);
