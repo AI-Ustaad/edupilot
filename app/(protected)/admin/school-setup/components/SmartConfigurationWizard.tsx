@@ -13,8 +13,11 @@ export function SmartConfigurationWizard({ onGenerated }: { onGenerated: (data: 
   // Step 1: Institution Profile
   const [schoolName, setSchoolName] = useState("");
   const [ownershipType, setOwnershipType] = useState(""); // Public / Private
-  const [institutionType, setInstitutionType] = useState("School"); // 🚀 NEW: Default to School
-  const [countryId, setCountryId] = useState("pk"); // Default to Pakistan
+  const [institutionType, setInstitutionType] = useState("School"); // School / Madrassah
+  const [countryId, setCountryId] = useState("pk");
+  
+  // 🚀 NEW: Manual Sections Input
+  const [sections, setSections] = useState("A, B"); 
   
   // Step 2: Cascading Selections
   const [authorityId, setAuthorityId] = useState("");
@@ -26,7 +29,7 @@ export function SmartConfigurationWizard({ onGenerated }: { onGenerated: (data: 
   const [generatedData, setGeneratedData] = useState<any>(null);
   const [isGenerating, setIsGenerating] = useState(false);
 
-  // 🚀 NEW: Pass institutionType to fetch correct authorities (School vs Madrassah)
+  // Fetch Authorities based on Country, Ownership Type, AND Institution Type
   const { data: authorities = [] } = useEducationRulesEngine(
     "GET_AUTHORITIES", 
     { countryId, ownershipType, institutionType }, 
@@ -65,6 +68,9 @@ export function SmartConfigurationWizard({ onGenerated }: { onGenerated: (data: 
       return;
     }
 
+    // 🚀 Parse manual sections input (e.g., "A, B, C" -> ["A", "B", "C"])
+    const parsedSections = sections.split(",").map(s => s.trim()).filter(Boolean);
+
     onGenerated({
       schoolProfile: {
         name: schoolName,
@@ -72,7 +78,7 @@ export function SmartConfigurationWizard({ onGenerated }: { onGenerated: (data: 
         curriculumId: systemId,
         boardName: authorities.find(a => a.id === authorityId)?.name || "Custom Board",
         country: countryId,
-        sections: ["A", "B"]
+        sections: parsedSections // 🚀 Pass manual sections
       },
       academicStructure: generatedData
     });
@@ -99,22 +105,25 @@ export function SmartConfigurationWizard({ onGenerated }: { onGenerated: (data: 
           </select>
         </div>
         
-        {/* 🚀 NEW: Institution Type Dropdown */}
         <div>
           <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Institution Type *</label>
-          <select 
-            value={institutionType} 
-            onChange={(e) => { setInstitutionType(e.target.value); setAuthorityId(""); }} 
-            className="w-full border p-2.5 rounded-xl"
-          >
+          <select value={institutionType} onChange={(e) => { setInstitutionType(e.target.value); setAuthorityId(""); }} className="w-full border p-2.5 rounded-xl">
             <option value="School">School (Govt/Private)</option>
             <option value="Madrassah">Madrassah</option>
             <option value="College">College</option>
             <option value="University">University</option>
-            <option value="Technical Institute">Technical Institute</option>
-            <option value="Vocational Institute">Vocational Institute</option>
-            <option value="Online Institute">Online Institute</option>
           </select>
+        </div>
+
+        {/* 🚀 NEW: Sections Input Field */}
+        <div>
+          <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Default Sections *</label>
+          <input 
+            value={sections} 
+            onChange={(e) => setSections(e.target.value)} 
+            className="w-full border p-2.5 rounded-xl" 
+            placeholder="e.g. A, B, C" 
+          />
         </div>
       </div>
 
