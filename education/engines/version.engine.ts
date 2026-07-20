@@ -69,7 +69,7 @@ export class VersionEngine {
         classes: newStructure.grades.map(g => ({
           id: g.id,
           name: g.name,
-          level: g.levelId || g.level,
+                  level: (g as any).levelId || (g as any).level || "general",
           subjects: g.schemeOfStudy.subjects.map(s => s.subjectId) // Updated subjects!
         })),
         subjects: newStructure.allSubjects.map(s => s.name),
