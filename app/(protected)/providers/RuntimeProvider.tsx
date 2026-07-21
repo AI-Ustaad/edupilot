@@ -21,7 +21,6 @@ export function RuntimeProvider({ children }: { children: React.ReactNode }) {
       }
     }
   }, [config, initializeKernel]);
-  }, [config, initializeKernel]);
 
   if (isLoading) {
     return (
