@@ -7,17 +7,15 @@ import { Loader2, UserPlus, Upload, Camera } from "lucide-react";
 import Image from "next/image";
 
 // 🚀 Layered Architecture Hooks
-import { useStudentMutations } from "@/hooks/api/useStudentMutations";
 import { useConfiguration } from "@/app/(protected)/providers/ConfigurationProvider";
+import apiClient from "@/lib/api/client";
 
 export default function AddStudentPage() {
   const router = useRouter();
   const { user } = useAuth();
   
   const [error, setError] = useState("");
-
-  // 🟢 The Enterprise Mutation Engine
-  const { createStudent, isCreating } = useStudentMutations();
+  const [isCreating, setIsCreating] = useState(false);
   
   // 🟢 Fetch School Configuration for Dynamic Classes & Sections
   const { config, isLoading: configLoading } = useConfiguration();
@@ -51,60 +49,67 @@ export default function AddStudentPage() {
       return;
     }
     setError("");
+    setIsCreating(true);
 
     try {
       const nameParts = form.fullName.trim().split(" ");
       const firstName = nameParts[0];
       const lastName = nameParts.slice(1).join(" ");
 
-      await createStudent({
+      // 🚀 FIX: Exact Payload Structure required by Backend Zod Schema
+      const payload = {
         identity: {
           admissionNumber: form.admissionNumber || `ADM-${Date.now().toString().slice(-6)}`,
-          rollNumber: form.rollNumber,
-          cnicOrBForm: form.cnic,
+          rollNumber: form.rollNumber || undefined,
+          cnicOrBForm: form.cnic || undefined,
         },
         personal: {
           firstName: firstName,
-          lastName: lastName || "",
-          dateOfBirth: form.dob || new Date().toISOString(),
-          gender: form.gender as "Male" | "Female" | "Other",
-          avatarUrl: form.photoBase64,
+          lastName: lastName || undefined,
+          dateOfBirth: form.dob || undefined,
+          gender: form.gender || "Male",
+          avatarUrl: form.photoBase64 || undefined,
         },
         academic: {
           campusId: user?.tenantId || "default-campus",
           classId: form.classGrade,
-          sectionId: form.section,
+          sectionId: form.section || undefined,
           admissionDate: new Date().toISOString(),
         },
         parentReferences: {
           primaryParentId: `parent-${Date.now()}`,
-          emergencyContactPhone: form.guardianPhone || form.phone,
+          emergencyContactPhone: form.guardianPhone || form.phone || undefined,
         },
         status: "Active",
         metadata: {
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
           version: 1,
-          //@ts-ignore
           extendedData: {
-            bloodGroup: form.bloodGroup,
-            religion: form.religion,
-            nationality: form.nationality,
-            previousSchool: form.previousSchool,
-            medicalConditions: form.medicalConditions,
-            fatherName: form.fatherName,
-            address: form.address,
-            email: form.email,
-            guardianName: form.guardianName,
-            guardianRelation: form.guardianRelation
+            bloodGroup: form.bloodGroup || undefined,
+            religion: form.religion || undefined,
+            nationality: form.nationality || undefined,
+            previousSchool: form.previousSchool || undefined,
+            medicalConditions: form.medicalConditions || undefined,
+            fatherName: form.fatherName || undefined,
+            address: form.address || undefined,
+            email: form.email || undefined,
+            guardianName: form.guardianName || undefined,
+            guardianRelation: form.guardianRelation || undefined
           }
         }
-      });
+      };
+
+      // 🚀 FIX: Using apiClient to ensure baseURL (/api/v1) and credentials are applied
+      await apiClient.post("/students", payload);
 
       router.push("/students");
 
     } catch (err: any) {
-      setError(err.response?.data?.message || "Failed to admit student to the Enterprise Domain.");
+      const errorMsg = err.response?.data?.message || err.response?.data?.errors?.[0]?.message || "Failed to admit student to the Enterprise Domain.";
+      setError(errorMsg);
+    } finally {
+      setIsCreating(false);
     }
   };
 
@@ -159,7 +164,7 @@ export default function AddStudentPage() {
           <Input label="Email" value={form.email} onChange={e => handleChange("email", e.target.value)} placeholder="student@example.com" />
           <Input label="Address" value={form.address} onChange={e => handleChange("address", e.target.value)} placeholder="123 Main Street" />
           
-          {/* 🚀 DYNAMIC CLASSES DROPDOWN (Final Fix: config.classes) */}
+          {/* 🚀 DYNAMIC CLASSES DROPDOWN */}
           <div>
             <label className="text-sm font-bold text-gray-700 mb-1.5 block">Class / Grade *</label>
             <select 
@@ -175,7 +180,7 @@ export default function AddStudentPage() {
             </select>
           </div>
           
-          {/* 🚀 DYNAMIC SECTIONS DROPDOWN (Final Fix: config.sectionNames) */}
+          {/* 🚀 DYNAMIC SECTIONS DROPDOWN */}
           <div>
             <label className="text-sm font-bold text-gray-700 mb-1.5 block">Section</label>
             <select 
