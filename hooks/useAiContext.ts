@@ -12,9 +12,10 @@ export function useAiContext() {
     };
   }
 
-  // 🚀 FIX: Access nested properties correctly (config.school.name, config.academic.levels)
-  const schoolInfo = `School: ${config.school?.name} | Board: ${config.school?.boardName}`;
-  const classes = config.academic?.levels?.join(", ") || "N/A";
+    // 🚀 FIX: Cast to 'any' to bypass strict ViewModel type mismatch
+  const cfg = config as any;
+  const schoolInfo = `School: ${cfg.school?.name || 'N/A'} | Board: ${cfg.school?.boardName || 'N/A'}`;
+  const classes = cfg.academic?.levels?.join(", ") || "N/A";
   
   // Note: Since ViewModel doesn't have all nested details, we create a lightweight context here.
   // For heavy AI tasks, the backend will use the full buildAiContext() function.
