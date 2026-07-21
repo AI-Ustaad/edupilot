@@ -12,14 +12,14 @@ export function useAiContext() {
     };
   }
 
-    // 🚀 FIX: Cast to 'any' to bypass strict ViewModel type mismatch
+  // 🚀 FIX: Cast to 'any' to bypass strict ViewModel type mismatch
   const cfg = config as any;
   const schoolInfo = `School: ${cfg.school?.name || 'N/A'} | Board: ${cfg.school?.boardName || 'N/A'}`;
   const classes = cfg.academic?.levels?.join(", ") || "N/A";
   
   // Note: Since ViewModel doesn't have all nested details, we create a lightweight context here.
   // For heavy AI tasks, the backend will use the full buildAiContext() function.
-  const context = `[SYSTEM CONTEXT] The user belongs to "${config.school?.name}" (${config.school?.type}), following the ${config.school?.boardName} curriculum. Offered Levels: ${classes}.`;
+  const context = `[SYSTEM CONTEXT] The user belongs to "${cfg.school?.name || 'N/A'}" (${cfg.school?.type || 'N/A'}), following the ${cfg.school?.boardName || 'N/A'} curriculum. Offered Levels: ${classes}.`;
   
   return {
     context,
