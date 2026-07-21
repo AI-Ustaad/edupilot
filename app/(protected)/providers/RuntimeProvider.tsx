@@ -11,10 +11,16 @@ export function RuntimeProvider({ children }: { children: React.ReactNode }) {
   const { config, isLoading, error } = useConfiguration();
   const initializeKernel = useRuntimeStore((state) => state.initializeKernel);
 
-  useEffect(() => {
-    if (config && config.state === "Published" && config.metadata && config.school && config.academic) {
-      initializeKernel(config.metadata.tenantId, config);
+    useEffect(() => {
+    // 🚀 FIX: Removed config.metadata to fix TypeScript error
+    if (config && config.state === "Published" && config.school && config.academic) {
+      // Safely access tenantId if it exists
+      const tenantId = (config as any)?.tenantId || (config as any)?.metadata?.tenantId || "";
+      if (tenantId) {
+        initializeKernel(tenantId, config);
+      }
     }
+  }, [config, initializeKernel]);
   }, [config, initializeKernel]);
 
   if (isLoading) {
