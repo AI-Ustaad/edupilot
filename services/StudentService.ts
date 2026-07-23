@@ -1,7 +1,7 @@
 // services/StudentService.ts
 
 import { CreateStudentSchema } from "@/validators/student";
-import { StudentPersistenceMapper } from "@/mappers/StudentPersistenceMapper";
+import { StudentPersistenceMapper } from "@/lib/mappers/StudentPersistenceMapper";
 import { BusinessError } from "@/errors";
 // آپ کی ریپوزٹری کا امپورٹ (اگر آپ کے پراجیکٹ میں راست مختلف ہو تو اسے ایڈجسٹ کر لیں)
 import { StudentRepository } from "@/repositories/student.repository"; 
