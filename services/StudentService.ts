@@ -3,15 +3,12 @@
 import { CreateStudentSchema } from "@/validators/student";
 import { StudentPersistenceMapper } from "@/lib/mappers/StudentPersistenceMapper";
 import { BusinessError } from "@/errors";
-// آپ کی ریپوزٹری کا امپورٹ (اگر آپ کے پراجیکٹ میں راست مختلف ہو تو اسے ایڈجسٹ کر لیں)
 import { StudentRepository } from "@/repositories/student.repository"; 
 
 export class StudentService {
   private repository: StudentRepository;
 
   constructor() {
-    // اگر آپ کی ریپوزٹری ایک سٹیٹک کلاس ہے تو اسے اسٹیٹک کال کریں،
-    // ورنہ یہاں نیا انسٹینس بنا رہے ہیں۔
     this.repository = new StudentRepository(); 
   }
 
@@ -39,9 +36,34 @@ export class StudentService {
       tenantId,
     }, tenantId);
     
-    // 5. Return Mapped Entity (Phase 6 Readiness)
+    // 5. Return Mapped Entity
     return StudentPersistenceMapper.fromFirestore(savedDoc);
   }
 
-  // ... (آپ کے باقی پرانے میتھڈز جیسے getById, paginate وغیرہ یہاں نیچے رہ سکتے ہیں)
+  /**
+   * Get Student By ID
+   */
+  async getById(tenantId: string, studentId: string) {
+    const doc = await this.repository.findById(studentId, tenantId);
+    if (!doc) return null;
+    return StudentPersistenceMapper.fromFirestore(doc);
+  }
+
+  /**
+   * Paginate Students
+   */
+  async paginate(tenantId: string, page: number, limit: number) {
+    const result = await this.repository.paginate(tenantId, page, limit);
+    return {
+      ...result,
+      data: result.data.map(doc => StudentPersistenceMapper.fromFirestore(doc))
+    };
+  }
+
+  /**
+   * Delete Student
+   */
+  async delete(tenantId: string, studentId: string) {
+    return await this.repository.softDelete(studentId, tenantId);
+  }
 }
