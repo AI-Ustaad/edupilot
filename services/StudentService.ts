@@ -61,7 +61,6 @@ export class StudentService {
   }
 
   /**
-     /**
    * Delete Student (Soft Delete)
    */
   async delete(tenantId: string, studentId: string) {
@@ -75,3 +74,4 @@ export class StudentService {
     // Here you can also add logic to delete related records (attendance, fees, etc.) if needed
     return await this.repository.delete(studentId, tenantId);
   }
+}
