@@ -52,7 +52,7 @@ export const DELETE = withErrorHandler(
           tenantId,
           entityId: studentId,
           entityType: "student",
-          metadata: { name: student.fullName },
+                   metadata: { name: `${student.personal.firstName} ${student.personal.lastName || ""}`.trim() },
         });
 
         return createSuccessResponse(null, { message: "Student and all related data deleted successfully" });
