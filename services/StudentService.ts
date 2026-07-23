@@ -68,7 +68,6 @@ export class StudentService {
   }
 
   /**
-    /**
    * Hard Delete Student (Permanent Delete)
    */
   async hardDelete(tenantId: string, studentId: string, userId: string) {
@@ -97,3 +96,4 @@ export class StudentService {
       updatedAt: new Date()
     }, tenantId);
   }
+}
