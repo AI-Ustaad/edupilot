@@ -9,6 +9,7 @@ import Image from "next/image";
 // 🚀 Layered Architecture Hooks
 import { useConfiguration } from "@/app/(protected)/providers/ConfigurationProvider";
 import apiClient from "@/lib/api/client";
+import toast from "react-hot-toast";
 
 export default function AddStudentPage() {
   const router = useRouter();
@@ -56,11 +57,12 @@ export default function AddStudentPage() {
       const firstName = nameParts[0];
       const lastName = nameParts.slice(1).join(" ");
 
-      // 🚀 FIX: Exact Payload Structure required by Backend Zod Schema
+      // 🚀 ENTERPRISE DOMAIN AGGREGATE PAYLOAD
+      // No more metadata.extendedData. Explicit Domain Objects only.
       const payload = {
         identity: {
           admissionNumber: form.admissionNumber || `ADM-${Date.now().toString().slice(-6)}`,
-          rollNumber: form.rollNumber || undefined,
+          rollNumber: form.rollNumber ? Number(form.rollNumber) : undefined,
           cnicOrBForm: form.cnic || undefined,
         },
         personal: {
@@ -73,36 +75,43 @@ export default function AddStudentPage() {
         academic: {
           campusId: user?.tenantId || "default-campus",
           classId: form.classGrade,
-          sectionId: form.section || undefined,
+          sectionId: form.section || "A",
           admissionDate: new Date().toISOString(),
         },
         parentReferences: {
-          primaryParentId: `parent-${Date.now()}`,
+          primaryParentId: null, // Will be linked properly via Parent Module later
           emergencyContactPhone: form.guardianPhone || form.phone || undefined,
+        },
+        contacts: {
+          phone: form.phone || undefined,
+          email: form.email || undefined,
+          address: form.address || undefined,
+        },
+        guardian: {
+          name: form.guardianName || form.fatherName || undefined,
+          relation: form.guardianRelation || undefined,
+          phone: form.guardianPhone || undefined,
+        },
+        medical: {
+          bloodGroup: form.bloodGroup || undefined,
+          conditions: form.medicalConditions || undefined,
+        },
+        demographics: {
+          religion: form.religion || undefined,
+          nationality: form.nationality || undefined,
+          previousSchool: form.previousSchool || undefined,
         },
         status: "Active",
         metadata: {
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
           version: 1,
-          extendedData: {
-            bloodGroup: form.bloodGroup || undefined,
-            religion: form.religion || undefined,
-            nationality: form.nationality || undefined,
-            previousSchool: form.previousSchool || undefined,
-            medicalConditions: form.medicalConditions || undefined,
-            fatherName: form.fatherName || undefined,
-            address: form.address || undefined,
-            email: form.email || undefined,
-            guardianName: form.guardianName || undefined,
-            guardianRelation: form.guardianRelation || undefined
-          }
+          source: "web"
         }
       };
 
-      // 🚀 FIX: Using apiClient to ensure baseURL (/api/v1) and credentials are applied
+      // 🚀 API Call
       await apiClient.post("/students", payload);
-
+      
+      toast.success("Student successfully onboarded!");
       router.push("/students");
 
     } catch (err: any) {
