@@ -61,9 +61,17 @@ export class StudentService {
   }
 
   /**
-   * Delete Student
+     /**
+   * Delete Student (Soft Delete)
    */
   async delete(tenantId: string, studentId: string) {
     return await this.repository.softDelete(studentId, tenantId);
   }
-}
+
+  /**
+   * Hard Delete Student (Permanent Delete)
+   */
+  async hardDelete(tenantId: string, studentId: string, userId: string) {
+    // Here you can also add logic to delete related records (attendance, fees, etc.) if needed
+    return await this.repository.delete(studentId, tenantId);
+  }
