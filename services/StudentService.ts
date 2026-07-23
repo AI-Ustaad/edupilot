@@ -68,10 +68,32 @@ export class StudentService {
   }
 
   /**
+    /**
    * Hard Delete Student (Permanent Delete)
    */
   async hardDelete(tenantId: string, studentId: string, userId: string) {
     // Here you can also add logic to delete related records (attendance, fees, etc.) if needed
     return await this.repository.delete(studentId, tenantId);
   }
-}
+
+  /**
+   * Approve Student Admission
+   */
+  async approveAdmission(tenantId: string, studentId: string, userId: string) {
+    return await this.repository.update(studentId, {
+      admissionStatus: "approved",
+      updatedBy: userId,
+      updatedAt: new Date()
+    }, tenantId);
+  }
+
+  /**
+   * Reject Student Admission
+   */
+  async rejectAdmission(tenantId: string, studentId: string, userId: string) {
+    return await this.repository.update(studentId, {
+      admissionStatus: "rejected",
+      updatedBy: userId,
+      updatedAt: new Date()
+    }, tenantId);
+  }
