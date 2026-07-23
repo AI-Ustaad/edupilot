@@ -1,5 +1,23 @@
-// services/StudentService.ts -> create method
-  
+// services/StudentService.ts
+
+import { CreateStudentSchema } from "@/validators/student";
+import { StudentPersistenceMapper } from "@/mappers/StudentPersistenceMapper";
+import { BusinessError } from "@/errors";
+// آپ کی ریپوزٹری کا امپورٹ (اگر آپ کے پراجیکٹ میں راست مختلف ہو تو اسے ایڈجسٹ کر لیں)
+import { StudentRepository } from "@/repositories/student.repository"; 
+
+export class StudentService {
+  private repository: StudentRepository;
+
+  constructor() {
+    // اگر آپ کی ریپوزٹری ایک سٹیٹک کلاس ہے تو اسے اسٹیٹک کال کریں،
+    // ورنہ یہاں نیا انسٹینس بنا رہے ہیں۔
+    this.repository = new StudentRepository(); 
+  }
+
+  /**
+   * Create Student Use-Case (Enterprise Flow)
+   */
   async create(data: any, tenantId: string, userId: string) {
     // 1. Direct Zod Parse (ZodError will be caught by withErrorHandler)
     const validatedAggregate = CreateStudentSchema.parse(data);
@@ -24,3 +42,6 @@
     // 5. Return Mapped Entity (Phase 6 Readiness)
     return StudentPersistenceMapper.fromFirestore(savedDoc);
   }
+
+  // ... (آپ کے باقی پرانے میتھڈز جیسے getById, paginate وغیرہ یہاں نیچے رہ سکتے ہیں)
+}
