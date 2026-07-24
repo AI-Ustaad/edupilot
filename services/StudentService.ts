@@ -1,10 +1,9 @@
 // services/StudentService.ts
-
 import { CreateStudentSchema } from "@/validators/student";
 import { StudentPersistenceMapper } from "@/lib/mappers/StudentPersistenceMapper";
 import { BusinessError } from "@/errors";
 import { StudentRepository } from "@/repositories/student.repository"; 
-import type { StudentEntity, Student360Aggregate } from "@/entities/student.entity";
+import type { StudentEntity, Student360Aggregate, StudentComment } from "@/entities/student.entity";
 
 export class StudentService {
   private repository: StudentRepository;
@@ -44,6 +43,7 @@ export class StudentService {
       updatedBy: userId,
       updatedAt: new Date()
     }, tenantId);
+
     return this.getById(tenantId, studentId);
   }
 
@@ -155,6 +155,43 @@ export class StudentService {
 
   async archive(tenantId: string, studentId: string, userId: string) {
     return await this.repository.update(studentId, { status: "archived", updatedBy: userId }, tenantId);
+  }
+
+  /**
+   * Add Comment to Student Profile
+   * Supports Student 360 Timeline & Audit Trail
+   */
+  async addComment(
+    tenantId: string, 
+    studentId: string, 
+    comment: string, 
+    userId: string
+  ): Promise<void> {
+    // Validate student exists
+    const student = await this.getById(tenantId, studentId);
+    
+    if (!student) {
+      throw new BusinessError(`Student with ID ${studentId} not found`);
+    }
+
+    // Create new comment object matching StudentComment interface
+    const newComment: StudentComment = {
+      id: crypto.randomUUID(),
+      comment,
+      commentedBy: userId,
+      commentedAt: new Date().toISOString(),
+      type: 'comment'
+    };
+
+    // Get existing comments array (handle undefined)
+    const existingComments = student.comments || [];
+    
+    // Update student document with new comment
+    await this.repository.update(studentId, {
+      comments: [...existingComments, newComment],
+      updatedBy: userId,
+      updatedAt: new Date()
+    }, tenantId);
   }
 
   async restore(tenantId: string, studentId: string, userId: string) {
