@@ -1,3 +1,4 @@
+// validators/student/CreateStudentValidator.ts
 import { z } from "zod";
 
 export const CreateStudentSchema = z.object({
@@ -20,7 +21,7 @@ export const CreateStudentSchema = z.object({
     admissionDate: z.string(),
   }),
   parentReferences: z.object({
-    primaryParentId: z.string().nullable().optional(), // 🚀 Fixed: Nullable & Optional
+    primaryParentId: z.string().nullable().optional(), // Fixed: Nullable & Optional
     emergencyContactPhone: z.string().optional(),
   }),
   
@@ -53,7 +54,6 @@ export const CreateStudentSchema = z.object({
     version: z.number().default(1),
     source: z.string().optional(),
     traceId: z.string().optional(),
-    // createdAt, updatedAt, createdBy will be injected by Mapper/Service
   }).optional(),
 });
 
