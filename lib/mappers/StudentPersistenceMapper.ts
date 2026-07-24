@@ -62,19 +62,24 @@ export class StudentPersistenceMapper {
 
   /**
    * Firestore Flat Document -> Domain Aggregate (Entity)
-   * Future Response Layer will use this
+   * Includes Legacy Compatibility Fields for smooth migration
    */
   static fromFirestore(docData: any) {
+    const firstName = docData.fullName?.split(" ")[0] || "";
+    const lastName = docData.fullName?.split(" ").slice(1).join(" ") || "";
+
     return {
       id: docData.id,
+      
+      // --- Enterprise Domain Aggregate ---
       identity: {
         admissionNumber: docData.admissionNumber,
         rollNumber: docData.rollNumber,
         cnicOrBForm: docData.cnic,
       },
       personal: {
-        firstName: docData.fullName?.split(" ")[0] || "",
-        lastName: docData.fullName?.split(" ").slice(1).join(" ") || "",
+        firstName: firstName,
+        lastName: lastName,
         gender: docData.gender,
         dateOfBirth: docData.dob,
         avatarUrl: docData.photoBase64,
@@ -110,6 +115,30 @@ export class StudentPersistenceMapper {
       },
       status: docData.status,
       metadata: docData.metadata,
+
+      // --- 🚀 LEGACY COMPATIBILITY FIELDS (Phase 2) ---
+      // یہ پرانے فیلڈز ہیں جو پرانے کوڈ کو ٹوٹنے سے بچائیں گے
+      fullName: docData.fullName || `${firstName} ${lastName}`.trim(),
+      fatherName: docData.fatherName || docData.guardianName || "",
+      classGrade: docData.classGrade || docData.academic?.classId || "",
+      section: docData.section || docData.academic?.sectionId || "",
+      phone: docData.phone || docData.contacts?.phone || "",
+      email: docData.email || docData.contacts?.email || "",
+      address: docData.address || docData.contacts?.address || "",
+      guardianName: docData.guardianName || docData.guardian?.name || "",
+      guardianPhone: docData.guardianPhone || docData.guardian?.phone || "",
+      bloodGroup: docData.bloodGroup || docData.medical?.bloodGroup || "",
+      medicalConditions: docData.medicalConditions || docData.medical?.conditions || "",
+      dob: docData.dob || docData.personal?.dateOfBirth || "",
+      gender: docData.gender || docData.personal?.gender || "Male",
+      photoBase64: docData.photoBase64 || docData.personal?.avatarUrl || "",
+      religion: docData.religion || docData.demographics?.religion || "",
+      nationality: docData.nationality || docData.demographics?.nationality || "",
+      previousSchool: docData.previousSchool || docData.demographics?.previousSchool || "",
+      admissionNumber: docData.admissionNumber || docData.identity?.admissionNumber || "",
+      rollNumber: docData.rollNumber || docData.identity?.rollNumber || "",
+      cnic: docData.cnic || docData.identity?.cnicOrBForm || "",
+      primaryParentId: docData.primaryParentId || docData.parentReferences?.primaryParentId || null,
     };
   }
 }
