@@ -244,6 +244,28 @@ export class StudentService {
   }
 
   /**
+   * Get At-Risk Students
+   * Identifies students with low attendance, poor grades, or behavioral issues
+   */
+  async getRiskData(tenantId: string) {
+    try {
+      // TODO: Implement risk calculation based on:
+      // - Attendance percentage < 75%
+      // - Average marks < 50%
+      // - Outstanding fees > threshold
+      // - Behavioral incidents > threshold
+      
+      // For now, return empty array until Attendance & Marks repositories are integrated
+      // This will be implemented in Phase 5 with proper risk scoring algorithm
+      
+      return [];
+    } catch (error) {
+      console.error("Error fetching risk data:", error);
+      return [];
+    }
+  }
+
+  /**
    * Bulk Create Students (Excel Import)
    * Used by /api/v1/students/bulk route
    */
