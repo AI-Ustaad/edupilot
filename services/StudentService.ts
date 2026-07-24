@@ -151,9 +151,38 @@ export class StudentService {
   /**
    * Promote Students to Next Class/Section
    */
-  async promote(tenantId: string, studentIds: string[], newClass: string, newSection: string, userId: string) {
-    // Implementation pending: Use repository.batchUpdate or transaction
-    return { success: true, promoted: studentIds.length };
+  async promote(
+    tenantId: string, 
+    studentIds: string[], 
+    newClass: string, 
+    newSection: string, 
+    academicYear: string,
+    userId: string
+  ) {
+    const errors: string[] = [];
+    let promotedCount = 0;
+
+    for (const studentId of studentIds) {
+      try {
+        await this.repository.update(studentId, {
+          classGrade: newClass,
+          section: newSection,
+          academicYear: academicYear || undefined,
+          updatedBy: userId,
+          updatedAt: new Date()
+        }, tenantId);
+        
+        promotedCount++;
+      } catch (error: any) {
+        errors.push(`Failed to promote student ${studentId}: ${error.message}`);
+      }
+    }
+
+    return { 
+      success: true, 
+      promoted: promotedCount,
+      errors: errors.length > 0 ? errors : undefined
+    };
   }
 
   /**
