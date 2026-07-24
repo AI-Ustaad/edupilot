@@ -19,11 +19,15 @@ export class StudentService {
     const validatedAggregate = CreateStudentSchema.parse(data);
     const document = StudentPersistenceMapper.toFirestore(validatedAggregate, userId);
 
-    if (document.rollNumber) {
-      const existing = await this.repository.findByRollNumber(document.rollNumber, tenantId);
-      if (existing) {
-        throw new BusinessError(`Student with roll number ${document.rollNumber} already exists`);
-      }
+   if (document.rollNumber) {
+  const rollNum = typeof document.rollNumber === 'string' 
+    ? parseInt(document.rollNumber, 10) 
+    : document.rollNumber;
+  const existing = await this.repository.findByRollNumber(rollNum, tenantId);
+  if (existing) {
+    throw new BusinessError(`Student with roll number ${rollNum} already exists`);
+  }
+}
     }
 
     const savedDoc = await this.repository.save({
