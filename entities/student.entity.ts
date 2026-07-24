@@ -2,41 +2,30 @@
 
 export type StudentStatus = "Active" | "Suspended" | "Graduated" | "StruckOff" | "OnLeave";
 
-/**
- * Persistence Model (Firestore Flat Document)
- */
 export interface StudentDocument {
   id?: string;
-  // Identity
   admissionNumber?: string;
-  rollNumber?: string; // Stored as string in Firestore
+  rollNumber?: string;
   cnic?: string;
-  // Personal
   fullName?: string;
   gender?: string;
   dob?: string;
   photoBase64?: string;
-  // Academic
   classGrade?: string;
   section?: string;
   admissionDate?: string;
-  // Contacts
   phone?: string;
   email?: string;
   address?: string;
-  // Guardian
   guardianName?: string;
   guardianRelation?: string;
   guardianPhone?: string;
   emergencyContactPhone?: string;
-  // Medical
   bloodGroup?: string;
   medicalConditions?: string;
-  // Demographics
   religion?: string;
   nationality?: string;
   previousSchool?: string;
-  // System
   status?: string;
   primaryParentId?: string | null;
   tenantId?: string;
@@ -50,21 +39,24 @@ export interface StudentDocument {
     createdAt?: any;
     updatedAt?: any;
   };
-  [key: string]: any; // Allow other legacy fields if they exist
+  [key: string]: any;
 }
 
-/**
- * Domain Entity (Enterprise Aggregate)
- */
+export interface StudentComment {
+  id: string;
+  comment: string;
+  commentedBy: string;
+  commentedAt: string;
+  type: string;
+}
+
 export interface StudentEntity {
-  // Immutable Identifier
   studentId: string;
-  id?: string; // Legacy compatibility for older code using student.id
+  id?: string;
   
-  // --- Enterprise Domain Aggregate ---
   identity: {
     admissionNumber: string;
-    rollNumber?: number; // Always Number in Domain
+    rollNumber?: number;
     cnicOrBForm?: string;
   };
   personal: {
@@ -86,7 +78,6 @@ export interface StudentEntity {
   };
   status: StudentStatus;
   
-  // 🟢 Relations (References Only - No Data Duplication)
   runtimeRelations: {
     activeFeeInvoices: string[];
     recentAttendanceState: "Present" | "Absent" | "Late" | "HalfDay" | null;
@@ -103,7 +94,9 @@ export interface StudentEntity {
     updatedAt?: any;
   };
 
-  // --- TODO: Remove after Student Module Migration v2 ---
+  // ✅ Added Comments Array
+  comments?: StudentComment[];
+
   // Legacy Compatibility Fields
   fullName?: string;
   fatherName?: string;
@@ -123,16 +116,16 @@ export interface StudentEntity {
   nationality?: string;
   previousSchool?: string;
   admissionNumber?: string;
-  rollNumber?: string; // Legacy string representation
+  rollNumber?: string;
   cnic?: string;
   primaryParentId?: string | null;
   tenantId?: string;
   createdAt?: any;
   updatedAt?: any;
-  [key: string]: any; // Allow any other legacy fields to prevent TS errors
+  [key: string]: any;
 }
 
-// --- Legacy Types (Kept to avoid breaking imports) ---
+// --- Legacy Types ---
 export interface PromotionRecord {
   fromClass: string;
   fromSection: string;
@@ -143,7 +136,7 @@ export interface PromotionRecord {
   promotedBy: string;
 }
 
-export interface StudentFile { // Renamed from StudentDocument to avoid clash
+export interface StudentFile {
   id: string;
   name: string;
   url: string;
