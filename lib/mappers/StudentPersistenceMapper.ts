@@ -1,13 +1,14 @@
+// lib/mappers/StudentPersistenceMapper.ts
 import { FieldValue } from "firebase-admin/firestore";
 import type { CreateStudentInput } from "@/validators/student";
+import type { StudentDocument, StudentEntity, StudentStatus } from "@/entities/student.entity";
 
 export class StudentPersistenceMapper {
   
   /**
    * Domain Aggregate -> Firestore Flat Document
-   * Maintains backward compatibility with Legacy Repository
    */
-  static toFirestore(student: CreateStudentInput, userId: string) {
+  static toFirestore(student: CreateStudentInput, userId: string): StudentDocument {
     return {
       // Identity
       admissionNumber: student.identity.admissionNumber || "",
@@ -25,22 +26,22 @@ export class StudentPersistenceMapper {
       section: student.academic.sectionId || "A",
       admissionDate: student.academic.admissionDate,
       
-      // Contacts Mapping
+      // Contacts
       phone: student.contacts?.phone || "",
       email: student.contacts?.email || "",
       address: student.contacts?.address || "",
       
-      // Guardian Mapping
+      // Guardian
       guardianName: student.guardian?.name || "",
       guardianRelation: student.guardian?.relation || "",
       guardianPhone: student.guardian?.phone || "",
       emergencyContactPhone: student.parentReferences.emergencyContactPhone || student.guardian?.phone || "",
       
-      // Medical Mapping
+      // Medical
       bloodGroup: student.medical?.bloodGroup || "",
       medicalConditions: student.medical?.conditions || "",
       
-      // Demographics Mapping
+      // Demographics
       religion: student.demographics?.religion || "",
       nationality: student.demographics?.nationality || "",
       previousSchool: student.demographics?.previousSchool || "",
@@ -53,6 +54,7 @@ export class StudentPersistenceMapper {
       metadata: {
         version: student.metadata?.version || 1,
         createdBy: userId,
+        updatedBy: userId,
         source: student.metadata?.source || "web",
         createdAt: FieldValue.serverTimestamp(),
         updatedAt: FieldValue.serverTimestamp(),
@@ -61,84 +63,84 @@ export class StudentPersistenceMapper {
   }
 
   /**
-   * Firestore Flat Document -> Domain Aggregate (Entity)
-   * Includes Legacy Compatibility Fields for smooth migration
+   * Firestore Flat Document -> Domain Entity
    */
-  static fromFirestore(docData: any) {
-    const firstName = docData.fullName?.split(" ")[0] || "";
-    const lastName = docData.fullName?.split(" ").slice(1).join(" ") || "";
+  static fromFirestore(doc: StudentDocument): StudentEntity {
+    const firstName = doc.fullName?.split(" ")[0] || "";
+    const lastName = doc.fullName?.split(" ").slice(1).join(" ") || "";
 
     return {
-      id: docData.id,
+      // Immutable Identifier
+      studentId: doc.id || "",
+      id: doc.id || "", // Legacy compat
       
       // --- Enterprise Domain Aggregate ---
       identity: {
-        admissionNumber: docData.admissionNumber,
-        rollNumber: docData.rollNumber,
-        cnicOrBForm: docData.cnic,
+        admissionNumber: doc.admissionNumber || "",
+        // Fixed: Convert string back to number for Domain
+        rollNumber: doc.rollNumber ? Number(doc.rollNumber) : undefined,
+        cnicOrBForm: doc.cnic,
       },
       personal: {
         firstName: firstName,
         lastName: lastName,
-        gender: docData.gender,
-        dateOfBirth: docData.dob,
-        avatarUrl: docData.photoBase64,
+        gender: (doc.gender as "Male" | "Female" | "Other") || "Male",
+        dateOfBirth: doc.dob,
+        avatarUrl: doc.photoBase64,
       },
       academic: {
-        campusId: docData.tenantId, // Assuming tenantId maps to campusId conceptually
-        classId: docData.classGrade,
-        sectionId: docData.section,
-        admissionDate: docData.admissionDate,
-      },
-      contacts: {
-        phone: docData.phone,
-        email: docData.email,
-        address: docData.address,
-      },
-      guardian: {
-        name: docData.guardianName,
-        relation: docData.guardianRelation,
-        phone: docData.guardianPhone,
+        campusId: doc.tenantId || "",
+        classId: doc.classGrade || "",
+        sectionId: doc.section || "",
+        admissionDate: doc.admissionDate || "",
       },
       parentReferences: {
-        primaryParentId: docData.primaryParentId,
-        emergencyContactPhone: docData.emergencyContactPhone,
+        // Return empty string if null for strict type matching
+        primaryParentId: doc.primaryParentId || "", 
+        emergencyContactPhone: doc.emergencyContactPhone || "",
       },
-      medical: {
-        bloodGroup: docData.bloodGroup,
-        conditions: docData.medicalConditions,
+      status: (doc.status as StudentStatus) || "Active",
+      
+      runtimeRelations: {
+        activeFeeInvoices: [],
+        recentAttendanceState: null,
       },
-      demographics: {
-        religion: docData.religion,
-        nationality: docData.nationality,
-        previousSchool: docData.previousSchool,
+      
+      metadata: {
+        version: doc.metadata?.version ?? 1,
+        source: doc.metadata?.source ?? "web",
+        createdBy: doc.metadata?.createdBy,
+        updatedBy: doc.metadata?.updatedBy,
+        createdAt: doc.metadata?.createdAt,
+        updatedAt: doc.metadata?.updatedAt,
       },
-      status: docData.status,
-      metadata: docData.metadata,
 
-      // --- 🚀 LEGACY COMPATIBILITY FIELDS (Phase 2) ---
-      // یہ پرانے فیلڈز ہیں جو پرانے کوڈ کو ٹوٹنے سے بچائیں گے
-      fullName: docData.fullName || `${firstName} ${lastName}`.trim(),
-      fatherName: docData.fatherName || docData.guardianName || "",
-      classGrade: docData.classGrade || docData.academic?.classId || "",
-      section: docData.section || docData.academic?.sectionId || "",
-      phone: docData.phone || docData.contacts?.phone || "",
-      email: docData.email || docData.contacts?.email || "",
-      address: docData.address || docData.contacts?.address || "",
-      guardianName: docData.guardianName || docData.guardian?.name || "",
-      guardianPhone: docData.guardianPhone || docData.guardian?.phone || "",
-      bloodGroup: docData.bloodGroup || docData.medical?.bloodGroup || "",
-      medicalConditions: docData.medicalConditions || docData.medical?.conditions || "",
-      dob: docData.dob || docData.personal?.dateOfBirth || "",
-      gender: docData.gender || docData.personal?.gender || "Male",
-      photoBase64: docData.photoBase64 || docData.personal?.avatarUrl || "",
-      religion: docData.religion || docData.demographics?.religion || "",
-      nationality: docData.nationality || docData.demographics?.nationality || "",
-      previousSchool: docData.previousSchool || docData.demographics?.previousSchool || "",
-      admissionNumber: docData.admissionNumber || docData.identity?.admissionNumber || "",
-      rollNumber: docData.rollNumber || docData.identity?.rollNumber || "",
-      cnic: docData.cnic || docData.identity?.cnicOrBForm || "",
-      primaryParentId: docData.primaryParentId || docData.parentReferences?.primaryParentId || null,
-    };
+      // --- TODO: Remove after Student Module Migration v2 ---
+      // Legacy Compatibility Fields
+      fullName: doc.fullName || `${firstName} ${lastName}`.trim(),
+      fatherName: doc.guardianName || "",
+      classGrade: doc.classGrade || "",
+      section: doc.section || "",
+      phone: doc.phone || "",
+      email: doc.email || "",
+      address: doc.address || "",
+      guardianName: doc.guardianName || "",
+      guardianPhone: doc.guardianPhone || "",
+      bloodGroup: doc.bloodGroup || "",
+      medicalConditions: doc.medicalConditions || "",
+      dob: doc.dob || "",
+      gender: doc.gender || "Male",
+      photoBase64: doc.photoBase64 || "",
+      religion: doc.religion || "",
+      nationality: doc.nationality || "",
+      previousSchool: doc.previousSchool || "",
+      admissionNumber: doc.admissionNumber || "",
+      rollNumber: doc.rollNumber || undefined,
+      cnic: doc.cnic || "",
+      primaryParentId: doc.primaryParentId || null,
+      tenantId: doc.tenantId || "",
+      createdAt: doc.metadata?.createdAt,
+      updatedAt: doc.metadata?.updatedAt,
+    } as StudentEntity;
   }
 }
