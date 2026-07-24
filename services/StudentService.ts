@@ -4,6 +4,7 @@ import { CreateStudentSchema } from "@/validators/student";
 import { StudentPersistenceMapper } from "@/lib/mappers/StudentPersistenceMapper";
 import { BusinessError } from "@/errors";
 import { StudentRepository } from "@/repositories/student.repository"; 
+import type { StudentEntity } from "@/entities/student.entity";
 
 export class StudentService {
   private repository: StudentRepository;
@@ -15,7 +16,7 @@ export class StudentService {
   /**
    * Create Student Use-Case (Enterprise Flow)
    */
-  async create(data: any, tenantId: string, userId: string) {
+  async create(data: any, tenantId: string, userId: string): Promise<StudentEntity> {
     // 1. Direct Zod Parse (ZodError will be caught by withErrorHandler)
     const validatedAggregate = CreateStudentSchema.parse(data);
 
@@ -43,7 +44,7 @@ export class StudentService {
   /**
    * Get Student By ID
    */
-  async getById(tenantId: string, studentId: string) {
+  async getById(tenantId: string, studentId: string): Promise<StudentEntity | null> {
     const doc = await this.repository.findById(studentId, tenantId);
     if (!doc) return null;
     return StudentPersistenceMapper.fromFirestore(doc);
@@ -71,7 +72,6 @@ export class StudentService {
    * Hard Delete Student (Permanent Delete)
    */
   async hardDelete(tenantId: string, studentId: string, userId: string) {
-    // Here you can also add logic to delete related records (attendance, fees, etc.) if needed
     return await this.repository.delete(studentId, tenantId);
   }
 
