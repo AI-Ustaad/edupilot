@@ -1,5 +1,5 @@
 // mappers/StudentResponseMapper.ts
-import type { StudentEntity } from "@/entities/StudentEntity";
+from "@/entities/student.entity"
 import type { StudentResponseDTO } from "@/dto/StudentResponseDTO";
 
 export class StudentResponseMapper {
