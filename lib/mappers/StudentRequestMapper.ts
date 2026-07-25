@@ -1,7 +1,7 @@
-// mappers/StudentRequestMapper.ts
+// lib/mappers/StudentRequestMapper.ts
 import type { CreateStudentDTO } from "@/dto/CreateStudentDTO";
-from "@/entities/student.entity"
-import { StudentPersistenceMapper } from "./StudentPersistenceMapper"; // Re-use logic to avoid duplication
+import type { StudentEntity } from "@/entities/student.entity";
+import { StudentPersistenceMapper } from "./StudentPersistenceMapper";
 
 export class StudentRequestMapper {
   static toEntity(dto: CreateStudentDTO): Partial<StudentEntity> {
