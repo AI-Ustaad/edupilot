@@ -1,7 +1,7 @@
 // mappers/StudentPersistenceMapper.ts
 import { FieldValue } from "firebase-admin/firestore";
 import type { StudentDocument } from "@/documents/StudentDocument";
-from "@/entities/student.entity"
+import type { StudentEntity, StudentStatus } from "@/entities/student.entity";
 import type { CreateStudentDTO } from "@/dto/CreateStudentDTO";
 
 export class StudentPersistenceMapper {
