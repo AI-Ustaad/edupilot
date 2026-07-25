@@ -55,11 +55,14 @@ export interface StudentDocument {
     updatedAt?: any;
   };
   
-  comments?: Array<{
+    comments?: Array<{
     id: string;
     comment: string;
     commentedBy: string;
     commentedAt: string;
     type: string;
   }>;
+
+  // 🚀 Added for backward compatibility
+  [key: string]: any;
 }
