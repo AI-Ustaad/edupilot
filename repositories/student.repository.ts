@@ -1,23 +1,43 @@
 // repositories/student.repository.ts
 import { BaseRepository } from "./base.repository";
-import { Student, StudentFilter, StudentAnalytics, TimelineEntry } from "@/types/student";
+import { StudentFilter, StudentAnalytics, TimelineEntry } from "@/types/student";
 import { IStudentRepository } from "@/interfaces/IStudentRepository";
+import { StudentDocument } from "@/documents/StudentDocument";
 import { PaginatedResult } from "@/types/api";
 import { RepositoryException } from "@/errors/AppError";
 import { dbTimestamp } from "@/lib/firebase-admin";
 
 export class StudentRepository
-  extends BaseRepository<Student>
+  extends BaseRepository<StudentDocument>
   implements IStudentRepository
 {
   constructor() {
     super("students");
   }
 
+  // 🚀 NEW: Enterprise save method (UPSERT)
+  async save(document: StudentDocument, tenantId: string): Promise<StudentDocument> {
+    try {
+      if (document.id) {
+        await this.update(document.id, document, tenantId);
+        const updated = await this.findById(document.id, tenantId);
+        if (!updated) throw new Error("Student not found after update.");
+        return updated;
+      } else {
+        const newId = await this.create(document, tenantId);
+        const created = await this.findById(newId, tenantId);
+        if (!created) throw new Error("Student not found after create.");
+        return created;
+      }
+    } catch (error) {
+      throw new RepositoryException("Failed to save student", { tenantId, docId: document.id });
+    }
+  }
+
   async findByRollNumber(
-    rollNumber: number,
+    rollNumber: string,
     tenantId: string
-  ): Promise<(Student & { id: string }) | null> {
+  ): Promise<StudentDocument | null> {
     try {
       const snapshot = await this.db
         .collection(this.collectionName)
@@ -28,7 +48,7 @@ export class StudentRepository
 
       if (snapshot.empty) return null;
       const doc = snapshot.docs[0];
-      return { id: doc.id, ...doc.data() } as Student & { id: string };
+      return { id: doc.id, ...doc.data() } as StudentDocument;
     } catch (error) {
       throw new RepositoryException("Failed to find student by roll number", {
         rollNumber,
@@ -40,7 +60,7 @@ export class StudentRepository
   async findByClass(
     className: string,
     tenantId: string
-  ): Promise<(Student & { id: string })[]> {
+  ): Promise<StudentDocument[]> {
     try {
       const snapshot = await this.db
         .collection(this.collectionName)
@@ -50,7 +70,7 @@ export class StudentRepository
         .get();
 
       return snapshot.docs.map(
-        (doc) => ({ id: doc.id, ...doc.data() }) as Student & { id: string }
+        (doc) => ({ id: doc.id, ...doc.data() }) as StudentDocument
       );
     } catch (error) {
       throw new RepositoryException("Failed to find students by class", {
@@ -64,7 +84,7 @@ export class StudentRepository
     className: string,
     section: string,
     tenantId: string
-  ): Promise<(Student & { id: string })[]> {
+  ): Promise<StudentDocument[]> {
     try {
       const snapshot = await this.db
         .collection(this.collectionName)
@@ -75,7 +95,7 @@ export class StudentRepository
         .get();
 
       return snapshot.docs.map(
-        (doc) => ({ id: doc.id, ...doc.data() }) as Student & { id: string }
+        (doc) => ({ id: doc.id, ...doc.data() }) as StudentDocument
       );
     } catch (error) {
       throw new RepositoryException("Failed to find students by section", {
@@ -89,7 +109,7 @@ export class StudentRepository
   async search(
     tenantId: string,
     query: string
-  ): Promise<(Student & { id: string })[]> {
+  ): Promise<StudentDocument[]> {
     try {
       const all = await this.findAll(tenantId);
       const lowerQuery = query.toLowerCase();
@@ -130,7 +150,7 @@ export class StudentRepository
 
   async findActiveStudents(
     tenantId: string
-  ): Promise<(Student & { id: string })[]> {
+  ): Promise<StudentDocument[]> {
     try {
       const snapshot = await this.db
         .collection(this.collectionName)
@@ -141,24 +161,24 @@ export class StudentRepository
         .get();
 
       return snapshot.docs.map(
-        (doc) => ({ id: doc.id, ...doc.data() } as Student & { id: string })
+        (doc) => ({ id: doc.id, ...doc.data() } as StudentDocument)
       );
     } catch (error) {
       // Fallback: if composite index not yet deployed, fetch and filter in-memory
       const all = await this.findAll(tenantId);
       return all
         .filter((s) => !s.deleted && s.admissionStatus === "approved")
-        .sort((a, b) => (a.rollNumber || 0) - (b.rollNumber || 0));
+        .sort((a, b) => Number(a.rollNumber || 0) - Number(b.rollNumber || 0));
     }
   }
 
   async batchFindByIds(
     tenantId: string,
     ids: string[]
-  ): Promise<(Student & { id: string })[]> {
+  ): Promise<StudentDocument[]> {
     if (ids.length === 0) return [];
     try {
-      const results: (Student & { id: string })[] = [];
+      const results: StudentDocument[] = [];
       // Firestore `in` query supports max 30 items
       for (let i = 0; i < ids.length; i += 30) {
         const batch = ids.slice(i, i + 30);
@@ -168,7 +188,7 @@ export class StudentRepository
           .where("__name__", "in", batch)
           .get();
         snapshot.docs.forEach((doc) => {
-          results.push({ id: doc.id, ...doc.data() } as Student & { id: string });
+          results.push({ id: doc.id, ...doc.data() } as StudentDocument);
         });
       }
       return results;
@@ -206,7 +226,7 @@ export class StudentRepository
   async findByAdmissionNo(
     admissionNo: string,
     tenantId: string
-  ): Promise<(Student & { id: string }) | null> {
+  ): Promise<StudentDocument | null> {
     try {
       const snapshot = await this.db
         .collection(this.collectionName)
@@ -216,7 +236,7 @@ export class StudentRepository
         .get();
       if (snapshot.empty) return null;
       const doc = snapshot.docs[0];
-      return { id: doc.id, ...doc.data() } as Student & { id: string };
+      return { id: doc.id, ...doc.data() } as StudentDocument;
     } catch (error) {
       throw new RepositoryException("Failed to find student by admission no", { admissionNo, tenantId });
     }
@@ -225,14 +245,14 @@ export class StudentRepository
   async findByStatus(
     status: string,
     tenantId: string
-  ): Promise<(Student & { id: string })[]> {
+  ): Promise<StudentDocument[]> {
     try {
       const snapshot = await this.db
         .collection(this.collectionName)
         .where("tenantId", "==", tenantId)
         .where("status", "==", status)
         .get();
-      return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }) as Student & { id: string });
+      return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }) as StudentDocument);
     } catch (error) {
       throw new RepositoryException("Failed to find students by status", { status, tenantId });
     }
@@ -241,14 +261,14 @@ export class StudentRepository
   async findByHouse(
     house: string,
     tenantId: string
-  ): Promise<(Student & { id: string })[]> {
+  ): Promise<StudentDocument[]> {
     try {
       const snapshot = await this.db
         .collection(this.collectionName)
         .where("tenantId", "==", tenantId)
         .where("house", "==", house)
         .get();
-      return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }) as Student & { id: string });
+      return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }) as StudentDocument);
     } catch (error) {
       throw new RepositoryException("Failed to find students by house", { house, tenantId });
     }
@@ -257,14 +277,14 @@ export class StudentRepository
   async findByParent(
     parentId: string,
     tenantId: string
-  ): Promise<(Student & { id: string })[]> {
+  ): Promise<StudentDocument[]> {
     try {
       const snapshot = await this.db
         .collection(this.collectionName)
         .where("tenantId", "==", tenantId)
         .where("parentId", "==", parentId)
         .get();
-      return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }) as Student & { id: string });
+      return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }) as StudentDocument);
     } catch (error) {
       throw new RepositoryException("Failed to find students by parent", { parentId, tenantId });
     }
@@ -273,14 +293,14 @@ export class StudentRepository
   async findByTransport(
     transportRouteId: string,
     tenantId: string
-  ): Promise<(Student & { id: string })[]> {
+  ): Promise<StudentDocument[]> {
     try {
       const snapshot = await this.db
         .collection(this.collectionName)
         .where("tenantId", "==", tenantId)
         .where("transportRouteId", "==", transportRouteId)
         .get();
-      return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }) as Student & { id: string });
+      return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }) as StudentDocument);
     } catch (error) {
       throw new RepositoryException("Failed to find students by transport", { transportRouteId, tenantId });
     }
@@ -289,35 +309,35 @@ export class StudentRepository
   async findByHostel(
     hostelId: string,
     tenantId: string
-  ): Promise<(Student & { id: string })[]> {
+  ): Promise<StudentDocument[]> {
     try {
       const snapshot = await this.db
         .collection(this.collectionName)
         .where("tenantId", "==", tenantId)
         .where("hostelId", "==", hostelId)
         .get();
-      return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }) as Student & { id: string });
+      return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }) as StudentDocument);
     } catch (error) {
       throw new RepositoryException("Failed to find students by hostel", { hostelId, tenantId });
     }
   }
 
-  async findGraduated(tenantId: string): Promise<(Student & { id: string })[]> {
+  async findGraduated(tenantId: string): Promise<StudentDocument[]> {
     return this.findByStatus("graduated", tenantId);
   }
 
-  async findTransferred(tenantId: string): Promise<(Student & { id: string })[]> {
+  async findTransferred(tenantId: string): Promise<StudentDocument[]> {
     return this.findByStatus("transferred", tenantId);
   }
 
-  async findDeleted(tenantId: string): Promise<(Student & { id: string })[]> {
+  async findDeleted(tenantId: string): Promise<StudentDocument[]> {
     try {
       const snapshot = await this.db
         .collection(this.collectionName)
         .where("tenantId", "==", tenantId)
         .where("deleted", "==", true)
         .get();
-      return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }) as Student & { id: string });
+      return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as StudentDocument));
     } catch (error) {
       throw new RepositoryException("Failed to find deleted students", { tenantId });
     }
@@ -326,7 +346,7 @@ export class StudentRepository
   async advancedFilter(
     tenantId: string,
     filter: StudentFilter
-  ): Promise<PaginatedResult<Student & { id: string }>> {
+  ): Promise<PaginatedResult<StudentDocument>> {
     try {
       let all = await this.findAll(tenantId);
 
@@ -383,7 +403,7 @@ export class StudentRepository
   async bulkUpdate(
     tenantId: string,
     ids: string[],
-    data: Partial<Student>
+    data: Partial<StudentDocument>
   ): Promise<void> {
     if (ids.length === 0) return;
     try {
@@ -413,7 +433,7 @@ export class StudentRepository
   }
 
   async archive(tenantId: string, id: string): Promise<void> {
-    await this.update(id, { status: "archived" } as Partial<Student>, tenantId);
+    await this.update(id, { status: "archived" } as Partial<StudentDocument>, tenantId);
   }
 
   async restore(tenantId: string, id: string): Promise<void> {
@@ -521,8 +541,8 @@ export class StudentRepository
       }
 
       // Promotion entries
-      if (student.promotionHistory) {
-        for (const promo of student.promotionHistory) {
+      if ((student as any).promotionHistory) {
+        for (const promo of (student as any).promotionHistory) {
           const promoDate = this.toIsoDate(promo.promotedAt);
           if (promoDate) {
             entries.push({
@@ -537,7 +557,7 @@ export class StudentRepository
       }
 
       // Graduation entry
-      const promoted = this.toIsoDate(student.promotedAt);
+      const promoted = this.toIsoDate((student as any).promotedAt);
       if (student.status === "graduated" && promoted) {
         entries.push({
           date: promoted,
