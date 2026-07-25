@@ -1,6 +1,6 @@
 // mappers/StudentRequestMapper.ts
 import type { CreateStudentDTO } from "@/dto/CreateStudentDTO";
-import type { StudentEntity } from "@/entities/StudentEntity";
+from "@/entities/student.entity"
 import { StudentPersistenceMapper } from "./StudentPersistenceMapper"; // Re-use logic to avoid duplication
 
 export class StudentRequestMapper {
