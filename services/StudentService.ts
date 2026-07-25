@@ -183,7 +183,7 @@ export class StudentService {
   }
 
   // ==========================================================
-  // 🚀 FUTURE ENTERPRISE STUBS
+  // 🚀 FUTURE ENTERPRISE STUBS & BULK OPERATIONS
   // ==========================================================
 
   async promote(tenantId: string, studentIds: string[], newClass: string, newSection: string, userId: string) {
@@ -204,6 +204,25 @@ export class StudentService {
 
   async bulkImport(tenantId: string, data: any[], userId: string) {
     return { success: true, imported: data.length };
+  }
+
+  async bulkCreate(tenantId: string, students: any[], userId: string) {
+    const results: any[] = [];
+    for (const studentData of students) {
+      try {
+        // Reuse the create method for each student
+        const created = await this.create(studentData, tenantId, userId);
+        results.push({ success: true, id: created.studentId });
+      } catch (error: any) {
+        results.push({ success: false, error: error.message });
+      }
+    }
+    return { 
+      success: true, 
+      created: results.filter(r => r.success).length,
+      failed: results.filter(r => !r.success).length,
+      results 
+    };
   }
 
   async analytics(tenantId: string) {
