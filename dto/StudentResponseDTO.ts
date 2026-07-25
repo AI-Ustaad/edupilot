@@ -1,5 +1,5 @@
 // dto/StudentResponseDTO.ts
-import type { StudentStatus } from "@/entities/StudentEntity";
+import type { StudentStatus } from "@/entities/student.entity";
 
 export interface StudentResponseDTO {
   id: string;
