@@ -106,3 +106,23 @@ export interface StudentEntity {
   createdAt?: any;
   updatedAt?: any;
 }
+// --- Legacy Types (Moved from types/student.ts) ---
+export interface TimelineEntry {
+  date: string;
+  type: string;
+  title: string;
+  description: string;
+  metadata?: Record<string, any>;
+}
+
+export interface Student360Aggregate {
+  student: StudentEntity & { id: string };
+  attendance: { present: number; absent: number; late: number; percentage: number };
+  fees: { totalDue: number; totalPaid: number; outstanding: number; records: any[] };
+  marks: { exams: any[]; average: number; trend: string };
+  behavior: { logs: any[]; incidents: number };
+  transport: any | null;
+  hostel: any | null;
+  timeline: TimelineEntry[];
+  aiSummary?: string;
+}
