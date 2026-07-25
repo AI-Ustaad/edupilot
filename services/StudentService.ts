@@ -19,15 +19,14 @@ export class StudentService {
     const validatedAggregate = CreateStudentSchema.parse(data);
     const document = StudentPersistenceMapper.toFirestore(validatedAggregate, userId);
 
-   if (document.rollNumber) {
-  const rollNum = typeof document.rollNumber === 'string' 
-    ? parseInt(document.rollNumber, 10) 
-    : document.rollNumber;
-  const existing = await this.repository.findByRollNumber(rollNum, tenantId);
-  if (existing) {
-    throw new BusinessError(`Student with roll number ${rollNum} already exists`);
-  }
-}
+    if (document.rollNumber) {
+      const rollNum = typeof document.rollNumber === 'string' 
+        ? parseInt(document.rollNumber, 10) 
+        : document.rollNumber;
+      const existing = await this.repository.findByRollNumber(rollNum, tenantId);
+      if (existing) {
+        throw new BusinessError(`Student with roll number ${rollNum} already exists`);
+      }
     }
 
     const savedDoc = await this.repository.save({
@@ -41,7 +40,7 @@ export class StudentService {
   /**
    * Update Student
    */
-  async update(studentId: string, data: any, tenantId: string, userId: string): Promise<StudentEntity | null> {
+  async update(tenantId: string, studentId: string, data: any, userId: string): Promise<StudentEntity | null> {
     await this.repository.update(studentId, {
       ...data,
       updatedBy: userId,
