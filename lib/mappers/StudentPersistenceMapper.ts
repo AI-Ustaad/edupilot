@@ -12,7 +12,7 @@ export class StudentPersistenceMapper {
   static fromDTO(dto: CreateStudentDTO): Partial<StudentEntity> {
     return {
       identity: {
-        admissionNumber: dto.identity.admissionNumber,
+              admissionNumber: dto.identity.admissionNumber || "",
         rollNumber: dto.identity.rollNumber ? Number(dto.identity.rollNumber) : undefined,
         cnicOrBForm: dto.identity.cnicOrBForm,
       },
