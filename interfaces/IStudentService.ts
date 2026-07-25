@@ -1,5 +1,5 @@
 // interfaces/IStudentService.ts
-from "@/entities/student.entity"
+import type { StudentEntity } from "@/entities/student.entity";
 import type { CreateStudentDTO, UpdateStudentDTO } from "@/dto";
 
 export interface IStudentService {
