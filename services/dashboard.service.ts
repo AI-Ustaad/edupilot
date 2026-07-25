@@ -18,10 +18,10 @@ export class DashboardService {
   private attendanceService: AttendanceService;
 
   constructor() {
-    this.studentService = new StudentService(new StudentRepository());
-    this.staffService = new StaffService(new StaffRepository()); 
-    this.feesService = new FeesService(new FeesRepository());
-    this.attendanceService = new AttendanceService(new AttendanceRepository());
+    this.studentService = new StudentService();
+    this.staffService = new StaffService(); 
+    this.feesService = new FeesService();
+    this.attendanceService = new AttendanceService();
   }
 
   async getDashboardData(tenantId: string) {

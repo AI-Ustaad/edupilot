@@ -63,12 +63,12 @@ export const POST = withErrorHandler(
 
         // Delegate to service
         const service = new StudentService();
-        const result = await service.bulkCreate(studentsToAdd, tenantId, user.uid);
+        const result = await service.bulkCreate(tenantId, studentsToAdd, user.uid);
 
         return NextResponse.json({
           success: true,
-          message: `Successfully imported ${result.count} students`,
-          count: result.count,
+          message: `Successfully imported ${result.created} students`,
+          count: result.created,
         });
       })
     )

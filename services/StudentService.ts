@@ -1,35 +1,28 @@
 // services/StudentService.ts
-
 import { CreateStudentSchema } from "@/dto/CreateStudentDTO";
+import type { CreateStudentDTO, UpdateStudentDTO } from "@/dto";
 import { StudentPersistenceMapper } from "@/lib/mappers/StudentPersistenceMapper";
-import { StudentRequestMapper } from "@/lib/mappers/StudentRequestMapper";
-import { StudentResponseMapper } from "@/lib/mappers/StudentResponseMapper";
 import { BusinessError } from "@/errors";
-import { StudentRepository } from "@/repositories/student.repository"; 
-import type { StudentEntity, Student360Aggregate, StudentComment } from "@/entities/student.entity";
+import { StudentRepository } from "@/repositories/student.repository";
+import type { IStudentRepository } from "@/interfaces/IStudentRepository";
+import type { IStudentService } from "@/interfaces/IStudentService";
+import type { StudentEntity, Student360Aggregate, StudentComment, TimelineEntry } from "@/entities/student.entity";
+import type { StudentAnalytics } from "@/types/student";
+import type { PaginatedResult } from "@/types/api";
 import { randomUUID } from "crypto";
 
-export class StudentService {
-  private repository: StudentRepository;
+export class StudentService implements IStudentService {
+  private repository: IStudentRepository;
 
-  constructor() {
-    this.repository = new StudentRepository(); 
+  constructor(repository?: IStudentRepository) {
+    this.repository = repository ?? new StudentRepository();
   }
 
-  /**
-   * Create Student Use-Case (Enterprise Flow)
-   */
-  async create(data: any, tenantId: string, userId: string): Promise<StudentEntity> {
-    // 1. Validate DTO
+  async create(data: CreateStudentDTO, tenantId: string, userId: string): Promise<StudentEntity> {
     const validatedDTO = CreateStudentSchema.parse(data);
-    
-    // 2. Convert DTO -> Domain Entity
-    const entity = StudentRequestMapper.toEntity(validatedDTO);
-    
-    // 3. Map Domain Entity -> Firestore Document
+    const entity = StudentPersistenceMapper.fromDTO(validatedDTO);
     const document = StudentPersistenceMapper.toFirestore(entity, userId);
 
-    // 4. Duplicate Check
     if (document.rollNumber) {
       const rollNum = typeof document.rollNumber === "string" ? document.rollNumber : String(document.rollNumber);
       const existing = await this.repository.findByRollNumber(rollNum, tenantId);
@@ -38,52 +31,36 @@ export class StudentService {
       }
     }
 
-    // 5. Save to Repository
     const savedDoc = await this.repository.save({
       ...document,
       tenantId,
     }, tenantId);
     
-    // 6. Return Mapped Entity
     return StudentPersistenceMapper.fromFirestore(savedDoc);
   }
 
-  /**
-   * Update Student
-   */
-  async update(studentId: string, data: any, tenantId: string, userId: string): Promise<StudentEntity | null> {
-    // For update, we map partial data directly to document format to avoid overwriting nested fields
-    const document = StudentPersistenceMapper.toFirestore(data as any, userId);
+  async update(tenantId: string, studentId: string, data: UpdateStudentDTO, userId: string): Promise<StudentEntity | null> {
+    const entity = StudentPersistenceMapper.fromDTO(data);
+    const document = StudentPersistenceMapper.toFirestore(entity, userId);
     
-    // Remove undefined fields to avoid overwriting existing data with nulls
-    Object.keys(document).forEach(key => {
-      if (document[key as keyof typeof document] === undefined) {
-        delete document[key as keyof typeof document];
+    const updatePayload: Record<string, unknown> = { ...document, updatedBy: userId, updatedAt: new Date() };
+    Object.keys(updatePayload).forEach(key => {
+      if (updatePayload[key as keyof typeof updatePayload] === undefined) {
+        delete updatePayload[key as keyof typeof updatePayload];
       }
     });
 
-    await this.repository.update(studentId, {
-      ...document,
-      updatedBy: userId,
-      updatedAt: new Date()
-    } as any, tenantId);
-    
+    await this.repository.update(studentId, updatePayload as Parameters<IStudentRepository["update"]>[1], tenantId);
     return this.getById(tenantId, studentId);
   }
 
-  /**
-   * Get Student By ID
-   */
   async getById(tenantId: string, studentId: string): Promise<StudentEntity | null> {
     const doc = await this.repository.findById(studentId, tenantId);
     if (!doc) return null;
     return StudentPersistenceMapper.fromFirestore(doc);
   }
 
-  /**
-   * Paginate Students
-   */
-  async paginate(tenantId: string, page: number, limit: number) {
+  async paginate(tenantId: string, page: number, limit: number): Promise<PaginatedResult<StudentEntity>> {
     const result = await this.repository.paginate(tenantId, page, limit);
     return {
       ...result,
@@ -91,45 +68,30 @@ export class StudentService {
     };
   }
 
-  /**
-   * Delete Student (Soft Delete)
-   */
-  async delete(tenantId: string, studentId: string, userId?: string) {
-    return await this.repository.softDelete(studentId, tenantId);
+  async delete(tenantId: string, studentId: string, userId?: string): Promise<void> {
+    await this.repository.softDelete(studentId, tenantId);
   }
 
-  /**
-   * Hard Delete Student (Permanent Delete)
-   */
-  async hardDelete(tenantId: string, studentId: string, userId: string) {
-    return await this.repository.delete(studentId, tenantId);
+  async hardDelete(tenantId: string, studentId: string, userId: string): Promise<void> {
+    await this.repository.delete(studentId, tenantId);
   }
 
-  /**
-   * Approve Student Admission
-   */
-  async approveAdmission(tenantId: string, studentId: string, userId: string) {
-    return await this.repository.update(studentId, {
+  async approveAdmission(tenantId: string, studentId: string, userId: string): Promise<void> {
+    await this.repository.update(studentId, {
       admissionStatus: "approved",
       updatedBy: userId,
       updatedAt: new Date()
-    } as any, tenantId);
+    }, tenantId);
   }
 
-  /**
-   * Reject Student Admission
-   */
-  async rejectAdmission(tenantId: string, studentId: string, userId: string) {
-    return await this.repository.update(studentId, {
+  async rejectAdmission(tenantId: string, studentId: string, userId: string): Promise<void> {
+    await this.repository.update(studentId, {
       admissionStatus: "rejected",
       updatedBy: userId,
       updatedAt: new Date()
-    } as any, tenantId);
+    }, tenantId);
   }
 
-  /**
-   * Student 360 View (Enterprise Aggregate Root)
-   */
   async student360(tenantId: string, studentId: string): Promise<Student360Aggregate | null> {
     const student = await this.getById(tenantId, studentId);
     if (!student) return null;
@@ -150,15 +112,7 @@ export class StudentService {
     };
   }
 
-  /**
-   * Add Comment to Student Profile (Enterprise)
-   */
-  async addComment(
-    tenantId: string, 
-    studentId: string, 
-    comment: string, 
-    userId: string
-  ): Promise<void> {
+  async addComment(tenantId: string, studentId: string, comment: string, userId: string): Promise<void> {
     const student = await this.getById(tenantId, studentId);
     
     if (!student) {
@@ -179,42 +133,38 @@ export class StudentService {
       comments: [...existingComments, commentData],
       updatedBy: userId,
       updatedAt: new Date()
-    } as any, tenantId);
+    }, tenantId);
   }
 
-  // ==========================================================
-  // 🚀 FUTURE ENTERPRISE STUBS & BULK OPERATIONS
-  // ==========================================================
-
-  async promote(tenantId: string, studentIds: string[], newClass: string, newSection: string, userId: string) {
-    return { success: true, promoted: studentIds.length };
+  async promote(tenantId: string, studentIds: string[], newClass: string, newSection: string, academicYear: string, userId: string) {
+    return { success: true, promoted: studentIds.length, errors: [] as string[] };
   }
 
-  async archive(tenantId: string, studentId: string, userId: string) {
-    return await this.repository.update(studentId, { status: "archived", updatedBy: userId } as any, tenantId);
+  async archive(tenantId: string, studentId: string, userId: string): Promise<void> {
+    await this.repository.update(studentId, { status: "archived", updatedBy: userId }, tenantId);
   }
 
-  async restore(tenantId: string, studentId: string, userId: string) {
-    return await this.repository.update(studentId, { deleted: false, status: "Active", updatedBy: userId } as any, tenantId);
+  async restore(tenantId: string, studentId: string, userId: string): Promise<void> {
+    await this.repository.restore(studentId, tenantId);
   }
 
-  async getTimeline(tenantId: string, studentId: string) {
-    return [];
+  async getTimeline(tenantId: string, studentId: string): Promise<TimelineEntry[]> {
+    return this.repository.timeline(tenantId, studentId);
   }
 
-  async bulkImport(tenantId: string, data: any[], userId: string) {
+  async bulkImport(tenantId: string, data: unknown[], userId: string): Promise<{ success: boolean; imported: number }> {
     return { success: true, imported: data.length };
   }
 
-  async bulkCreate(tenantId: string, students: any[], userId: string) {
+  async bulkCreate(tenantId: string, students: unknown[], userId: string) {
     const results: any[] = [];
     for (const studentData of students) {
       try {
-        // Reuse the create method for each student
-        const created = await this.create(studentData, tenantId, userId);
+        const created = await this.create(studentData as CreateStudentDTO, tenantId, userId);
         results.push({ success: true, id: created.studentId });
-      } catch (error: any) {
-        results.push({ success: false, error: error.message });
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : "Unknown error";
+        results.push({ success: false, error: message });
       }
     }
     return { 
@@ -225,10 +175,28 @@ export class StudentService {
     };
   }
 
-  async analytics(tenantId: string) {
-    return {
-      total: 0, active: 0, graduated: 0, transferred: 0, suspended: 0, archived: 0, dropped: 0,
-      byClass: {}, bySection: {}, byGender: {}, byHouse: {}, riskCount: 0
-    };
+  async analytics(tenantId: string): Promise<StudentAnalytics> {
+    return this.getAnalytics(tenantId);
+  }
+
+  async count(tenantId: string): Promise<number> {
+    return this.repository.count(tenantId);
+  }
+
+  async countByClass(tenantId: string): Promise<Record<string, number>> {
+    return this.repository.countByClass(tenantId);
+  }
+
+  async getAnalytics(tenantId: string): Promise<StudentAnalytics> {
+    return this.repository.studentAnalytics(tenantId);
+  }
+
+  async getRiskData(tenantId: string): Promise<any[]> {
+    const docs = await this.repository.findAll(tenantId);
+    const risky = docs.filter(doc => {
+      const status = doc.status || (doc.deleted ? "archived" : "active");
+      return ["suspended", "dropped", "archived"].includes(status) || doc.deleted;
+    });
+    return risky.map(doc => StudentPersistenceMapper.fromFirestore(doc));
   }
 }

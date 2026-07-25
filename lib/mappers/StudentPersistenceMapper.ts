@@ -9,29 +9,29 @@ export class StudentPersistenceMapper {
   /**
    * DTO -> Domain Entity
    */
-  static fromDTO(dto: CreateStudentDTO): Partial<StudentEntity> {
+  static fromDTO(dto: Partial<CreateStudentDTO>): Partial<StudentEntity> {
     return {
       identity: {
-              admissionNumber: dto.identity.admissionNumber || "",
-        rollNumber: dto.identity.rollNumber ? Number(dto.identity.rollNumber) : undefined,
-        cnicOrBForm: dto.identity.cnicOrBForm,
+        admissionNumber: dto.identity?.admissionNumber || "",
+        rollNumber: dto.identity?.rollNumber ? Number(dto.identity.rollNumber) : undefined,
+        cnicOrBForm: dto.identity?.cnicOrBForm,
       },
       personal: {
-        firstName: dto.personal.firstName,
-        lastName: dto.personal.lastName,
-        gender: dto.personal.gender,
-        dateOfBirth: dto.personal.dateOfBirth,
-        avatarUrl: dto.personal.avatarUrl,
+        firstName: dto.personal?.firstName || "",
+        lastName: dto.personal?.lastName,
+        gender: (dto.personal?.gender || "Male") as "Male" | "Female" | "Other",
+        dateOfBirth: dto.personal?.dateOfBirth,
+        avatarUrl: dto.personal?.avatarUrl,
       },
       academic: {
-        campusId: dto.academic.campusId,
-        classId: dto.academic.classId,
-        sectionId: dto.academic.sectionId,
-        admissionDate: dto.academic.admissionDate,
+        campusId: dto.academic?.campusId || "",
+        classId: dto.academic?.classId || "",
+        sectionId: dto.academic?.sectionId || "A",
+        admissionDate: dto.academic?.admissionDate || "",
       },
       parentReferences: {
-        primaryParentId: dto.parentReferences.primaryParentId,
-        emergencyContactPhone: dto.parentReferences.emergencyContactPhone,
+        primaryParentId: dto.parentReferences?.primaryParentId,
+        emergencyContactPhone: dto.parentReferences?.emergencyContactPhone,
       },
       contacts: dto.contacts,
       guardian: dto.guardian,
@@ -112,7 +112,7 @@ export class StudentPersistenceMapper {
       personal: {
         firstName: firstName,
         lastName: lastName,
-        gender: (doc.gender as "Male" | "Female" | "Other") || "Male",
+        gender: doc.gender ? (doc.gender as "Male" | "Female" | "Other") : "Male",
         dateOfBirth: doc.dob,
         avatarUrl: doc.photoBase64,
       },

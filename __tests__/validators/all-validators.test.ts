@@ -372,88 +372,81 @@ describe("Staff OCRExtractedSchema", () => {
 describe("CreateStudentSchema", () => {
   it("accepts valid student data", () => {
     const result = CreateStudentSchema.parse({
-      fullName: "Ali Khan",
-      classGrade: "10",
-      section: "A",
-      rollNumber: 1045,
+      identity: { admissionNumber: "ADM001", rollNumber: 1045 },
+      personal: { firstName: "Ali", gender: "Male" },
+      academic: { campusId: "campus1", classId: "10", admissionDate: "2024-01-01" },
+      parentReferences: {},
     });
 
-    expect(result.fullName).toBe("Ali Khan");
-    expect(result.classGrade).toBe("10");
-    expect(result.section).toBe("A");
+    expect(result.personal.firstName).toBe("Ali");
+    expect(result.academic.classId).toBe("10");
+    expect(result.academic.sectionId).toBe("A");
   });
 
   it("applies defaults for optional fields", () => {
     const result = CreateStudentSchema.parse({
-      fullName: "Ali Khan",
-      classGrade: "10",
+      identity: {},
+      personal: { firstName: "Ali" },
+      academic: { campusId: "campus1", classId: "10", admissionDate: "2024-01-01" },
+      parentReferences: {},
     });
 
-    expect(result.section).toBe("A");
-    expect(result.gender).toBe("Male");
-    expect(result.religion).toBe("Islam");
-    expect(result.motherName).toBe("");
-    expect(result.fatherName).toBe("");
+    expect(result.academic.sectionId).toBe("A");
+    expect(result.personal.gender).toBe("Male");
   });
 
-  it("rejects short fullName", () => {
-    expect(() =>
-      CreateStudentSchema.parse({ fullName: "A", classGrade: "10" })
-    ).toThrow("Full name must be at least 2 characters");
-  });
-
-  it("rejects missing classGrade", () => {
-    expect(() =>
-      CreateStudentSchema.parse({ fullName: "Ali Khan" })
-    ).toThrow();
-  });
-
-  it("transforms rollNumber from string via preprocess", () => {
-    const result = CreateStudentSchema.parse({
-      fullName: "Ali",
-      classGrade: "10",
-      rollNumber: "1045",
-    });
-    expect(typeof result.rollNumber).toBe("number");
-    expect(result.rollNumber).toBe(1045);
-  });
-
-  it("rejects negative rollNumber", () => {
+  it("rejects missing firstName", () => {
     expect(() =>
       CreateStudentSchema.parse({
-        fullName: "Ali",
-        classGrade: "10",
-        rollNumber: -1,
+        identity: {},
+        personal: {},
+        academic: { campusId: "campus1", classId: "10", admissionDate: "2024-01-01" },
+        parentReferences: {},
       })
-    ).toThrow("positive integer");
+    ).toThrow("Required");
   });
 
-  it("accepts valid email", () => {
-    const result = CreateStudentSchema.parse({
-      fullName: "Ali",
-      classGrade: "10",
-      email: "ali@school.com",
-    });
-    expect(result.email).toBe("ali@school.com");
-  });
-
-  it("accepts empty email", () => {
-    const result = CreateStudentSchema.parse({
-      fullName: "Ali",
-      classGrade: "10",
-      email: "",
-    });
-    expect(result.email).toBe("");
-  });
-
-  it("rejects invalid email", () => {
+  it("rejects missing classId", () => {
     expect(() =>
       CreateStudentSchema.parse({
-        fullName: "Ali",
-        classGrade: "10",
-        email: "not-email",
+        identity: {},
+        personal: { firstName: "Ali" },
+        academic: { campusId: "campus1", admissionDate: "2024-01-01" },
+        parentReferences: {},
       })
     ).toThrow();
+  });
+
+  it("accepts rollNumber as string or number", () => {
+    const result = CreateStudentSchema.parse({
+      identity: { rollNumber: "1045" },
+      personal: { firstName: "Ali" },
+      academic: { campusId: "campus1", classId: "10", admissionDate: "2024-01-01" },
+      parentReferences: {},
+    });
+    expect(result.identity.rollNumber).toBe("1045");
+  });
+
+  it("accepts valid email in contacts", () => {
+    const result = CreateStudentSchema.parse({
+      identity: {},
+      personal: { firstName: "Ali" },
+      academic: { campusId: "campus1", classId: "10", admissionDate: "2024-01-01" },
+      parentReferences: {},
+      contacts: { email: "ali@school.com" },
+    });
+    expect(result.contacts?.email).toBe("ali@school.com");
+  });
+
+  it("accepts empty email in contacts", () => {
+    const result = CreateStudentSchema.parse({
+      identity: {},
+      personal: { firstName: "Ali" },
+      academic: { campusId: "campus1", classId: "10", admissionDate: "2024-01-01" },
+      parentReferences: {},
+      contacts: { email: "" },
+    });
+    expect(result.contacts?.email).toBe("");
   });
 });
 

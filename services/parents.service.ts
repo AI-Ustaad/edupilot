@@ -33,7 +33,7 @@ export class ParentsService {
 
     // Batch fetch all children in minimal queries (30 per batch) instead of N sequential queries
     const children = await this.studentRepo.batchFindByIds(tenantId, parent.studentIds);
-    return children as Student[];
+    return children as unknown as Student[];
   }
 
   async getChildIds(userId: string, tenantId: string): Promise<string[]> {
