@@ -64,7 +64,7 @@ export const createStudentSlice: StateCreator<EnterpriseRuntimeStore, [], [], St
         newByAdmissionNumber[student.identity.admissionNumber] = id;
 
         // Build Parent Index
-        const parentId = student.parentReferences.primaryParentId;
+               const parentId = student.parentReferences.primaryParentId || "unassigned";
         if (!newByParent[parentId]) newByParent[parentId] = [];
         newByParent[parentId].push(id);
       });
