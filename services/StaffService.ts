@@ -1,8 +1,12 @@
 // services/StaffService.ts
 import { IStaffRepository } from "@/interfaces/IStaffRepository";
+import type { IStaffService } from "@/interfaces/IStaffService";
 import { StaffRepository } from "@/repositories/staff.repository";
 import { AttendanceRepository } from "@/repositories/attendance.repository";
-import { Staff, StaffFilter, StaffAnalytics, StaffTimelineEntry, StatusChangeRecord } from "@/types/staff";
+import type { StaffEntity, StaffTimelineEntry } from "@/entities/staff.entity";
+import type { CreateStaffDTO, UpdateStaffDTO } from "@/dto";
+import type { StaffFilter, StaffAnalytics } from "@/types/staff";
+import type { PaginatedResult } from "@/types/api";
 import { ValidationService } from "./ValidationService";
 import { AuditService } from "./AuditService";
 import { CreateStaffSchema, UpdateStaffSchema } from "@/validators/staff";
@@ -12,14 +16,13 @@ import {
   ValidationError,
   SubscriptionLimitException,
 } from "@/errors/AppError";
-import { PaginatedResult } from "@/types/api";
 import { logger } from "@/lib/logger/logger";
-import { serializeForFirestore } from "@/lib/firestore/firestoreSerializer";
 import { eventBus } from "@/lib/events";
 import { EVENTS } from "@/lib/events/event-types";
 import { GeminiProvider } from "@/lib/ai/providers/GeminiProvider";
+import { StaffPersistenceMapper } from "@/lib/mappers/StaffPersistenceMapper";
 
-export class StaffService {
+export class StaffService implements IStaffService {
   private repository: IStaffRepository;
   private validation: ValidationService;
   private audit: AuditService;
@@ -34,107 +37,38 @@ export class StaffService {
     this.aiProvider = new GeminiProvider();
   }
 
-  async list(tenantId: string): Promise<(Staff & { id: string })[]> {
-    return this.repository.findAll(tenantId);
+  async list(tenantId: string): Promise<StaffEntity[]> {
+    const docs = await this.repository.findAll(tenantId);
+    return docs.map(doc => StaffPersistenceMapper.fromFirestore(doc));
   }
 
   async paginate(
     tenantId: string,
     page = 1,
     limit = 20
-  ): Promise<PaginatedResult<Staff & { id: string }>> {
-    return this.repository.paginate(tenantId, page, limit);
-  }
-
-  async getById(tenantId: string, id: string): Promise<Staff & { id: string }> {
-    const staff = await this.repository.findById(id, tenantId);
-    if (!staff) throw new NotFoundException("Staff member not found");
-    return staff;
-  }
-
-  /**
-   * Sanitize form payload: convert empty strings to undefined for optional fields.
-   * Forms send "" for all empty inputs; Zod treats "" as a value (not undefined),
-   * so optional fields with "" fail type-specific validators (email, url, enum, etc.)
-   * Also filters out incomplete/empty objects from arrays.
-   */
-  private sanitizePayload(data: any): any {
-    const sanitize = (value: any): any => {
-      if (value === null) return null;
-      if (value === "") return undefined;
-      if (value instanceof Date) return value;
-
-      if (Array.isArray(value)) {
-        return value
-          .map(sanitize)
-          .filter((item) => {
-            if (item === undefined) return false;
-            if (
-              typeof item === "object" &&
-              item !== null &&
-              !Array.isArray(item) &&
-              Object.keys(item).length === 0
-            ) {
-              return false;
-            }
-            return true;
-          });
-      }
-
-      if (typeof value === "object" && value !== undefined) {
-        const cleaned: Record<string, any> = {};
-        for (const [key, val] of Object.entries(value)) {
-          const result = sanitize(val);
-          if (result !== undefined) {
-            cleaned[key] = result;
-          }
-        }
-        if (Object.keys(cleaned).length === 0) {
-          return undefined;
-        }
-        return cleaned;
-      }
-
-      return value;
+  ): Promise<PaginatedResult<StaffEntity>> {
+    const result = await this.repository.paginate(tenantId, page, limit);
+    return {
+      ...result,
+      data: result.data.map(doc => StaffPersistenceMapper.fromFirestore(doc))
     };
-
-    return sanitize(data);
   }
 
-  /**
-   * Remove undefined values before writing to Firestore.
-   * Firestore rejects undefined but accepts null.
-   * This is a safety net — serializeForFirestore is the shared utility.
-   */
-  private removeUndefined(data: any): any {
-    return serializeForFirestore(data);
+  async getById(tenantId: string, id: string): Promise<StaffEntity> {
+    const doc = await this.repository.findById(id, tenantId);
+    if (!doc) throw new NotFoundException("Staff member not found");
+    return StaffPersistenceMapper.fromFirestore(doc);
   }
 
-  async create(
-    data: any,
-    tenantId: string,
-    userId: string
-  ): Promise<string> {
-    // Sanitize payload: convert empty strings to undefined before validation
-    const sanitized = this.sanitizePayload(data);
-
-    logger.info("[StaffService] Payroll payload", {
-      metadata: {
-        payroll: sanitized.payroll,
-        allowances: sanitized.payroll?.allowances,
-        deductions: sanitized.payroll?.deductions,
-      },
-    });
-
-    const validation = this.validation.validate(CreateStaffSchema, sanitized);
+  async create(data: CreateStaffDTO, tenantId: string, userId: string): Promise<string> {
+    const validation = this.validation.validate(CreateStaffSchema, data);
     if (!validation.success) {
       logger.warn("[StaffService] Validation failed", {
-        metadata: { errors: validation.errors, payload: sanitized },
+        metadata: { errors: validation.errors, payload: data },
       });
       throw new ValidationError("Validation failed", validation.errors);
     }
 
-    // Check for duplicate email
     if (validation.data?.contact?.email) {
       const existing = await this.repository.findByEmail(tenantId, validation.data.contact.email);
       if (existing) {
@@ -142,20 +76,14 @@ export class StaffService {
       }
     }
 
-    const docData = {
-      ...validation.data,
+    const entity = StaffPersistenceMapper.fromDTO(validation.data);
+    const document = StaffPersistenceMapper.toFirestore(entity, userId);
+
+    const savedDoc = await this.repository.save({
+      ...document,
       tenantId,
-      createdBy: userId,
-      admissionMethod: sanitized.admissionMethod || "manual",
-    };
-
-    const firestoreData = this.removeUndefined(docData);
-
-    logger.info("[StaffService] Firestore Payload", {
-      metadata: { staffId: null, tenantId, userId, personal: firestoreData.personal },
-    });
-
-    const id = await this.repository.create(firestoreData as any, tenantId);
+    }, tenantId);
+    const id = savedDoc.id || "";
 
     logger.info("[StaffService] Staff created", {
       metadata: { staffId: id, tenantId, userId, fullName: validation.data?.personal?.fullName },
@@ -177,32 +105,22 @@ export class StaffService {
       fullName: validation.data?.personal?.fullName,
     });
 
-    // Publish STAFF_ACTIVATED for lifecycle cascade
     await eventBus.publish(EVENTS.STAFF_ACTIVATED, {
       staffId: id,
       tenantId,
       userId,
       fullName: validation.data?.personal?.fullName,
-      department: validation.data?.department,
-      designation: validation.data?.designation,
+      department: validation.data?.professional?.department,
+      designation: validation.data?.professional?.designation,
     });
 
     return id;
   }
 
-  async update(
-    tenantId: string,
-    id: string,
-    data: any,
-    userId?: string
-  ): Promise<void> {
-    // Verify existence
+  async update(tenantId: string, id: string, data: UpdateStaffDTO, userId?: string): Promise<void> {
     await this.getById(tenantId, id);
 
-    // Sanitize payload: convert empty strings to undefined before validation
-    const sanitized = this.sanitizePayload(data);
-
-    const validation = this.validation.validate(UpdateStaffSchema, sanitized);
+    const validation = this.validation.validate(UpdateStaffSchema, data);
     if (!validation.success) {
       logger.warn("[StaffService] Update validation failed", {
         metadata: { errors: validation.errors, staffId: id, tenantId },
@@ -210,9 +128,17 @@ export class StaffService {
       throw new ValidationError("Validation failed", validation.errors);
     }
 
-    const firestoreData = this.removeUndefined(validation.data);
+    const entity = StaffPersistenceMapper.fromDTO(validation.data);
+    const document = StaffPersistenceMapper.toFirestore(entity, userId || "");
 
-    await this.repository.update(id, firestoreData as any, tenantId);
+    const updatePayload: Record<string, unknown> = { ...document, updatedBy: userId || "system", updatedAt: new Date() };
+    Object.keys(updatePayload).forEach(key => {
+      if (updatePayload[key as keyof typeof updatePayload] === undefined) {
+        delete updatePayload[key as keyof typeof updatePayload];
+      }
+    });
+
+    await this.repository.update(id, updatePayload, tenantId);
 
     await this.audit.log({
       action: "staff.updated",
@@ -260,8 +186,9 @@ export class StaffService {
     return this.repository.exists(id, tenantId);
   }
 
-  async search(tenantId: string, query: string): Promise<(Staff & { id: string })[]> {
-    return this.repository.search(tenantId, query);
+  async search(tenantId: string, query: string): Promise<StaffEntity[]> {
+    const docs = await this.repository.search(tenantId, query);
+    return docs.map(doc => StaffPersistenceMapper.fromFirestore(doc));
   }
 
   async checkSubscriptionLimit(
@@ -276,14 +203,21 @@ export class StaffService {
     }
   }
 
-  // ─── Enterprise Staff Methods ────────────────────────────────────────────────
-
   async hire(
-    data: any,
+    data: CreateStaffDTO,
     tenantId: string,
     userId: string
   ): Promise<string> {
-    const id = await this.create({ ...data, status: "active" }, tenantId, userId);
+    const hireData: CreateStaffDTO = {
+      ...data,
+      status: "active",
+      metadata: {
+        version: data.metadata?.version ?? 1,
+        source: data.metadata?.source || "hire",
+      },
+    };
+
+    const id = await this.create(hireData, tenantId, userId);
 
     await this.audit.log({
       action: "staff.hired",
@@ -314,19 +248,29 @@ export class StaffService {
     const oldDesignation = staff.professional?.designation;
     const oldDepartment = staff.professional?.department;
 
-    const updateData: Partial<Staff> = {
+    const updateData: UpdateStaffDTO = {
       professional: {
-        ...staff.professional,
+        personnelNo: staff.professional?.personnelNo || "",
         designation: newDesignation,
-        ...(newDepartment ? { department: newDepartment } : {}),
+        department: newDepartment || staff.professional?.department,
+        role: staff.professional?.role,
+        employmentType: staff.professional?.employmentType,
+        joiningDate: staff.professional?.joiningDate,
+        confirmationDate: staff.professional?.confirmationDate,
+        experience: staff.professional?.experience,
+        qualification: staff.professional?.qualification,
       },
       performance: {
-        ...staff.performance,
+        score: staff.performance?.score,
+        principalRemarks: staff.performance?.principalRemarks,
+        warnings: staff.performance?.warnings,
+        achievements: staff.performance?.achievements,
         promotions: [...(staff.performance?.promotions || []), `Promoted to ${newDesignation}`],
+        trainingHistory: staff.performance?.trainingHistory,
       },
     };
 
-    await this.repository.update(staffId, updateData, tenantId);
+    await this.update(tenantId, staffId, updateData, userId);
 
     await this.audit.log({
       action: "staff.promoted",
@@ -355,18 +299,20 @@ export class StaffService {
     const staff = await this.getById(tenantId, staffId);
     const now = new Date().toISOString();
 
-    const statusRecord: StatusChangeRecord = {
+    const statusRecord = {
       fromStatus: staff.status || "active",
-      toStatus: "on-leave",
+      toStatus: "on-leave" as const,
       changedAt: now,
       changedBy: userId,
       reason,
     };
 
-    await this.repository.update(staffId, {
+    const updateData: UpdateStaffDTO = {
       status: "on-leave",
       statusHistory: [...(staff.statusHistory || []), statusRecord],
-    } as any, tenantId);
+    };
+
+    await this.update(tenantId, staffId, updateData, userId);
 
     await this.audit.log({
       action: "staff.transferred",
@@ -387,18 +333,20 @@ export class StaffService {
     const staff = await this.getById(tenantId, staffId);
     const now = new Date().toISOString();
 
-    const statusRecord: StatusChangeRecord = {
+    const statusRecord = {
       fromStatus: staff.status || "active",
-      toStatus: "terminated",
+      toStatus: "terminated" as const,
       changedAt: now,
       changedBy: userId,
       reason,
     };
 
-    await this.repository.update(staffId, {
+    const updateData: UpdateStaffDTO = {
       status: "terminated",
       statusHistory: [...(staff.statusHistory || []), statusRecord],
-    } as any, tenantId);
+    };
+
+    await this.update(tenantId, staffId, updateData, userId);
 
     await this.audit.log({
       action: "staff.terminated",
@@ -419,7 +367,6 @@ export class StaffService {
   }
 
   async archive(tenantId: string, staffId: string, userId: string): Promise<void> {
-    const staff = await this.getById(tenantId, staffId);
     await this.repository.archive(tenantId, staffId);
 
     await this.audit.log({
@@ -434,7 +381,6 @@ export class StaffService {
       staffId,
       tenantId,
       userId,
-      fullName: staff.personal?.fullName,
     });
   }
 
@@ -456,7 +402,7 @@ export class StaffService {
     });
   }
 
-  async bulkUpdate(tenantId: string, ids: string[], data: Partial<Staff>, userId: string): Promise<void> {
+  async bulkUpdate(tenantId: string, ids: string[], data: UpdateStaffDTO, userId: string): Promise<void> {
     await this.repository.bulkUpdate(tenantId, ids, data);
 
     await this.audit.log({
@@ -505,8 +451,8 @@ export class StaffService {
     const payroll = staff.payroll || {};
     const allowances = payroll.allowances || [];
     const deductions = payroll.deductions || [];
-    const totalAllowances = allowances.reduce((sum: number, a: any) => sum + (a.amount || 0), 0);
-    const totalDeductions = deductions.reduce((sum: number, d: any) => sum + (d.amount || 0), 0);
+    const totalAllowances = allowances.reduce((sum, a) => sum + (a.amount || 0), 0);
+    const totalDeductions = deductions.reduce((sum, d) => sum + (d.amount || 0), 0);
 
     return {
       ...payroll,
@@ -568,7 +514,30 @@ Keep response concise and structured.`;
   async advancedFilter(
     tenantId: string,
     filter: StaffFilter
-  ): Promise<{ data: (Staff & { id: string })[]; total: number; page: number; totalPages: number }> {
-    return this.repository.advancedFilter(tenantId, filter);
+  ): Promise<{ data: StaffEntity[]; total: number; page: number; totalPages: number }> {
+    const docs = await this.repository.advancedFilter(tenantId, filter);
+    return {
+      ...docs,
+      data: docs.data.map(doc => StaffPersistenceMapper.fromFirestore(doc))
+    };
+  }
+
+  async bulkCreate(tenantId: string, staff: CreateStaffDTO[], userId: string) {
+    const results: any[] = [];
+    for (const studentData of staff) {
+      try {
+        const created = await this.create(studentData, tenantId, userId);
+        results.push({ success: true, id: created });
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : "Unknown error";
+        results.push({ success: false, error: message });
+      }
+    }
+    return { 
+      success: true, 
+      created: results.filter(r => r.success).length,
+      failed: results.filter(r => !r.success).length,
+      results 
+    };
   }
 }

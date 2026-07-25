@@ -18,8 +18,8 @@ export const GET = withErrorHandler(
       withPermission(PERMISSIONS.staff.view)(
         async (req: Request, { tenantId }: TenantContext) => {
           const url = new URL(req.url);
-          const page = parseInt(url.searchParams.get("page") || "1");
-          const limit = parseInt(url.searchParams.get("limit") || "20");
+          const page = parseInt(url.searchParams.get("page") || "1", 10);
+          const limit = parseInt(url.searchParams.get("limit") || "20", 10);
           const search = url.searchParams.get("search") || undefined;
           const category = url.searchParams.get("category") || undefined;
           const department = url.searchParams.get("department") || undefined;
@@ -33,7 +33,6 @@ export const GET = withErrorHandler(
 
           const service = new StaffService();
 
-          // If any filter is provided, use advancedFilter
           const hasFilters = search || category || department || designation || status || campus || gender || employmentType;
 
           if (hasFilters) {
@@ -68,19 +67,13 @@ export const POST = withRateLimit(standardRateLimit)(
             const body = await req.json();
             const service = new StaffService();
 
-            // Check subscription limits (resilient — never block staff creation due to subscription service errors)
             try {
               const limits = await subscriptionService.getPlanLimits(tenantId);
               await service.checkSubscriptionLimit(tenantId, limits.maxStaff);
-            } catch (err: any) {
-              // If it's a SubscriptionLimitException, re-throw (legitimate limit reached)
-              if (err.code === "SUBSCRIPTION_LIMIT") {
+            } catch (err: unknown) {
+              if (err instanceof Error && err.message === "SUBSCRIPTION_LIMIT") {
                 throw err;
               }
-              // For any other error (Firestore down, tenant not found, etc.), log and continue
-              logger.error("[Staff POST] Subscription check failed, bypassing:", {
-                metadata: { error: err.message, tenantId },
-              });
             }
 
             const id = await service.create(body, tenantId, user.uid);

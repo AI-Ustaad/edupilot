@@ -1,22 +1,12 @@
 // repositories/attendance.repository.ts
 import { BaseRepository } from "./base.repository";
-import type { Attendance } from "@/types/attendance";
+import type { AttendanceDocument } from "@/documents/AttendanceDocument";
+import type { AttendanceEntity } from "@/entities/attendance.entity";
 import type { IAttendanceRepository } from "@/interfaces/IAttendanceRepository";
+import type { PaginatedResult } from "@/types/api";
+import { RepositoryException } from "@/errors/AppError";
 
-// 🟢 Enterprise Safe Serializer
-function serializeDoc<T>(doc: any): T & { id: string } {
-  const data = doc.data() || {};
-  for (const key in data) {
-    if (data[key] && typeof data[key].toDate === 'function') {
-      data[key] = data[key].toDate().toISOString();
-    } else if (data[key] && data[key]._seconds !== undefined) {
-      data[key] = new Date(data[key]._seconds * 1000).toISOString();
-    }
-  }
-  return { id: doc.id, ...data } as T & { id: string };
-}
-
-export class AttendanceRepository extends BaseRepository<Attendance> implements IAttendanceRepository {
+export class AttendanceRepository extends BaseRepository<AttendanceDocument> implements IAttendanceRepository {
   constructor() {
     super("attendance");
   }
@@ -30,8 +20,8 @@ export class AttendanceRepository extends BaseRepository<Attendance> implements 
       studentId?: string;
       dateRange?: { gte: string; lte: string };
     }
-  ): Promise<Attendance[]> {
-    let query: FirebaseFirestore.Query = this.db
+  ): Promise<AttendanceDocument[]> {
+    let query = this.db
       .collection(this.collectionName)
       .where("tenantId", "==", tenantId);
 
@@ -52,23 +42,23 @@ export class AttendanceRepository extends BaseRepository<Attendance> implements 
     }
 
     const snapshot = await query.get();
-    return snapshot.docs.map(doc => serializeDoc<Attendance>(doc));
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as AttendanceDocument));
   }
 
-  async findByStudentId(tenantId: string, studentId: string): Promise<(Attendance & { id: string })[]> {
+  async findByStudentId(tenantId: string, studentId: string): Promise<(AttendanceDocument & { id: string })[]> {
     const snapshot = await this.db
       .collection(this.collectionName)
       .where("tenantId", "==", tenantId)
       .where("studentId", "==", studentId)
       .orderBy("date", "desc")
       .get();
-    return snapshot.docs.map(doc => serializeDoc<Attendance>(doc));
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as AttendanceDocument & { id: string }));
   }
 
-  async findByStudentIds(tenantId: string, studentIds: string[], limit = 30): Promise<(Attendance & { id: string })[]> {
+  async findByStudentIds(tenantId: string, studentIds: string[], limit = 30): Promise<(AttendanceDocument & { id: string })[]> {
     if (studentIds.length === 0) return [];
     
-    const results: (Attendance & { id: string })[] = [];
+    const results: (AttendanceDocument & { id: string })[] = [];
     const chunks: string[][] = [];
     for (let i = 0; i < studentIds.length; i += 30) {
       chunks.push(studentIds.slice(i, i + 30));
@@ -80,16 +70,54 @@ export class AttendanceRepository extends BaseRepository<Attendance> implements 
         .where("studentId", "in", chunk)
         .limit(limit * chunk.length)
         .get();
-      results.push(...snapshot.docs.map(doc => serializeDoc<Attendance>(doc)));
+      results.push(...snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as AttendanceDocument & { id: string })));
     }
     return results;
   }
 
-  getDb() {
-    return this.db;
+  async count(tenantId: string): Promise<number> {
+    const snapshot = await this.db
+      .collection(this.collectionName)
+      .where("tenantId", "==", tenantId)
+      .get();
+    return snapshot.size;
   }
 
-  getCollectionName() {
-    return this.collectionName;
+  async exists(id: string, tenantId: string): Promise<boolean> {
+    const doc = await this.db.collection(this.collectionName).doc(id).get();
+    return doc.exists && doc.data()?.tenantId === tenantId;
+  }
+
+  async bulkCreate(documents: AttendanceDocument[], tenantId: string): Promise<string[]> {
+    if (documents.length === 0) return [];
+    const batch = this.db.batch();
+    const ids: string[] = [];
+    for (const doc of documents) {
+      const docRef = doc.id 
+        ? this.db.collection(this.collectionName).doc(doc.id)
+        : this.db.collection(this.collectionName).doc();
+      batch.set(docRef, { ...doc, tenantId });
+      ids.push(docRef.id);
+    }
+    await batch.commit();
+    return ids;
+  }
+
+  async save(document: AttendanceDocument, tenantId: string): Promise<AttendanceDocument> {
+    try {
+      if (document.id) {
+        await this.update(document.id, document, tenantId);
+        const updated = await this.findById(document.id, tenantId);
+        if (!updated) throw new Error("Attendance record not found after update.");
+        return updated;
+      } else {
+        const newId = await this.create(document, tenantId);
+        const created = await this.findById(newId, tenantId);
+        if (!created) throw new Error("Attendance record not found after create.");
+        return created;
+      }
+    } catch (error) {
+      throw new RepositoryException("Failed to save attendance", { tenantId, docId: document.id });
+    }
   }
 }

@@ -1,36 +1,53 @@
 // repositories/staff.repository.ts
 import { BaseRepository } from "./base.repository";
-import { Staff, StaffFilter, StaffAnalytics, StaffTimelineEntry } from "@/types/staff";
-import { IStaffRepository } from "@/interfaces/IStaffRepository";
-import { PaginatedResult } from "@/types/api";
+import type { StaffDocument } from "@/documents/StaffDocument";
+import type { StaffFilter, StaffAnalytics, StaffTimelineEntry } from "@/types/staff";
+import type { IStaffRepository } from "@/interfaces/IStaffRepository";
+import type { PaginatedResult } from "@/types/api";
 import { RepositoryException } from "@/errors/AppError";
-import { adminDb, dbTimestamp } from "@/lib/firebase-admin";
 
-export class StaffRepository extends BaseRepository<Staff> implements IStaffRepository {
+export class StaffRepository extends BaseRepository<StaffDocument> implements IStaffRepository {
   constructor() {
     super("staff");
   }
 
-  async search(tenantId: string, query: string): Promise<(Staff & { id: string })[]> {
+  async save(document: StaffDocument, tenantId: string): Promise<StaffDocument> {
     try {
-      const snapshot = await adminDb
-        .collection("staff")
+      if (document.id) {
+        await this.update(document.id, document, tenantId);
+        const updated = await this.findById(document.id, tenantId);
+        if (!updated) throw new Error("Staff not found after update.");
+        return updated;
+      } else {
+        const newId = await this.create(document, tenantId);
+        const created = await this.findById(newId, tenantId);
+        if (!created) throw new Error("Staff not found after create.");
+        return created;
+      }
+    } catch (error) {
+      throw new RepositoryException("Failed to save staff", { tenantId, docId: document.id });
+    }
+  }
+
+  async search(tenantId: string, query: string): Promise<(StaffDocument & { id: string })[]> {
+    try {
+      const snapshot = await this.db
+        .collection(this.collectionName)
         .where("tenantId", "==", tenantId)
         .get();
 
       const lowerQuery = query.toLowerCase();
       return snapshot.docs
-        .map((doc) => ({ id: doc.id, ...doc.data() } as Staff & { id: string }))
+        .map((doc) => ({ id: doc.id, ...doc.data() } as StaffDocument & { id: string }))
         .filter(
           (staff) =>
-            staff.personal?.fullName?.toLowerCase().includes(lowerQuery) ||
-            staff.personal?.cnic?.includes(query) ||
-            staff.contact?.mobile?.includes(query) ||
-            staff.contact?.email?.toLowerCase().includes(lowerQuery) ||
-            staff.professional?.personnelNo?.includes(query) ||
-            staff.professional?.employeeId?.includes(query) ||
-            staff.professional?.designation?.toLowerCase().includes(lowerQuery) ||
-            staff.professional?.department?.toLowerCase().includes(lowerQuery) ||
+            staff.fullName?.toLowerCase().includes(lowerQuery) ||
+            staff.cnic?.includes(query) ||
+            staff.mobile?.includes(query) ||
+            staff.email?.toLowerCase().includes(lowerQuery) ||
+            staff.employeeId?.includes(query) ||
+            staff.designation?.toLowerCase().includes(lowerQuery) ||
+            staff.department?.toLowerCase().includes(lowerQuery) ||
             staff.category?.toLowerCase().includes(lowerQuery)
         );
     } catch (error) {
@@ -38,159 +55,149 @@ export class StaffRepository extends BaseRepository<Staff> implements IStaffRepo
     }
   }
 
-  async findByEmail(tenantId: string, email: string): Promise<(Staff & { id: string }) | null> {
+  async findByEmail(tenantId: string, email: string): Promise<(StaffDocument & { id: string }) | null> {
     try {
-      const snapshot = await adminDb
-        .collection("staff")
+      const snapshot = await this.db
+        .collection(this.collectionName)
         .where("tenantId", "==", tenantId)
-        .where("contact.email", "==", email.toLowerCase())
+        .where("email", "==", email.toLowerCase())
         .limit(1)
         .get();
 
       if (snapshot.empty) return null;
       const doc = snapshot.docs[0];
-      return { id: doc.id, ...doc.data() } as Staff & { id: string };
+      return { id: doc.id, ...doc.data() } as StaffDocument & { id: string };
     } catch (error) {
       throw new RepositoryException("Failed to find staff by email", { email, tenantId });
     }
   }
 
-  // ─── Enterprise Methods ──────────────────────────────────────────────────────
-
-  async findByEmployeeId(employeeId: string, tenantId: string): Promise<(Staff & { id: string }) | null> {
+  async findByEmployeeId(employeeId: string, tenantId: string): Promise<(StaffDocument & { id: string }) | null> {
     try {
-      const snapshot = await adminDb
-        .collection("staff")
+      const snapshot = await this.db
+        .collection(this.collectionName)
         .where("tenantId", "==", tenantId)
-        .where("professional.employeeId", "==", employeeId)
+        .where("employeeId", "==", employeeId)
         .limit(1)
         .get();
       if (snapshot.empty) return null;
       const doc = snapshot.docs[0];
-      return { id: doc.id, ...doc.data() } as Staff & { id: string };
+      return { id: doc.id, ...doc.data() } as StaffDocument & { id: string };
     } catch (error) {
       throw new RepositoryException("Failed to find staff by employee ID", { employeeId, tenantId });
     }
   }
 
-  async findByCategory(category: string, tenantId: string): Promise<(Staff & { id: string })[]> {
+  async findByCategory(category: string, tenantId: string): Promise<(StaffDocument & { id: string })[]> {
     try {
-      const snapshot = await adminDb
-        .collection("staff")
+      const snapshot = await this.db
+        .collection(this.collectionName)
         .where("tenantId", "==", tenantId)
         .where("category", "==", category)
         .get();
-      return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() } as Staff & { id: string }));
+      return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() } as StaffDocument & { id: string }));
     } catch (error) {
       throw new RepositoryException("Failed to find staff by category", { category, tenantId });
     }
   }
 
-  async findByDepartment(department: string, tenantId: string): Promise<(Staff & { id: string })[]> {
+  async findByDepartment(department: string, tenantId: string): Promise<(StaffDocument & { id: string })[]> {
     try {
-      const snapshot = await adminDb
-        .collection("staff")
+      const snapshot = await this.db
+        .collection(this.collectionName)
         .where("tenantId", "==", tenantId)
-        .where("professional.department", "==", department)
+        .where("department", "==", department)
         .get();
-      return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() } as Staff & { id: string }));
+      return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() } as StaffDocument & { id: string }));
     } catch (error) {
       throw new RepositoryException("Failed to find staff by department", { department, tenantId });
     }
   }
 
-  async findByDesignation(designation: string, tenantId: string): Promise<(Staff & { id: string })[]> {
+  async findByDesignation(designation: string, tenantId: string): Promise<(StaffDocument & { id: string })[]> {
     try {
-      const snapshot = await adminDb
-        .collection("staff")
+      const snapshot = await this.db
+        .collection(this.collectionName)
         .where("tenantId", "==", tenantId)
-        .where("professional.designation", "==", designation)
+        .where("designation", "==", designation)
         .get();
-      return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() } as Staff & { id: string }));
+      return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() } as StaffDocument & { id: string }));
     } catch (error) {
       throw new RepositoryException("Failed to find staff by designation", { designation, tenantId });
     }
   }
 
-  async findByStatus(status: string, tenantId: string): Promise<(Staff & { id: string })[]> {
+  async findByStatus(status: string, tenantId: string): Promise<(StaffDocument & { id: string })[]> {
     try {
-      const snapshot = await adminDb
-        .collection("staff")
+      const snapshot = await this.db
+        .collection(this.collectionName)
         .where("tenantId", "==", tenantId)
         .where("status", "==", status)
         .get();
-      return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() } as Staff & { id: string }));
+      return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() } as StaffDocument & { id: string }));
     } catch (error) {
       throw new RepositoryException("Failed to find staff by status", { status, tenantId });
     }
   }
 
-  async findByCampus(campus: string, tenantId: string): Promise<(Staff & { id: string })[]> {
+  async findByCampus(campus: string, tenantId: string): Promise<(StaffDocument & { id: string })[]> {
     try {
-      const snapshot = await adminDb
-        .collection("staff")
+      const snapshot = await this.db
+        .collection(this.collectionName)
         .where("tenantId", "==", tenantId)
         .where("campus", "==", campus)
         .get();
-      return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() } as Staff & { id: string }));
+      return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() } as StaffDocument & { id: string }));
     } catch (error) {
       throw new RepositoryException("Failed to find staff by campus", { campus, tenantId });
     }
   }
 
-  async findByRole(role: string, tenantId: string): Promise<(Staff & { id: string })[]> {
+  async findByRole(role: string, tenantId: string): Promise<(StaffDocument & { id: string })[]> {
     try {
-      const snapshot = await adminDb
-        .collection("staff")
+      const snapshot = await this.db
+        .collection(this.collectionName)
         .where("tenantId", "==", tenantId)
-        .where("professional.role", "==", role)
+        .where("role", "==", role)
         .get();
-      return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() } as Staff & { id: string }));
+      return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() } as StaffDocument & { id: string }));
     } catch (error) {
       throw new RepositoryException("Failed to find staff by role", { role, tenantId });
     }
   }
 
-  async advancedFilter(tenantId: string, filter: StaffFilter): Promise<{ data: (Staff & { id: string })[]; total: number; page: number; totalPages: number }> {
+  async advancedFilter(tenantId: string, filter: StaffFilter): Promise<PaginatedResult<StaffDocument>> {
     try {
-      const snapshot = await adminDb
-        .collection("staff")
-        .where("tenantId", "==", tenantId)
-        .get();
+      let all = await this.findAll(tenantId);
 
-      let results = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() } as Staff & { id: string }));
-
-      // Apply filters
       if (filter.search) {
         const q = filter.search.toLowerCase();
-        results = results.filter(s =>
-          s.personal?.fullName?.toLowerCase().includes(q) ||
-          s.personal?.cnic?.includes(filter.search!) ||
-          s.contact?.mobile?.includes(filter.search!) ||
-          s.contact?.email?.toLowerCase().includes(q) ||
-          s.professional?.personnelNo?.includes(filter.search!) ||
-          s.professional?.employeeId?.includes(filter.search!) ||
-          s.professional?.designation?.toLowerCase().includes(q) ||
-          s.professional?.department?.toLowerCase().includes(q) ||
+        all = all.filter(s =>
+          s.fullName?.toLowerCase().includes(q) ||
+          s.cnic?.includes(filter.search!) ||
+          s.mobile?.includes(filter.search!) ||
+          s.email?.toLowerCase().includes(q) ||
+          s.employeeId?.includes(filter.search!) ||
+          s.designation?.toLowerCase().includes(q) ||
+          s.department?.toLowerCase().includes(q) ||
           s.category?.toLowerCase().includes(q)
         );
       }
-      if (filter.category) results = results.filter(s => s.category === filter.category);
-      if (filter.department) results = results.filter(s => s.professional?.department === filter.department);
-      if (filter.designation) results = results.filter(s => s.professional?.designation === filter.designation);
-      if (filter.status) results = results.filter(s => (s.status || "active") === filter.status);
-      if (filter.campus) results = results.filter(s => s.campus === filter.campus);
-      if (filter.gender) results = results.filter(s => s.personal?.gender === filter.gender);
-      if (filter.employmentType) results = results.filter(s => s.professional?.employmentType === filter.employmentType);
+      if (filter.category) all = all.filter(s => s.category === filter.category);
+      if (filter.department) all = all.filter(s => s.department === filter.department);
+      if (filter.designation) all = all.filter(s => s.designation === filter.designation);
+      if (filter.status) all = all.filter(s => (s.status || "active") === filter.status);
+      if (filter.campus) all = all.filter(s => s.campus === filter.campus);
+      if (filter.gender) all = all.filter(s => s.gender === filter.gender);
+      if (filter.employmentType) all = all.filter(s => s.employmentType === filter.employmentType);
 
-      const total = results.length;
+      const total = all.length;
 
-      // Sort
       const orderBy = filter.orderBy || "createdAt";
       const dir = filter.direction === "desc" ? -1 : 1;
-      results.sort((a, b) => {
-        const aVal = (a as any)[orderBy];
-        const bVal = (b as any)[orderBy];
+      all.sort((a, b) => {
+        const aVal = (a as unknown as Record<string, unknown>)[orderBy];
+        const bVal = (b as unknown as Record<string, unknown>)[orderBy];
         if (aVal == null && bVal == null) return 0;
         if (aVal == null) return 1;
         if (bVal == null) return -1;
@@ -198,12 +205,11 @@ export class StaffRepository extends BaseRepository<Staff> implements IStaffRepo
         return String(aVal).localeCompare(String(bVal)) * dir;
       });
 
-      // Paginate
       const page = filter.page || 1;
       const limit = filter.limit || 20;
       const totalPages = Math.ceil(total / limit) || 1;
       const start = (page - 1) * limit;
-      const data = results.slice(start, start + limit);
+      const data = all.slice(start, start + limit);
 
       return { data, total, page, totalPages };
     } catch (error) {
@@ -211,14 +217,15 @@ export class StaffRepository extends BaseRepository<Staff> implements IStaffRepo
     }
   }
 
-  async bulkUpdate(tenantId: string, ids: string[], data: Partial<Staff>): Promise<void> {
+  async bulkUpdate(tenantId: string, ids: string[], data: Partial<StaffDocument>): Promise<void> {
+    if (ids.length === 0) return;
     try {
-      const batch = adminDb.batch();
+      const batch = this.db.batch();
       for (const id of ids) {
-        const ref = adminDb.collection("staff").doc(id);
-        const snap = await ref.get();
+        const docRef = this.db.collection(this.collectionName).doc(id);
+        const snap = await docRef.get();
         if (snap.exists && snap.data()?.tenantId === tenantId) {
-          batch.update(ref, { ...data, updatedAt: dbTimestamp } as any);
+          batch.update(docRef, { ...data, updatedAt: new Date().toISOString() });
         }
       }
       await batch.commit();
@@ -228,13 +235,14 @@ export class StaffRepository extends BaseRepository<Staff> implements IStaffRepo
   }
 
   async bulkDelete(tenantId: string, ids: string[]): Promise<void> {
+    if (ids.length === 0) return;
     try {
-      const batch = adminDb.batch();
+      const batch = this.db.batch();
       for (const id of ids) {
-        const ref = adminDb.collection("staff").doc(id);
-        const snap = await ref.get();
+        const docRef = this.db.collection(this.collectionName).doc(id);
+        const snap = await docRef.get();
         if (snap.exists && snap.data()?.tenantId === tenantId) {
-          batch.update(ref, { deletedAt: dbTimestamp, updatedAt: dbTimestamp, status: "archived" } as any);
+          batch.update(docRef, { deleted: true, deletedAt: new Date().toISOString(), updatedAt: new Date().toISOString(), status: "archived" });
         }
       }
       await batch.commit();
@@ -245,13 +253,13 @@ export class StaffRepository extends BaseRepository<Staff> implements IStaffRepo
 
   async archive(tenantId: string, id: string): Promise<void> {
     try {
-      const ref = adminDb.collection("staff").doc(id);
-      const snap = await ref.get();
+      const docRef = this.db.collection(this.collectionName).doc(id);
+      const snap = await docRef.get();
       if (!snap.exists || snap.data()?.tenantId !== tenantId) {
         throw new RepositoryException("Staff not found or unauthorized", { id, tenantId });
       }
-      await ref.update({ status: "archived", deletedAt: dbTimestamp, updatedAt: dbTimestamp } as any);
-    } catch (error: any) {
+      await docRef.update({ status: "archived", deletedAt: new Date().toISOString(), updatedAt: new Date().toISOString() });
+    } catch (error) {
       if (error instanceof RepositoryException) throw error;
       throw new RepositoryException("Failed to archive staff", { id, tenantId });
     }
@@ -259,13 +267,13 @@ export class StaffRepository extends BaseRepository<Staff> implements IStaffRepo
 
   async restore(tenantId: string, id: string): Promise<void> {
     try {
-      const ref = adminDb.collection("staff").doc(id);
-      const snap = await ref.get();
+      const docRef = this.db.collection(this.collectionName).doc(id);
+      const snap = await docRef.get();
       if (!snap.exists || snap.data()?.tenantId !== tenantId) {
         throw new RepositoryException("Staff not found or unauthorized", { id, tenantId });
       }
-      await ref.update({ status: "active", deletedAt: null, updatedAt: dbTimestamp } as any);
-    } catch (error: any) {
+      await docRef.update({ status: "active", deletedAt: null, updatedAt: new Date().toISOString() });
+    } catch (error) {
       if (error instanceof RepositoryException) throw error;
       throw new RepositoryException("Failed to restore staff", { id, tenantId });
     }
@@ -273,12 +281,7 @@ export class StaffRepository extends BaseRepository<Staff> implements IStaffRepo
 
   async staffAnalytics(tenantId: string): Promise<StaffAnalytics> {
     try {
-      const snapshot = await adminDb
-        .collection("staff")
-        .where("tenantId", "==", tenantId)
-        .get();
-
-      const all = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() } as Staff & { id: string }));
+      const all = await this.findAll(tenantId);
 
       const analytics: StaffAnalytics = {
         total: all.length,
@@ -293,7 +296,7 @@ export class StaffRepository extends BaseRepository<Staff> implements IStaffRepo
       };
 
       for (const s of all) {
-        const dept = s.professional?.department || "Unassigned";
+        const dept = s.department || "Unassigned";
         analytics.byDepartment[dept] = (analytics.byDepartment[dept] || 0) + 1;
 
         const cat = s.category || "Other";
@@ -302,7 +305,7 @@ export class StaffRepository extends BaseRepository<Staff> implements IStaffRepo
         const camp = s.campus || "Main";
         analytics.byCampus[camp] = (analytics.byCampus[camp] || 0) + 1;
 
-        const gen = s.personal?.gender || "Unknown";
+        const gen = s.gender || "Unknown";
         analytics.byGender[gen] = (analytics.byGender[gen] || 0) + 1;
       }
 
@@ -314,19 +317,15 @@ export class StaffRepository extends BaseRepository<Staff> implements IStaffRepo
 
   async timeline(tenantId: string, staffId: string): Promise<StaffTimelineEntry[]> {
     try {
-      const ref = adminDb.collection("staff").doc(staffId);
-      const snap = await ref.get();
-      if (!snap.exists || snap.data()?.tenantId !== tenantId) {
-        throw new RepositoryException("Staff not found", { staffId, tenantId });
-      }
-      const staff = { id: snap.id, ...snap.data() } as Staff & { id: string };
+      const staff = await this.findById(staffId, tenantId);
+      if (!staff) return [];
+
       const entries: StaffTimelineEntry[] = [];
 
-      // Joining date
       if (staff.createdAt) {
         entries.push({
           date: typeof staff.createdAt === "object" && "toDate" in staff.createdAt
-            ? (staff.createdAt as any).toDate().toISOString()
+            ? new Date((staff.createdAt as { toDate: () => Date }).toDate()).toISOString()
             : String(staff.createdAt),
           type: "joining",
           title: "Joined Organization",
@@ -334,7 +333,6 @@ export class StaffRepository extends BaseRepository<Staff> implements IStaffRepo
         });
       }
 
-      // Status history
       if (staff.statusHistory) {
         for (const sh of staff.statusHistory) {
           entries.push({
@@ -347,28 +345,24 @@ export class StaffRepository extends BaseRepository<Staff> implements IStaffRepo
         }
       }
 
-      // Promotions
       if (staff.performance?.promotions) {
         for (const p of staff.performance.promotions) {
           entries.push({ date: "", type: "promotion", title: "Promoted", description: p });
         }
       }
 
-      // Achievements
       if (staff.performance?.achievements) {
         for (const a of staff.performance.achievements) {
           entries.push({ date: "", type: "achievement", title: "Achievement", description: a });
         }
       }
 
-      // Training
       if (staff.performance?.trainingHistory) {
         for (const t of staff.performance.trainingHistory) {
           entries.push({ date: "", type: "training", title: "Training Completed", description: t });
         }
       }
 
-      // Sort by date (entries without dates go to end)
       entries.sort((a, b) => {
         if (!a.date && !b.date) return 0;
         if (!a.date) return 1;
@@ -377,10 +371,8 @@ export class StaffRepository extends BaseRepository<Staff> implements IStaffRepo
       });
 
       return entries;
-    } catch (error: any) {
-      if (error instanceof RepositoryException) throw error;
-      throw new RepositoryException("Failed to build staff timeline", { staffId, tenantId });
+    } catch (error) {
+      throw new RepositoryException("Failed to build staff timeline", { tenantId, staffId });
     }
   }
 }
-

@@ -4,3 +4,4 @@ export { withErrorHandler } from './withErrorHandler';
 export { withRole } from './withRole';
 export { withLogging } from './withLogging';
 export { withRateLimit } from './withRateLimit';
+export { withAuthAndPermission } from './withAuthAndPermission';

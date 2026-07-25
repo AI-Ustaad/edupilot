@@ -1,17 +1,13 @@
-import { adminDb } from "@/lib/firebase-admin";
 import { StudentService } from "./StudentService";
-import { StudentRepository } from "@/repositories/student.repository";
 import { StaffService } from "./StaffService";
-import { StaffRepository } from "@/repositories/staff.repository";
 import { FeesService } from "./fees.service";
-import { FeesRepository } from "@/repositories/fees.repository";
 import { AttendanceService } from "./attendance.service";
-import { AttendanceRepository } from "@/repositories/attendance.repository";
 import { getOrSet } from "@/lib/cache";
+import type { IDashboardService, DashboardData } from "@/interfaces/IDashboardService";
 
-const DASHBOARD_CACHE_TTL = 300; // 5 minutes
+const DASHBOARD_CACHE_TTL = 300;
 
-export class DashboardService {
+export class DashboardService implements IDashboardService {
   private studentService: StudentService;
   private staffService: StaffService;
   private feesService: FeesService;
@@ -24,7 +20,7 @@ export class DashboardService {
     this.attendanceService = new AttendanceService();
   }
 
-  async getDashboardData(tenantId: string) {
+  async getDashboardData(tenantId: string): Promise<DashboardData> {
     const cacheKey = `dashboard:${tenantId}`;
 
     return getOrSet(cacheKey, DASHBOARD_CACHE_TTL, async () => {
@@ -52,11 +48,10 @@ export class DashboardService {
 
       const classDistribution = Object.entries(classCountMap || {}).map(([name, value]) => ({
         name: name || "Unknown",
-        value: value || 0,
+        value: (value as number) || 0,
       }));
 
-      // 🟢 TypeScript Fix: Strictly typed as any[] to completely bypass 'reduce' inference errors
-      const safeAttendanceTrend: any[] = Array.isArray(attendanceTrend) ? attendanceTrend : [];
+      const safeAttendanceTrend: { day: string; percent: number }[] = Array.isArray(attendanceTrend) ? attendanceTrend : [];
       
       const attendanceStats = safeAttendanceTrend.length > 0
         ? {
@@ -104,21 +99,12 @@ export class DashboardService {
     });
   }
 
-  async rebuildStats(tenantId: string) {
+  async rebuildStats(tenantId: string): Promise<{ students: number; staff: number; revenue: number }> {
     const [studentCount, staffCount, totalRevenue] = await Promise.all([
       this.studentService.count(tenantId).catch(() => 0),
       this.staffService.count(tenantId).catch(() => 0),
       this.feesService.getTotalRevenue(tenantId).catch(() => 0),
     ]);
-
-    const statsRef = adminDb.collection("tenants").doc(tenantId).collection("dashboard").doc("stats");
-    await statsRef.set({
-      students: studentCount,
-      staff: staffCount,
-      revenue: totalRevenue,
-      lastRebuildAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    });
 
     return { students: studentCount, staff: staffCount, revenue: totalRevenue };
   }

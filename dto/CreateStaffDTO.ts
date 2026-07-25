@@ -1,8 +1,95 @@
-// dto/CreateStaffDTO.ts
-import { CreateStaffInput } from "@/validators/staff/CreateStaffValidator";
+import { z } from "zod";
 
-export type CreateStaffDTO = CreateStaffInput & {
-  tenantId: string;
-  createdBy: string;
-  admissionMethod?: string;
-};
+export const CreateStaffSchema = z.object({
+  personal: z.object({
+    fullName: z.string().min(2, "Full name is required"),
+    fatherName: z.string().optional(),
+    cnic: z.string().optional(),
+    dob: z.string().optional(),
+    gender: z.enum(["Male", "Female", "Other"]).optional(),
+    bloodGroup: z.string().optional(),
+    nationality: z.string().optional(),
+    religion: z.string().optional(),
+    maritalStatus: z.enum(["Single", "Married", "Divorced", "Widowed"]).optional(),
+    photo: z.string().optional(),
+  }),
+  contact: z.object({
+    mobile: z.string().optional(),
+    whatsapp: z.string().optional(),
+    email: z.union([z.string().email(), z.literal("")]).optional(),
+    currentAddress: z.string().optional(),
+    permanentAddress: z.string().optional(),
+    city: z.string().optional(),
+    province: z.string().optional(),
+    country: z.string().optional(),
+    postalCode: z.string().optional(),
+  }),
+  professional: z.object({
+    personnelNo: z.string().min(1, "Personnel number is required"),
+    employeeId: z.string().optional(),
+    designation: z.string().min(1, "Designation is required"),
+    department: z.string().optional(),
+    role: z.string().optional(),
+    employmentType: z.string().optional(),
+    joiningDate: z.string().optional(),
+    confirmationDate: z.string().optional(),
+    experience: z.string().optional(),
+    qualification: z.string().optional(),
+  }),
+  payroll: z.object({
+    basicSalary: z.number().min(0).optional(),
+    allowances: z.array(z.object({ name: z.string().min(1), amount: z.number().nonnegative() })).optional(),
+    deductions: z.array(z.object({ name: z.string().min(1), amount: z.number().nonnegative() })).optional(),
+    grossSalary: z.number().min(0).optional(),
+    netSalary: z.number().min(0).optional(),
+    bankName: z.string().optional(),
+    accountNumber: z.string().optional(),
+    iban: z.string().optional(),
+    salaryPaymentMethod: z.string().optional(),
+  }).optional(),
+  academic: z.object({
+    subjects: z.array(z.string()).optional(),
+    classesAssigned: z.array(z.string()).optional(),
+    timetable: z.string().optional(),
+    sectionAssignment: z.string().optional(),
+    classTeacher: z.boolean().optional(),
+  }).optional(),
+  documents: z.object({
+    cnicFront: z.string().optional(),
+    cnicBack: z.string().optional(),
+    degreeCertificates: z.array(z.string()).optional(),
+    experienceCertificates: z.array(z.string()).optional(),
+    appointmentLetter: z.string().optional(),
+    contract: z.string().optional(),
+    cv: z.string().optional(),
+  }).optional(),
+  emergency: z.object({
+    name: z.string().optional(),
+    relation: z.string().optional(),
+    phone: z.string().optional(),
+    alternatePhone: z.string().optional(),
+  }).optional(),
+  performance: z.object({
+    score: z.number().min(0).max(100).optional(),
+    principalRemarks: z.string().optional(),
+    warnings: z.number().min(0).optional(),
+    achievements: z.array(z.string()).optional(),
+    promotions: z.array(z.string()).optional(),
+    trainingHistory: z.array(z.string()).optional(),
+  }).optional(),
+  status: z.enum(["active", "terminated", "resigned", "suspended", "on-leave", "archived"]).default("active"),
+  statusHistory: z.array(z.object({
+    fromStatus: z.string(),
+    toStatus: z.string(),
+    changedAt: z.string(),
+    changedBy: z.string(),
+    reason: z.string().optional(),
+  })).optional(),
+  admissionMethod: z.string().optional(),
+  metadata: z.object({
+    version: z.number().default(1),
+    source: z.string().optional(),
+  }).optional(),
+});
+
+export type CreateStaffDTO = z.infer<typeof CreateStaffSchema>;

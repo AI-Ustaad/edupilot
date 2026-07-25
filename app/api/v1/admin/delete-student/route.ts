@@ -32,7 +32,8 @@ export const DELETE = withErrorHandler(
         const attendanceService = new AttendanceService(new AttendanceRepository());
         const studentAttendance = await attendanceService.findByStudentId(tenantId, studentId);
         for (const rec of studentAttendance) {
-          await attendanceService.deleteAttendance(rec.id, tenantId);
+          if (!rec.id) continue;
+          await attendanceService.deleteAttendance(tenantId, rec.id, user.uid);
         }
 
         const feesService = new FeesService(new FeesRepository());

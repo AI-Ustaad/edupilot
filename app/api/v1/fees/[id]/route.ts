@@ -33,7 +33,7 @@ export const PUT = withErrorHandler(
         const id = getIdFromUrl(req);
         const body = await req.json();
         const service = new FeesService();
-        await service.updateFee(id, body, tenantId, user.uid);
+        await service.updateFee(tenantId, id, body, user.uid);
         return createSuccessResponse(null, { message: "Fee record updated successfully" });
       })
     )

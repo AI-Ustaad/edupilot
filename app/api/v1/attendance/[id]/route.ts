@@ -18,7 +18,7 @@ export const GET = withErrorHandler(
       withPermission(PERMISSIONS.attendance.view)(async (req: Request, { tenantId }: TenantContext) => {
         const id = getIdFromUrl(req);
         const service = new AttendanceService();
-        const record = await service.getById(id, tenantId);
+        const record = await service.getById(tenantId, id);
         if (!record) return createErrorResponse(404, "Attendance record not found");
         return createSuccessResponse(record);
       })
@@ -33,7 +33,7 @@ export const PUT = withErrorHandler(
         const id = getIdFromUrl(req);
         const body = await req.json();
         const service = new AttendanceService();
-        await service.updateAttendance(id, body, tenantId, user.uid);
+        await service.updateAttendance(tenantId, id, body, user.uid);
         return createSuccessResponse(null, { message: "Attendance updated successfully" });
       })
     )
@@ -46,9 +46,9 @@ export const DELETE = withErrorHandler(
       withPermission(PERMISSIONS.attendance.delete)(async (req: Request, { tenantId, user }: TenantContext) => {
         const id = getIdFromUrl(req);
         const service = new AttendanceService();
-        const record = await service.getById(id, tenantId);
+        const record = await service.getById(tenantId, id);
         if (!record) return createErrorResponse(404, "Attendance record not found");
-        await service.deleteAttendance(id, tenantId, user.uid);
+        await service.deleteAttendance(tenantId, id, user.uid);
         return createSuccessResponse(null, { message: "Attendance record deleted successfully" });
       })
     )

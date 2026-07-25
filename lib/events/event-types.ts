@@ -55,6 +55,7 @@ export const EVENTS = {
   STUDENT_ENROLLED: "student.enrolled",
   NOTIFICATION_CREATED: "notification.created",
   PARENT_CREATED: "parent.created",
+  PARENT_UPDATED: "parent.updated",
   PARENT_DELETED: "parent.deleted",
   TIMETABLE_CREATED: "timetable.created",
   TIMETABLE_DELETED: "timetable.deleted",

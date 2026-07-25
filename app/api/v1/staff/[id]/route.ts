@@ -1,70 +1,49 @@
 export const dynamic = "force-dynamic";
 
-import { withAuth, withTenant, withErrorHandler } from "@/route-helpers";
-import { createSuccessResponse, createErrorResponse, createApiResponse } from "@/lib/api/response";
+import { withAuthAndPermission } from "@/route-helpers";
+import { createSuccessResponse, createErrorResponse } from "@/lib/api/response";
 import { StaffService } from "@/services/StaffService";
-import { withPermission } from "@/lib/auth/rbac";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 
-interface Context {
-  tenantId: string;
-  user: {
-    uid: string;
-    email: string;
-    role: string;
-    tenantId: string;
-  };
-}
-
-function getIdFromUrl(req: Request): string {
+export const GET = withAuthAndPermission(PERMISSIONS.staff.view, async (req, context) => {
+  const tenantId = context.user.tenantId;
   const url = new URL(req.url);
-  const segments = url.pathname.split("/");
-  return segments[segments.length - 1];
-}
+  const id = url.pathname.split("/").pop() || "";
 
-export const GET = withErrorHandler(
-  withAuth(
-    withTenant(
-      withPermission(PERMISSIONS.staff.view)(
-        async (req: Request, { tenantId }: Context) => {
-          const id = getIdFromUrl(req);
-          const service = new StaffService();
-          const staff = await service.getById(tenantId, id);
-          return createSuccessResponse(staff);
-        }
-      )
-    )
-  )
-);
+  if (!id) {
+    return createErrorResponse(400, "Staff ID is required");
+  }
 
-export const PUT = withErrorHandler(
-  withAuth(
-    withTenant(
-      withPermission(PERMISSIONS.staff.update)(
-        async (req: Request, { tenantId, user }: Context) => {
-          const id = getIdFromUrl(req);
-          const body = await req.json();
-          const service = new StaffService();
-          await service.update(tenantId, id, body, user.uid);
-          return createSuccessResponse(null, { message: "Staff updated successfully" });
-        }
-      )
-    )
-  )
-);
+  const service = new StaffService();
+  const staff = await service.getById(tenantId, id);
+  return createSuccessResponse(staff);
+});
 
-export const DELETE = withErrorHandler(
-  withAuth(
-    withTenant(
-      withPermission(PERMISSIONS.staff.delete)(
-        async (req: Request, { tenantId, user }: Context) => {
-          const id = getIdFromUrl(req);
-          const service = new StaffService();
-          await service.delete(tenantId, id, user.uid);
-          return createSuccessResponse(null, { message: "Staff deleted successfully" });
-        }
-      )
-    )
-  )
-);
+export const PUT = withAuthAndPermission(PERMISSIONS.staff.update, async (req, context) => {
+  const tenantId = context.user.tenantId;
+  const url = new URL(req.url);
+  const id = url.pathname.split("/").pop() || "";
 
+  if (!id) {
+    return createErrorResponse(400, "Staff ID is required");
+  }
+
+  const body = await req.json();
+  const service = new StaffService();
+  await service.update(tenantId, id, body, context.user.uid);
+  return createSuccessResponse(null, { message: "Staff updated successfully" });
+});
+
+export const DELETE = withAuthAndPermission(PERMISSIONS.staff.delete, async (req, context) => {
+  const tenantId = context.user.tenantId;
+  const url = new URL(req.url);
+  const id = url.pathname.split("/").pop() || "";
+
+  if (!id) {
+    return createErrorResponse(400, "Staff ID is required");
+  }
+
+  const service = new StaffService();
+  await service.delete(tenantId, id, context.user.uid);
+  return createSuccessResponse(null, { message: "Staff deleted successfully" });
+});

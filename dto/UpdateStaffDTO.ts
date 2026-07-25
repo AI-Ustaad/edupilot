@@ -1,4 +1,5 @@
-// dto/UpdateStaffDTO.ts
-import { CreateStaffDTO } from "./CreateStaffDTO";
+import { z } from "zod";
+import { CreateStaffSchema } from "./CreateStaffDTO";
 
-export type UpdateStaffDTO = Partial<CreateStaffDTO>;
+export const UpdateStaffSchema = CreateStaffSchema.partial();
+export type UpdateStaffDTO = z.infer<typeof UpdateStaffSchema>;

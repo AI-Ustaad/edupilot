@@ -1,3 +1,4 @@
+// services/attendance.service.ts
 import { AttendanceRepository } from "@/repositories/attendance.repository";
 import { AuditService } from "./AuditService";
 import { ValidationService } from "./ValidationService";
@@ -6,18 +7,26 @@ import { invalidateCache } from "@/lib/cache";
 import { eventBus } from "@/lib/events";
 import { EVENTS } from "@/lib/events/event-types";
 import type { IAttendanceRepository } from "@/interfaces/IAttendanceRepository";
-import type { Attendance } from "@/types/attendance";
+import type { IAttendanceService } from "@/interfaces/IAttendanceService";
+import type { AttendanceEntity } from "@/entities/attendance.entity";
+import type { AttendanceDocument } from "@/documents/AttendanceDocument";
+import type { CreateAttendanceDTO, UpdateAttendanceDTO } from "@/dto";
+import type { PaginatedResult } from "@/types/api";
+import { NotFoundException } from "@/errors/AppError";
+import { AttendancePersistenceMapper } from "@/lib/mappers/AttendancePersistenceMapper";
 
-export class AttendanceService {
+export class AttendanceService implements IAttendanceService {
   private audit: AuditService;
   private validation: ValidationService;
+  private repository: IAttendanceRepository;
 
-  constructor(private repo: IAttendanceRepository = new AttendanceRepository()) {
+  constructor(repository?: IAttendanceRepository) {
+    this.repository = repository ?? new AttendanceRepository();
     this.audit = new AuditService();
     this.validation = new ValidationService();
   }
 
-  async createSingle(data: unknown, tenantId: string, userId: string): Promise<Attendance> {
+  async createSingle(data: CreateAttendanceDTO, tenantId: string, userId: string): Promise<AttendanceEntity> {
     const validation = this.validation.validate(MarkAttendanceSchema, data);
     if (!validation.success) {
       throw new Error(`Validation failed: ${validation.errors?.map(e => e.message).join(", ")}`);
@@ -25,10 +34,14 @@ export class AttendanceService {
     const parsed = validation.data;
 
     const docId = `${parsed.studentId}_${parsed.date}`;
-    const createData = { ...parsed, tenantId, createdBy: userId } as Omit<Attendance, "id" | "createdAt" | "updatedAt">;
-    const id = await this.repo.create({ ...createData, id: docId } as any, tenantId);
-    const record = await this.repo.findById(id || docId, tenantId);
-    if (!record) throw new Error("Attendance record could not be retrieved");
+    const entity = AttendancePersistenceMapper.fromDTO(parsed);
+    const document = AttendancePersistenceMapper.toFirestore(entity, userId);
+    document.id = docId;
+    document.tenantId = tenantId;
+    document.createdBy = userId;
+
+    const created = await this.repository.save(document, tenantId);
+    const record = AttendancePersistenceMapper.fromFirestore(created);
 
     await invalidateCache(`dashboard:${tenantId}`);
 
@@ -36,37 +49,34 @@ export class AttendanceService {
       action: "attendance.created",
       userId,
       tenantId,
-      entityId: id || docId,
+      entityId: docId,
       entityType: "attendance",
       metadata: { studentId: parsed.studentId, date: parsed.date, status: parsed.status },
     });
 
     await eventBus.publish(EVENTS.ATTENDANCE_MARKED, {
       tenantId,
-      attendanceId: id || docId,
+      attendanceId: docId,
       studentId: parsed.studentId,
       date: parsed.date,
       status: parsed.status,
     });
 
-    return record as Attendance;
+    return record;
   }
 
-  async createBulk(data: unknown, tenantId: string, userId: string): Promise<{ success: boolean; message: string }> {
-    const validation = this.validation.validate(BulkAttendanceSchema, data);
-    if (!validation.success) {
-      throw new Error(`Validation failed: ${validation.errors?.map(e => e.message).join(", ")}`);
-    }
-    const records = validation.data;
+  async createBulk(data: CreateAttendanceDTO[], tenantId: string, userId: string): Promise<{ success: boolean; message: string }> {
+    const records: AttendanceDocument[] = data.map(rec => {
+      const docId = `${rec.studentId}_${rec.date}`;
+      const entity = AttendancePersistenceMapper.fromDTO(rec);
+      const document = AttendancePersistenceMapper.toFirestore(entity, userId);
+      document.id = docId;
+      document.tenantId = tenantId;
+      document.createdBy = userId;
+      return document;
+    });
 
-    const bulkData = records.map(rec => ({
-      id: `${rec.studentId}_${rec.date}`,
-      ...rec,
-      tenantId,
-      createdBy: userId,
-    }));
-
-    await this.repo.bulkCreate(bulkData as any, tenantId);
+    await this.repository.bulkCreate(records, tenantId);
 
     await invalidateCache(`dashboard:${tenantId}`);
 
@@ -87,28 +97,38 @@ export class AttendanceService {
     return { success: true, message: `${records.length} attendance records saved` };
   }
 
-  async listAttendance(tenantId: string, filters?: { date?: string; classGrade?: string; section?: string; studentId?: string }): Promise<Attendance[]> {
-    return this.repo.findWithFilters(tenantId, filters);
+  async listAttendance(tenantId: string, filters?: { date?: string; classGrade?: string; section?: string; studentId?: string }): Promise<AttendanceEntity[]> {
+    const docs = await this.repository.findWithFilters(tenantId, filters);
+    return docs.map(doc => AttendancePersistenceMapper.fromFirestore(doc));
   }
 
-  async findByStudentId(tenantId: string, studentId: string): Promise<(Attendance & { id: string })[]> {
-    return this.repo.findByStudentId(tenantId, studentId);
+  async findByStudentId(tenantId: string, studentId: string): Promise<AttendanceEntity[]> {
+    const docs = await this.repository.findByStudentId(tenantId, studentId);
+    return docs.map(doc => AttendancePersistenceMapper.fromFirestore(doc));
   }
 
-  async getById(id: string, tenantId: string): Promise<(Attendance & { id: string }) | null> {
-    return this.repo.findById(id, tenantId);
+  async getById(tenantId: string, id: string): Promise<AttendanceEntity | null> {
+    const doc = await this.repository.findById(id, tenantId);
+    if (!doc) return null;
+    return AttendancePersistenceMapper.fromFirestore(doc);
   }
 
-  async updateAttendance(id: string, data: unknown, tenantId: string, userId?: string): Promise<Attendance> {
-    const validation = this.validation.validate(MarkAttendanceSchema.partial(), data);
-    if (!validation.success) {
-      throw new Error(`Validation failed: ${validation.errors?.map(e => e.message).join(", ")}`);
-    }
-    const parsed = validation.data;
+  async updateAttendance(tenantId: string, id: string, data: UpdateAttendanceDTO, userId?: string): Promise<AttendanceEntity> {
+    const existing = await this.repository.findById(id, tenantId);
+    if (!existing) throw new NotFoundException("Attendance record not found");
 
-    await this.repo.update(id, parsed, tenantId);
-    const updated = await this.repo.findById(id, tenantId);
-    if (!updated) throw new Error("Attendance record not found after update");
+    const entity = AttendancePersistenceMapper.fromDTO(data);
+    const document = AttendancePersistenceMapper.toFirestore(entity, userId || "");
+    const updatePayload: Record<string, unknown> = { ...document, updatedBy: userId || "system", updatedAt: new Date() };
+    Object.keys(updatePayload).forEach(key => {
+      if (updatePayload[key as keyof typeof updatePayload] === undefined) {
+        delete updatePayload[key as keyof typeof updatePayload];
+      }
+    });
+
+    await this.repository.update(id, updatePayload, tenantId);
+    const updated = await this.repository.findById(id, tenantId);
+    if (!updated) throw new NotFoundException("Attendance record not found after update");
 
     await invalidateCache(`dashboard:${tenantId}`);
 
@@ -119,22 +139,22 @@ export class AttendanceService {
         tenantId,
         entityId: id,
         entityType: "attendance",
-        metadata: { updates: parsed },
+        metadata: { updates: data },
       });
     }
 
     await eventBus.publish(EVENTS.ATTENDANCE_UPDATED, {
       tenantId,
       attendanceId: id,
-      updates: parsed,
+      updates: data,
     });
 
-    return updated as Attendance;
+    return AttendancePersistenceMapper.fromFirestore(updated);
   }
 
-  async deleteAttendance(id: string, tenantId: string, userId?: string): Promise<void> {
-    const record = await this.repo.findById(id, tenantId);
-    await this.repo.delete(id, tenantId);
+  async deleteAttendance(tenantId: string, id: string, userId?: string): Promise<void> {
+    const record = await this.repository.findById(id, tenantId);
+    await this.repository.delete(id, tenantId);
 
     await invalidateCache(`dashboard:${tenantId}`);
 
@@ -145,20 +165,20 @@ export class AttendanceService {
         tenantId,
         entityId: id,
         entityType: "attendance",
-        metadata: { studentId: (record as any)?.studentId, date: (record as any)?.date },
+        metadata: { studentId: record?.studentId, date: record?.date },
       });
     }
 
     await eventBus.publish(EVENTS.ATTENDANCE_DELETED, {
       tenantId,
       attendanceId: id,
-      studentId: (record as any)?.studentId,
+      studentId: record?.studentId || "",
     });
   }
 
   async getTodayAttendance(tenantId: string): Promise<{ present: number; absent: number; late: number; total: number }> {
     const today = new Date().toISOString().slice(0, 10);
-    const records = await this.repo.findWithFilters(tenantId, { date: today });
+    const records = await this.repository.findWithFilters(tenantId, { date: today });
     let present = 0, absent = 0, late = 0;
     records.forEach(r => {
       if (r.status === 'Present') present++;
@@ -176,12 +196,10 @@ export class AttendanceService {
     const startStr = startDate.toISOString().slice(0, 10);
     const endStr = endDate.toISOString().slice(0, 10);
 
-    // Single date-range query instead of 7 sequential queries
-    const records = await this.repo.findWithFilters(tenantId, {
+    const records = await this.repository.findWithFilters(tenantId, {
       dateRange: { gte: startStr, lte: endStr },
     });
 
-    // Group by date in-memory
     const byDate: Record<string, { present: number; total: number }> = {};
     for (const r of records) {
       if (!byDate[r.date]) byDate[r.date] = { present: 0, total: 0 };
@@ -189,7 +207,6 @@ export class AttendanceService {
       if (r.status === "Present" || r.status === "Late") byDate[r.date].present++;
     }
 
-    // Build trend for all 7 days (including days with 0 records)
     const trend: { day: string; percent: number }[] = [];
     for (let i = 0; i < 7; i++) {
       const d = new Date(startDate);

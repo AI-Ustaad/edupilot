@@ -1,13 +1,12 @@
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-import { withErrorHandler, withAuth, withTenant } from "@/route-helpers";
+import { withAuth, withTenant, withErrorHandler } from "@/route-helpers";
 import { withPermission } from "@/lib/auth/rbac";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 import { createSuccessResponse, createErrorResponse, createApiResponse } from "@/lib/api/response";
 import { StaffService } from "@/services/StaffService";
-import { AuditService } from "@/services/AuditService";
-import { AppError } from "@/errors/AppError";
+import type { CreateStaffDTO } from "@/dto";
 import type { TenantContext } from "@/types/api";
 import * as XLSX from "xlsx";
 
@@ -32,7 +31,7 @@ export const POST = withErrorHandler(
           const jsonData = XLSX.utils.sheet_to_json(worksheet);
 
           const service = new StaffService();
-          const results: any[] = [];
+          const staffToCreate: CreateStaffDTO[] = [];
           const errors: string[] = [];
 
           for (const row of jsonData as any[]) {
@@ -49,49 +48,33 @@ export const POST = withErrorHandler(
               continue;
             }
 
-            try {
-              const id = await service.create(
-                {
-                  personal: {
-                    fullName: String(fullName).trim(),
-                  },
-                  contact: {
-                    email: row["Email"] || row["email"] || "",
-                    mobile: row["Phone"] || row["phone"] || row["Mobile"] || "",
-                  },
-                  professional: {
-                    designation: row["Designation"] || row["designation"] || "Teacher",
-                    personnelNo: String(personnelNo).trim(),
-                    department: row["Department"] || row["department"] || "",
-                    employmentType: row["Employment Type"] || row["employmentType"] || "",
-                  },
-                  admissionMethod: "bulk",
-                },
-                tenantId,
-                user.uid
-              );
-              results.push({ success: true, id, fullName });
-            } catch (err: any) {
-              errors.push(err.message);
-              results.push({ success: false, fullName, error: err.message });
-            }
+            staffToCreate.push({
+              personal: {
+                fullName: String(fullName).trim(),
+              },
+              contact: {
+                email: row["Email"] || row["email"] || "",
+                mobile: row["Phone"] || row["phone"] || row["Mobile"] || "",
+              },
+              professional: {
+                designation: row["Designation"] || row["designation"] || "Teacher",
+                personnelNo: String(personnelNo).trim(),
+                department: row["Department"] || row["department"] || "",
+                employmentType: row["Employment Type"] || row["employmentType"] || "",
+              },
+            } as CreateStaffDTO);
           }
 
-          // Audit log via AuditService
-          const auditService = new AuditService();
-          await auditService.log({
-            action: "staff.bulk_import",
-            userId: user.uid,
-            tenantId,
-            entityId: "bulk",
-            entityType: "staff",
-            metadata: { total: jsonData.length, success: results.filter((r) => r.success).length, errors: errors.length },
-          });
+          if (staffToCreate.length === 0) {
+            return createErrorResponse(400, "No valid staff records found");
+          }
+
+          const result = await service.bulkCreate(tenantId, staffToCreate, user.uid);
 
           return createApiResponse(201, {
-            imported: results.filter((r) => r.success).length,
-            failed: errors.length,
-            results,
+            imported: result.created,
+            failed: result.failed,
+            results: result.results,
             errors,
           });
         }
@@ -99,4 +82,3 @@ export const POST = withErrorHandler(
     )
   )
 );
-

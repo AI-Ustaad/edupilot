@@ -1,22 +1,11 @@
 // repositories/fees.repository.ts
 import { BaseRepository } from "./base.repository";
-import type { Fee } from "@/types/fees";
+import type { FeeDocument } from "@/documents/FeeDocument";
 import type { IFeesRepository } from "@/interfaces/IFeesRepository";
+import type { PaginatedResult } from "@/types/api";
+import { RepositoryException } from "@/errors/AppError";
 
-// 🟢 Enterprise Safe Serializer
-function serializeDoc<T>(doc: any): T & { id: string } {
-  const data = doc.data() || {};
-  for (const key in data) {
-    if (data[key] && typeof data[key].toDate === 'function') {
-      data[key] = data[key].toDate().toISOString();
-    } else if (data[key] && data[key]._seconds !== undefined) {
-      data[key] = new Date(data[key]._seconds * 1000).toISOString();
-    }
-  }
-  return { id: doc.id, ...data } as T & { id: string };
-}
-
-export class FeesRepository extends BaseRepository<Fee> implements IFeesRepository {
+export class FeesRepository extends BaseRepository<FeeDocument> implements IFeesRepository {
   constructor() {
     super("fees");
   }
@@ -25,7 +14,7 @@ export class FeesRepository extends BaseRepository<Fee> implements IFeesReposito
     tenantId: string,
     studentId: string,
     limit = 100
-  ): Promise<(Fee & { id: string })[]> {
+  ): Promise<(FeeDocument & { id: string })[]> {
     const snapshot = await this.db
       .collection(this.collectionName)
       .where("tenantId", "==", tenantId)
@@ -33,14 +22,14 @@ export class FeesRepository extends BaseRepository<Fee> implements IFeesReposito
       .orderBy("createdAt", "desc")
       .limit(limit)
       .get();
-    return snapshot.docs.map(doc => serializeDoc<Fee>(doc));
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as FeeDocument & { id: string }));
   }
 
   async findWithFilters(
     tenantId: string,
     filters?: { studentId?: string; paid?: boolean; dueBefore?: string }
-  ): Promise<(Fee & { id: string })[]> {
-    let query: FirebaseFirestore.Query = this.db
+  ): Promise<(FeeDocument & { id: string })[]> {
+    let query = this.db
       .collection(this.collectionName)
       .where("tenantId", "==", tenantId);
 
@@ -55,25 +44,55 @@ export class FeesRepository extends BaseRepository<Fee> implements IFeesReposito
     }
 
     const snapshot = await query.get();
-    return snapshot.docs.map(doc => serializeDoc<Fee>(doc));
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as FeeDocument & { id: string }));
   }
 
   async getTotalRevenue(tenantId: string): Promise<number> {
     const snapshot = await this.db
       .collection(this.collectionName)
       .where("tenantId", "==", tenantId)
-      .select("amountPaid")
       .get();
     return snapshot.docs.reduce((sum, doc) => sum + (doc.data().amountPaid || 0), 0);
   }
 
-  async getRecentPayments(tenantId: string, limit = 5): Promise<(Fee & { id: string })[]> {
+  async getRecentPayments(tenantId: string, limit = 5): Promise<(FeeDocument & { id: string })[]> {
     const snapshot = await this.db
       .collection(this.collectionName)
       .where("tenantId", "==", tenantId)
       .orderBy("createdAt", "desc")
       .limit(limit)
       .get();
-    return snapshot.docs.map(doc => serializeDoc<Fee>(doc));
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as FeeDocument & { id: string }));
+  }
+
+  async count(tenantId: string): Promise<number> {
+    const snapshot = await this.db
+      .collection(this.collectionName)
+      .where("tenantId", "==", tenantId)
+      .get();
+    return snapshot.size;
+  }
+
+  async exists(id: string, tenantId: string): Promise<boolean> {
+    const doc = await this.db.collection(this.collectionName).doc(id).get();
+    return doc.exists && doc.data()?.tenantId === tenantId;
+  }
+
+  async save(document: FeeDocument, tenantId: string): Promise<FeeDocument> {
+    try {
+      if (document.id) {
+        await this.update(document.id, document, tenantId);
+        const updated = await this.findById(document.id, tenantId);
+        if (!updated) throw new Error("Fee not found after update.");
+        return updated;
+      } else {
+        const newId = await this.create(document, tenantId);
+        const created = await this.findById(newId, tenantId);
+        if (!created) throw new Error("Fee not found after create.");
+        return created;
+      }
+    } catch (error) {
+      throw new RepositoryException("Failed to save fee", { tenantId, docId: document.id });
+    }
   }
 }
