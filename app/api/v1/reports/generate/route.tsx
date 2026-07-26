@@ -1,3 +1,4 @@
+import { NextResponse } from "next/server";
 import { withErrorHandler, withAuth, withTenant } from "@/route-helpers";
 import { withPermission } from "@/lib/auth/rbac";
 import { PERMISSIONS } from "@/lib/auth/permissions";
