@@ -30,7 +30,7 @@ export class MarksService {
     await invalidateCache(`results:${tenantId}`);
 
     await this.audit.log({ action: "mark.saved", userId, tenantId, entityId: markDocId, entityType: "mark", metadata: { studentId: parsed.studentId, subject: parsed.subject, term: parsed.term } });
-    await eventBus.publish(EVENTS.MARKS_ENTERED, { tenantId, markId: markDocId, studentId: parsed.studentId, subject: parsed.subject, term: parsed.term, marksObtained: parsed.marksObtained, totalMarks: parsed.totalMarks });
+    await eventBus.publish(EVENTS.MARKS_ENTERED, { tenantId, markId: markDocId, studentId: parsed.studentId, subject: parsed.subject, term: parsed.term, marksObtained: parsed.marksObtained, totalMarks: parsed.totalMarks }, tenantId);
 
     return { id: markDocId, message: "Mark saved successfully" };
   }
@@ -45,7 +45,7 @@ export class MarksService {
     await invalidateCache(`dashboard:${tenantId}`);
     await invalidateCache(`results:${tenantId}`);
     await this.audit.log({ action: "mark.deleted", userId, tenantId, entityId: id, entityType: "mark", metadata: { studentId: mark?.studentId, subject: mark?.subject, term: mark?.term } });
-    await eventBus.publish(EVENTS.MARKS_DELETED, { tenantId, markId: id, studentId: mark?.studentId, subject: mark?.subject, term: mark?.term, deletedBy: userId });
+    await eventBus.publish(EVENTS.MARKS_DELETED, { tenantId, markId: id, studentId: mark?.studentId, subject: mark?.subject, term: mark?.term, deletedBy: userId }, tenantId);
   }
 
   async saveSkills(data: unknown, tenantId: string, userId: string): Promise<void> {
@@ -101,7 +101,7 @@ export class MarksService {
     await invalidateCache(`results:${tenantId}`);
     await invalidateCache(`dashboard:${tenantId}`);
 
-    await eventBus.publish(EVENTS.RESULT_PUBLISHED, { tenantId, classGrade: parsed.classGrade, section: parsed.section, term: parsed.term, studentCount: studentIds.length, publishedBy: userId });
+    await eventBus.publish(EVENTS.RESULT_PUBLISHED, { tenantId, classGrade: parsed.classGrade, section: parsed.section, term: parsed.term, studentCount: studentIds.length, publishedBy: userId }, tenantId);
     await this.audit.log({ action: "result.published", userId, tenantId, entityType: "result", metadata: { classGrade: parsed.classGrade, section: parsed.section, term: parsed.term, studentCount: studentIds.length } });
 
     return { students: studentIds.length, emailsSent: parentEmails.length };

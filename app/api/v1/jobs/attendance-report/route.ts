@@ -2,8 +2,8 @@ export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import { AttendanceService } from '@/services/attendance.service';
 import { AttendanceRepository } from '@/repositories/attendance.repository';
+import { TenantRepository } from '@/repositories/tenant.repository';
 import { sendEmail } from '@/lib/email';
-import { adminDb } from '@/lib/firebase-admin';
 import { logger } from '@/lib/logger/logger';
 
 export async function GET(req: Request) {
@@ -23,10 +23,11 @@ export async function GET(req: Request) {
   }
 
   try {
-    const tenantsSnap = await adminDb.collection('tenants').get();
-    const tenants = tenantsSnap.docs.map(doc => doc.id);
+    const tenantRepo = new TenantRepository();
+    const tenants = await tenantRepo.listAll();
+    const tenantIds = tenants.map(t => t.id!).filter(Boolean);
 
-    for (const tenantId of tenants) {
+    for (const tenantId of tenantIds) {
       const attendanceService = new AttendanceService(new AttendanceRepository());
       const now = new Date();
       const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);

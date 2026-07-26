@@ -60,7 +60,7 @@ export class AttendanceService implements IAttendanceService {
       studentId: parsed.studentId,
       date: parsed.date,
       status: parsed.status,
-    });
+    }, tenantId);
 
     return record;
   }
@@ -92,7 +92,7 @@ export class AttendanceService implements IAttendanceService {
       tenantId,
       recordCount: records.length,
       dates: [...new Set(records.map(r => r.date))],
-    });
+    }, tenantId);
 
     return { success: true, message: `${records.length} attendance records saved` };
   }
@@ -147,7 +147,7 @@ export class AttendanceService implements IAttendanceService {
       tenantId,
       attendanceId: id,
       updates: data,
-    });
+    }, tenantId);
 
     return AttendancePersistenceMapper.fromFirestore(updated);
   }
@@ -173,7 +173,7 @@ export class AttendanceService implements IAttendanceService {
       tenantId,
       attendanceId: id,
       studentId: record?.studentId || "",
-    });
+    }, tenantId);
   }
 
   async getTodayAttendance(tenantId: string): Promise<{ present: number; absent: number; late: number; total: number }> {

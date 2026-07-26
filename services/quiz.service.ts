@@ -45,7 +45,7 @@ export class QuizService {
       title: parsed.title,
       classGrade: parsed.classGrade,
       createdBy: userId,
-    });
+    }, tenantId);
 
     return quiz as Quiz;
   }
@@ -111,7 +111,7 @@ export class QuizService {
       studentId: parsed.studentId,
       submissionId,
       percentage,
-    });
+    }, tenantId);
 
     return { id: submissionId, correct, total, percentage };
   }
@@ -129,7 +129,7 @@ export class QuizService {
     await eventBus.publish(EVENTS.QUIZ_DELETED, {
       tenantId,
       quizId: id,
-    });
+    }, tenantId);
   }
 
   async getSubmissions(quizId: string, tenantId: string) {

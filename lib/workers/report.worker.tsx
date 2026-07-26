@@ -100,7 +100,7 @@ export async function runReportWorker(data: any) {
     logger.info(`Worker: Reports successfully generated for Job: ${jobId}`);
     
     // Event Bus کو بتائیں تاکہ اگر کوئی نوٹیفکیشن بھیجنا ہو تو وہ چلا جائے
-    await eventBus.publish(EVENTS.REPORT_GENERATED, { tenantId, jobId });
+    await eventBus.publish(EVENTS.REPORT_GENERATED, { tenantId, jobId }, tenantId);
 
   } catch (error: any) {
     logger.error(`Worker: Failed Job ${jobId}:`, { metadata: { error: error.message } });

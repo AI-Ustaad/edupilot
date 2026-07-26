@@ -1,8 +1,8 @@
 export const dynamic = 'force-dynamic';
 import { FeesRepository } from "@/repositories/fees.repository";
 import { StudentRepository } from "@/repositories/student.repository";
+import { TenantRepository } from "@/repositories/tenant.repository";
 import { sendEmail } from "@/lib/email";
-import { adminDb } from "@/lib/firebase-admin";
 import { createSuccessResponse, createErrorResponse } from "@/lib/api/response";
 
 export async function GET(req: Request) {
@@ -15,13 +15,13 @@ export async function GET(req: Request) {
   const today = new Date().toISOString().slice(0, 10);
   const feesRepo = new FeesRepository();
   const studentRepo = new StudentRepository();
+  const tenantRepo = new TenantRepository();
 
-  // Get all tenants and use repository filter per tenant
-  const tenantsSnap = await adminDb.collection("tenants").get();
+  const tenants = await tenantRepo.listAll();
   let processed = 0;
 
-  for (const tenantDoc of tenantsSnap.docs) {
-    const tenantId = tenantDoc.id;
+  for (const tenant of tenants) {
+    const tenantId = tenant.id!;
     const overdueFees = await feesRepo.findWithFilters(tenantId, { paid: false, dueBefore: today });
 
     for (const fee of overdueFees) {

@@ -78,7 +78,7 @@ export class ParentsService implements IParentService {
       email: data.email,
       studentIds: data.studentIds,
       createdBy: userId,
-    });
+    }, tenantId);
 
     return parentId;
   }
@@ -109,7 +109,7 @@ export class ParentsService implements IParentService {
       tenantId,
       parentId: userId,
       updatedBy,
-    });
+    }, tenantId);
   }
 
   async deleteParent(parentId: string, tenantId: string, userId: string): Promise<void> {
@@ -129,7 +129,7 @@ export class ParentsService implements IParentService {
       tenantId,
       parentId,
       deletedBy: userId,
-    });
+    }, tenantId);
   }
 
   async paginate(tenantId: string, page: number = 1, limit: number = 50): Promise<PaginatedResult<ParentEntity>> {

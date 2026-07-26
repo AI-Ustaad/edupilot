@@ -47,7 +47,7 @@ export class LessonPlanService {
       topic: parsed.topic,
       date: parsed.date,
       createdBy: userId,
-    });
+    }, tenantId);
 
     return plan as LessonPlan;
   }
@@ -80,7 +80,7 @@ export class LessonPlanService {
       topic: parsed.topic,
       date: parsed.date,
       updatedBy: userId,
-    });
+    }, tenantId);
   }
 
   async deleteLessonPlan(id: string, tenantId: string, userId: string): Promise<void> {
@@ -99,6 +99,6 @@ export class LessonPlanService {
       tenantId,
       lessonPlanId: id,
       deletedBy: userId,
-    });
+    }, tenantId);
   }
 }

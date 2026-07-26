@@ -1,16 +1,17 @@
-import { adminDb, dbTimestamp } from '@/lib/firebase-admin';
 import { PLANS, Plan } from '@/lib/config/subscription-plans';
 import { AuditService } from './AuditService';
 import { eventBus } from '@/lib/events';
 import { EVENTS } from '@/lib/events/event-types';
 import { invalidateCache } from '@/lib/cache';
+import { SubscriptionRepository } from "@/repositories/subscription.repository";
 
 export class SubscriptionService {
   private audit = new AuditService();
+  private subscriptionRepo = new SubscriptionRepository();
 
   async getTenantPlan(tenantId: string): Promise<Plan> {
-    const doc = await adminDb.collection("tenants").doc(tenantId).get();
-    const planKey = doc.exists ? doc.data()?.plan || "free" : "free";
+    const subscription = await this.subscriptionRepo.findByTenant(tenantId);
+    const planKey = subscription?.planId || "free";
     return PLANS[planKey] || PLANS.free;
   }
 
@@ -25,20 +26,13 @@ export class SubscriptionService {
   }
 
   async getSubscription(tenantId: string) {
-    const doc = await adminDb.collection("subscriptions").doc(tenantId).get();
-    if (!doc.exists) return { planId: "free", status: "active" };
-    return doc.data();
+    const subscription = await this.subscriptionRepo.findByTenant(tenantId);
+    if (!subscription) return { planId: "free", status: "active" };
+    return subscription;
   }
 
   async activateSubscription(tenantId: string, planId: string, userId?: string) {
-    await adminDb.collection("subscriptions").doc(tenantId).set({
-      tenantId,
-      planId,
-      status: "active",
-      currentPeriodStart: new Date(),
-      currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-      updatedAt: dbTimestamp,
-    }, { merge: true });
+    await this.subscriptionRepo.activate(tenantId, planId, userId);
 
     await invalidateCache(`subscription:${tenantId}`);
 
@@ -52,15 +46,11 @@ export class SubscriptionService {
       });
     }
 
-    await eventBus.publish(EVENTS.SUBSCRIPTION_ACTIVATED, { tenantId, planId });
+    await eventBus.publish(EVENTS.SUBSCRIPTION_ACTIVATED, { tenantId, planId }, tenantId);
   }
 
   async cancelSubscription(tenantId: string, userId?: string) {
-    await adminDb.collection("subscriptions").doc(tenantId).set({
-      planId: "free",
-      status: "canceled",
-      updatedAt: dbTimestamp,
-    }, { merge: true });
+    await this.subscriptionRepo.cancel(tenantId, userId);
 
     await invalidateCache(`subscription:${tenantId}`);
 
@@ -73,14 +63,11 @@ export class SubscriptionService {
       });
     }
 
-    await eventBus.publish(EVENTS.SUBSCRIPTION_CANCELED, { tenantId });
+    await eventBus.publish(EVENTS.SUBSCRIPTION_CANCELED, { tenantId }, tenantId);
   }
 
   async updateSubscription(tenantId: string, data: Record<string, any>, userId?: string) {
-    await adminDb.collection("subscriptions").doc(tenantId).set({
-      ...data,
-      updatedAt: dbTimestamp,
-    }, { merge: true });
+    await this.subscriptionRepo.update(tenantId, data, tenantId);
 
     await invalidateCache(`subscription:${tenantId}`);
 
@@ -94,6 +81,6 @@ export class SubscriptionService {
       });
     }
 
-    await eventBus.publish(EVENTS.SUBSCRIPTION_UPDATED, { tenantId, ...data });
+    await eventBus.publish(EVENTS.SUBSCRIPTION_UPDATED, { tenantId, ...data }, tenantId);
   }
 }

@@ -9,9 +9,9 @@ export class TenantBrandingService {
   constructor(private repo: TenantBrandingRepository) {}
 
   async getBranding(tenantId: string): Promise<TenantBranding | null> {
-    return getOrSet(`${CACHE_KEY}:${tenantId}`, CACHE_TTL, async () => {
+    return getOrSet(`${CACHE_KEY}:${tenantId}`, async () => {
       return this.repo.findById(tenantId, tenantId); // document id = tenantId
-    });
+    }, { ttl: CACHE_TTL });
   }
 
   async saveBranding(tenantId: string, data: Partial<TenantBranding>): Promise<void> {

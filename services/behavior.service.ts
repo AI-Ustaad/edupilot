@@ -55,7 +55,7 @@ export class BehaviorService {
       points: parsed.points,
       reason: parsed.reason,
       recordedBy: userId,
-    });
+    }, tenantId);
 
     return { success: true };
   }

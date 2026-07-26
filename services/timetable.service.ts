@@ -57,7 +57,7 @@ export class TimetableService {
       period: parsed.period,
       subject: parsed.subject,
       createdBy: userId,
-    });
+    }, tenantId);
 
     return id;
   }
@@ -84,6 +84,6 @@ export class TimetableService {
       tenantId,
       timetableId: id,
       deletedBy: userId,
-    });
+    }, tenantId);
   }
 }

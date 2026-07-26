@@ -10,6 +10,8 @@ import type { StudentEntity, Student360Aggregate, StudentComment, TimelineEntry 
 import type { StudentAnalytics } from "@/types/student";
 import type { PaginatedResult } from "@/types/api";
 import { randomUUID } from "crypto";
+import { eventBus } from "@/lib/events";
+import { EVENTS } from "@/lib/events/event-types";
 
 export class StudentService implements IStudentService {
   private repository: IStudentRepository;
@@ -36,7 +38,21 @@ export class StudentService implements IStudentService {
       tenantId,
     }, tenantId);
     
-    return StudentPersistenceMapper.fromFirestore(savedDoc);
+    const createdEntity = StudentPersistenceMapper.fromFirestore(savedDoc);
+
+    eventBus.publish(EVENTS.STUDENT_CREATED, {
+      tenantId,
+      studentId: createdEntity.studentId || savedDoc.id,
+      studentData: {
+        firstName: document.firstName,
+        lastName: document.lastName,
+        fullName: document.fullName,
+        classGrade: document.classGrade,
+        section: document.section,
+      },
+    }, tenantId);
+
+    return createdEntity;
   }
 
   async update(tenantId: string, studentId: string, data: UpdateStudentDTO, userId: string): Promise<StudentEntity | null> {
@@ -51,7 +67,15 @@ export class StudentService implements IStudentService {
     });
 
     await this.repository.update(studentId, updatePayload as Parameters<IStudentRepository["update"]>[1], tenantId);
-    return this.getById(tenantId, studentId);
+    const updated = await this.getById(tenantId, studentId);
+
+    eventBus.publish(EVENTS.STUDENT_UPDATED, {
+      tenantId,
+      studentId,
+      updates: updatePayload,
+    }, tenantId);
+
+    return updated;
   }
 
   async getById(tenantId: string, studentId: string): Promise<StudentEntity | null> {
@@ -70,10 +94,22 @@ export class StudentService implements IStudentService {
 
   async delete(tenantId: string, studentId: string, userId?: string): Promise<void> {
     await this.repository.softDelete(studentId, tenantId);
+
+    eventBus.publish(EVENTS.STUDENT_DELETED, {
+      tenantId,
+      studentId,
+      studentData: { studentId },
+    }, tenantId);
   }
 
   async hardDelete(tenantId: string, studentId: string, userId: string): Promise<void> {
     await this.repository.delete(studentId, tenantId);
+
+    eventBus.publish(EVENTS.STUDENT_DELETED, {
+      tenantId,
+      studentId,
+      studentData: { studentId },
+    }, tenantId);
   }
 
   async approveAdmission(tenantId: string, studentId: string, userId: string): Promise<void> {

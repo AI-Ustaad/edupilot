@@ -3,7 +3,7 @@ import { logger } from "@/lib/logger/logger";
 import { AppError } from "@/errors/AppError";
 
 export function withErrorHandler(handler: Function) {
-  return async (req: Request, context: any) => {
+  return async (req: Request, context: any = {}) => {
     try {
       return await handler(req, context);
     } catch (error: any) {

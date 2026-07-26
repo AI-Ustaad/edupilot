@@ -48,7 +48,7 @@ export class HomeworkService {
       classGrade: parsed.classGrade,
       subject: parsed.subject,
       createdBy: userId,
-    });
+    }, tenantId);
 
     return record as Homework;
   }
@@ -83,7 +83,7 @@ export class HomeworkService {
       homeworkId: id,
       updates: parsed,
       updatedBy: userId,
-    });
+    }, tenantId);
 
     return updated as Homework;
   }
@@ -104,6 +104,6 @@ export class HomeworkService {
       tenantId,
       homeworkId: id,
       deletedBy: userId,
-    });
+    }, tenantId);
   }
 }

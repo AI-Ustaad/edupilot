@@ -28,7 +28,7 @@ export class EventWorker {
 
     for (const event of events) {
       try {
-        await eventBus.dispatch(event);
+        await eventBus.dispatchEvent(event);
         await this.outbox.complete(event.eventId, this.nodeId);
         result.completed++;
       } catch (error) {

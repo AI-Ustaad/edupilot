@@ -1,7 +1,8 @@
 export const dynamic = 'force-dynamic';
 import { withErrorHandler, withRateLimit } from "@/route-helpers";
 import { authRateLimit } from "@/lib/ratelimit";
-import { adminAuth, adminDb } from "@/lib/firebase-admin";
+import { adminAuth } from "@/lib/firebase-admin";
+import { UserRepository } from "@/repositories/user.repository";
 import { createSuccessResponse, createErrorResponse } from "@/lib/api/response";
 
 export const POST = withErrorHandler(
@@ -20,9 +21,10 @@ export const POST = withErrorHandler(
           displayName: name,
         });
 
-        await adminDb.collection("users").doc(userRecord.uid).set({
+        const userRepo = new UserRepository();
+        await userRepo.create({
+          uid: userRecord.uid,
           email,
-          name,
           role: "student",
           tenantId: tenantId || null,
           createdAt: new Date(),

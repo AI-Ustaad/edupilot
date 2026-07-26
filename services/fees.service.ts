@@ -56,7 +56,7 @@ export class FeesService implements IFeesService {
       amount: parsed.amountPaid,
       month: parsed.feeMonth,
       collectedBy: userId,
-    });
+    }, tenantId);
 
     const created = await this.repository.findById(id, tenantId);
     if (!created) throw new Error("Fee record created but could not be retrieved");
@@ -132,7 +132,7 @@ export class FeesService implements IFeesService {
       feeId: id,
       updates: data,
       updatedBy: userId,
-    });
+    }, tenantId);
 
     return FeePersistenceMapper.fromFirestore(updated);
   }
@@ -160,7 +160,7 @@ export class FeesService implements IFeesService {
       feeId: id,
       studentId: fee?.studentId || "",
       deletedBy: userId,
-    });
+    }, tenantId);
   }
 
   async getTotalRevenue(tenantId: string): Promise<number> {

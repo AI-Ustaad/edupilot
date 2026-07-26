@@ -1,63 +1,54 @@
-// repositories/configuration.repository.ts
-import { adminDb } from "@/lib/firebase-admin"; 
+import { adminDb, dbTimestamp } from "@/lib/firebase-admin";
+import { IConfigurationRepository } from "@/interfaces/IConfigurationRepository";
 import { MasterSchoolConfiguration } from "@/types/configuration";
 import { mapToMasterConfiguration } from "@/lib/mappers/configuration.mapper";
 
-export class ConfigurationRepository {
-  private db = adminDb;
+export class ConfigurationRepository implements IConfigurationRepository {
+  private getConfigRef(tenantId: string, docId: string) {
+    return adminDb.collection("tenants").doc(tenantId).collection("settings").doc(docId);
+  }
 
-  async getActiveConfiguration(tenantId: string): Promise<MasterSchoolConfiguration | null> {
-    const doc = await this.db
-      .collection("tenants")
-      .doc(tenantId)
-      .collection("configuration")
-      .doc("current")
-      .get();
-
+  async getConfig(tenantId: string): Promise<MasterSchoolConfiguration | null> {
+    const doc = await this.getConfigRef(tenantId, "config").get();
     if (!doc.exists) return null;
-
-    // Rule: Mapping raw DB data to Domain Model happens right here
     return mapToMasterConfiguration(doc.data(), tenantId);
   }
 
-  async saveConfiguration(tenantId: string, config: MasterSchoolConfiguration): Promise<void> {
-    const batch = this.db.batch();
-    
-    // Save to current SSOT
-    const currentRef = this.db
-      .collection("tenants")
-      .doc(tenantId)
-      .collection("configuration")
-      .doc("current");
-    batch.set(currentRef, config);
+  async updateConfig(tenantId: string, data: Record<string, any>): Promise<void> {
+    await this.getConfigRef(tenantId, "config").set(
+      { ...data, updatedAt: new Date().toISOString() },
+      { merge: true }
+    );
+  }
 
-    // Save to History
-    const historyRef = this.db
-      .collection("tenants")
-      .doc(tenantId)
-      .collection("config_history")
-      .doc(`v${config.version.number}`);
-    batch.set(historyRef, config);
+  async getGeneral(tenantId: string): Promise<Record<string, any> | null> {
+    const doc = await this.getConfigRef(tenantId, "general").get();
+    return doc.exists ? (doc.data() as Record<string, any>) : null;
+  }
 
-    // Update Tenant Meta
-    const tenantRef = this.db.collection("tenants").doc(tenantId);
-    batch.set(tenantRef, { 
-      status: config.state === "Published" ? "active" : "configuring",
-      configVersion: config.version.number,
-      updatedAt: new Date().toISOString()
-    }, { merge: true });
+  async updateGeneral(tenantId: string, data: Record<string, any>): Promise<void> {
+    await this.getConfigRef(tenantId, "general").set(
+      { ...data, updatedAt: new Date().toISOString() },
+      { merge: true }
+    );
+  }
 
-    await batch.commit();
+  async getActiveConfiguration(tenantId: string): Promise<MasterSchoolConfiguration | null> {
+    return this.getConfig(tenantId);
+  }
+
+  async saveConfiguration(tenantId: string, data: Record<string, any>): Promise<void> {
+    await this.updateConfig(tenantId, data);
   }
 
   async getConfigurationHistory(tenantId: string): Promise<MasterSchoolConfiguration[]> {
-    const snapshot = await this.db
+    const snapshot = await adminDb
       .collection("tenants")
       .doc(tenantId)
-      .collection("config_history")
-      .orderBy("version.createdAt", "desc")
+      .collection("settings")
+      .orderBy("updatedAt", "desc")
       .get();
-
+    
     return snapshot.docs.map(doc => mapToMasterConfiguration(doc.data(), tenantId));
   }
 }

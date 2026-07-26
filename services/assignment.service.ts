@@ -49,7 +49,7 @@ export class AssignmentService {
       classGrade: parsed.classGrade,
       subject: parsed.subject,
       createdBy: userId,
-    });
+    }, tenantId);
 
     return assignment as Assignment;
   }
@@ -81,7 +81,7 @@ export class AssignmentService {
       assignmentId: id,
       updates: parsed,
       updatedBy: userId,
-    });
+    }, tenantId);
   }
 
   async deleteAssignment(id: string, tenantId: string, userId: string): Promise<void> {
@@ -99,7 +99,7 @@ export class AssignmentService {
       tenantId,
       assignmentId: id,
       deletedBy: userId,
-    });
+    }, tenantId);
   }
 
   async submitAssignment(
@@ -135,7 +135,7 @@ export class AssignmentService {
       assignmentId,
       studentId,
       submissionId: id,
-    });
+    }, tenantId);
 
     return id;
   }

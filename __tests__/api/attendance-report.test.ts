@@ -1,13 +1,11 @@
 import { GET } from "@/app/api/v1/jobs/attendance-report/route";
-import { adminDb } from "@/lib/firebase-admin";
+import { TenantRepository } from "@/repositories/tenant.repository";
 import { sendEmail } from "@/lib/email";
 
-jest.mock("@/lib/firebase-admin", () => ({
-  adminDb: {
-    collection: jest.fn().mockReturnValue({
-      get: jest.fn(),
-    }),
-  },
+jest.mock("@/repositories/tenant.repository", () => ({
+  TenantRepository: jest.fn().mockImplementation(() => ({
+    listAll: jest.fn(),
+  })),
 }));
 
 jest.mock("@/lib/email", () => ({
@@ -54,9 +52,10 @@ describe("Attendance Report Cron API", () => {
   it("GET returns 200 for valid secret via query param", async () => {
     process.env.CRON_SECRET = "correct-secret";
     
-    (adminDb.collection as jest.Mock).mockReturnValue({
-      get: jest.fn().mockResolvedValue({ docs: [{ id: "tenant1" }] }),
-    });
+    const listAllMock = jest.fn().mockResolvedValue([{ id: "tenant1" }]);
+    (TenantRepository as jest.Mock).mockImplementation(() => ({
+      listAll: listAllMock,
+    }));
     
     const { AttendanceService } = require("@/services/attendance.service");
     const mockListAttendance = jest.fn().mockResolvedValue([]);
@@ -73,9 +72,10 @@ describe("Attendance Report Cron API", () => {
   it("GET returns 200 for valid secret via Bearer token", async () => {
     process.env.CRON_SECRET = "correct-secret";
     
-    (adminDb.collection as jest.Mock).mockReturnValue({
-      get: jest.fn().mockResolvedValue({ docs: [{ id: "tenant1" }] }),
-    });
+    const listAllMock = jest.fn().mockResolvedValue([{ id: "tenant1" }]);
+    (TenantRepository as jest.Mock).mockImplementation(() => ({
+      listAll: listAllMock,
+    }));
     
     const { AttendanceService } = require("@/services/attendance.service");
     const mockListAttendance = jest.fn().mockResolvedValue([]);

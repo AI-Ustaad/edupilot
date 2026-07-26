@@ -55,7 +55,7 @@ export class BusService {
       busNumber: parsed.busNumber,
       route: parsed.route,
       createdBy: userId,
-    });
+    }, tenantId);
 
     return bus as Bus;
   }
@@ -93,7 +93,7 @@ export class BusService {
       busId: id,
       updates: parsed,
       updatedBy: userId,
-    });
+    }, tenantId);
 
     return updated as Bus;
   }
@@ -119,6 +119,6 @@ export class BusService {
       tenantId,
       busId: id,
       deletedBy: userId,
-    });
+    }, tenantId);
   }
 }

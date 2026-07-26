@@ -1,17 +1,25 @@
-// repositories/menu.repository.ts
 import { adminDb } from "@/lib/firebase-admin";
+import { IMenuRepository } from "@/interfaces/IMenuRepository";
 
-export class MenuRepository {
-  private getRef(tenantId: string) {
-    return adminDb.collection("customMenus").doc(tenantId);
+export class MenuRepository implements IMenuRepository {
+  async findByTenant(tenantId: string): Promise<any[]> {
+    const doc = await adminDb.collection("customMenus").doc(tenantId).get();
+    if (!doc.exists) return [];
+    return (doc.data()?.items || []) as any[];
   }
 
-  async getMenu(tenantId: string): Promise<Record<string, any>> {
-    const doc = await this.getRef(tenantId).get();
-    return doc.exists ? (doc.data() as Record<string, any>) : {};
+  async save(tenantId: string, menuItems: any[]): Promise<void> {
+    await adminDb.collection("customMenus").doc(tenantId).set({
+      items: menuItems,
+      updatedAt: new Date(),
+    }, { merge: true });
   }
 
-  async saveMenu(tenantId: string, menu: Record<string, any>): Promise<void> {
-    await this.getRef(tenantId).set(menu, { merge: true });
+  async getMenu(tenantId: string): Promise<any[]> {
+    return this.findByTenant(tenantId);
+  }
+
+  async saveMenu(tenantId: string, menuItems: any[]): Promise<void> {
+    await this.save(tenantId, menuItems);
   }
 }

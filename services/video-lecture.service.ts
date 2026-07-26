@@ -35,7 +35,7 @@ export class VideoLectureService {
 
     await this.audit.log({ action: "video.created", userId, tenantId, entityId: id, entityType: "video", metadata: { title: validated.title } });
     await invalidateCache(`videos:${tenantId}`);
-    await eventBus.publish(EVENTS.VIDEO_CREATED, { tenantId, videoId: id, title: validated.title, createdBy: userId });
+    await eventBus.publish(EVENTS.VIDEO_CREATED, { tenantId, videoId: id, title: validated.title, createdBy: userId }, tenantId);
 
     return record as VideoLecture;
   }
@@ -64,7 +64,7 @@ export class VideoLectureService {
 
     await this.audit.log({ action: "video.updated", userId: userId || "system", tenantId, entityId: id, entityType: "video", metadata: { updates: validated } });
     await invalidateCache(`videos:${tenantId}`);
-    await eventBus.publish(EVENTS.VIDEO_UPDATED, { tenantId, videoId: id, updates: validated, updatedBy: userId });
+    await eventBus.publish(EVENTS.VIDEO_UPDATED, { tenantId, videoId: id, updates: validated, updatedBy: userId }, tenantId);
 
     return updated as VideoLecture;
   }
@@ -74,6 +74,6 @@ export class VideoLectureService {
 
     await this.audit.log({ action: "video.deleted", userId: userId || "system", tenantId, entityId: id, entityType: "video" });
     await invalidateCache(`videos:${tenantId}`);
-    await eventBus.publish(EVENTS.VIDEO_DELETED, { tenantId, videoId: id, deletedBy: userId });
+    await eventBus.publish(EVENTS.VIDEO_DELETED, { tenantId, videoId: id, deletedBy: userId }, tenantId);
   }
 }

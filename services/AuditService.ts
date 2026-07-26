@@ -1,6 +1,5 @@
 // services/AuditService.ts
-import { adminDb } from "@/lib/firebase-admin";
-import { FieldValue } from "firebase-admin/firestore";
+import { AuditRepository } from "@/repositories/audit.repository";
 import { logger } from "@/lib/logger/logger";
 
 export interface AuditLogEntry {
@@ -13,12 +12,11 @@ export interface AuditLogEntry {
 }
 
 export class AuditService {
+  private auditRepo = new AuditRepository();
+
   async log(entry: AuditLogEntry): Promise<void> {
     try {
-      await adminDb.collection("logs").add({
-        ...entry,
-        createdAt: FieldValue.serverTimestamp(),
-      });
+      await this.auditRepo.create(entry, entry.tenantId);
     } catch (err) {
       logger.error("[AuditService] Failed to write audit log:", { metadata: { error: err } });
     }
@@ -29,17 +27,7 @@ export class AuditService {
     options?: { limit?: number; action?: string; entityType?: string }
   ) {
     try {
-      let query: FirebaseFirestore.Query = adminDb
-        .collection("logs")
-        .where("tenantId", "==", tenantId)
-        .orderBy("createdAt", "desc");
-
-      if (options?.action) query = query.where("action", "==", options.action);
-      if (options?.entityType) query = query.where("entityType", "==", options.entityType);
-      if (options?.limit) query = query.limit(options.limit);
-
-      const snapshot = await query.get();
-      return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+      return await this.auditRepo.findByTenant(tenantId, options);
     } catch (err) {
       logger.error("[AuditService] Failed to query audit logs:", { metadata: { error: err } });
       return [];

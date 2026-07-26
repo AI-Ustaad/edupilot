@@ -1,4 +1,5 @@
-import { adminAuth, adminDb } from "@/lib/firebase-admin";
+import { adminAuth } from "@/lib/firebase-admin";
+import { UserRepository } from "@/repositories/user.repository";
 import { checkAuthRateLimit } from "@/lib/ratelimit";
 import { logger } from "@/lib/logger/logger";
 import { createSuccessResponse, createErrorResponse } from "@/lib/api/response";
@@ -22,16 +23,16 @@ export async function POST(req: Request) {
 
     const userRecord = await adminAuth.getUserByEmail(email);
     
-    const userDoc = await adminDb.collection("users").doc(userRecord.uid).get();
-    const userData = userDoc.data();
+    const userRepo = new UserRepository();
+    const sessionUser = await userRepo.findByUidWithFallback(userRecord.uid, email);
     
-    if (!userData || userData.role !== "parent") {
+    if (sessionUser.role !== "parent") {
       return createErrorResponse(403, "Unauthorized: Parent access only");
     }
 
     const customToken = await adminAuth.createCustomToken(userRecord.uid, {
       role: "parent",
-      tenantId: userData.tenantId,
+      tenantId: sessionUser.tenantId,
     });
 
     return createSuccessResponse({ customToken, uid: userRecord.uid });

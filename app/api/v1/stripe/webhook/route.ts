@@ -1,11 +1,12 @@
-import { adminDb } from "@/lib/firebase-admin";
 import { stripe } from "@/lib/stripe";
 import { logger } from "@/lib/logger/logger";
 import { createSuccessResponse, createErrorResponse } from "@/lib/api/response";
 import { SubscriptionService } from "@/services/subscription.service";
+import { InvoiceService } from "@/services/invoice.service";
 import Stripe from "stripe";
 
 const subscriptionService = new SubscriptionService();
+const invoiceService = new InvoiceService();
 
 export async function POST(req: Request) {
   const body = await req.text();
@@ -47,14 +48,13 @@ export async function POST(req: Request) {
         const tenantId = invoice.metadata?.tenantId as string;
 
         if (tenantId) {
-          await adminDb.collection("invoices").add({
+          await invoiceService.createFromStripe({
             tenantId,
             stripeInvoiceId: invoice.id,
             amountPaid: invoice.amount_paid / 100,
             currency: invoice.currency,
             periodStart: new Date(invoice.period_start * 1000),
             periodEnd: new Date(invoice.period_end * 1000),
-            createdAt: new Date(),
           });
 
           await subscriptionService.updateSubscription(tenantId, { status: "active" });

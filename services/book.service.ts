@@ -52,7 +52,7 @@ export class BookService {
       bookId: id,
       title: parsed.title,
       author: parsed.author,
-    });
+    }, tenantId);
 
     return book as Book;
   }
@@ -80,7 +80,7 @@ export class BookService {
       bookId: id,
       updates: parsed,
       updatedBy: userId,
-    });
+    }, tenantId);
   }
 
   async deleteBook(id: string, tenantId: string, userId: string): Promise<void> {
@@ -99,6 +99,6 @@ export class BookService {
       tenantId,
       bookId: id,
       deletedBy: userId,
-    });
+    }, tenantId);
   }
 }

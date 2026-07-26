@@ -4,8 +4,14 @@ import { UserProfileNotFoundError } from "@/lib/auth/auth.errors";
 import { logger } from "@/lib/logger/logger";
 import { RequestContext } from "@/route-helpers/request-context";
 
-export class UserRepository {
-  // Dependency Injection for testing
+export interface IUserRepository {
+  findByUidWithFallback(uid: string, email?: string, context?: RequestContext): Promise<SessionUser>;
+  findAllByTenant(tenantId: string): Promise<SessionUser[]>;
+  updateRole(uid: string, role: Role, tenantId: string): Promise<void>;
+  create(data: { uid: string; email: string; role: Role; tenantId: string | null; onboardingRequired?: boolean; createdAt: Date }): Promise<string>;
+}
+
+export class UserRepository implements IUserRepository {
   constructor(private db = adminDb) {}
 
   async findByUidWithFallback(uid: string, email?: string, context?: RequestContext): Promise<SessionUser> {
@@ -59,6 +65,10 @@ export class UserRepository {
 
   async updateRole(uid: string, role: Role, tenantId: string): Promise<void> {
     try {
+      const doc = await this.db.collection("users").doc(uid).get();
+      if (!doc.exists || doc.data()?.tenantId !== tenantId) {
+        throw new Error("User not found or unauthorized");
+      }
       await this.db.collection("users").doc(uid).update({
         role,
         updatedAt: new Date(),

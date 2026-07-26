@@ -2,18 +2,20 @@
 import { StudentRepository } from "@/repositories/student.repository";
 import { StaffRepository } from "@/repositories/staff.repository";
 import { FeesService } from "@/services/fees.service";
+import { TenantRepository } from "@/repositories/tenant.repository";
 import type { IAnalyticsService, TenantAnalytics } from "@/interfaces/IAnalyticsService";
-import { adminDb } from "@/lib/firebase-admin";
 
 export class AnalyticsService implements IAnalyticsService {
   private studentRepo: StudentRepository;
   private staffRepo: StaffRepository;
   private feesService: FeesService;
+  private tenantRepo: TenantRepository;
 
   constructor() {
     this.studentRepo = new StudentRepository();
     this.staffRepo = new StaffRepository();
     this.feesService = new FeesService();
+    this.tenantRepo = new TenantRepository();
   }
 
   async getTenantAnalytics(tenantId: string): Promise<TenantAnalytics> {
@@ -23,8 +25,8 @@ export class AnalyticsService implements IAnalyticsService {
       this.feesService.getTotalRevenue(tenantId),
     ]);
 
-    const tenantDoc = await adminDb.collection("tenants").doc(tenantId).get();
-    const name = tenantDoc.exists ? (tenantDoc.data()?.name as string) || tenantId : tenantId;
+    const tenant = await this.tenantRepo.findById(tenantId, tenantId);
+    const name = tenant?.name || tenantId;
 
     return {
       tenantId,
@@ -36,11 +38,11 @@ export class AnalyticsService implements IAnalyticsService {
   }
 
   async getAllTenantsAnalytics(): Promise<TenantAnalytics[]> {
-    const tenantsSnap = await adminDb.collection("tenants").get();
+    const tenants = await this.tenantRepo.findAll("all");
 
-    const tenants = await Promise.all(
-      tenantsSnap.docs.map(async (doc) => {
-        const tid = doc.id;
+    const analytics = await Promise.all(
+      tenants.map(async (tenant) => {
+        const tid = tenant.id;
         const [students, staff, revenue] = await Promise.all([
           this.studentRepo.count(tid),
           this.staffRepo.count(tid),
@@ -48,7 +50,7 @@ export class AnalyticsService implements IAnalyticsService {
         ]);
         return {
           tenantId: tid,
-          name: (doc.data() as Record<string, unknown>).name as string || tid,
+          name: tenant.name || tid,
           students,
           staff,
           revenue,
@@ -56,6 +58,6 @@ export class AnalyticsService implements IAnalyticsService {
       })
     );
 
-    return tenants;
+    return analytics;
   }
 }

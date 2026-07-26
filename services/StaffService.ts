@@ -103,7 +103,7 @@ export class StaffService implements IStaffService {
       tenantId,
       userId,
       fullName: validation.data?.personal?.fullName,
-    });
+    }, tenantId);
 
     await eventBus.publish(EVENTS.STAFF_ACTIVATED, {
       staffId: id,
@@ -112,7 +112,7 @@ export class StaffService implements IStaffService {
       fullName: validation.data?.personal?.fullName,
       department: validation.data?.professional?.department,
       designation: validation.data?.professional?.designation,
-    });
+    }, tenantId);
 
     return id;
   }
@@ -154,7 +154,7 @@ export class StaffService implements IStaffService {
       tenantId,
       userId: userId || "system",
       updatedFields: Object.keys(data),
-    });
+    }, tenantId);
   }
 
   async delete(tenantId: string, id: string, userId?: string): Promise<void> {
@@ -175,7 +175,7 @@ export class StaffService implements IStaffService {
       tenantId,
       userId: userId || "system",
       fullName: staff.personal?.fullName,
-    });
+    }, tenantId);
   }
 
   async count(tenantId: string): Promise<number> {
@@ -232,7 +232,7 @@ export class StaffService implements IStaffService {
       staffId: id,
       tenantId,
       userId,
-    });
+    }, tenantId);
 
     return id;
   }
@@ -287,7 +287,7 @@ export class StaffService implements IStaffService {
       userId,
       oldDesignation,
       newDesignation,
-    });
+    }, tenantId);
   }
 
   async transfer(
@@ -363,7 +363,7 @@ export class StaffService implements IStaffService {
       userId,
       fullName: staff.personal?.fullName,
       reason,
-    });
+    }, tenantId);
   }
 
   async archive(tenantId: string, staffId: string, userId: string): Promise<void> {
@@ -381,7 +381,7 @@ export class StaffService implements IStaffService {
       staffId,
       tenantId,
       userId,
-    });
+    }, tenantId);
   }
 
   async restore(tenantId: string, staffId: string, userId: string): Promise<void> {
@@ -399,7 +399,7 @@ export class StaffService implements IStaffService {
       staffId,
       tenantId,
       userId,
-    });
+    }, tenantId);
   }
 
   async bulkUpdate(tenantId: string, ids: string[], data: UpdateStaffDTO, userId: string): Promise<void> {

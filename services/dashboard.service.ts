@@ -23,7 +23,7 @@ export class DashboardService implements IDashboardService {
   async getDashboardData(tenantId: string): Promise<DashboardData> {
     const cacheKey = `dashboard:${tenantId}`;
 
-    return getOrSet(cacheKey, DASHBOARD_CACHE_TTL, async () => {
+    return getOrSet(cacheKey, async () => {
       const [
         studentsCount,
         staffCount,
@@ -96,7 +96,7 @@ export class DashboardService implements IDashboardService {
           byGender: staffAnalytics?.byGender || {},
         },
       };
-    });
+    }, { ttl: DASHBOARD_CACHE_TTL });
   }
 
   async rebuildStats(tenantId: string): Promise<{ students: number; staff: number; revenue: number }> {
