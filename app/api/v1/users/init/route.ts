@@ -1,7 +1,10 @@
 export const dynamic = 'force-dynamic';
 import { NextResponse } from "next/server";
-import { adminAuth, adminDb } from "@/lib/firebase-admin";
+import { adminAuth } from "@/lib/firebase-admin";
 import { cookies } from "next/headers";
+import { UserRepository } from "@/repositories/user.repository";
+
+const userRepo = new UserRepository();
 
 export async function GET() {
   try {
@@ -13,16 +16,19 @@ export async function GET() {
 
     const decoded = await adminAuth.verifySessionCookie(session);
 
-    const userRef = adminDb.collection("users").doc(decoded.uid);
-    const doc = await userRef.get();
-
-    if (!doc.exists) {
-      await userRef.set({
-        uid: decoded.uid,
-        email: decoded.email,
-        createdAt: new Date(),
-      });
+    const existingUser = await userRepo.findByUidWithFallback(decoded.uid, decoded.email);
+    if (existingUser) {
+      return NextResponse.json({ success: true });
     }
+
+    await userRepo.create({
+      uid: decoded.uid,
+      email: decoded.email,
+      role: "guest",
+      tenantId: null,
+      onboardingRequired: true,
+      createdAt: new Date(),
+    } as any, "");
 
     return NextResponse.json({ success: true });
   } catch {

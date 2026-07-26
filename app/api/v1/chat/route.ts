@@ -1,11 +1,12 @@
 export const dynamic = 'force-dynamic';
 
-import { NextResponse } from "next/server";
-import { adminDb } from "@/lib/firebase-admin";
 import { withErrorHandler, withAuth, withTenant } from "@/route-helpers";
 import { withPermission } from "@/lib/auth/rbac";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 import { createSuccessResponse, createErrorResponse, createApiResponse } from "@/lib/api/response";
+import { ChatRepository } from "@/repositories/chat.repository";
+
+const chatRepo = new ChatRepository();
 
 export const GET = withErrorHandler(
   withAuth(
@@ -16,13 +17,7 @@ export const GET = withErrorHandler(
         const teacherId = searchParams.get("teacherId");
         const parentId = searchParams.get("parentId");
 
-        let query = adminDb.collection("chat_messages").where("tenantId", "==", tenantId);
-        if (teacherId) query = query.where("teacherId", "==", teacherId);
-        if (parentId) query = query.where("parentId", "==", parentId);
-        query = query.orderBy("createdAt", "asc").limit(100);
-
-        const snapshot = await query.get();
-        const messages = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+        const messages = await chatRepo.findByTenant(tenantId, teacherId || undefined, parentId || undefined);
         
         return createSuccessResponse(messages);
       })
@@ -41,17 +36,16 @@ export const POST = withErrorHandler(
           return createErrorResponse(400, "Missing fields");
         }
         
-        const ref = await adminDb.collection("chat_messages").add({
+        const id = await chatRepo.createMessage({
           teacherId,
           parentId,
           text: text.trim(),
           senderRole: user.role,
           senderUid: user.uid,
           tenantId,
-          createdAt: new Date(),
         });
         
-        return createApiResponse(201, { id: ref.id });
+        return createApiResponse(201, { id });
       })
     )
   )

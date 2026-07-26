@@ -6,10 +6,13 @@ import { sendEmail } from '@/lib/email';
 import { adminDb } from '@/lib/firebase-admin';
 import { logger } from '@/lib/logger/logger';
 
-const CRON_SECRET = process.env.CRON_SECRET || 'internal-cron-secret';
-
 export async function GET(req: Request) {
-  // Validate cron secret
+  if (!process.env.CRON_SECRET) {
+    logger.error("CRON_SECRET is not configured");
+    return NextResponse.json({ error: "Server misconfiguration" }, { status: 500 });
+  }
+
+  const CRON_SECRET = process.env.CRON_SECRET;
   const authHeader = req.headers.get('authorization') || '';
   const url = new URL(req.url);
   const querySecret = url.searchParams.get('secret');

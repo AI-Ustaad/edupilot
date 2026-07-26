@@ -34,4 +34,49 @@ export class UserRepository {
       onboardingRequired: data.onboardingRequired ?? false,
     };
   }
+
+  async findAllByTenant(tenantId: string): Promise<SessionUser[]> {
+    try {
+      const snapshot = await this.db
+        .collection("users")
+        .where("tenantId", "==", tenantId)
+        .get();
+
+      return snapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          uid: doc.id,
+          email: data.email || "",
+          role: (data.role as Role) || "teacher",
+          tenantId: data.tenantId || null,
+          onboardingRequired: data.onboardingRequired ?? false,
+        };
+      });
+    } catch (error) {
+      throw new Error(`Failed to fetch users for tenant: ${error}`);
+    }
+  }
+
+  async updateRole(uid: string, role: Role, tenantId: string): Promise<void> {
+    try {
+      await this.db.collection("users").doc(uid).update({
+        role,
+        updatedAt: new Date(),
+      });
+    } catch (error) {
+      throw new Error(`Failed to update user role: ${error}`);
+    }
+  }
+
+  async create(data: { uid: string; email: string; role: Role; tenantId: string | null; onboardingRequired?: boolean; createdAt: Date }): Promise<string> {
+    try {
+      await this.db.collection("users").doc(data.uid).set({
+        ...data,
+        createdAt: data.createdAt || new Date(),
+      });
+      return data.uid;
+    } catch (error) {
+      throw new Error(`Failed to create user: ${error}`);
+    }
+  }
 }

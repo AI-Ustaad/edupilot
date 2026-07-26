@@ -48,18 +48,16 @@
 
 | Component | Status | Evidence |
 |-----------|--------|----------|
-| CRON_SECRET Hardcoded Fallback | ⚠️ FOUND | app/api/v1/jobs/attendance-report/route.ts |
+| CRON_SECRET Hardcoded Fallback | ✅ FIXED | app/api/v1/jobs/attendance-report/route.ts |
 | Secrets in .env.local | ⚠️ UNKNOWN | Requires git history check |
 
 ## Known Vulnerabilities
 
 | Vulnerability | Severity | Evidence |
 |---------------|----------|----------|
-| Role escalation in register-user | HIGH | app/api/v1/auth/register-user/route.ts: role \|\| "teacher" |
-| No auth on curriculum/engine | CRITICAL | app/api/v1/curriculum/engine/route.ts |
-| No auth on education/rules | CRITICAL | app/api/v1/education/rules/route.ts |
-| adminDb in 14 routes | HIGH | Multiple route files |
-| adminDb in 6 services | HIGH | Multiple service files |
+| Role escalation in register-user | HIGH | app/api/v1/auth/register-user/route.ts: FIXED - role now server-side assigned |
+| adminDb in 7 routes | MEDIUM | Public/auth/cron routes only |
+| adminDb in 3 services | MEDIUM | JobService, ReportService, CurriculumEngineService |
 
 ---
 

@@ -1,11 +1,13 @@
 export const dynamic = 'force-dynamic';
 
 import { NextResponse } from "next/server";
-import { adminAuth, adminDb } from "@/lib/firebase-admin";
+import { adminAuth } from "@/lib/firebase-admin";
 import { withErrorHandler, withAuth, withTenant } from "@/route-helpers";
 import { withPermission } from "@/lib/auth/rbac";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 import { createSuccessResponse, createErrorResponse, createApiResponse } from "@/lib/api/response";
+import { UserRepository } from "@/repositories/user.repository";
+import type { Role } from "@/types/auth";
 
 export const POST = withErrorHandler(
   withAuth(
@@ -18,8 +20,9 @@ export const POST = withErrorHandler(
           return createErrorResponse(400, "Invalid input");
         }
 
+        const userRepo = new UserRepository();
         await adminAuth.setCustomUserClaims(uid, { role, tenantId });
-        await adminDb.collection("users").doc(uid).update({ role, updatedAt: new Date() });
+        await userRepo.updateRole(uid, role as Role, tenantId);
 
         return createSuccessResponse(null, { message: "Role updated successfully" });
       })

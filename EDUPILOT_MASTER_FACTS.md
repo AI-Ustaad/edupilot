@@ -137,8 +137,8 @@ All facts derived from direct codebase inspection via file enumeration, grep, an
 
 | Name | Status | Evidence |
 |------|--------|----------|
-| BaseService | DEAD IMPLEMENTATION | services/base.service.ts exists, 0 services extend it |
-| IOCRService | DEAD IMPLEMENTATION | interfaces/IOCRService.ts exists, 0 classes implement it |
+| BaseService | REMOVED | services/base.service.ts deleted |
+| IOCRService | REMOVED | interfaces/IOCRService.ts deleted |
 | StudentResponseDTO | DEAD IMPLEMENTATION | Only in dto/StudentResponseDTO.ts and dto/index.ts |
 | StaffResponseDTO | DEAD IMPLEMENTATION | Only in dto/StaffResponseDTO.ts and dto/index.ts |
 | ParentResponseDTO | DEAD IMPLEMENTATION | Only in dto/ParentResponseDTO.ts and dto/index.ts |
@@ -253,8 +253,8 @@ All facts derived from direct codebase inspection via file enumeration, grep, an
 | Total Routes | 117 | find app/api/v1 -name 'route.ts' |
 | Routes with withAuth | 98 | grep -r 'withAuth' app/api/v1 -l |
 | Routes with withPermission | 76 | grep -r 'withPermission' app/api/v1 -l |
-| Routes with adminDb | 14 | grep -r 'adminDb' app/api/v1 -l |
-| Routes without auth | 19 | See 3.2 |
+| Routes with adminDb | 7 | grep -r 'adminDb' app/api/v1 -l |
+| Routes without auth | 17 | See 3.2 |
 
 ### 3.2 Routes Without Authentication
 
@@ -268,8 +268,6 @@ All facts derived from direct codebase inspection via file enumeration, grep, an
 | app/api/v1/auth/session/route.ts | NO |
 | app/api/v1/cron/fee-reminder/route.ts | NO |
 | app/api/v1/curriculum/engine/route.ts | NO |
-| app/api/v1/curriculum/load/route.ts | NO |
-| app/api/v1/curriculum/preview/route.ts | NO |
 | app/api/v1/education/rules/route.ts | NO |
 | app/api/v1/jobs/attendance-report/route.ts | NO |
 | app/api/v1/jobs/events/route.ts | NO |

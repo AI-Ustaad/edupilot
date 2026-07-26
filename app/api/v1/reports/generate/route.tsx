@@ -1,5 +1,3 @@
-import { NextResponse } from "next/server";
-import { adminDb } from "@/lib/firebase-admin";
 import { withErrorHandler, withAuth, withTenant } from "@/route-helpers";
 import { withPermission } from "@/lib/auth/rbac";
 import { PERMISSIONS } from "@/lib/auth/permissions";
@@ -7,10 +5,17 @@ import type { TenantContext } from "@/types/api";
 import { renderToBuffer } from "@react-pdf/renderer";
 import { ReportCardTemplate } from "@/lib/pdf/ReportCardTemplate";
 import React from "react";
+import { StudentRepository } from "@/repositories/student.repository";
+import { MarksRepository } from "@/repositories/marks.repository";
+import { SettingsRepository } from "@/repositories/settings.repository";
 
 // Force Node.js runtime because @react-pdf/renderer uses Node streams
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+
+const studentRepo = new StudentRepository();
+const marksRepo = new MarksRepository();
+const settingsRepo = new SettingsRepository();
 
 export const GET = withErrorHandler(
   withAuth(
@@ -21,63 +26,45 @@ export const GET = withErrorHandler(
         const term = searchParams.get("term") || "Final Exams";
 
         if (!studentId) {
-          return NextResponse.json({ success: false, message: "Student ID required" }, { status: 400 });
+          return new NextResponse(JSON.stringify({ success: false, message: "Student ID required" }), { status: 400, headers: { "Content-Type": "application/json" } });
         }
 
-        // 1. Securely Fetch Student
-        const studentSnap = await adminDb.collection("students").doc(studentId).get();
-        if (!studentSnap.exists || studentSnap.data()?.tenantId !== tenantId) {
-          return NextResponse.json({ success: false, message: "Student not found" }, { status: 404 });
+        const student = await studentRepo.findById(studentId, tenantId);
+        if (!student) {
+          return new NextResponse(JSON.stringify({ success: false, message: "Student not found" }), { status: 404, headers: { "Content-Type": "application/json" } });
         }
-        const student = studentSnap.data();
 
-        // 2. Securely Fetch Marks for this Term
-        const marksSnap = await adminDb.collection("marks")
-          .where("tenantId", "==", tenantId)
-          .where("studentId", "==", studentId)
-          .where("term", "==", term)
-          .get();
+        const marks = await marksRepo.findWithFilters(tenantId, { studentId, term });
 
-        const marks = marksSnap.docs.map(d => {
-          const data = d.data();
-          return {
-            subject: data.subject || "Unknown Subject",
-            totalMarks: Number(data.totalMarks) || 0,
-            marksObtained: Number(data.marksObtained) || 0,
-            grade: data.grade || "-",
-          };
-        });
+        const settings = await settingsRepo.getConfig(tenantId);
+        const schoolName = settings?.schoolName || "EduPilot Academy";
 
-        // 3. Fetch School Branding for the Header
-        const settingsSnap = await adminDb.collection("settings").doc(tenantId).get();
-        const schoolName = settingsSnap.exists ? settingsSnap.data()?.schoolName || "EduPilot Academy" : "EduPilot Academy";
-
-        // 4. Prepare Data for PDF
         const pdfData = {
           schoolName,
           term,
           student: {
-            name: student?.fullName || student?.name || "Unknown",
-            fatherName: student?.fatherName || "N/A",
-            classGrade: student?.classGrade || "N/A",
-            section: student?.section || "N/A",
-            rollNumber: student?.rollNumber || "N/A",
+            name: student.fullName || student.name || "Unknown",
+            fatherName: student.fatherName || "N/A",
+            classGrade: student.classGrade || "N/A",
+            section: student.section || "N/A",
+            rollNumber: student.rollNumber || "N/A",
           },
-          marks,
+          marks: marks.map(m => ({
+            subject: m.subject || "Unknown Subject",
+            totalMarks: Number(m.totalMarks) || 0,
+            marksObtained: Number(m.marksObtained) || 0,
+            grade: m.grade || "-",
+          })),
           aiComment: "An excellent term! Keep up the hard work and maintain focus on continuous improvement."
         };
 
-        // 5. Generate PDF Buffer
         const buffer = await renderToBuffer(<ReportCardTemplate data={pdfData} />);
-
-        // ✅ FIX: Convert Buffer to Uint8Array for NextResponse compatibility
         const pdfBytes = new Uint8Array(buffer);
 
-        // 6. Return PDF as a downloadable file
         return new NextResponse(pdfBytes, {
           headers: {
             'Content-Type': 'application/pdf',
-            'Content-Disposition': `attachment; filename="Report_${student?.fullName || studentId}_${term}.pdf"`,
+            'Content-Disposition': `attachment; filename="Report_${student.fullName || student.name || studentId}_${term}.pdf"`,
           },
         });
       })

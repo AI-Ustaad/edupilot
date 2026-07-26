@@ -1,9 +1,11 @@
 export const dynamic = "force-dynamic";
 
 import { NextResponse } from "next/server";
-import { adminDb } from "@/lib/firebase-admin";
 import { withErrorHandler, withAuth, withTenant } from "@/route-helpers";
 import type { TenantContext } from "@/types/api";
+import { JobRepository } from "@/repositories/job.repository";
+
+const jobRepo = new JobRepository();
 
 export const GET = withErrorHandler(
   withAuth(
@@ -12,22 +14,16 @@ export const GET = withErrorHandler(
       const jobId = params.jobId;
 
       if (!jobId) {
-        return NextResponse.json({ success: false, message: "Job ID required" }, { status: 400 });
+        return new NextResponse(JSON.stringify({ success: false, message: "Job ID required" }), { status: 400, headers: { "Content-Type": "application/json" } });
       }
 
-      // ڈیٹا بیس سے جاب کی لائیو صورتحال (Progress) نکالیں
-      const jobSnap = await adminDb
-        .collection("tenants")
-        .doc(tenantId)
-        .collection("jobs")
-        .doc(jobId)
-        .get();
+      const job = await jobRepo.findById(tenantId, jobId);
 
-      if (!jobSnap.exists) {
-        return NextResponse.json({ success: false, message: "Job not found" }, { status: 404 });
+      if (!job) {
+        return new NextResponse(JSON.stringify({ success: false, message: "Job not found" }), { status: 404, headers: { "Content-Type": "application/json" } });
       }
 
-      return NextResponse.json({ success: true, job: jobSnap.data() });
+      return new NextResponse(JSON.stringify({ success: true, job }), { status: 200, headers: { "Content-Type": "application/json" } });
     })
   )
 );
