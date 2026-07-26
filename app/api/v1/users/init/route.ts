@@ -28,7 +28,7 @@ export async function GET() {
       tenantId: null,
       onboardingRequired: true,
       createdAt: new Date(),
-    } as any, "");
+    } as any);
 
     return NextResponse.json({ success: true });
   } catch {

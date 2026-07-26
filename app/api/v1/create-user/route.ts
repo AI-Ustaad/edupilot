@@ -33,7 +33,7 @@ export const POST = withErrorHandler(
           role,
           tenantId,
           createdAt: new Date(),
-        } as any, tenantId);
+        } as any);
 
         return createApiResponse(201, { uid: newUser.uid });
       })
