@@ -124,9 +124,9 @@ describe('MarksRepository', () => {
       data: () => ({ tenantId }),
     });
 
-    await repo.upsert('m1', { studentId: 's1', score: 95 }, tenantId);
+    await repo.upsert('m1', { studentId: 's1', marksObtained: 95 }, tenantId);
     expect(mockDocRef.set).toHaveBeenCalledWith(
-      expect.objectContaining({ studentId: 's1', score: 95 }),
+      expect.objectContaining({ studentId: 's1', marksObtained: 95 }),
       { merge: true }
     );
   });
@@ -174,7 +174,7 @@ describe('MarksRepository', () => {
     const { mockCollection } = require('@/lib/firebase-admin');
     mockCollection.add.mockResolvedValue({ id: 'mark-123' });
 
-    const data = { studentId: 's1', score: 95 };
+    const data = { studentId: 's1', marksObtained: 95 };
     const id = await repo.create(data as any, tenantId);
     expect(id).toBe('mark-123');
   });
@@ -184,12 +184,12 @@ describe('MarksRepository', () => {
     mockDocRef.get.mockResolvedValue({
       exists: true,
       id: 'm1',
-      data: () => ({ tenantId, score: 80 }),
+      data: () => ({ tenantId, marksObtained: 80 }),
     });
 
-    await repo.update('m1', { score: 95 }, tenantId);
+    await repo.update('m1', { marksObtained: 95 }, tenantId);
     expect(mockDocRef.update).toHaveBeenCalledWith(
-      expect.objectContaining({ score: 95 })
+      expect.objectContaining({ marksObtained: 95 })
     );
   });
 
@@ -214,7 +214,7 @@ describe('MarksRepository', () => {
     });
 
     await expect(
-      repo.update('m1', { score: 95 }, tenantId)
+      repo.update('m1', { marksObtained: 95 }, tenantId)
     ).rejects.toThrow('Document not found or unauthorized');
   });
 

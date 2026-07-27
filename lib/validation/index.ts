@@ -1,19 +1,11 @@
 // lib/validation/index.ts
 // FIXED: نام والے conflicts ختم — ہر schema کا الگ namespace export ہوتا ہے
 
-// Student schemas — from validators/student/ (canonical)
-export {
-  CreateStudentSchema,
-  UpdateStudentSchema,
-  BulkImportRowSchema,
-  BulkImportFileSchema,
-  OCRFileSchema,
-  OCRExtractedSchema,
-} from "../../validators/student";
-export type {
-  CreateStudentInput,
-  UpdateStudentInput,
-} from "../../validators/student";
+// Student schemas — from dto/ (canonical)
+export { CreateStudentSchema } from "../../dto/CreateStudentDTO";
+export type { CreateStudentDTO } from "../../dto/CreateStudentDTO";
+export { UpdateStudentSchema } from "../../dto/UpdateStudentDTO";
+export type { UpdateStudentDTO } from "../../dto/UpdateStudentDTO";
 
 // Fees schemas — from validators/fees/ (canonical)
 export {

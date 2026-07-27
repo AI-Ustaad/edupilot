@@ -14,11 +14,7 @@ import {
 import {
   CreateStudentSchema,
   UpdateStudentSchema,
-  BulkImportRowSchema as StudentBulkRowSchema,
-  BulkImportFileSchema as StudentBulkFileSchema,
-  OCRFileSchema as StudentOCRFileSchema,
-  OCRExtractedSchema as StudentOCRExtractedSchema,
-} from "@/validators/student";
+} from "@/dto";
 
 import {
   CreateFeeSchema,
@@ -453,76 +449,14 @@ describe("CreateStudentSchema", () => {
 describe("UpdateStudentSchema", () => {
   it("accepts partial update", () => {
     const result = UpdateStudentSchema.parse({
-      fullName: "Updated Name",
+      personal: { firstName: "Updated Name" },
     });
-    expect(result.fullName).toBe("Updated Name");
+    expect(result.personal?.firstName).toBe("Updated Name");
   });
 
   it("accepts empty object", () => {
     const result = UpdateStudentSchema.parse({});
     expect(result).toEqual({});
-  });
-});
-
-describe("Student BulkImportRowSchema", () => {
-  it("accepts valid row", () => {
-    const result = StudentBulkRowSchema.parse({
-      fullName: "Ali Khan",
-      classGrade: "10",
-    });
-    expect(result.section).toBe("A"); // default
-    expect(result.fatherName).toBe("N/A"); // default
-  });
-
-  it("rejects missing fullName", () => {
-    expect(() => StudentBulkRowSchema.parse({ classGrade: "10" })).toThrow();
-  });
-
-  it("rejects missing classGrade", () => {
-    expect(() => StudentBulkRowSchema.parse({ fullName: "Ali" })).toThrow();
-  });
-});
-
-describe("Student BulkImportFileSchema", () => {
-  it("accepts rows array", () => {
-    const result = StudentBulkFileSchema.parse({
-      rows: [{ fullName: "Ali", classGrade: "10" }],
-    });
-    expect(result.rows).toHaveLength(1);
-  });
-
-  it("rejects empty", () => {
-    expect(() => StudentBulkFileSchema.parse({ rows: [] })).toThrow("At least one row is required");
-  });
-});
-
-describe("Student OCRFileSchema", () => {
-  it("accepts valid file", () => {
-    const result = StudentOCRFileSchema.parse({
-      mimeType: "application/pdf",
-      size: 2_000_000,
-      extension: "pdf",
-    });
-    expect(result.mimeType).toBe("application/pdf");
-  });
-
-  it("rejects oversized", () => {
-    expect(() =>
-      StudentOCRFileSchema.parse({
-        mimeType: "image/png",
-        size: 10_000_000,
-        extension: "png",
-      })
-    ).toThrow("File must be under 4MB");
-  });
-});
-
-describe("Student OCRExtractedSchema", () => {
-  it("defaults all to empty string", () => {
-    const result = StudentOCRExtractedSchema.parse({});
-    expect(result.fullName).toBe("");
-    expect(result.classGrade).toBe("");
-    expect(result.rollNumber).toBe("");
   });
 });
 

@@ -41,12 +41,21 @@ describe('ConfigurationRepository', () => {
     mockDocRef.get.mockResolvedValue({
       exists: true,
       id: 'config',
-      data: () => ({ theme: 'dark' }),
+      data: () => ({
+        id: 'config',
+        tenantId,
+        state: 'active',
+        metadata: { version: 1, createdAt: new Date(), updatedAt: new Date() },
+        version: 1,
+        school: { name: 'Test School', type: 'Private', curriculumId: 'c1', boardName: 'FBISE', country: 'Pakistan' },
+        academic: { levels: [], classes: [], sectionNames: [], subjects: [], requiredLabs: [], requiredTeachers: {} },
+        features: {},
+      }),
     });
 
     const config = await repo.getConfig(tenantId);
     expect(config).not.toBeNull();
-    expect(config!.theme).toBe('dark');
+    expect(config!.school.name).toBe('Test School');
   });
 
   test('should return null for non-existent config', async () => {
@@ -62,7 +71,16 @@ describe('ConfigurationRepository', () => {
     mockDocRef.get.mockResolvedValue({
       exists: true,
       id: tenantId,
-      data: () => ({ theme: 'light' }),
+      data: () => ({
+        id: tenantId,
+        tenantId,
+        state: 'active',
+        metadata: { version: 1, createdAt: new Date(), updatedAt: new Date() },
+        version: 1,
+        school: { name: 'Test School', type: 'Private', curriculumId: 'c1', boardName: 'FBISE', country: 'Pakistan' },
+        academic: { levels: [], classes: [], sectionNames: [], subjects: [], requiredLabs: [], requiredTeachers: {} },
+        features: {},
+      }),
     });
 
     await repo.updateConfig(tenantId, { theme: 'dark' });

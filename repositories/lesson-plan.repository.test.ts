@@ -58,12 +58,12 @@ describe('LessonPlanRepository', () => {
     const { mockCollection } = require('@/lib/firebase-admin');
     mockCollection.add.mockResolvedValue({ id: 'lp-123' });
 
-    const data = { title: 'Math Lesson', classGrade: '10' };
+    const data = { topic: 'Math Lesson', classGrade: '10' };
     const id = await repo.create(data as any, tenantId);
     expect(id).toBe('lp-123');
     expect(mockCollection.add).toHaveBeenCalledWith(
       expect.objectContaining({
-        title: 'Math Lesson',
+        topic: 'Math Lesson',
         tenantId,
       })
     );
@@ -74,12 +74,12 @@ describe('LessonPlanRepository', () => {
     mockDocRef.get.mockResolvedValue({
       exists: true,
       id: 'lp1',
-      data: () => ({ title: 'Math Lesson', tenantId }),
+      data: () => ({ topic: 'Math Lesson', tenantId }),
     });
 
     const lp = await repo.findById('lp1', tenantId);
     expect(lp).not.toBeNull();
-    expect(lp!.title).toBe('Math Lesson');
+    expect(lp!.topic).toBe('Math Lesson');
   });
 
   test('should return null for non-existent lesson plan', async () => {
@@ -95,12 +95,12 @@ describe('LessonPlanRepository', () => {
     mockDocRef.get.mockResolvedValue({
       exists: true,
       id: 'lp1',
-      data: () => ({ title: 'Old Lesson', tenantId }),
+      data: () => ({ topic: 'Old Lesson', tenantId }),
     });
 
-    await repo.update('lp1', { title: 'Updated Lesson' }, tenantId);
+    await repo.update('lp1', { topic: 'Updated Lesson' }, tenantId);
     expect(mockDocRef.update).toHaveBeenCalledWith(
-      expect.objectContaining({ title: 'Updated Lesson' })
+      expect.objectContaining({ topic: 'Updated Lesson' })
     );
   });
 
@@ -125,7 +125,7 @@ describe('LessonPlanRepository', () => {
     });
 
     await expect(
-      repo.update('lp1', { title: 'Updated' }, tenantId)
+      repo.update('lp1', { topic: 'Updated' }, tenantId)
     ).rejects.toThrow('Document not found or unauthorized');
   });
 

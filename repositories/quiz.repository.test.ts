@@ -147,14 +147,14 @@ describe('QuizRepository', () => {
     const submissionsCollection = adminDb.collection('quiz_submissions');
     submissionsCollection.orderBy('createdAt', 'desc').get.mockResolvedValue({
       docs: [
-        { id: 'sub1', data: () => ({ quizId: 'quiz-1', tenantId, score: 85 }) },
-        { id: 'sub2', data: () => ({ quizId: 'quiz-1', tenantId, score: 90 }) },
+        { id: 'sub1', data: () => ({ quizId: 'quiz-1', tenantId, correct: 8, total: 10, percentage: 80 }) },
+        { id: 'sub2', data: () => ({ quizId: 'quiz-1', tenantId, correct: 9, total: 10, percentage: 90 }) },
       ],
     });
 
     const submissions = await repo.findSubmissionsByQuiz('quiz-1', tenantId);
     expect(submissions).toHaveLength(2);
-    expect(submissions[0].score).toBe(85);
+    expect(submissions[0].correct).toBe(8);
   });
 
   test('should create a submission', async () => {
