@@ -1,9 +1,14 @@
 // interfaces/IBehaviorRepository.ts
-import type { BehaviorLog } from "@/types/teacher";
-
 export interface IBehaviorRepository {
-  findAll(tenantId: string): Promise<(BehaviorLog & { id: string })[]>;
-  findById(id: string, tenantId: string): Promise<(BehaviorLog & { id: string }) | null>;
-  create(data: Omit<BehaviorLog, "id" | "createdAt">, tenantId: string): Promise<string>;
-  findByStudent(studentId: string, tenantId: string, limit?: number): Promise<(BehaviorLog & { id: string })[]>;
+  bulkCreate(...args: any[]): Promise<any>;
+  count(...args: any[]): Promise<any>;
+  create(...args: any[]): Promise<any>;
+  delete(...args: any[]): Promise<any>;
+  exists(...args: any[]): Promise<any>;
+  findAll(...args: any[]): Promise<any>;
+  findById(...args: any[]): Promise<any>;
+  findByStudent(...args: any[]): Promise<any>;
+  paginate(...args: any[]): Promise<any>;
+  softDelete(...args: any[]): Promise<any>;
+  update(...args: any[]): Promise<any>;
 }

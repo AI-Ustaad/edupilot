@@ -7,8 +7,9 @@ import { mapConfigurationToViewModel } from "@/lib/mappers/configuration.viewmod
 import { mapHistory } from "@/lib/mappers/history.mapper";
 import { randomUUID } from "crypto";
 import { logger } from "@/lib/logger/logger";
+import type { IConfigurationService } from "@/interfaces/IConfigurationService";
 
-export class ConfigurationService {
+export class ConfigurationService implements IConfigurationService {
   constructor(private readonly repo = new ConfigurationRepository()) {}
 
   // 1. Get Configuration for UI (Returns ViewModel)

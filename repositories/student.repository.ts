@@ -7,9 +7,7 @@ import { PaginatedResult } from "@/types/api";
 import { RepositoryException } from "@/errors/AppError";
 import { dbTimestamp } from "@/lib/firebase-admin";
 
-export class StudentRepository
-  extends BaseRepository<StudentDocument>
-  implements IStudentRepository
+export class StudentRepository extends BaseRepository<StudentDocument> implements IStudentRepository
 {
   constructor() {
     super("students");

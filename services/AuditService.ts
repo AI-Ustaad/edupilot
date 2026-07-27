@@ -1,6 +1,7 @@
 // services/AuditService.ts
 import { AuditRepository } from "@/repositories/audit.repository";
 import { logger } from "@/lib/logger/logger";
+import type { IAuditService } from "@/interfaces/IAuditService";
 
 export interface AuditLogEntry {
   action: string;
@@ -11,8 +12,12 @@ export interface AuditLogEntry {
   metadata?: any;
 }
 
-export class AuditService {
-  private auditRepo = new AuditRepository();
+export class AuditService implements IAuditService {
+  private auditRepo: AuditRepository;
+
+  constructor(auditRepo?: AuditRepository) {
+    this.auditRepo = auditRepo ?? new AuditRepository();
+  }
 
   async log(entry: AuditLogEntry): Promise<void> {
     try {

@@ -1,10 +1,13 @@
-import { adminAuth } from "@/lib/firebase-admin";
+import { AuthService } from "@/services/auth.service";
 import { UserRepository } from "@/repositories/user.repository";
 import { checkAuthRateLimit } from "@/lib/ratelimit";
 import { logger } from "@/lib/logger/logger";
 import { createSuccessResponse, createErrorResponse } from "@/lib/api/response";
 
 export const runtime = 'nodejs';
+
+const authService = new AuthService();
+const userRepo = new UserRepository();
 
 export async function POST(req: Request) {
   try {
@@ -21,16 +24,15 @@ export async function POST(req: Request) {
       return createErrorResponse(400, "Email and password are required");
     }
 
-    const userRecord = await adminAuth.getUserByEmail(email);
+    const userRecord = await authService.getUserByEmail(email);
     
-    const userRepo = new UserRepository();
     const sessionUser = await userRepo.findByUidWithFallback(userRecord.uid, email);
     
     if (sessionUser.role !== "parent") {
       return createErrorResponse(403, "Unauthorized: Parent access only");
     }
 
-    const customToken = await adminAuth.createCustomToken(userRecord.uid, {
+    const customToken = await authService.createCustomToken(userRecord.uid, {
       role: "parent",
       tenantId: sessionUser.tenantId,
     });

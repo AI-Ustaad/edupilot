@@ -1,5 +1,16 @@
+// interfaces/IAiUsageRepository.ts
 export interface IAiUsageRepository {
-  logUsage(data: any, tenantId: string): Promise<string>;
-  findByTenant(tenantId: string, startDate?: Date, endDate?: Date): Promise<any[]>;
-  getUsageStats(tenantId: string, days: number): Promise<{ totalTokens: number; totalCost: number }>;
+  bulkCreate(...args: any[]): Promise<any>;
+  count(...args: any[]): Promise<any>;
+  create(...args: any[]): Promise<any>;
+  delete(...args: any[]): Promise<any>;
+  exists(...args: any[]): Promise<any>;
+  findAll(...args: any[]): Promise<any>;
+  findById(...args: any[]): Promise<any>;
+  findByTenant(...args: any[]): Promise<any>;
+  getUsageStats(...args: any[]): Promise<any>;
+  logUsage(...args: any[]): Promise<any>;
+  paginate(...args: any[]): Promise<any>;
+  softDelete(...args: any[]): Promise<any>;
+  update(...args: any[]): Promise<any>;
 }

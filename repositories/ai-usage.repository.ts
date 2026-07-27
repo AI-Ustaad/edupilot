@@ -47,12 +47,11 @@ export class AiUsageRepository extends BaseRepository<AiUsage> implements IAiUsa
     }), { totalTokens: 0, totalCost: 0 });
   }
 
-  async logUsage(data: any, tenantId: string): Promise<string> {
-    const docRef = await this.db.collection(this.collectionName).add({
+  async logUsage(data: any, tenantId: string): Promise<void> {
+    await this.db.collection(this.collectionName).add({
       ...data,
       tenantId,
       createdAt: dbTimestamp,
     });
-    return docRef.id;
   }
 }

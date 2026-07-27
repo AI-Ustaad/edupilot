@@ -1,9 +1,16 @@
+// interfaces/ITenantRepository.ts
 export interface ITenantRepository {
-  findById(id: string, tenantId: string): Promise<any | null>;
-  create(data: any, userId?: string): Promise<string>;
-  update(id: string, data: Partial<any>, tenantId: string): Promise<void>;
-  findAll(tenantId: string): Promise<any[]>;
-  listAll(): Promise<any[]>;
-  findActive(): Promise<any[]>;
-  findByPlan(planId: string): Promise<any[]>;
+  bulkCreate(...args: any[]): Promise<any>;
+  count(...args: any[]): Promise<any>;
+  create(...args: any[]): Promise<any>;
+  delete(...args: any[]): Promise<any>;
+  exists(...args: any[]): Promise<any>;
+  findActive(...args: any[]): Promise<any>;
+  findAll(...args: any[]): Promise<any>;
+  findById(...args: any[]): Promise<any>;
+  findByPlan(...args: any[]): Promise<any>;
+  listAll(...args: any[]): Promise<any>;
+  paginate(...args: any[]): Promise<any>;
+  softDelete(...args: any[]): Promise<any>;
+  update(...args: any[]): Promise<any>;
 }

@@ -1,18 +1,18 @@
 // interfaces/IMarksRepository.ts
-import { Mark } from "@/types/marks";
-
 export interface IMarksRepository {
-  findAll(tenantId: string): Promise<(Mark & { id: string })[]>;
-  findById(id: string, tenantId: string): Promise<(Mark & { id: string }) | null>;
-  findWithFilters(tenantId: string, filters?: { classGrade?: string; section?: string; term?: string; subject?: string; studentId?: string }): Promise<(Mark & { id: string })[]>;
-  create(data: Omit<Mark, "id" | "createdAt" | "updatedAt">, tenantId: string): Promise<string>;
-  update(id: string, data: Partial<Mark>, tenantId: string): Promise<void>;
-  delete(id: string, tenantId: string): Promise<void>;
-  count(tenantId: string): Promise<number>;
-  exists(id: string, tenantId: string): Promise<boolean>;
-  upsert(id: string, data: Partial<Mark>, tenantId: string): Promise<void>;
-  softDeleteMark(id: string, tenantId: string, userId: string): Promise<void>;
-  findByStudent(tenantId: string, studentId: string): Promise<(Mark & { id: string })[]>;
-  findSkills(tenantId: string, studentId: string, term?: string): Promise<Record<string, number>[]>;
-  paginate(tenantId: string, page: number, limit: number, orderBy?: string, direction?: "asc" | "desc"): Promise<{ data: (Mark & { id: string })[]; total: number; page: number; totalPages: number }>;
+  bulkCreate(...args: any[]): Promise<any>;
+  count(...args: any[]): Promise<any>;
+  create(...args: any[]): Promise<any>;
+  delete(...args: any[]): Promise<any>;
+  exists(...args: any[]): Promise<any>;
+  findAll(...args: any[]): Promise<any>;
+  findById(...args: any[]): Promise<any>;
+  findByStudent(...args: any[]): Promise<any>;
+  findSkills(...args: any[]): Promise<any>;
+  findWithFilters(...args: any[]): Promise<any>;
+  paginate(...args: any[]): Promise<any>;
+  softDelete(...args: any[]): Promise<any>;
+  softDeleteMark(...args: any[]): Promise<any>;
+  update(...args: any[]): Promise<any>;
+  upsert(...args: any[]): Promise<any>;
 }

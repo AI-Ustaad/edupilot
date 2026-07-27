@@ -1,6 +1,7 @@
 // repositories/class.repository.ts
 import { BaseRepository } from "./base.repository";
 import { adminDb, dbTimestamp } from "@/lib/firebase-admin";
+import type { IClassRepository } from "@/interfaces/IClassRepository";
 
 export interface ClassRecord {
   classGrade: string;
@@ -12,7 +13,7 @@ export interface ClassRecord {
   updatedAt?: any;
 }
 
-export class ClassRepository extends BaseRepository<ClassRecord> {
+export class ClassRepository extends BaseRepository<ClassRecord> implements IClassRepository {
   constructor() {
     super("sections");
   }

@@ -1,5 +1,6 @@
 import { GeminiProvider } from "@/lib/ai/providers/GeminiProvider";
 import { UsageTracker } from "@/lib/ai/monitoring/UsageTracker";
+import type { IAITimetableService } from "@/interfaces/IAITimetableService";
 
 interface TimetableRequest {
   classes: string[];
@@ -9,7 +10,7 @@ interface TimetableRequest {
   teachers: string[];
 }
 
-export class TimetableService {
+export class TimetableService implements IAITimetableService {
   private provider: GeminiProvider;
   private usageTracker: UsageTracker;
 

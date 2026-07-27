@@ -4,8 +4,9 @@ import type { ParentDocument } from "@/documents/ParentDocument";
 import type { IParentRepository } from "@/interfaces/IParentRepository";
 import type { PaginatedResult } from "@/types/api";
 import { RepositoryException } from "@/errors/AppError";
+import type { IParentsRepository } from "@/interfaces/IParentsRepository";
 
-export class ParentsRepository extends BaseRepository<ParentDocument> implements IParentRepository {
+export class ParentsRepository extends BaseRepository<ParentDocument> implements IParentsRepository {
   constructor() {
     super("parents");
   }

@@ -3,8 +3,9 @@ import { TenantRepository } from "@/repositories/tenant.repository";
 import { SubscriptionRepository } from "@/repositories/subscription.repository";
 import { AuditRepository } from "@/repositories/audit.repository";
 import { PLANS } from "@/lib/config/subscription-plans";
+import type { ITelemetryService } from "@/interfaces/ITelemetryService";
 
-export class TelemetryService {
+export class TelemetryService implements ITelemetryService {
   private tenantRepo = new TenantRepository();
   private subscriptionRepo = new SubscriptionRepository();
   private auditRepo = new AuditRepository();

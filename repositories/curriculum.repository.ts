@@ -1,8 +1,9 @@
 // repositories/curriculum.repository.ts
 import { MASTER_CATALOG } from "@/lib/data/master-catalog.data";
 import { CountryEducationSystem, EducationSystem, EducationAuthority, CurriculumVersion } from "@/types/curriculum";
+import type { ICurriculumRepository } from "@/interfaces/ICurriculumRepository";
 
-export class CurriculumRepository {
+export class CurriculumRepository implements ICurriculumRepository {
   async getAllCountries(): Promise<CountryEducationSystem[]> {
     return MASTER_CATALOG;
   }

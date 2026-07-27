@@ -1,4 +1,5 @@
+// interfaces/IChatRepository.ts
 export interface IChatRepository {
-  findByTenant(tenantId: string, teacherId?: string, parentId?: string, limitCount?: number): Promise<any[]>;
-  createMessage(data: any): Promise<string>;
+  createMessage(...args: any[]): Promise<any>;
+  findByTenant(...args: any[]): Promise<any>;
 }

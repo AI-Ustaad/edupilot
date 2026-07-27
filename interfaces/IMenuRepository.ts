@@ -1,6 +1,7 @@
+// interfaces/IMenuRepository.ts
 export interface IMenuRepository {
-  findByTenant(tenantId: string): Promise<any[]>;
-  save(tenantId: string, menuItems: any[]): Promise<void>;
-  getMenu(tenantId: string): Promise<any[]>;
-  saveMenu(tenantId: string, menuItems: any[]): Promise<void>;
+  findByTenant(...args: any[]): Promise<any>;
+  getMenu(...args: any[]): Promise<any>;
+  save(...args: any[]): Promise<any>;
+  saveMenu(...args: any[]): Promise<any>;
 }

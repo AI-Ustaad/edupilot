@@ -1,11 +1,12 @@
 import { GeminiProvider } from "@/lib/ai/providers/GeminiProvider";
 import { UsageTracker } from "@/lib/ai/monitoring/UsageTracker";
 import { logger } from "@/lib/logger/logger";
+import type { IAIExamService } from "@/interfaces/IAIExamService";
 
 interface ExamRequest { className: string; subject: string; topic: string; difficulty: string; }
 interface ExamOutput { mcqs: { question: string; options: string[]; correct: string }[]; shortAnswers: { question: string; modelAnswer: string }[]; longAnswer: { question: string; modelAnswer: string }; }
 
-export class ExamService {
+export class ExamService implements IAIExamService {
   private provider: GeminiProvider;
   private usageTracker: UsageTracker;
 

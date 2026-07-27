@@ -1,13 +1,6 @@
-export interface FeatureFlags {
-  id?: string;
-  tenantId: string;
-  features: Record<string, boolean>;
-  createdAt?: any;
-  updatedAt?: any;
-}
-
+// interfaces/IFeatureFlagRepository.ts
 export interface IFeatureFlagRepository {
-  findByTenant(tenantId: string): Promise<FeatureFlags | null>;
-  setFeature(tenantId: string, feature: string, enabled: boolean): Promise<void>;
-  getAllFlags(tenantId: string): Promise<Record<string, boolean>>;
+  findByTenant(...args: any[]): Promise<any>;
+  getAllFlags(...args: any[]): Promise<any>;
+  setFeature(...args: any[]): Promise<any>;
 }

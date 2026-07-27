@@ -1,6 +1,7 @@
+// interfaces/IAddonsRepository.ts
 export interface IAddonsRepository {
-  findByTenant(tenantId: string): Promise<any | null>;
-  save(tenantId: string, addons: any): Promise<void>;
-  getAddons(tenantId: string): Promise<any | null>;
-  saveAddons(tenantId: string, addons: any): Promise<void>;
+  findByTenant(...args: any[]): Promise<any>;
+  getAddons(...args: any[]): Promise<any>;
+  save(...args: any[]): Promise<any>;
+  saveAddons(...args: any[]): Promise<any>;
 }

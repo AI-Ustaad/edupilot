@@ -1,7 +1,8 @@
 import { InvoiceRepository } from "@/repositories/invoice.repository";
 import type { Invoice } from "@/repositories/invoice.repository";
+import type { IInvoiceService } from "@/interfaces/IInvoiceService";
 
-export class InvoiceService {
+export class InvoiceService implements IInvoiceService {
   private repo: InvoiceRepository;
 
   constructor(repo?: InvoiceRepository) {

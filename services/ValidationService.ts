@@ -1,5 +1,6 @@
 // services/ValidationService.ts
 import { z, ZodSchema, ZodError } from "zod";
+import type { IValidationService } from "@/interfaces/IValidationService";
 
 export interface ValidationResult {
   success: boolean;
@@ -7,7 +8,7 @@ export interface ValidationResult {
   errors?: { field: string; message: string }[];
 }
 
-export class ValidationService {
+export class ValidationService implements IValidationService {
   validate(schema: ZodSchema, data: any): ValidationResult {
     try {
       const parsed = schema.parse(data);

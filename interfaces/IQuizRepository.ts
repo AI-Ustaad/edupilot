@@ -1,13 +1,15 @@
 // interfaces/IQuizRepository.ts
-import type { Quiz, QuizSubmission } from "@/types/quiz";
-
 export interface IQuizRepository {
-  findAll(tenantId: string): Promise<(Quiz & { id: string })[]>;
-  findById(id: string, tenantId: string): Promise<(Quiz & { id: string }) | null>;
-  create(data: Omit<Quiz, "id" | "createdAt" | "updatedAt">, tenantId: string): Promise<string>;
-  delete(id: string, tenantId: string): Promise<void>;
-  count(tenantId: string): Promise<number>;
-  exists(id: string, tenantId: string): Promise<boolean>;
-  findSubmissionsByQuiz(quizId: string, tenantId: string): Promise<(QuizSubmission & { id: string })[]>;
-  createSubmission(data: Omit<QuizSubmission, "id" | "createdAt">, tenantId: string): Promise<string>;
+  bulkCreate(...args: any[]): Promise<any>;
+  count(...args: any[]): Promise<any>;
+  create(...args: any[]): Promise<any>;
+  createSubmission(...args: any[]): Promise<any>;
+  delete(...args: any[]): Promise<any>;
+  exists(...args: any[]): Promise<any>;
+  findAll(...args: any[]): Promise<any>;
+  findById(...args: any[]): Promise<any>;
+  findSubmissionsByQuiz(...args: any[]): Promise<any>;
+  paginate(...args: any[]): Promise<any>;
+  softDelete(...args: any[]): Promise<any>;
+  update(...args: any[]): Promise<any>;
 }

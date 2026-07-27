@@ -1,6 +1,7 @@
 // repositories/syllabus.repository.ts
 import { BaseRepository } from "./base.repository";
 import { adminDb, dbTimestamp } from "@/lib/firebase-admin";
+import type { ISyllabusRepository } from "@/interfaces/ISyllabusRepository";
 
 export interface Syllabus {
   tenantId: string;
@@ -13,7 +14,7 @@ export interface Syllabus {
   createdBy?: string;
 }
 
-export class SyllabusRepository extends BaseRepository<Syllabus> {
+export class SyllabusRepository extends BaseRepository<Syllabus> implements ISyllabusRepository {
   constructor() {
     super("syllabus");
   }

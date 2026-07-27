@@ -1,5 +1,6 @@
 import { BaseRepository } from "./base.repository";
 import { adminDb, dbTimestamp } from "@/lib/firebase-admin";
+import type { ISectionRepository } from "@/interfaces/ISectionRepository";
 
 export interface Section {
   classGrade: string;
@@ -13,7 +14,7 @@ export interface Section {
   createdBy?: string;
 }
 
-export class SectionRepository extends BaseRepository<Section> {
+export class SectionRepository extends BaseRepository<Section> implements ISectionRepository {
   constructor() {
     super("sections");
   }

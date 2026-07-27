@@ -1,8 +1,9 @@
 // services/class.service.ts
 import { ClassRepository } from "@/repositories/class.repository";
 import { safeArray } from "@/lib/api/safeResponse";
+import type { IClassService } from "@/interfaces/IClassService";
 
-export class ClassService {
+export class ClassService implements IClassService {
   private repo: ClassRepository;
 
   constructor(repo?: ClassRepository) {

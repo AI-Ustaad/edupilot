@@ -1,12 +1,13 @@
 // interfaces/IHomeworkRepository.ts
-import type { Homework } from "@/types/homework";
-
 export interface IHomeworkRepository {
-  findAll(tenantId: string): Promise<(Homework & { id: string })[]>;
-  findById(id: string, tenantId: string): Promise<(Homework & { id: string }) | null>;
-  create(data: Omit<Homework, "id" | "createdAt" | "updatedAt">, tenantId: string): Promise<string>;
-  update(id: string, data: Partial<Homework>, tenantId: string): Promise<void>;
-  delete(id: string, tenantId: string): Promise<void>;
-  count(tenantId: string): Promise<number>;
-  exists(id: string, tenantId: string): Promise<boolean>;
+  bulkCreate(...args: any[]): Promise<any>;
+  count(...args: any[]): Promise<any>;
+  create(...args: any[]): Promise<any>;
+  delete(...args: any[]): Promise<any>;
+  exists(...args: any[]): Promise<any>;
+  findAll(...args: any[]): Promise<any>;
+  findById(...args: any[]): Promise<any>;
+  paginate(...args: any[]): Promise<any>;
+  softDelete(...args: any[]): Promise<any>;
+  update(...args: any[]): Promise<any>;
 }

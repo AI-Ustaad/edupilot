@@ -1,6 +1,7 @@
 // repositories/ledger.repository.ts
 import { adminDb } from "@/lib/firebase-admin";
 import { BaseRepository } from "./base.repository";
+import type { ILedgerRepository } from "@/interfaces/ILedgerRepository";
 
 export interface LedgerEntry {
   id?: string;
@@ -12,7 +13,7 @@ export interface LedgerEntry {
   createdAt?: any;
 }
 
-export class LedgerRepository extends BaseRepository<LedgerEntry> {
+export class LedgerRepository extends BaseRepository<LedgerEntry> implements ILedgerRepository {
   constructor() {
     super("ledger");
   }
