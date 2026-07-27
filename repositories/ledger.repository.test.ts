@@ -58,7 +58,7 @@ describe('LedgerRepository', () => {
     const { mockCollection } = require('@/lib/firebase-admin');
     mockCollection.add.mockResolvedValue({ id: 'ledger-123' });
 
-    const data = { type: 'income', description: 'Fee payment', amount: 500 };
+    const data = { type: 'income', description: 'Fee payment', amount: 500, tenantId, createdBy: 'user-1' };
     const id = await repo.createEntry(data, tenantId);
     expect(id).toBe('ledger-123');
     expect(mockCollection.add).toHaveBeenCalledWith(

@@ -59,7 +59,7 @@ describe('BusRepository', () => {
     mockCollection.add.mockResolvedValue({ id: 'bus-123' });
 
     const data = {
-      plateNumber: 'ABC-123',
+      busNumber: 'ABC-123',
       capacity: 40,
       driverName: 'John Doe',
     };
@@ -67,7 +67,7 @@ describe('BusRepository', () => {
     expect(id).toBe('bus-123');
     expect(mockCollection.add).toHaveBeenCalledWith(
       expect.objectContaining({
-        plateNumber: 'ABC-123',
+        busNumber: 'ABC-123',
         tenantId,
       })
     );
@@ -79,7 +79,7 @@ describe('BusRepository', () => {
       exists: true,
       id: 'bus-456',
       data: () => ({
-        plateNumber: 'ABC-123',
+        busNumber: 'ABC-123',
         capacity: 40,
         driverName: 'John Doe',
         tenantId,
@@ -88,7 +88,7 @@ describe('BusRepository', () => {
 
     const bus = await repo.findById('bus-456', tenantId);
     expect(bus).not.toBeNull();
-    expect(bus!.plateNumber).toBe('ABC-123');
+    expect(bus!.busNumber).toBe('ABC-123');
   });
 
   test('should return null for non-existent bus', async () => {
@@ -104,12 +104,12 @@ describe('BusRepository', () => {
     mockDocRef.get.mockResolvedValue({
       exists: true,
       id: 'bus-789',
-      data: () => ({ plateNumber: 'OLD-123', tenantId }),
+      data: () => ({ busNumber: 'OLD-123', tenantId }),
     });
 
-    await repo.update('bus-789', { plateNumber: 'NEW-456' } as any, tenantId);
+    await repo.update('bus-789', { busNumber: 'NEW-456' } as any, tenantId);
     expect(mockDocRef.update).toHaveBeenCalledWith(
-      expect.objectContaining({ plateNumber: 'NEW-456' })
+      expect.objectContaining({ busNumber: 'NEW-456' })
     );
   });
 
@@ -134,7 +134,7 @@ describe('BusRepository', () => {
     });
 
     await expect(
-      repo.update('bus-789', { plateNumber: 'NEW-456' } as any, tenantId)
+      repo.update('bus-789', { busNumber: 'NEW-456' } as any, tenantId)
     ).rejects.toThrow('Document not found or unauthorized');
   });
 
@@ -142,14 +142,14 @@ describe('BusRepository', () => {
     const { mockQuery } = require('@/lib/firebase-admin');
     mockQuery.get.mockResolvedValue({
       docs: [
-        { id: 'b1', data: () => ({ plateNumber: 'ABC-123', tenantId }) },
-        { id: 'b2', data: () => ({ plateNumber: 'XYZ-789', tenantId }) },
+        { id: 'b1', data: () => ({ busNumber: 'ABC-123', tenantId }) },
+        { id: 'b2', data: () => ({ busNumber: 'XYZ-789', tenantId }) },
       ],
     });
 
     const buses = await repo.findAll(tenantId);
     expect(buses).toHaveLength(2);
-    expect(buses[0].plateNumber).toBe('ABC-123');
+    expect(buses[0].busNumber).toBe('ABC-123');
   });
 
   test('should paginate buses', async () => {
@@ -160,8 +160,8 @@ describe('BusRepository', () => {
     });
     mockQuery.get.mockResolvedValue({
       docs: [
-        { id: 'b1', data: () => ({ plateNumber: 'ABC-123', tenantId }) },
-        { id: 'b2', data: () => ({ plateNumber: 'XYZ-789', tenantId }) },
+        { id: 'b1', data: () => ({ busNumber: 'ABC-123', tenantId }) },
+        { id: 'b2', data: () => ({ busNumber: 'XYZ-789', tenantId }) },
       ],
     });
 
@@ -196,7 +196,7 @@ describe('BusRepository', () => {
     mockDocRef.get.mockResolvedValue({
       exists: true,
       id: 'bus-789',
-      data: () => ({ plateNumber: 'ABC-123', tenantId }),
+      data: () => ({ busNumber: 'ABC-123', tenantId }),
     });
 
     await repo.softDelete('bus-789', tenantId);
@@ -213,8 +213,8 @@ describe('BusRepository', () => {
     });
 
     const dataArray = [
-      { plateNumber: 'ABC-123', capacity: 40 },
-      { plateNumber: 'XYZ-789', capacity: 30 },
+      { busNumber: 'ABC-123', capacity: 40 },
+      { busNumber: 'XYZ-789', capacity: 30 },
     ];
     const ids = await repo.bulkCreate(dataArray as any, tenantId);
     expect(ids).toHaveLength(2);

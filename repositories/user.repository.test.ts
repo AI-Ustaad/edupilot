@@ -1,4 +1,5 @@
 import { UserRepository } from '@/repositories/user.repository';
+import { Role } from '@/types/auth';
 
 jest.mock('@/lib/firebase-admin', () => {
   const mockDocRef = {
@@ -119,7 +120,7 @@ describe('UserRepository', () => {
     const { mockDocRef } = require('@/lib/firebase-admin');
     mockDocRef.get.mockResolvedValue({ exists: false, data: () => null });
 
-    const data = { uid: 'user-uid-1', email: 'test@test.com', role: 'teacher', tenantId, createdAt: new Date() };
+    const data = { uid: 'user-uid-1', email: 'test@test.com', role: 'teacher' as Role, tenantId, createdAt: new Date() };
     const id = await repo.create(data);
     expect(id).toBe('user-uid-1');
   });
@@ -150,7 +151,7 @@ describe('UserRepository', () => {
       ],
     });
 
-    const result = await repo.paginate(tenantId, 1, 3);
+    const result = await (repo as any).paginate(tenantId, 1, 3);
     expect(result.data).toHaveLength(3);
     expect(result.total).toBe(5);
     expect(result.totalPages).toBe(2);
@@ -162,7 +163,7 @@ describe('UserRepository', () => {
       get: jest.fn().mockResolvedValue({ data: () => ({ count: 30 }) }),
     });
 
-    const count = await repo.count(tenantId);
+    const count = await (repo as any).count(tenantId);
     expect(count).toBe(30);
   });
 
@@ -173,7 +174,7 @@ describe('UserRepository', () => {
       data: () => ({ tenantId }),
     });
 
-    const exists = await repo.exists('u1', tenantId);
+    const exists = await (repo as any).exists('u1', tenantId);
     expect(exists).toBe(true);
   });
 });

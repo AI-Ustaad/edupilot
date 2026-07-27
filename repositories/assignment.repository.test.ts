@@ -212,9 +212,13 @@ describe('AssignmentRepository', () => {
     mockCollection.add.mockResolvedValue({ id: 'submission-123' });
 
     const data = {
+      tenantId,
       assignmentId: 'assignment-1',
       studentId: 'student-1',
-      content: 'My submission',
+      studentName: 'John Doe',
+      fileUrl: 'https://example.com/submission.pdf',
+      fileName: 'submission.pdf',
+      submittedBy: 'student-1',
     };
     const id = await repo.createSubmission(data, tenantId);
     expect(id).toBe('submission-123');

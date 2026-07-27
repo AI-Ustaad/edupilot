@@ -60,8 +60,10 @@ describe('BehaviorRepository', () => {
 
     const data = {
       studentId: 'student-1',
-      type: 'positive',
-      description: 'Helped a classmate',
+      tenantId,
+      points: 5,
+      reason: 'Helped a classmate',
+      recordedBy: 'teacher-1',
     };
     const id = await repo.create(data, tenantId);
     expect(id).toBe('behavior-123');
@@ -176,7 +178,7 @@ describe('BehaviorRepository', () => {
 
     const logs = await repo.findAll(tenantId);
     expect(logs).toHaveLength(2);
-    expect(logs[0].type).toBe('positive');
+    expect(logs[0].reason).toBe('positive');
   });
 
   test('should paginate behavior logs', async () => {

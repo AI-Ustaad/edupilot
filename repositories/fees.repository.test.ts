@@ -146,7 +146,7 @@ describe('FeesRepository', () => {
       data: () => ({ tenantId }),
     });
 
-    const document = { id: 'f1', tenantId, amount: 100 };
+    const document = { id: 'f1', tenantId, studentId: 's1', feeMonth: '2024-01', amountPaid: 100, paymentMethod: 'Cash' };
     await repo.save(document, tenantId);
     expect(mockDocRef.update).toHaveBeenCalled();
   });

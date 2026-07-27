@@ -61,6 +61,7 @@ describe('AuditRepository', () => {
     const entry = {
       action: 'create',
       userId: 'user-1',
+      tenantId,
       entityType: 'student',
       entityId: 'student-1',
     };

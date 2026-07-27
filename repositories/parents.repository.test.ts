@@ -62,7 +62,7 @@ describe('ParentsRepository', () => {
       data: () => ({ tenantId }),
     });
 
-    const document = { id: 'p1', tenantId, name: 'John Parent' };
+    const document = { id: 'p1', tenantId, userId: 'user-1', studentIds: ['s1'], name: 'John Parent' };
     await repo.save(document, tenantId);
     expect(mockDocRef.update).toHaveBeenCalled();
   });
@@ -72,7 +72,7 @@ describe('ParentsRepository', () => {
     mockCollection.add.mockResolvedValue({ id: 'parent-123' });
     mockDocRef.get.mockResolvedValue({ exists: false, data: () => null });
 
-    const document = { name: 'John Parent', tenantId };
+    const document = { userId: 'user-1', studentIds: ['s1'], name: 'John Parent', tenantId };
     await repo.save(document as any, tenantId);
     expect(mockCollection.add).toHaveBeenCalled();
   });
