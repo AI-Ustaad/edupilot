@@ -3,6 +3,7 @@ import { FieldValue, Timestamp } from "firebase-admin/firestore";
 import { adminDb } from "@/lib/firebase-admin";
 import { EVENTS, type EventType } from "@/lib/events/event-types";
 import { EVENT_STATUS, type DurableEvent, type EventMetadata, type PublishEventOptions } from "@/types/event";
+import type { IEventOutboxRepository } from "@/interfaces/IEventOutboxRepository";
 
 const RETRY_DELAYS_MS = [60_000, 5 * 60_000, 15 * 60_000, 60 * 60_000, 24 * 60 * 60_000];
 const MAX_ATTEMPTS = RETRY_DELAYS_MS.length;
@@ -13,7 +14,7 @@ function inferAggregate(eventType: EventType, payload: Record<string, unknown>) 
   return { aggregateType, aggregateId: typeof aggregateId === "string" ? aggregateId : "unknown" };
 }
 
-export class EventOutboxRepository {
+export class EventOutboxRepository implements IEventOutboxRepository {
   private readonly events = adminDb.collection("events");
 
   async enqueue(eventType: EventType, payload: Record<string, unknown>, options: PublishEventOptions = {}): Promise<string> {

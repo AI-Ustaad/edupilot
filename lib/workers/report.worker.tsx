@@ -1,6 +1,6 @@
 // lib/workers/report.worker.tsx
 
-import { JobService } from "@/lib/services/job.service";
+import { JobService } from "@/services/job.service";
 import { eventBus } from "@/lib/events";
 import { EVENTS } from "@/lib/events/event-types";
 import { adminDb } from "@/lib/firebase-admin";

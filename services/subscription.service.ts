@@ -4,8 +4,9 @@ import { eventBus } from '@/lib/events';
 import { EVENTS } from '@/lib/events/event-types';
 import { invalidateCache } from '@/lib/cache';
 import { SubscriptionRepository } from "@/repositories/subscription.repository";
+import type { ISubscriptionService } from "@/interfaces/ISubscriptionService";
 
-export class SubscriptionService {
+export class SubscriptionService implements ISubscriptionService {
   private audit = new AuditService();
   private subscriptionRepo = new SubscriptionRepository();
 

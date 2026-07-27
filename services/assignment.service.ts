@@ -1,5 +1,6 @@
 // services/assignment.service.ts
 import { AssignmentRepository } from "@/repositories/assignment.repository";
+import { StorageRepository } from "@/repositories/storage.repository";
 import { AuditService } from "./AuditService";
 import { ValidationService } from "./ValidationService";
 import { CreateAssignmentSchema, UpdateAssignmentSchema } from "@/validators/teacher";
@@ -8,15 +9,17 @@ import { eventBus } from "@/lib/events";
 import { EVENTS } from "@/lib/events/event-types";
 import type { IAssignmentRepository } from "@/interfaces/IAssignmentRepository";
 import type { Assignment } from "@/types/teacher";
-import { adminStorage } from "@/lib/firebase-admin";
+import type { IAssignmentService } from "@/interfaces/IAssignmentService";
 
-export class AssignmentService {
+export class AssignmentService implements IAssignmentService {
   private audit: AuditService;
   private validation: ValidationService;
+  private storageRepo: StorageRepository;
 
   constructor(private repo: IAssignmentRepository = new AssignmentRepository()) {
     this.audit = new AuditService();
     this.validation = new ValidationService();
+    this.storageRepo = new StorageRepository();
   }
 
   async createAssignment(data: unknown, tenantId: string, userId: string): Promise<Assignment> {
@@ -147,10 +150,6 @@ export class AssignmentService {
   async uploadSubmissionFile(file: File, tenantId: string, assignmentId: string, studentId: string): Promise<string> {
     const buffer = Buffer.from(await file.arrayBuffer());
     const fileName = `${tenantId}/submissions/${assignmentId}/${studentId}_${Date.now()}_${file.name}`;
-    const bucket = adminStorage.bucket();
-    const fileRef = bucket.file(fileName);
-    await fileRef.save(buffer, { contentType: file.type });
-    await fileRef.makePublic();
-    return `https://storage.googleapis.com/${bucket.name}/${fileName}`;
+    return this.storageRepo.uploadFile(buffer, fileName, file.type);
   }
 }

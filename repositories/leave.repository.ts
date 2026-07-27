@@ -1,4 +1,5 @@
 import { BaseRepository } from "./base.repository";
+import type { ILeaveRepository } from "@/interfaces/ILeaveRepository";
 
 export interface LeaveRequest {
   tenantId: string;
@@ -15,7 +16,7 @@ export interface LeaveRequest {
   [key: string]: any;
 }
 
-export class LeaveRepository extends BaseRepository<LeaveRequest> {
+export class LeaveRepository extends BaseRepository<LeaveRequest> implements ILeaveRepository {
   constructor() {
     super("leave_requests");
   }

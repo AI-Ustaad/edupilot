@@ -1,9 +1,12 @@
 export const dynamic = 'force-dynamic';
 import { withErrorHandler, withRateLimit } from "@/route-helpers";
 import { authRateLimit } from "@/lib/ratelimit";
-import { adminAuth } from "@/lib/firebase-admin";
+import { AuthService } from "@/services/auth.service";
 import { UserRepository } from "@/repositories/user.repository";
 import { createSuccessResponse, createErrorResponse } from "@/lib/api/response";
+
+const authService = new AuthService();
+const userRepo = new UserRepository();
 
 export const POST = withErrorHandler(
   withRateLimit(authRateLimit)(
@@ -15,22 +18,16 @@ export const POST = withErrorHandler(
       }
 
       try {
-        const userRecord = await adminAuth.createUser({
-          email,
-          password,
-          displayName: name,
-        });
-
-        const userRepo = new UserRepository();
+        const { uid } = await authService.createUser(email, password, { displayName: name });
         await userRepo.create({
-          uid: userRecord.uid,
+          uid,
           email,
           role: "student",
           tenantId: tenantId || null,
           createdAt: new Date(),
         });
 
-        return createSuccessResponse({ uid: userRecord.uid }, { message: "User registered successfully" });
+        return createSuccessResponse({ uid }, { message: "User registered successfully" });
       } catch (error: any) {
         return createErrorResponse(400, error.message);
       }

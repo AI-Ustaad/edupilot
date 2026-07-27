@@ -4,12 +4,13 @@ import { AIGateway } from "@/lib/ai/gateway/AIGateway";
 import { OCRException } from "@/errors/AppError";
 import { AuditService } from "./AuditService";
 import sharp from "sharp";
+import type { IOCRService } from "@/interfaces/IOCRService";
 
 function getFileExtension(fileName: string): string {
   return fileName.split(".").pop()?.toLowerCase() ?? "";
 }
 
-export class OCRService {
+export class OCRService implements IOCRService {
   private gateway: AIGateway;
   private audit: AuditService;
 
@@ -80,7 +81,7 @@ export class OCRService {
     fileName: string,
     tenantId: string,
     userId: string,
-    documentType: DocumentType = "staff"
+    documentType: DocumentType
   ): Promise<OCRResult> {
     const startTime = Date.now();
 

@@ -1,7 +1,8 @@
 export const dynamic = 'force-dynamic';
-import { adminStorage } from "@/lib/firebase-admin";
 import { withAuth, withTenant, withErrorHandler } from "@/route-helpers";
+import { withPermission } from "@/lib/auth/rbac";
 import { createSuccessResponse, createErrorResponse, createApiResponse } from "@/lib/api/response";
+import { UploadService } from "@/services/upload.service";
 import type { TenantContext } from "@/types/api";
 
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp", "application/pdf"];
@@ -22,12 +23,9 @@ export const POST = withErrorHandler(
 
       const buffer = Buffer.from(await file.arrayBuffer());
       const fileName = `${tenantId}/${Date.now()}_${file.name}`;
-      const bucket = adminStorage.bucket();
-      const fileRef = bucket.file(fileName);
-      await fileRef.save(buffer, { contentType: file.type });
-      await fileRef.makePublic();
+      const uploadService = new UploadService();
+      const publicUrl = await uploadService.uploadFile(buffer, fileName, file.type);
 
-      const publicUrl = `https://storage.googleapis.com/${bucket.name}/${fileName}`;
       return createSuccessResponse({ url: publicUrl });
     })
   )

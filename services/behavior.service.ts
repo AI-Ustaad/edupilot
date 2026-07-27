@@ -9,8 +9,9 @@ import { EVENTS } from "@/lib/events/event-types";
 import { invalidateCache } from "@/lib/cache";
 import type { IBehaviorRepository } from "@/interfaces/IBehaviorRepository";
 import type { BehaviorLog } from "@/types/teacher";
+import type { IBehaviorService } from "@/interfaces/IBehaviorService";
 
-export class BehaviorService {
+export class BehaviorService implements IBehaviorService {
   private audit: AuditService;
   private validation: ValidationService;
   private studentRepo: StudentRepository;

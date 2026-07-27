@@ -1,13 +1,15 @@
 export const dynamic = 'force-dynamic';
 
 import { NextResponse } from "next/server";
-import { adminAuth } from "@/lib/firebase-admin";
 import { withErrorHandler, withAuth, withTenant } from "@/route-helpers";
 import { withPermission } from "@/lib/auth/rbac";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 import { createSuccessResponse, createErrorResponse, createApiResponse } from "@/lib/api/response";
+import { AuthService } from "@/services/auth.service";
 import { UserRepository } from "@/repositories/user.repository";
 import type { Role } from "@/types/auth";
+
+const authService = new AuthService();
 
 export const POST = withErrorHandler(
   withAuth(
@@ -21,7 +23,7 @@ export const POST = withErrorHandler(
         }
 
         const userRepo = new UserRepository();
-        await adminAuth.setCustomUserClaims(uid, { role, tenantId });
+        await authService.setCustomUserClaims(uid, { role, tenantId });
         await userRepo.updateRole(uid, role as Role, tenantId);
 
         return createSuccessResponse(null, { message: "Role updated successfully" });

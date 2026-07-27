@@ -8,8 +8,9 @@ import { EVENTS } from "@/lib/events/event-types";
 import { invalidateCache } from "@/lib/cache";
 import type { ILessonPlanRepository } from "@/interfaces/ILessonPlanRepository";
 import type { LessonPlan } from "@/types/teacher";
+import type { ILessonPlanService } from "@/interfaces/ILessonPlanService";
 
-export class LessonPlanService {
+export class LessonPlanService implements ILessonPlanService {
   private audit: AuditService;
   private validation: ValidationService;
 

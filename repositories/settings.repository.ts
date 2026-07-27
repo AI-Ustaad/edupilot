@@ -1,7 +1,8 @@
 // repositories/settings.repository.ts
 import { adminDb } from "@/lib/firebase-admin";
+import type { ISettingsRepository } from "@/interfaces/ISettingsRepository";
 
-export class SettingsRepository {
+export class SettingsRepository implements ISettingsRepository {
   private getSettingsRef(tenantId: string, docId: string) {
     return adminDb.collection("tenants").doc(tenantId).collection("settings").doc(docId);
   }

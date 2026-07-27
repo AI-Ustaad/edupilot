@@ -1,6 +1,7 @@
+// interfaces/IJobRepository.ts
 export interface IJobRepository {
-  findById(tenantId: string, jobId: string): Promise<any | null>;
-  create(data: any, tenantId: string): Promise<string>;
-  updateProgress(tenantId: string, jobId: string, processedItems: number, totalItems: number, status?: string): Promise<void>;
-  failJob(tenantId: string, jobId: string, errorMessage: string): Promise<void>;
+  create(...args: any[]): Promise<any>;
+  failJob(...args: any[]): Promise<any>;
+  findById(...args: any[]): Promise<any>;
+  updateProgress(...args: any[]): Promise<any>;
 }

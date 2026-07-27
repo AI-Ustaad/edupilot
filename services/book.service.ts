@@ -8,8 +8,9 @@ import { eventBus } from "@/lib/events";
 import { EVENTS } from "@/lib/events/event-types";
 import type { IBookRepository } from "@/interfaces/IBookRepository";
 import type { Book } from "@/types/teacher";
+import type { IBookService } from "@/interfaces/IBookService";
 
-export class BookService {
+export class BookService implements IBookService {
   private audit: AuditService;
   private validation: ValidationService;
 

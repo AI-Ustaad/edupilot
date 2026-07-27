@@ -2,26 +2,38 @@
 import { getFilteredMenu } from "@/lib/config/menu.config"; 
 import type { Permission } from "@/lib/auth/permissions";
 import { ROLE_PERMISSIONS } from "@/lib/auth/roles";
+import { MenuRepository } from "@/repositories/menu.repository";
+import type { IMenuService } from "@/interfaces/IMenuService";
 
-export class MenuService {
+export class MenuService implements IMenuService {
+  private menuRepo: MenuRepository;
+
+  constructor(menuRepo = new MenuRepository()) {
+    this.menuRepo = menuRepo;
+  }
+
   async getMenuForUser(
     role: string,
     permissions?: Permission[],
     disabledFeatures?: string[]
   ): Promise<any[]> {
-    // 🟢 FIX: Define currentRole variable
     const currentRole = role || "superAdmin"; 
     const effectivePermissions = permissions || ROLE_PERMISSIONS[currentRole as keyof typeof ROLE_PERMISSIONS] || [];
     
-    // Convert disabledFeatures array to enabledFeatureFlags object for getFilteredMenu
     const featureFlags: Record<string, boolean> = {};
     if (disabledFeatures && disabledFeatures.length > 0) {
-      // Assuming disabledFeatures means those flags are false
       disabledFeatures.forEach(f => featureFlags[f] = false);
     }
 
-    // Delegate to the single source of truth
     return getFilteredMenu(currentRole, effectivePermissions as string[], featureFlags);
+  }
+
+  async getMenu(tenantId: string): Promise<any[]> {
+    return this.menuRepo.getMenu(tenantId);
+  }
+
+  async saveMenu(tenantId: string, menuItems: any[]): Promise<void> {
+    return this.menuRepo.saveMenu(tenantId, menuItems);
   }
 }
 

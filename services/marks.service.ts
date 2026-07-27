@@ -11,8 +11,9 @@ import { sendEmail } from "@/lib/email";
 import { logger } from "@/lib/logger/logger";
 import type { IMarksRepository } from "@/interfaces/IMarksRepository";
 import type { Mark } from "@/types/marks";
+import type { IMarksService } from "@/interfaces/IMarksService";
 
-export class MarksService {
+export class MarksService implements IMarksService {
   private audit: AuditService;
   private validation: ValidationService;
 
@@ -86,7 +87,7 @@ export class MarksService {
   async publishResults(data: unknown, tenantId: string, userId: string): Promise<{ students: number; emailsSent: number }> {
     const parsed = this.validation.validateOrThrow(BulkPublishSchema, data);
     const marks = await this.repo.findWithFilters(tenantId, { classGrade: parsed.classGrade, section: parsed.section, term: parsed.term });
-    const studentIds = [...new Set(marks.map(m => m.studentId))];
+    const studentIds = [...new Set((marks as any[]).map(m => m.studentId))] as string[];
     if (studentIds.length === 0) return { students: 0, emailsSent: 0 };
 
     const studentRepo = new StudentRepository();

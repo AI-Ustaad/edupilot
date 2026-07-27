@@ -1,6 +1,6 @@
 export const dynamic = 'force-dynamic';
 import { NextResponse } from "next/server";
-import { adminAuth } from "@/lib/firebase-admin";
+import { SessionService } from "@/services/session.service";
 import { logger } from "@/lib/logger/logger";
 
 export async function POST(req: Request) {
@@ -10,8 +10,9 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Missing token" }, { status: 400 });
     }
 
+    const sessionService = new SessionService();
     const expiresIn = 60 * 60 * 24 * 5 * 1000; // 5 days
-    const sessionCookie = await adminAuth.createSessionCookie(idToken, { expiresIn });
+    const sessionCookie = await sessionService.createCookie(idToken);
 
     const response = NextResponse.json({ success: true });
 

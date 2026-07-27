@@ -7,8 +7,9 @@ import { eventBus } from "@/lib/events";
 import { EVENTS } from "@/lib/events/event-types";
 import type { IQuizRepository } from "@/interfaces/IQuizRepository";
 import type { Quiz } from "@/types/quiz";
+import type { IQuizService } from "@/interfaces/IQuizService";
 
-export class QuizService {
+export class QuizService implements IQuizService {
   private audit: AuditService;
   private validation: ValidationService;
 

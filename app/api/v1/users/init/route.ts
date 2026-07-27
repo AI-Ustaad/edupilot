@@ -1,9 +1,10 @@
 export const dynamic = 'force-dynamic';
 import { NextResponse } from "next/server";
-import { adminAuth } from "@/lib/firebase-admin";
 import { cookies } from "next/headers";
+import { AuthService } from "@/services/auth.service";
 import { UserRepository } from "@/repositories/user.repository";
 
+const authService = new AuthService();
 const userRepo = new UserRepository();
 
 export async function GET() {
@@ -14,7 +15,7 @@ export async function GET() {
       return NextResponse.json({ error: "No session" }, { status: 401 });
     }
 
-    const decoded = await adminAuth.verifySessionCookie(session);
+    const decoded = await authService.verifySessionCookie(session);
 
     const existingUser = await userRepo.findByUidWithFallback(decoded.uid, decoded.email);
     if (existingUser) {

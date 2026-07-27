@@ -1,5 +1,6 @@
 import { BaseRepository } from "./base.repository";
 import { adminDb, dbTimestamp } from "@/lib/firebase-admin";
+import type { IAcademicYearRepository } from "@/interfaces/IAcademicYearRepository";
 
 export interface AcademicYear {
   name: string;
@@ -10,7 +11,7 @@ export interface AcademicYear {
   createdBy?: string;
 }
 
-export class AcademicYearRepository extends BaseRepository<AcademicYear> {
+export class AcademicYearRepository extends BaseRepository<AcademicYear> implements IAcademicYearRepository {
   constructor() {
     super("academicYears");
   }

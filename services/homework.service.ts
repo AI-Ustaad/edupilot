@@ -8,8 +8,9 @@ import { EVENTS } from "@/lib/events/event-types";
 import { invalidateCache } from "@/lib/cache";
 import type { IHomeworkRepository } from "@/interfaces/IHomeworkRepository";
 import type { Homework } from "@/types/homework";
+import type { IHomeworkService } from "@/interfaces/IHomeworkService";
 
-export class HomeworkService {
+export class HomeworkService implements IHomeworkService {
   private audit: AuditService;
   private validation: ValidationService;
 

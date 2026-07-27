@@ -8,8 +8,9 @@ import { EVENTS } from "@/lib/events/event-types";
 import { invalidateCache } from "@/lib/cache";
 import type { ITimetableRepository } from "@/interfaces/ITimetableRepository";
 import type { TimetableEntry } from "@/types/timetable";
+import type { ITimetableService } from "@/interfaces/ITimetableService";
 
-export class TimetableService {
+export class TimetableService implements ITimetableService {
   private audit: AuditService;
   private validation: ValidationService;
 

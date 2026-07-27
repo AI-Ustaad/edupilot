@@ -1,7 +1,9 @@
 export const dynamic = 'force-dynamic';
 import { NextResponse } from "next/server";
-import { adminAuth } from "@/lib/firebase-admin";
 import { cookies } from "next/headers";
+import { AuthService } from "@/services/auth.service";
+
+const authService = new AuthService();
 
 export async function GET() {
   try {
@@ -11,7 +13,7 @@ export async function GET() {
       return NextResponse.json({ error: "No session" }, { status: 401 });
     }
 
-    const decoded = await adminAuth.verifySessionCookie(session);
+    const decoded = await authService.verifySessionCookie(session);
 
     return NextResponse.json({
       message: "Protected data access granted",

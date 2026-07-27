@@ -6,8 +6,9 @@ import { eventBus } from "@/lib/events";
 import { EVENTS } from "@/lib/events/event-types";
 import { invalidateCache } from "@/lib/cache";
 import { ZodError } from "zod";
+import type { IVideoLectureService } from "@/interfaces/IVideoLectureService";
 
-export class VideoLectureService {
+export class VideoLectureService implements IVideoLectureService {
   private audit = new AuditService();
 
   constructor(private repo: VideoLectureRepository) {}

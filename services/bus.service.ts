@@ -8,6 +8,7 @@ import { EVENTS } from "@/lib/events/event-types";
 import { z } from "zod";
 import type { IBusRepository } from "@/interfaces/IBusRepository";
 import type { Bus } from "@/types/bus";
+import type { IBusService } from "@/interfaces/IBusService";
 
 const createBusSchema = z.object({
   busNumber: z.string().min(1, "Bus number is required"),
@@ -19,7 +20,7 @@ const createBusSchema = z.object({
 
 const updateBusSchema = createBusSchema.partial();
 
-export class BusService {
+export class BusService implements IBusService {
   private audit: AuditService;
   private validation: ValidationService;
 

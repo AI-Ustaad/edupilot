@@ -2,8 +2,9 @@ import jsPDF from "jspdf";
 import "jspdf-autotable";
 import { AttendanceService } from "./attendance.service";
 import { AttendanceRepository } from "@/repositories/attendance.repository";
+import type { IReportService } from "@/interfaces/IReportService";
 
-export class ReportService {
+export class ReportService implements IReportService {
   private attendanceService = new AttendanceService(new AttendanceRepository());
 
   async generateAttendanceReport(tenantId: string, month: string): Promise<Buffer> {

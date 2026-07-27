@@ -1,9 +1,17 @@
+// interfaces/ISubscriptionRepository.ts
 export interface ISubscriptionRepository {
-  findByTenant(tenantId: string): Promise<any | null>;
-  findAll(tenantId: string): Promise<any[]>;
-  listAll(): Promise<any[]>;
-  create(data: any, tenantId: string): Promise<string>;
-  update(id: string, data: Partial<any>, tenantId: string): Promise<void>;
-  activate(tenantId: string, planId: string, userId?: string): Promise<void>;
-  cancel(tenantId: string, userId?: string): Promise<void>;
+  activate(...args: any[]): Promise<any>;
+  bulkCreate(...args: any[]): Promise<any>;
+  cancel(...args: any[]): Promise<any>;
+  count(...args: any[]): Promise<any>;
+  create(...args: any[]): Promise<any>;
+  delete(...args: any[]): Promise<any>;
+  exists(...args: any[]): Promise<any>;
+  findAll(...args: any[]): Promise<any>;
+  findById(...args: any[]): Promise<any>;
+  findByTenant(...args: any[]): Promise<any>;
+  listAll(...args: any[]): Promise<any>;
+  paginate(...args: any[]): Promise<any>;
+  softDelete(...args: any[]): Promise<any>;
+  update(...args: any[]): Promise<any>;
 }

@@ -1,12 +1,13 @@
 export const dynamic = 'force-dynamic';
-import { adminAuth } from "@/lib/firebase-admin";
 import { withAuth, withTenant, withErrorHandler } from "@/route-helpers";
 import { withPermission } from "@/lib/auth/rbac";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 import { createSuccessResponse, createErrorResponse, createApiResponse } from "@/lib/api/response";
+import { AuthService } from "@/services/auth.service";
 import { UserRepository } from "@/repositories/user.repository";
 import type { TenantContext } from "@/types/api";
 
+const authService = new AuthService();
 const userRepo = new UserRepository();
 
 export const POST = withErrorHandler(
@@ -25,17 +26,16 @@ export const POST = withErrorHandler(
           return createErrorResponse(400, "Invalid role");
         }
 
-        const newUser = await adminAuth.createUser({ email, password });
-        await adminAuth.setCustomUserClaims(newUser.uid, { role, tenantId });
+        const { uid } = await authService.createUser(email, password, { role, tenantId });
         await userRepo.create({
-          uid: newUser.uid,
+          uid,
           email,
           role,
           tenantId,
           createdAt: new Date(),
         } as any);
 
-        return createApiResponse(201, { uid: newUser.uid });
+        return createApiResponse(201, { uid });
       })
     )
   )

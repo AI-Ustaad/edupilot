@@ -1,6 +1,7 @@
 // services/curriculum-engine.service.ts
 import { CurriculumRepository } from "@/repositories/curriculum.repository";
 import { AcademicLevel, Subject, Grade } from "@/types/curriculum";
+import type { ICurriculumEngineService } from "@/interfaces/ICurriculumEngineService";
 
 export interface SchoolSelectionInput {
   countryId: string;
@@ -18,7 +19,7 @@ export interface GeneratedAcademicStructure {
   requiredTeachers: Record<string, number>; // Subject Name -> Count
 }
 
-export class CurriculumEngineService {
+export class CurriculumEngineService implements ICurriculumEngineService {
   constructor(private readonly repo = new CurriculumRepository()) {}
 
   async generateAcademicStructure(input: SchoolSelectionInput): Promise<GeneratedAcademicStructure> {

@@ -1,4 +1,5 @@
 import { JobRepository } from "@/repositories/job.repository";
+import type { IJobService } from "@/interfaces/IJobService";
 
 export class JobService {
   private jobRepo = new JobRepository();
