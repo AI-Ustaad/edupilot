@@ -7,15 +7,11 @@ export type { CreateStudentDTO } from "../../dto/CreateStudentDTO";
 export { UpdateStudentSchema } from "../../dto/UpdateStudentDTO";
 export type { UpdateStudentDTO } from "../../dto/UpdateStudentDTO";
 
-// Fees schemas — from validators/fees/ (canonical)
-export {
-  CreateFeeSchema,
-  UpdateFeeSchema,
-} from "../../validators/fees";
-export type {
-  CreateFeeInput,
-  UpdateFeeInput,
-} from "../../validators/fees";
+// Fees schemas — from dto/ (canonical)
+export { CreateFeeSchema } from "../../dto/CreateFeeDTO";
+export type { CreateFeeDTO } from "../../dto/CreateFeeDTO";
+export { UpdateFeeSchema } from "../../dto/UpdateFeeDTO";
+export type { UpdateFeeDTO } from "../../dto/UpdateFeeDTO";
 
 // Attendance schemas — from validators/attendance/ (canonical)
 export {

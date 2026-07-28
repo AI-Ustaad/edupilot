@@ -5,6 +5,9 @@
 import {
   CreateStaffSchema,
   UpdateStaffSchema,
+} from "@/dto";
+
+import {
   BulkImportRowSchema as StaffBulkRowSchema,
   BulkImportFileSchema as StaffBulkFileSchema,
   OCRFileSchema as StaffOCRFileSchema,
@@ -19,7 +22,7 @@ import {
 import {
   CreateFeeSchema,
   UpdateFeeSchema,
-} from "@/validators/fees";
+} from "@/dto";
 
 import {
   MarkAttendanceSchema,
@@ -35,7 +38,7 @@ import {
 } from "@/validators/marks";
 
 import {
-  CreateParentSchema,
+  RegisterParentSchema,
 } from "@/validators/parent";
 
 import {
@@ -714,9 +717,9 @@ describe("GetMarksQuerySchema", () => {
 // PARENT VALIDATORS
 // ═════════════════════════════════════════════════════════════════════════════
 
-describe("CreateParentSchema", () => {
-  it("accepts valid parent", () => {
-    const result = CreateParentSchema.parse({
+describe("RegisterParentSchema", () => {
+  it("accepts valid parent registration", () => {
+    const result = RegisterParentSchema.parse({
       email: "parent@school.com",
       password: "password123",
       fullName: "Mr. Khan",
@@ -728,7 +731,7 @@ describe("CreateParentSchema", () => {
 
   it("rejects invalid email", () => {
     expect(() =>
-      CreateParentSchema.parse({
+      RegisterParentSchema.parse({
         email: "invalid",
         password: "password123",
         fullName: "Mr. Khan",
@@ -739,7 +742,7 @@ describe("CreateParentSchema", () => {
 
   it("rejects short password", () => {
     expect(() =>
-      CreateParentSchema.parse({
+      RegisterParentSchema.parse({
         email: "parent@school.com",
         password: "123",
         fullName: "Mr. Khan",
@@ -750,7 +753,7 @@ describe("CreateParentSchema", () => {
 
   it("rejects empty fullName", () => {
     expect(() =>
-      CreateParentSchema.parse({
+      RegisterParentSchema.parse({
         email: "parent@school.com",
         password: "password123",
         fullName: "",
@@ -761,7 +764,7 @@ describe("CreateParentSchema", () => {
 
   it("rejects empty studentIds", () => {
     expect(() =>
-      CreateParentSchema.parse({
+      RegisterParentSchema.parse({
         email: "parent@school.com",
         password: "password123",
         fullName: "Mr. Khan",
@@ -771,7 +774,7 @@ describe("CreateParentSchema", () => {
   });
 
   it("applies phone default", () => {
-    const result = CreateParentSchema.parse({
+    const result = RegisterParentSchema.parse({
       email: "parent@school.com",
       password: "password123",
       fullName: "Mr. Khan",

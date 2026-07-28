@@ -1,7 +1,7 @@
-// validators/parent/CreateParentValidator.ts
+// validators/parent/RegisterParentValidator.ts
 import { z } from "zod";
 
-export const CreateParentSchema = z.object({
+export const RegisterParentSchema = z.object({
   email: z.string().email("Valid email is required"),
   password: z.string().min(6, "Password must be at least 6 characters"),
   fullName: z.string().min(1, "Full name is required"),
@@ -9,4 +9,4 @@ export const CreateParentSchema = z.object({
   studentIds: z.array(z.string()).min(1, "At least one student ID is required"),
 });
 
-export type CreateParentInput = z.infer<typeof CreateParentSchema>;
+export type RegisterParentInput = z.infer<typeof RegisterParentSchema>;

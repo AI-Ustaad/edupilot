@@ -2,7 +2,7 @@
 import { FeesRepository } from "@/repositories/fees.repository";
 import { AuditService } from "./AuditService";
 import { ValidationService } from "./ValidationService";
-import { CreateFeeSchema, UpdateFeeSchema } from "@/validators/fees";
+import { CreateFeeSchema, UpdateFeeSchema } from "@/dto";
 import { invalidateCache } from "@/lib/cache";
 import { eventBus } from "@/lib/events";
 import { EVENTS } from "@/lib/events/event-types";

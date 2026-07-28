@@ -1,3 +1,3 @@
 // validators/parent/index.ts
-export { CreateParentSchema } from "./CreateParentValidator";
-export type { CreateParentInput } from "./CreateParentValidator";
+export { RegisterParentSchema } from "./RegisterParentValidator";
+export type { RegisterParentInput } from "./RegisterParentValidator";

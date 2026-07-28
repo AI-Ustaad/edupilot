@@ -3,7 +3,7 @@ import { withAuth, withTenant, withErrorHandler } from "@/route-helpers";
 import { createSuccessResponse, createErrorResponse } from "@/lib/api/response";
 import { AuthService } from "@/services/auth.service";
 import { ParentsService } from "@/services/parents.service";
-import { CreateParentSchema } from "@/validators/parent";
+import { RegisterParentSchema } from "@/validators/parent";
 import type { TenantContext } from "@/types/api";
 
 const authService = new AuthService();
@@ -14,7 +14,7 @@ export const POST = withErrorHandler(
       async (req: Request, { tenantId, user }: TenantContext) => {
         const body = await req.json();
 
-        const parsed = CreateParentSchema.safeParse(body);
+        const parsed = RegisterParentSchema.safeParse(body);
         if (!parsed.success) {
           return createErrorResponse(400, "Validation failed", parsed.error.errors);
         }

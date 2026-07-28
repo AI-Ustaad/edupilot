@@ -9,7 +9,7 @@ import type { StaffFilter, StaffAnalytics } from "@/types/staff";
 import type { PaginatedResult } from "@/types/api";
 import { ValidationService } from "./ValidationService";
 import { AuditService } from "./AuditService";
-import { CreateStaffSchema, UpdateStaffSchema } from "@/validators/staff";
+import { CreateStaffSchema, UpdateStaffSchema } from "@/dto";
 import {
   NotFoundException,
   BusinessError,
