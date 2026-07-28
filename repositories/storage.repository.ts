@@ -1,7 +1,8 @@
 // repositories/storage.repository.ts
 import { adminStorage } from "@/lib/firebase-admin";
+import type { IStorageRepository } from "@/interfaces/IStorageRepository";
 
-export class StorageRepository {
+export class StorageRepository implements IStorageRepository {
   async uploadFile(buffer: Buffer, fileName: string, contentType: string, folder?: string): Promise<string> {
     const bucket = adminStorage.bucket();
     const fileRef = bucket.file(folder ? `${folder}/${fileName}` : fileName);

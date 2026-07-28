@@ -1,15 +1,19 @@
-import { adminDb } from "@/lib/firebase-admin";
-import { IAddonsRepository } from "@/interfaces/IAddonsRepository";
+import { BaseRepository } from "./base.repository";
+import type { IAddonsRepository } from "@/interfaces/IAddonsRepository";
 
-export class AddonsRepository implements IAddonsRepository {
+export class AddonsRepository extends BaseRepository<any> implements IAddonsRepository {
+  constructor() {
+    super("addons");
+  }
+
   async findByTenant(tenantId: string): Promise<any | null> {
-    const doc = await adminDb.collection("addons").doc(tenantId).get();
+    const doc = await this.db.collection(this.collectionName).doc(tenantId).get();
     if (!doc.exists) return null;
     return doc.data();
   }
 
   async save(tenantId: string, addons: any): Promise<void> {
-    await adminDb.collection("addons").doc(tenantId).set({
+    await this.db.collection(this.collectionName).doc(tenantId).set({
       ...addons,
       updatedAt: new Date(),
     }, { merge: true });
@@ -20,6 +24,6 @@ export class AddonsRepository implements IAddonsRepository {
   }
 
   async saveAddons(tenantId: string, addons: any): Promise<void> {
-    await this.save(tenantId, addons);
+    return this.save(tenantId, addons);
   }
 }

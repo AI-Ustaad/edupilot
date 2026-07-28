@@ -1,7 +1,8 @@
 // repositories/tenant-setup.repository.ts
 import { adminDb, dbTimestamp } from "@/lib/firebase-admin";
+import type { ITenantSetupRepository } from "@/interfaces/ITenantSetupRepository";
 
-export class TenantSetupRepository {
+export class TenantSetupRepository implements ITenantSetupRepository {
   async setupSchool(input: {
     userId: string;
     tenantId: string;

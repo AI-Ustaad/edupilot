@@ -1,4 +1,4 @@
-import { adminDb } from "@/lib/firebase-admin";
+import { BaseRepository } from "./base.repository";
 import { IChatRepository } from "@/interfaces/IChatRepository";
 
 export interface ChatMessage {
@@ -12,13 +12,13 @@ export interface ChatMessage {
   createdAt?: any;
 }
 
-export class ChatRepository implements IChatRepository {
-  private getCollection() {
-    return adminDb.collection("chat_messages");
+export class ChatRepository extends BaseRepository<ChatMessage> implements IChatRepository {
+  constructor() {
+    super("chat_messages");
   }
 
   async findByTenant(tenantId: string, teacherId?: string, parentId?: string, limitCount = 100): Promise<ChatMessage[]> {
-    let query = this.getCollection().where("tenantId", "==", tenantId);
+    let query = this.db.collection(this.collectionName).where("tenantId", "==", tenantId);
     
     if (teacherId) query = query.where("teacherId", "==", teacherId);
     if (parentId) query = query.where("parentId", "==", parentId);
@@ -33,7 +33,7 @@ export class ChatRepository implements IChatRepository {
   }
 
   async createMessage(data: Omit<ChatMessage, "id" | "createdAt">): Promise<string> {
-    const docRef = await this.getCollection().add({
+    const docRef = await this.db.collection(this.collectionName).add({
       ...data,
       createdAt: new Date(),
     });

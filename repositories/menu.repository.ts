@@ -1,15 +1,19 @@
-import { adminDb } from "@/lib/firebase-admin";
+import { BaseRepository } from "./base.repository";
 import { IMenuRepository } from "@/interfaces/IMenuRepository";
 
-export class MenuRepository implements IMenuRepository {
+export class MenuRepository extends BaseRepository<any> implements IMenuRepository {
+  constructor() {
+    super("customMenus");
+  }
+
   async findByTenant(tenantId: string): Promise<any[]> {
-    const doc = await adminDb.collection("customMenus").doc(tenantId).get();
+    const doc = await this.db.collection(this.collectionName).doc(tenantId).get();
     if (!doc.exists) return [];
     return (doc.data()?.items || []) as any[];
   }
 
   async save(tenantId: string, menuItems: any[]): Promise<void> {
-    await adminDb.collection("customMenus").doc(tenantId).set({
+    await this.db.collection(this.collectionName).doc(tenantId).set({
       items: menuItems,
       updatedAt: new Date(),
     }, { merge: true });
@@ -20,6 +24,6 @@ export class MenuRepository implements IMenuRepository {
   }
 
   async saveMenu(tenantId: string, menuItems: any[]): Promise<void> {
-    await this.save(tenantId, menuItems);
+    return this.save(tenantId, menuItems);
   }
 }

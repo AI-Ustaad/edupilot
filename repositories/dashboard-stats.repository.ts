@@ -1,5 +1,6 @@
-import { adminDb, dbTimestamp } from "@/lib/firebase-admin";
+import { BaseRepository } from "./base.repository";
 import { FieldValue } from "firebase-admin/firestore";
+import { adminDb, dbTimestamp } from "@/lib/firebase-admin";
 import { IDashboardStatsRepository } from "@/interfaces/IDashboardStatsRepository";
 
 export interface DashboardStats {
@@ -13,17 +14,19 @@ export interface DashboardStats {
   lastUpdated: Date;
 }
 
-export class DashboardStatsRepository implements IDashboardStatsRepository {
-  private collection = "dashboard_stats";
+export class DashboardStatsRepository extends BaseRepository<DashboardStats> implements IDashboardStatsRepository {
+  constructor() {
+    super("dashboard_stats");
+  }
 
   async findByTenant(tenantId: string): Promise<DashboardStats | null> {
-    const doc = await adminDb.collection(this.collection).doc(tenantId).get();
+    const doc = await this.db.collection(this.collectionName).doc(tenantId).get();
     if (!doc.exists) return null;
     return { id: doc.id, ...doc.data() } as DashboardStats;
   }
 
   async updateStats(tenantId: string, data: Partial<DashboardStats>): Promise<void> {
-    await adminDb.collection(this.collection).doc(tenantId).set({
+    await this.db.collection(this.collectionName).doc(tenantId).set({
       ...data,
       lastUpdated: new Date(),
       updatedAt: dbTimestamp,
@@ -31,7 +34,7 @@ export class DashboardStatsRepository implements IDashboardStatsRepository {
   }
 
   async incrementCounter(tenantId: string, counter: string, amount: number): Promise<void> {
-    const docRef = adminDb.collection(this.collection).doc(tenantId);
+    const docRef = this.db.collection(this.collectionName).doc(tenantId);
     await docRef.update({
       [counter]: FieldValue.increment(amount),
       lastUpdated: new Date(),

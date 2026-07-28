@@ -1,10 +1,14 @@
 // repositories/settings.repository.ts
-import { adminDb } from "@/lib/firebase-admin";
+import { BaseRepository } from "./base.repository";
 import type { ISettingsRepository } from "@/interfaces/ISettingsRepository";
 
-export class SettingsRepository implements ISettingsRepository {
+export class SettingsRepository extends BaseRepository<any> implements ISettingsRepository {
+  constructor() {
+    super("settings");
+  }
+
   private getSettingsRef(tenantId: string, docId: string) {
-    return adminDb.collection("tenants").doc(tenantId).collection("settings").doc(docId);
+    return this.db.collection("tenants").doc(tenantId).collection(this.collectionName).doc(docId);
   }
 
   async getConfig(tenantId: string): Promise<Record<string, any> | null> {
@@ -34,7 +38,7 @@ export class SettingsRepository implements ISettingsRepository {
     historyEntry: Record<string, any>
   ): Promise<void> {
     const configRef = this.getSettingsRef(tenantId, "config");
-    const batch = adminDb.batch();
+    const batch = this.db.batch();
     batch.set(configRef, { ...configuration, updatedAt: new Date().toISOString() }, { merge: true });
     batch.set(configRef.collection("history").doc(), {
       ...historyEntry,

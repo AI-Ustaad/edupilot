@@ -1,4 +1,4 @@
-import { adminDb } from "@/lib/firebase-admin";
+import { BaseRepository } from "./base.repository";
 import { IJobRepository } from "@/interfaces/IJobRepository";
 
 export interface Job {
@@ -15,9 +15,13 @@ export interface Job {
   error?: string;
 }
 
-export class JobRepository implements IJobRepository {
+export class JobRepository extends BaseRepository<Job> implements IJobRepository {
+  constructor() {
+    super("jobs");
+  }
+
   private getCollection(tenantId: string) {
-    return adminDb.collection("tenants").doc(tenantId).collection("jobs");
+    return this.db.collection("tenants").doc(tenantId).collection(this.collectionName);
   }
 
   async findById(tenantId: string, jobId: string): Promise<(Job & { id: string }) | null> {

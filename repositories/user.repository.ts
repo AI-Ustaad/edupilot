@@ -1,24 +1,20 @@
-import { adminDb } from "@/lib/firebase-admin";
+import { BaseRepository } from "./base.repository";
 import { SessionUser, Role } from "@/types/auth";
 import { UserProfileNotFoundError } from "@/lib/auth/auth.errors";
 import { logger } from "@/lib/logger/logger";
 import { RequestContext } from "@/route-helpers/request-context";
+import type { IUserRepository } from "@/interfaces/IUserRepository";
 
-export interface IUserRepository {
-  findByUidWithFallback(uid: string, email?: string, context?: RequestContext): Promise<SessionUser>;
-  findAllByTenant(tenantId: string): Promise<SessionUser[]>;
-  updateRole(uid: string, role: Role, tenantId: string): Promise<void>;
-  create(data: { uid: string; email: string; role: Role; tenantId: string | null; onboardingRequired?: boolean; createdAt: Date }): Promise<string>;
-}
-
-export class UserRepository implements IUserRepository {
-  constructor(private db = adminDb) {}
+export class UserRepository extends BaseRepository<any> implements IUserRepository {
+  constructor() {
+    super("users");
+  }
 
   async findByUidWithFallback(uid: string, email?: string, context?: RequestContext): Promise<SessionUser> {
-    let userDoc = await this.db.collection("users").doc(uid).get();
+    let userDoc = await this.db.collection(this.collectionName).doc(uid).get();
     
     if (!userDoc.exists && email) {
-      const snapshot = await this.db.collection("users").where("email", "==", email).get();
+      const snapshot = await this.db.collection(this.collectionName).where("email", "==", email).get();
       if (!snapshot.empty) {
         userDoc = snapshot.docs[0];
         logger.warn("AUTH_UID_MISMATCH", {
@@ -43,13 +39,10 @@ export class UserRepository implements IUserRepository {
 
   async findAllByTenant(tenantId: string): Promise<SessionUser[]> {
     try {
-      const snapshot = await this.db
-        .collection("users")
-        .where("tenantId", "==", tenantId)
-        .get();
+      const snapshot = await this.findAll(tenantId);
 
-      return snapshot.docs.map(doc => {
-        const data = doc.data();
+      return snapshot.map(doc => {
+        const data = doc;
         return {
           uid: doc.id,
           email: data.email || "",
@@ -65,14 +58,7 @@ export class UserRepository implements IUserRepository {
 
   async updateRole(uid: string, role: Role, tenantId: string): Promise<void> {
     try {
-      const doc = await this.db.collection("users").doc(uid).get();
-      if (!doc.exists || doc.data()?.tenantId !== tenantId) {
-        throw new Error("User not found or unauthorized");
-      }
-      await this.db.collection("users").doc(uid).update({
-        role,
-        updatedAt: new Date(),
-      });
+      await this.update(uid, { role, updatedAt: new Date() }, tenantId);
     } catch (error) {
       throw new Error(`Failed to update user role: ${error}`);
     }
@@ -80,7 +66,7 @@ export class UserRepository implements IUserRepository {
 
   async create(data: { uid: string; email: string; role: Role; tenantId: string | null; onboardingRequired?: boolean; createdAt: Date }): Promise<string> {
     try {
-      await this.db.collection("users").doc(data.uid).set({
+      const id = await this.db.collection(this.collectionName).doc(data.uid).set({
         ...data,
         createdAt: data.createdAt || new Date(),
       });

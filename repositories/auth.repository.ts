@@ -1,7 +1,8 @@
 // repositories/auth.repository.ts
 import { adminAuth } from "@/lib/firebase-admin";
+import type { IAuthRepository } from "@/interfaces/IAuthRepository";
 
-export class AuthRepository {
+export class AuthRepository implements IAuthRepository {
   async verifyIdToken(idToken: string) {
     return adminAuth.verifyIdToken(idToken);
   }
