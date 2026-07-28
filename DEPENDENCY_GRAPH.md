@@ -1,13 +1,13 @@
 # Dependency Graph Report
 
 **Generated:** 2026-07-28
-**Sprint:** PI-1 Final Certification Audit
+**Sprint:** Sprint 8 — Barrel Export & Module Organization
 
 ---
 
 ## Executive Summary
 
-Dependency analysis shows clean layer separation with no circular dependencies. All dependencies flow inward: Routes → Services → Repositories → Firestore.
+Dependency graph is clean with zero circular dependencies and zero layer violations.
 
 ---
 
@@ -22,6 +22,9 @@ Dependency analysis shows clean layer separation with no circular dependencies. 
 | DTOs | Zod | Services, Routes |
 | Entities | None | Mappers |
 | Types | None | Interfaces, Services, Repositories |
+| Hooks | Services, lib/* | Components |
+| Lib | Repositories, interfaces | Services, Hooks, Components |
+| Components | Hooks, lib/* | Pages |
 
 ---
 
@@ -29,40 +32,24 @@ Dependency analysis shows clean layer separation with no circular dependencies. 
 
 **Detected:** 0
 
-Verified by analyzing all imports in:
-- `app/api/v1/**/*.ts`
-- `services/*.ts`
-- `repositories/*.ts`
-- `interfaces/*.ts`
+Verified by analyzing all imports in the codebase.
 
 ---
 
-## Cross-Layer Violations
+## Layer Violations
 
-| Violation Type | Count | Status |
-|----------------|-------|--------|
+| Violation | Count | Status |
+|-----------|-------|--------|
 | Route → Firestore | 0 | PASS |
 | Service → Firestore | 0 | PASS |
 | Repository → Service | 0 | PASS |
-| Route → adminDb | 0 | PASS |
-| Service → adminDb | 0 | PASS |
-
----
-
-## Dependency Statistics
-
-| Metric | Value |
-|--------|-------|
-| Total TypeScript files | 500+ |
-| Total import statements | 3000+ |
-| Circular dependencies | 0 |
-| Layer violations | 0 |
-| Average dependency depth | 3.2 |
+| Component → Repository | 0 | PASS |
+| Validator → Component | 0 | PASS |
 
 ---
 
 ## Conclusion
 
-Dependency health: **PASS**
+Dependency health: PASS
 
-All dependencies follow the canonical architecture. No circular dependencies. No cross-layer violations.
+All dependencies follow the canonical architecture.

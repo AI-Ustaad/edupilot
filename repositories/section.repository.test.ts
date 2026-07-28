@@ -62,8 +62,9 @@ describe('SectionRepository', () => {
   });
 
   test('should create a section', async () => {
-    const { mockCollection } = require('@/lib/firebase-admin');
-    mockCollection.add.mockResolvedValue({ id: 'section-123' });
+    const { adminDb } = require('@/lib/firebase-admin');
+    const sectionCollection = adminDb.collection('sections');
+    sectionCollection.add.mockResolvedValue({ id: 'section-123' });
 
     const data = {
       classGrade: '10',
@@ -73,7 +74,7 @@ describe('SectionRepository', () => {
     } as any;
     const id = await repo.create(data, tenantId);
     expect(id).toBe('section-123');
-    expect(mockCollection.add).toHaveBeenCalledWith(
+    expect(sectionCollection.add).toHaveBeenCalledWith(
       expect.objectContaining({
         classGrade: '10',
         sectionName: 'A',
@@ -83,8 +84,9 @@ describe('SectionRepository', () => {
   });
 
   test('should find section by id', async () => {
-    const { mockDocRef } = require('@/lib/firebase-admin');
-    mockDocRef.get.mockResolvedValue({
+    const { adminDb } = require('@/lib/firebase-admin');
+    const sectionDoc = adminDb.collection('sections').doc('section-456');
+    sectionDoc.get.mockResolvedValue({
       exists: true,
       id: 'section-456',
       data: () => ({
@@ -101,8 +103,9 @@ describe('SectionRepository', () => {
   });
 
   test('should return null for non-existent section', async () => {
-    const { mockDocRef } = require('@/lib/firebase-admin');
-    mockDocRef.get.mockResolvedValue({ exists: false, data: () => null });
+    const { adminDb } = require('@/lib/firebase-admin');
+    const sectionDoc = adminDb.collection('sections').doc('nonexistent');
+    sectionDoc.get.mockResolvedValue({ exists: false, data: () => null });
 
     const section = await repo.findById('nonexistent', tenantId);
     expect(section).toBeNull();
@@ -123,15 +126,16 @@ describe('SectionRepository', () => {
   });
 
   test('should soft delete a section', async () => {
-    const { mockDocRef } = require('@/lib/firebase-admin');
-    mockDocRef.get.mockResolvedValue({
+    const { adminDb } = require('@/lib/firebase-admin');
+    const sectionDoc = adminDb.collection('sections').doc('section-789');
+    sectionDoc.get.mockResolvedValue({
       exists: true,
       id: 'section-789',
       data: () => ({ tenantId }),
     });
 
     await repo.softDeleteBySectionId('section-789', tenantId, 'user-1');
-    expect(mockDocRef.update).toHaveBeenCalledWith(
+    expect(sectionDoc.update).toHaveBeenCalledWith(
       expect.objectContaining({
         deleted: true,
         deletedBy: 'user-1',
@@ -140,16 +144,17 @@ describe('SectionRepository', () => {
   });
 
   test('should throw when soft deleting non-existent section', async () => {
-    const { mockDocRef } = require('@/lib/firebase-admin');
-    mockDocRef.get.mockResolvedValue({ exists: false, data: () => null });
+    const { adminDb } = require('@/lib/firebase-admin');
+    const sectionDoc = adminDb.collection('sections').doc('nonexistent');
+    sectionDoc.get.mockResolvedValue({ exists: false, data: () => null });
 
     await expect(repo.softDeleteBySectionId('nonexistent', tenantId, 'user-1')).rejects.toThrow('Section not found or unauthorized');
   });
 
   test('should delete all sections for a tenant', async () => {
     const { mockQuery, mockBatch } = require('@/lib/firebase-admin');
-    const mockDocRefA = { id: 's1', ref: { id: 's1' } };
-    const mockDocRefB = { id: 's2', ref: { id: 's2' } };
+    const mockDocRefA = { id: 's1' };
+    const mockDocRefB = { id: 's2' };
     mockQuery.get.mockResolvedValue({
       docs: [
         { id: 's1', data: () => ({ classGrade: '10', sectionName: 'A', tenantId }), ref: mockDocRefA },
@@ -159,8 +164,8 @@ describe('SectionRepository', () => {
 
     await repo.deleteAllForTenant(tenantId);
     expect(mockBatch.delete).toHaveBeenCalledTimes(2);
-    expect(mockBatch.delete).toHaveBeenCalledWith(mockDocRefA.ref);
-    expect(mockBatch.delete).toHaveBeenCalledWith(mockDocRefB.ref);
+    expect(mockBatch.delete).toHaveBeenCalledWith(mockDocRefA);
+    expect(mockBatch.delete).toHaveBeenCalledWith(mockDocRefB);
     expect(mockBatch.commit).toHaveBeenCalled();
   });
 
@@ -182,15 +187,16 @@ describe('SectionRepository', () => {
   });
 
   test('should update a section', async () => {
-    const { mockDocRef } = require('@/lib/firebase-admin');
-    mockDocRef.get.mockResolvedValue({
+    const { adminDb } = require('@/lib/firebase-admin');
+    const sectionDoc = adminDb.collection('sections').doc('section-111');
+    sectionDoc.get.mockResolvedValue({
       exists: true,
       id: 'section-111',
       data: () => ({ sectionName: 'Old', tenantId }),
     });
 
     await repo.update('section-111', { sectionName: 'Updated' }, tenantId);
-    expect(mockDocRef.update).toHaveBeenCalledWith(
+    expect(sectionDoc.update).toHaveBeenCalledWith(
       expect.objectContaining({ sectionName: 'Updated' })
     );
   });

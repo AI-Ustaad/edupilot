@@ -82,8 +82,9 @@ describe('JobRepository', () => {
   });
 
   test('should find job by id', async () => {
-    const { mockDocRef } = require('@/lib/firebase-admin');
-    mockDocRef.get.mockResolvedValue({
+    const { adminDb } = require('@/lib/firebase-admin');
+    const jobDoc = adminDb.collection('tenants').doc(tenantId).collection('jobs').doc('job-456');
+    jobDoc.get.mockResolvedValue({
       exists: true,
       id: 'job-456',
       data: () => ({
@@ -103,23 +104,25 @@ describe('JobRepository', () => {
   });
 
   test('should return null for non-existent job', async () => {
-    const { mockDocRef } = require('@/lib/firebase-admin');
-    mockDocRef.get.mockResolvedValue({ exists: false, data: () => null });
+    const { adminDb } = require('@/lib/firebase-admin');
+    const jobDoc = adminDb.collection('tenants').doc(tenantId).collection('jobs').doc('nonexistent');
+    jobDoc.get.mockResolvedValue({ exists: false, data: () => null });
 
     const job = await repo.findById(tenantId, 'nonexistent');
     expect(job).toBeNull();
   });
 
   test('should update progress', async () => {
-    const { mockDocRef } = require('@/lib/firebase-admin');
-    mockDocRef.get.mockResolvedValue({
+    const { adminDb } = require('@/lib/firebase-admin');
+    const jobDoc = adminDb.collection('tenants').doc(tenantId).collection('jobs').doc('job-789');
+    jobDoc.get.mockResolvedValue({
       exists: true,
       id: 'job-789',
       data: () => ({ tenantId }),
     });
 
     await repo.updateProgress(tenantId, 'job-789', 50, 100, 'processing');
-    expect(mockDocRef.update).toHaveBeenCalledWith(
+    expect(jobDoc.update).toHaveBeenCalledWith(
       expect.objectContaining({
         processedItems: 50,
         progress: 50,
@@ -129,15 +132,16 @@ describe('JobRepository', () => {
   });
 
   test('should update progress to completed', async () => {
-    const { mockDocRef } = require('@/lib/firebase-admin');
-    mockDocRef.get.mockResolvedValue({
+    const { adminDb } = require('@/lib/firebase-admin');
+    const jobDoc = adminDb.collection('tenants').doc(tenantId).collection('jobs').doc('job-789');
+    jobDoc.get.mockResolvedValue({
       exists: true,
       id: 'job-789',
       data: () => ({ tenantId }),
     });
 
     await repo.updateProgress(tenantId, 'job-789', 100, 100, 'completed');
-    expect(mockDocRef.update).toHaveBeenCalledWith(
+    expect(jobDoc.update).toHaveBeenCalledWith(
       expect.objectContaining({
         processedItems: 100,
         progress: 100,
@@ -148,15 +152,16 @@ describe('JobRepository', () => {
   });
 
   test('should fail job', async () => {
-    const { mockDocRef } = require('@/lib/firebase-admin');
-    mockDocRef.get.mockResolvedValue({
+    const { adminDb } = require('@/lib/firebase-admin');
+    const jobDoc = adminDb.collection('tenants').doc(tenantId).collection('jobs').doc('job-999');
+    jobDoc.get.mockResolvedValue({
       exists: true,
       id: 'job-999',
       data: () => ({ tenantId }),
     });
 
     await repo.failJob(tenantId, 'job-999', 'Error occurred');
-    expect(mockDocRef.update).toHaveBeenCalledWith(
+    expect(jobDoc.update).toHaveBeenCalledWith(
       expect.objectContaining({
         status: 'failed',
         error: 'Error occurred',

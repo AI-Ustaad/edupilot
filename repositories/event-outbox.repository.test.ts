@@ -75,16 +75,11 @@ describe('EventOutboxRepository', () => {
   });
 
   test('should complete an event', async () => {
-    const { adminDb } = require('@/lib/firebase-admin');
-    const mockEventDoc = {
-      update: jest.fn().mockResolvedValue(undefined),
-    };
-    adminDb.collection.mockReturnValue({
-      doc: jest.fn().mockReturnValue(mockEventDoc),
-    });
+    const { mockDocRef } = require('@/lib/firebase-admin');
+    mockDocRef.update.mockResolvedValue(undefined);
 
     await repo.complete('event-1', 'worker-1');
-    expect(mockEventDoc.update).toHaveBeenCalled();
+    expect(mockDocRef.update).toHaveBeenCalled();
   });
 
   test('should claim a subscriber', async () => {

@@ -8,12 +8,22 @@ jest.mock('@/lib/firebase-admin', () => {
     delete: jest.fn().mockResolvedValue(undefined),
     id: 'mock-doc-id',
   };
+  const mockCountSnap = { data: () => ({ count: 0 }) };
+  const mockQuery = {
+    where: jest.fn().mockReturnThis(),
+    orderBy: jest.fn().mockReturnThis(),
+    limit: jest.fn().mockReturnThis(),
+    offset: jest.fn().mockReturnThis(),
+    startAfter: jest.fn().mockReturnThis(),
+    get: jest.fn().mockResolvedValue({ docs: [] }),
+    count: jest.fn().mockReturnValue({
+      get: jest.fn().mockResolvedValue(mockCountSnap),
+    }),
+  };
   const mockCollection = {
     add: jest.fn().mockResolvedValue({ id: 'leave-123' }),
     doc: jest.fn().mockReturnValue(mockDocRef),
-    where: jest.fn().mockReturnValue({
-      get: jest.fn().mockResolvedValue({ docs: [] }),
-    }),
+    where: jest.fn().mockReturnValue(mockQuery),
     get: jest.fn().mockResolvedValue({ docs: [] }),
   };
   const mockBatch = {
@@ -29,6 +39,7 @@ jest.mock('@/lib/firebase-admin', () => {
     },
     dbTimestamp: new Date().toISOString(),
     mockDocRef,
+    mockQuery,
     mockCollection,
     mockBatch,
   };
@@ -44,14 +55,12 @@ describe('LeaveRepository', () => {
   });
 
   test('should find pending leave requests by tenant', async () => {
-    const { mockCollection } = require('@/lib/firebase-admin');
-    mockCollection.where.mockReturnValue({
-      get: jest.fn().mockResolvedValue({
-        docs: [
-          { id: 'l1', data: () => ({ tenantId, status: 'pending', teacherId: 't1' }) },
-          { id: 'l2', data: () => ({ tenantId, status: 'pending', teacherId: 't2' }) },
-        ],
-      }),
+    const { mockQuery } = require('@/lib/firebase-admin');
+    mockQuery.get.mockResolvedValue({
+      docs: [
+        { id: 'l1', data: () => ({ tenantId, status: 'pending', teacherId: 't1' }) },
+        { id: 'l2', data: () => ({ tenantId, status: 'pending', teacherId: 't2' }) },
+      ],
     });
 
     const leaves = await repo.findPendingByTenant(tenantId);
@@ -134,8 +143,8 @@ describe('LeaveRepository', () => {
   });
 
   test('should find all leave requests', async () => {
-    const { mockCollection } = require('@/lib/firebase-admin');
-    mockCollection.get.mockResolvedValue({
+    const { mockQuery } = require('@/lib/firebase-admin');
+    mockQuery.get.mockResolvedValue({
       docs: [
         { id: 'l1', data: () => ({ tenantId }) },
       ],

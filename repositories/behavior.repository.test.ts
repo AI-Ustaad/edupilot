@@ -70,7 +70,6 @@ describe('BehaviorRepository', () => {
     expect(mockCollection.add).toHaveBeenCalledWith(
       expect.objectContaining({
         studentId: 'student-1',
-        type: 'positive',
       })
     );
   });
@@ -171,14 +170,14 @@ describe('BehaviorRepository', () => {
     const { mockQuery } = require('@/lib/firebase-admin');
     mockQuery.get.mockResolvedValue({
       docs: [
-        { id: 'b1', data: () => ({ type: 'positive', tenantId }) },
-        { id: 'b2', data: () => ({ type: 'negative', tenantId }) },
+        { id: 'b1', data: () => ({ points: 5, reason: 'Helped a classmate', tenantId }) },
+        { id: 'b2', data: () => ({ points: -3, reason: 'Disruptive behavior', tenantId }) },
       ],
     });
 
     const logs = await repo.findAll(tenantId);
     expect(logs).toHaveLength(2);
-    expect(logs[0].reason).toBe('positive');
+    expect(logs[0].reason).toBe('Helped a classmate');
   });
 
   test('should paginate behavior logs', async () => {

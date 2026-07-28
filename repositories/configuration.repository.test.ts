@@ -1,27 +1,28 @@
 import { ConfigurationRepository } from '@/repositories/configuration.repository';
 
-const mockDocRef = {
-  get: jest.fn(),
-  set: jest.fn().mockResolvedValue(undefined),
-  update: jest.fn().mockResolvedValue(undefined),
-  delete: jest.fn().mockResolvedValue(undefined),
-  id: 'mock-doc-id',
-  collection: jest.fn(),
-};
-const mockCollection = {
-  doc: jest.fn().mockReturnValue(mockDocRef),
-  get: jest.fn(),
-  add: jest.fn().mockResolvedValue({ id: 'config-123' }),
-  orderBy: jest.fn().mockReturnThis(),
-  limit: jest.fn().mockReturnThis(),
-};
-
 jest.mock('@/lib/firebase-admin', () => {
+  const mockDocRef = {
+    get: jest.fn(),
+    set: jest.fn().mockResolvedValue(undefined),
+    update: jest.fn().mockResolvedValue(undefined),
+    delete: jest.fn().mockResolvedValue(undefined),
+    id: 'mock-doc-id',
+    collection: jest.fn(),
+  };
+  const mockCollection = {
+    doc: jest.fn().mockReturnValue(mockDocRef),
+    get: jest.fn(),
+    add: jest.fn().mockResolvedValue({ id: 'config-123' }),
+    orderBy: jest.fn().mockReturnThis(),
+    limit: jest.fn().mockReturnThis(),
+  };
   return {
     adminDb: {
       collection: jest.fn().mockReturnValue(mockCollection),
     },
     dbTimestamp: new Date().toISOString(),
+    mockDocRef,
+    mockCollection,
   };
 });
 
@@ -31,9 +32,11 @@ jest.mock('@/lib/mappers/configuration.mapper', () => ({
 }));
 
 jest.mock('@/lib/logger/logger', () => ({
-  info: jest.fn(),
-  error: jest.fn(),
-  warn: jest.fn(),
+  logger: {
+    info: jest.fn(),
+    error: jest.fn(),
+    warn: jest.fn(),
+  },
 }));
 
 describe('ConfigurationRepository', () => {
@@ -97,6 +100,7 @@ describe('ConfigurationRepository', () => {
       };
 
       await repo.saveConfiguration(tenantId, mockConfig as any);
+      const { mockDocRef } = require('@/lib/firebase-admin');
       expect(mockDocRef.set).toHaveBeenCalled();
     });
 
@@ -154,6 +158,7 @@ describe('ConfigurationRepository', () => {
       });
 
       await repo.deleteConfiguration(tenantId);
+      const { mockDocRef } = require('@/lib/firebase-admin');
       expect(mockDocRef.delete).toHaveBeenCalled();
     });
 

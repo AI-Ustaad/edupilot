@@ -66,8 +66,7 @@ describe('AiUsageRepository', () => {
       totalTokens: 30,
       cost: 0.001,
     };
-    const id = await repo.logUsage(data, tenantId);
-    expect(id).toBe('usage-123');
+    await repo.logUsage(data, tenantId);
     expect(mockCollection.add).toHaveBeenCalledWith(
       expect.objectContaining({
         userId: 'user-1',

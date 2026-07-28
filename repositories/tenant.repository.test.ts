@@ -8,12 +8,22 @@ jest.mock('@/lib/firebase-admin', () => {
     delete: jest.fn().mockResolvedValue(undefined),
     id: 'mock-doc-id',
   };
+  const mockCountSnap = { data: () => ({ count: 0 }) };
+  const mockQuery = {
+    where: jest.fn().mockReturnThis(),
+    orderBy: jest.fn().mockReturnThis(),
+    limit: jest.fn().mockReturnThis(),
+    offset: jest.fn().mockReturnThis(),
+    startAfter: jest.fn().mockReturnThis(),
+    get: jest.fn().mockResolvedValue({ docs: [] }),
+    count: jest.fn().mockReturnValue({
+      get: jest.fn().mockResolvedValue(mockCountSnap),
+    }),
+  };
   const mockCollection = {
     add: jest.fn().mockResolvedValue({ id: 'tenant-123' }),
     doc: jest.fn().mockReturnValue(mockDocRef),
-    where: jest.fn().mockReturnValue({
-      get: jest.fn().mockResolvedValue({ docs: [] }),
-    }),
+    where: jest.fn().mockReturnValue(mockQuery),
     get: jest.fn().mockResolvedValue({ docs: [] }),
   };
   const mockBatch = {
@@ -29,6 +39,7 @@ jest.mock('@/lib/firebase-admin', () => {
     },
     dbTimestamp: new Date().toISOString(),
     mockDocRef,
+    mockQuery,
     mockCollection,
     mockBatch,
   };
@@ -44,14 +55,12 @@ describe('TenantRepository', () => {
   });
 
   test('should find active tenants', async () => {
-    const { mockCollection } = require('@/lib/firebase-admin');
-    mockCollection.where.mockReturnValue({
-      get: jest.fn().mockResolvedValue({
-        docs: [
-          { id: 't1', data: () => ({ status: 'active', tenantId }) },
-          { id: 't2', data: () => ({ status: 'suspended', tenantId }) },
-        ],
-      }),
+    const { mockQuery } = require('@/lib/firebase-admin');
+    mockQuery.get.mockResolvedValue({
+      docs: [
+        { id: 't1', data: () => ({ status: 'active', tenantId }) },
+        { id: 't2', data: () => ({ status: 'suspended', tenantId }) },
+      ],
     });
 
     const tenants = await repo.findActive();
@@ -59,14 +68,12 @@ describe('TenantRepository', () => {
   });
 
   test('should find tenants by plan', async () => {
-    const { mockCollection } = require('@/lib/firebase-admin');
-    mockCollection.where.mockReturnValue({
-      get: jest.fn().mockResolvedValue({
-        docs: [
-          { id: 't1', data: () => ({ plan: 'pro', tenantId }) },
-          { id: 't2', data: () => ({ plan: 'free', tenantId }) },
-        ],
-      }),
+    const { mockQuery } = require('@/lib/firebase-admin');
+    mockQuery.get.mockResolvedValue({
+      docs: [
+        { id: 't1', data: () => ({ plan: 'pro', tenantId }) },
+        { id: 't2', data: () => ({ plan: 'free', tenantId }) },
+      ],
     });
 
     const tenants = await repo.findByPlan('pro');

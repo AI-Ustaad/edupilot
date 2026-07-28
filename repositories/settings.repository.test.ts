@@ -113,8 +113,6 @@ describe('SettingsRepository', () => {
     const { adminDb } = require('@/lib/firebase-admin');
     const configDoc = adminDb.collection('tenants').doc(tenantId).collection('settings').doc('config');
     const historyCollection = configDoc.collection('history');
-    historyCollection.orderBy.mockReturnThis();
-    historyCollection.limit.mockReturnThis();
     historyCollection.get.mockResolvedValue({
       docs: [
         { id: 'h1', data: () => ({ version: 1, appName: 'Old App' }) },

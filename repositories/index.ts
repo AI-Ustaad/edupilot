@@ -1,27 +1,43 @@
-import { SubscriptionRepository } from "@/repositories/subscription.repository";
-import { TenantRepository } from "@/repositories/tenant.repository";
-import { FeatureFlagRepository } from "@/repositories/feature-flag.repository";
-import { InvoiceRepository } from "@/repositories/invoice.repository";
-import { AiUsageRepository } from "@/repositories/ai-usage.repository";
-import { DashboardStatsRepository } from "@/repositories/dashboard-stats.repository";
-import { AuditRepository } from "@/repositories/audit.repository";
-import { JobRepository } from "@/repositories/job.repository";
-import { ChatRepository } from "@/repositories/chat.repository";
-import { ConfigurationRepository } from "@/repositories/configuration.repository";
-import { MenuRepository } from "@/repositories/menu.repository";
-import { AddonsRepository } from "@/repositories/addons.repository";
-
-export const REPOSITORIES = {
-  subscription: SubscriptionRepository,
-  tenant: TenantRepository,
-  featureFlag: FeatureFlagRepository,
-  invoice: InvoiceRepository,
-  aiUsage: AiUsageRepository,
-  dashboardStats: DashboardStatsRepository,
-  audit: AuditRepository,
-  job: JobRepository,
-  chat: ChatRepository,
-  configuration: ConfigurationRepository,
-  menu: MenuRepository,
-  addons: AddonsRepository,
-} as const;
+// repositories/index.ts
+export * from "./academic-year.repository";
+export * from "./addons.repository";
+export * from "./ai-usage.repository";
+export * from "./assignment.repository";
+export * from "./attendance.repository";
+export * from "./audit.repository";
+export * from "./auth.repository";
+export * from "./base.repository";
+export * from "./behavior.repository";
+export * from "./book.repository";
+export * from "./bus.repository";
+export * from "./chat.repository";
+export * from "./class.repository";
+export * from "./configuration.repository";
+export * from "./curriculum.repository";
+export * from "./dashboard-stats.repository";
+export * from "./event-outbox.repository";
+export * from "./feature-flag.repository";
+export * from "./fees.repository";
+export * from "./homework.repository";
+export * from "./invoice.repository";
+export * from "./job.repository";
+export * from "./leave.repository";
+export * from "./ledger.repository";
+export * from "./lesson-plan.repository";
+export * from "./marks.repository";
+export * from "./menu.repository";
+export * from "./parents.repository";
+export * from "./quiz.repository";
+export * from "./section.repository";
+export * from "./settings.repository";
+export * from "./staff.repository";
+export * from "./storage.repository";
+export * from "./student.repository";
+export * from "./subscription.repository";
+export * from "./syllabus.repository";
+export * from "./tenant-branding.repository";
+export * from "./tenant-setup.repository";
+export * from "./tenant.repository";
+export * from "./timetable.repository";
+export * from "./user.repository";
+export * from "./video-lecture.repository";

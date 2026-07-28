@@ -71,7 +71,7 @@ describe('UserRepository', () => {
     mockDocRef.get.mockResolvedValue({ exists: false, data: () => null });
     mockQuery.get.mockResolvedValue({
       docs: [
-        { id: 'user-uid-fallback', data: () => ({ email: 'test@test.com', role: 'teacher', tenantId }) },
+        { id: 'user-uid-fallback', exists: true, data: () => ({ email: 'test@test.com', role: 'teacher', tenantId }) },
       ],
     });
 

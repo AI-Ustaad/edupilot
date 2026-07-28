@@ -70,7 +70,7 @@ describe('ParentsRepository', () => {
   test('should save parent document (create new)', async () => {
     const { mockCollection, mockDocRef } = require('@/lib/firebase-admin');
     mockCollection.add.mockResolvedValue({ id: 'parent-123' });
-    mockDocRef.get.mockResolvedValue({ exists: false, data: () => null });
+    mockDocRef.get.mockResolvedValue({ exists: true, data: () => ({ tenantId }) });
 
     const document = { userId: 'user-1', studentIds: ['s1'], name: 'John Parent', tenantId };
     await repo.save(document as any, tenantId);

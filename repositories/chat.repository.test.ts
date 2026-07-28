@@ -8,14 +8,16 @@ jest.mock('@/lib/firebase-admin', () => {
     delete: jest.fn().mockResolvedValue(undefined),
     id: 'mock-doc-id',
   };
+  const mockQuery = {
+    where: jest.fn().mockReturnThis(),
+    orderBy: jest.fn().mockReturnThis(),
+    limit: jest.fn().mockReturnThis(),
+    get: jest.fn().mockResolvedValue({ docs: [] }),
+  };
   const mockCollection = {
     add: jest.fn().mockResolvedValue({ id: 'msg-123' }),
     doc: jest.fn().mockReturnValue(mockDocRef),
-    where: jest.fn().mockReturnValue({
-      orderBy: jest.fn().mockReturnThis(),
-      limit: jest.fn().mockReturnThis(),
-      get: jest.fn().mockResolvedValue({ docs: [] }),
-    }),
+    where: jest.fn().mockReturnValue(mockQuery),
     get: jest.fn().mockResolvedValue({ docs: [] }),
   };
   const mockBatch = {
@@ -31,6 +33,7 @@ jest.mock('@/lib/firebase-admin', () => {
     },
     dbTimestamp: new Date().toISOString(),
     mockDocRef,
+    mockQuery,
     mockCollection,
     mockBatch,
   };
@@ -61,16 +64,12 @@ describe('ChatRepository', () => {
   });
 
   test('should find messages by tenant', async () => {
-    const { mockCollection } = require('@/lib/firebase-admin');
-    mockCollection.where.mockReturnValue({
-      orderBy: jest.fn().mockReturnThis(),
-      limit: jest.fn().mockReturnThis(),
-      get: jest.fn().mockResolvedValue({
-        docs: [
-          { id: 'm1', data: () => ({ tenantId, teacherId: 't1', text: 'Hello' }) },
-          { id: 'm2', data: () => ({ tenantId, teacherId: 't1', text: 'Hi' }) },
-        ],
-      }),
+    const { mockQuery } = require('@/lib/firebase-admin');
+    mockQuery.get.mockResolvedValue({
+      docs: [
+        { id: 'm1', data: () => ({ tenantId, teacherId: 't1', text: 'Hello' }) },
+        { id: 'm2', data: () => ({ tenantId, teacherId: 't1', text: 'Hi' }) },
+      ],
     });
 
     const messages = await repo.findByTenant(tenantId, 't1');
@@ -78,15 +77,11 @@ describe('ChatRepository', () => {
   });
 
   test('should find messages by tenant with parentId filter', async () => {
-    const { mockCollection } = require('@/lib/firebase-admin');
-    mockCollection.where.mockReturnValue({
-      orderBy: jest.fn().mockReturnThis(),
-      limit: jest.fn().mockReturnThis(),
-      get: jest.fn().mockResolvedValue({
-        docs: [
-          { id: 'm1', data: () => ({ tenantId, parentId: 'p1', text: 'Hello' }) },
-        ],
-      }),
+    const { mockQuery } = require('@/lib/firebase-admin');
+    mockQuery.get.mockResolvedValue({
+      docs: [
+        { id: 'm1', data: () => ({ tenantId, parentId: 'p1', text: 'Hello' }) },
+      ],
     });
 
     const messages = await repo.findByTenant(tenantId, undefined, 'p1');
@@ -94,15 +89,11 @@ describe('ChatRepository', () => {
   });
 
   test('should find messages by tenant with teacherId and parentId filters', async () => {
-    const { mockCollection } = require('@/lib/firebase-admin');
-    mockCollection.where.mockReturnValue({
-      orderBy: jest.fn().mockReturnThis(),
-      limit: jest.fn().mockReturnThis(),
-      get: jest.fn().mockResolvedValue({
-        docs: [
-          { id: 'm1', data: () => ({ tenantId, teacherId: 't1', parentId: 'p1', text: 'Hello' }) },
-        ],
-      }),
+    const { mockQuery } = require('@/lib/firebase-admin');
+    mockQuery.get.mockResolvedValue({
+      docs: [
+        { id: 'm1', data: () => ({ tenantId, teacherId: 't1', parentId: 'p1', text: 'Hello' }) },
+      ],
     });
 
     const messages = await repo.findByTenant(tenantId, 't1', 'p1');
@@ -110,15 +101,11 @@ describe('ChatRepository', () => {
   });
 
   test('should find messages by tenant with limit', async () => {
-    const { mockCollection } = require('@/lib/firebase-admin');
-    mockCollection.where.mockReturnValue({
-      orderBy: jest.fn().mockReturnThis(),
-      limit: jest.fn().mockReturnThis(),
-      get: jest.fn().mockResolvedValue({
-        docs: [
-          { id: 'm1', data: () => ({ tenantId, text: 'Hello' }) },
-        ],
-      }),
+    const { mockQuery } = require('@/lib/firebase-admin');
+    mockQuery.get.mockResolvedValue({
+      docs: [
+        { id: 'm1', data: () => ({ tenantId, text: 'Hello' }) },
+      ],
     });
 
     const messages = await repo.findByTenant(tenantId, undefined, undefined, 10);

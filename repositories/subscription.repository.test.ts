@@ -145,8 +145,8 @@ describe('SubscriptionRepository', () => {
   });
 
   test('should list all subscriptions', async () => {
-    const { mockQuery } = require('@/lib/firebase-admin');
-    mockQuery.get.mockResolvedValue({
+    const { mockCollection } = require('@/lib/firebase-admin');
+    mockCollection.get.mockResolvedValue({
       docs: [
         { id: 'sub1', data: () => ({ tenantId, planId: 'pro' }) },
         { id: 'sub2', data: () => ({ tenantId, planId: 'free' }) },

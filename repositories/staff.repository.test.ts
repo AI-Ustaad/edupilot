@@ -70,7 +70,7 @@ describe('StaffRepository', () => {
   test('should save staff document (create new)', async () => {
     const { mockCollection, mockDocRef } = require('@/lib/firebase-admin');
     mockCollection.add.mockResolvedValue({ id: 'staff-123' });
-    mockDocRef.get.mockResolvedValue({ exists: false, data: () => null });
+    mockDocRef.get.mockResolvedValue({ exists: true, data: () => ({ tenantId }) });
 
     const document = { fullName: 'John Staff', tenantId };
     await repo.save(document as any, tenantId);
@@ -105,7 +105,7 @@ describe('StaffRepository', () => {
 
   test('should return null for non-existent staff email', async () => {
     const { mockQuery } = require('@/lib/firebase-admin');
-    mockQuery.get.mockResolvedValue({ docs: [] });
+    mockQuery.get.mockResolvedValue({ docs: [], empty: true });
 
     const staff = await repo.findByEmail(tenantId, 'nonexistent@test.com');
     expect(staff).toBeNull();
@@ -125,7 +125,7 @@ describe('StaffRepository', () => {
 
   test('should return null for non-existent employee id', async () => {
     const { mockQuery } = require('@/lib/firebase-admin');
-    mockQuery.get.mockResolvedValue({ docs: [] });
+    mockQuery.get.mockResolvedValue({ docs: [], empty: true });
 
     const staff = await repo.findByEmployeeId('EMP999', tenantId);
     expect(staff).toBeNull();
@@ -219,11 +219,11 @@ describe('StaffRepository', () => {
   });
 
   test('should bulk update staff', async () => {
-    const { mockQuery, mockBatch } = require('@/lib/firebase-admin');
-    mockQuery.get.mockResolvedValue({
-      docs: [
-        { id: 'st1', data: () => ({ tenantId }), ref: { id: 'st1' } },
-      ],
+    const { mockDocRef, mockBatch } = require('@/lib/firebase-admin');
+    mockDocRef.get.mockResolvedValue({
+      exists: true,
+      id: 'st1',
+      data: () => ({ tenantId }),
     });
 
     await repo.bulkUpdate(tenantId, ['st1'], { status: 'active' });
@@ -231,11 +231,11 @@ describe('StaffRepository', () => {
   });
 
   test('should bulk delete staff', async () => {
-    const { mockQuery, mockBatch } = require('@/lib/firebase-admin');
-    mockQuery.get.mockResolvedValue({
-      docs: [
-        { id: 'st1', data: () => ({ tenantId }), ref: { id: 'st1' } },
-      ],
+    const { mockDocRef, mockBatch } = require('@/lib/firebase-admin');
+    mockDocRef.get.mockResolvedValue({
+      exists: true,
+      id: 'st1',
+      data: () => ({ tenantId }),
     });
 
     await repo.bulkDelete(tenantId, ['st1']);

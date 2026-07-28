@@ -177,8 +177,9 @@ describe('AttendanceRepository', () => {
 
   test('should count attendance', async () => {
     const { mockQuery } = require('@/lib/firebase-admin');
-    mockQuery.count.mockReturnValue({
-      get: jest.fn().mockResolvedValue({ data: () => ({ count: 42 }) }),
+    mockQuery.get.mockResolvedValue({
+      docs: [],
+      size: 42,
     });
 
     const count = await repo.count(tenantId);

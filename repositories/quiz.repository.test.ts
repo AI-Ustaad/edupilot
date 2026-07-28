@@ -58,8 +58,9 @@ describe('QuizRepository', () => {
   });
 
   test('should create a quiz', async () => {
-    const { adminDb, mockCollection } = require('@/lib/firebase-admin');
-    mockCollection.add.mockResolvedValue({ id: 'quiz-123' });
+    const { adminDb } = require('@/lib/firebase-admin');
+    const quizCollection = adminDb.collection('quizzes');
+    quizCollection.add.mockResolvedValue({ id: 'quiz-123' });
 
     const data = {
       title: 'Math Quiz',
@@ -69,7 +70,7 @@ describe('QuizRepository', () => {
     } as any;
     const id = await repo.create(data, tenantId);
     expect(id).toBe('quiz-123');
-    expect(mockCollection.add).toHaveBeenCalledWith(
+    expect(quizCollection.add).toHaveBeenCalledWith(
       expect.objectContaining({
         tenantId,
       })
@@ -77,8 +78,9 @@ describe('QuizRepository', () => {
   });
 
   test('should find quiz by id', async () => {
-    const { mockDocRef } = require('@/lib/firebase-admin');
-    mockDocRef.get.mockResolvedValue({
+    const { adminDb } = require('@/lib/firebase-admin');
+    const quizDoc = adminDb.collection('quizzes').doc('quiz-456');
+    quizDoc.get.mockResolvedValue({
       exists: true,
       id: 'quiz-456',
       data: () => ({
@@ -95,8 +97,9 @@ describe('QuizRepository', () => {
   });
 
   test('should return null for non-existent quiz', async () => {
-    const { mockDocRef } = require('@/lib/firebase-admin');
-    mockDocRef.get.mockResolvedValue({ exists: false, data: () => null });
+    const { adminDb } = require('@/lib/firebase-admin');
+    const quizDoc = adminDb.collection('quizzes').doc('nonexistent');
+    quizDoc.get.mockResolvedValue({ exists: false, data: () => null });
 
     const quiz = await repo.findById('nonexistent', tenantId);
     expect(quiz).toBeNull();
@@ -117,35 +120,36 @@ describe('QuizRepository', () => {
   });
 
   test('should update a quiz', async () => {
-    const { mockDocRef } = require('@/lib/firebase-admin');
-    mockDocRef.get.mockResolvedValue({
+    const { adminDb } = require('@/lib/firebase-admin');
+    const quizDoc = adminDb.collection('quizzes').doc('quiz-789');
+    quizDoc.get.mockResolvedValue({
       exists: true,
       id: 'quiz-789',
       data: () => ({ title: 'Old Title', tenantId }),
     });
 
     await repo.update('quiz-789', { title: 'Updated Title' }, tenantId);
-    expect(mockDocRef.update).toHaveBeenCalledWith(
+    expect(quizDoc.update).toHaveBeenCalledWith(
       expect.objectContaining({ title: 'Updated Title' })
     );
   });
 
   test('should delete a quiz', async () => {
-    const { mockDocRef } = require('@/lib/firebase-admin');
-    mockDocRef.get.mockResolvedValue({
+    const { adminDb } = require('@/lib/firebase-admin');
+    const quizDoc = adminDb.collection('quizzes').doc('quiz-999');
+    quizDoc.get.mockResolvedValue({
       exists: true,
       id: 'quiz-999',
       data: () => ({ tenantId }),
     });
 
     await repo.delete('quiz-999', tenantId);
-    expect(mockDocRef.delete).toHaveBeenCalled();
+    expect(quizDoc.delete).toHaveBeenCalled();
   });
 
   test('should find submissions by quiz', async () => {
-    const { adminDb } = require('@/lib/firebase-admin');
-    const submissionsCollection = adminDb.collection('quiz_submissions');
-    submissionsCollection.orderBy('createdAt', 'desc').get.mockResolvedValue({
+    const { mockQuery } = require('@/lib/firebase-admin');
+    mockQuery.get.mockResolvedValue({
       docs: [
         { id: 'sub1', data: () => ({ quizId: 'quiz-1', tenantId, correct: 8, total: 10, percentage: 80 }) },
         { id: 'sub2', data: () => ({ quizId: 'quiz-1', tenantId, correct: 9, total: 10, percentage: 90 }) },
@@ -158,8 +162,9 @@ describe('QuizRepository', () => {
   });
 
   test('should create a submission', async () => {
-    const { adminDb, mockCollection } = require('@/lib/firebase-admin');
-    mockCollection.add.mockResolvedValue({ id: 'submission-123' });
+    const { adminDb } = require('@/lib/firebase-admin');
+    const subCollection = adminDb.collection('quiz_submissions');
+    subCollection.add.mockResolvedValue({ id: 'submission-123' });
 
     const data = {
       quizId: 'quiz-1',
@@ -169,7 +174,7 @@ describe('QuizRepository', () => {
     } as any;
     const id = await repo.createSubmission(data, tenantId);
     expect(id).toBe('submission-123');
-    expect(mockCollection.add).toHaveBeenCalledWith(
+    expect(subCollection.add).toHaveBeenCalledWith(
       expect.objectContaining({
         quizId: 'quiz-1',
         createdAt: expect.any(String),

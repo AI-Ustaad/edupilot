@@ -1,33 +1,53 @@
 import { ConfigurationHealthService } from "@/services/configuration-health.service";
 
-jest.mock('@/lib/firebase-admin', () => ({
-  adminDb: {
+jest.mock('@/lib/firebase-admin', () => {
+  const mockTenantsDoc: any = {
+    get: jest.fn(),
     collection: jest.fn().mockReturnValue({
-      doc: jest.fn((...args: any[]) => {
-        if (args.length === 2) {
-          return argBuildHistory(args);
-        }
-        return mockConfigRef;
-      }),
+      doc: jest.fn(),
     }),
+  };
+
+  const mockSettingsDoc: any = {
+    get: jest.fn(),
+    collection: jest.fn().mockReturnValue({
+      orderBy: jest.fn().mockReturnThis(),
+      limit: jest.fn().mockReturnThis(),
+      get: jest.fn(),
+    }),
+  };
+
+  mockTenantsDoc.collection.mockReturnValue({
+    doc: jest.fn(() => mockSettingsDoc),
+  });
+
+  return {
+    adminDb: {
+      collection: jest.fn().mockImplementation((name: string) => {
+        if (name === "tenants") {
+          return {
+            doc: jest.fn(() => mockTenantsDoc),
+          };
+        }
+        return {
+          doc: jest.fn(),
+        };
+      }),
+    },
+    mockTenantsDoc,
+    mockSettingsDoc,
+  };
+});
+
+jest.mock('@/lib/logger/logger', () => ({
+  logger: {
+    info: jest.fn(),
+    error: jest.fn(),
+    warn: jest.fn(),
   },
 }));
 
-jest.mock('@/lib/logger/logger', () => ({
-  info: jest.fn(),
-  error: jest.fn(),
-  warn: jest.fn(),
-}));
-
 type DocFactory = (args: any[]) => any;
-
-const mockTenantsRef: any = {
-  get: jest.fn(),
-};
-
-const mockConfigRef: any = {
-  get: jest.fn(),
-};
 
 const mockHistoryCollection: any = {
   orderBy: jest.fn().mockReturnThis(),
@@ -42,33 +62,41 @@ function buildDoc(data: any, exists: boolean) {
   };
 }
 
-const argBuildHistory: DocFactory = () => mockHistoryCollection;
-
 const mockAdminDb = require('@/lib/firebase-admin').adminDb;
 
 describe('ConfigurationHealthService', () => {
   let service: ConfigurationHealthService;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    jest.resetAllMocks();
     service = new ConfigurationHealthService();
   });
 
   describe('checkHealth', () => {
     test('should return healthy when configuration is complete', async () => {
       mockAdminDb.collection.mockReturnValue({
-        doc: () => mockTenantsRef,
-      });
-      mockTenantsRef.get.mockResolvedValue(buildDoc({}, true));
-
-      mockAdminDb.collection.mockReturnValue({
         doc: (...args: any[]) => {
-          if (args[1] === 'config') return mockConfigRef;
-          if (args[1] === 'history') return mockHistoryCollection;
+          if (args[0] === 'tenant_1') {
+            return require('@/lib/firebase-admin').mockTenantsDoc;
+          }
           return { get: jest.fn() };
         },
       });
 
+      (require('@/lib/firebase-admin').mockTenantsDoc.get as jest.Mock).mockResolvedValue(buildDoc({}, true));
+
+      mockAdminDb.collection.mockReturnValue({
+        doc: (...args: any[]) => {
+          if (args[0] === 'tenant_1') {
+            return {
+              ...require('@/lib/firebase-admin').mockTenantsDoc,
+            };
+          }
+          return { get: jest.fn() };
+        },
+      });
+
+      const mockConfigRef = require('@/lib/firebase-admin').mockSettingsDoc;
       mockConfigRef.get.mockResolvedValue(buildDoc({
         state: 'Published',
         metadata: {
@@ -87,6 +115,18 @@ describe('ConfigurationHealthService', () => {
         academic: { levels: ['Primary'], classes: [], sectionNames: ['A'], subjects: ['Math'], requiredLabs: [], requiredTeachers: {} },
       }, true));
 
+      mockAdminDb.collection.mockReturnValue({
+        doc: (...args: any[]) => {
+          const mockConfigRef = require('@/lib/firebase-admin').mockSettingsDoc;
+          if (args[0] === 'tenant_1' && args[1] === 'settings') {
+            return {
+              doc: jest.fn(() => mockConfigRef),
+            };
+          }
+          return { get: jest.fn() };
+        },
+      });
+
       const result = await service.checkHealth('tenant_1');
 
       expect(result.healthy).toBe(true);
@@ -96,14 +136,17 @@ describe('ConfigurationHealthService', () => {
     test('should return NOT_CONFIGURED when config does not exist', async () => {
       mockAdminDb.collection.mockReturnValue({
         doc: (...args: any[]) => {
-          if (args[0] === 'tenants' && args[1] === 'tenant_1') return mockTenantsRef;
-          if (args[0] === 'tenants' && args[1] === 'tenant_1') return mockConfigRef;
+          const mockTenantsDoc = require('@/lib/firebase-admin').mockTenantsDoc;
+          if (args[0] === 'tenant_1') {
+            return mockTenantsDoc;
+          }
           return { get: jest.fn() };
         },
       });
 
-      mockTenantsRef.get.mockResolvedValue(buildDoc({}, true));
-      mockConfigRef.get.mockResolvedValue(buildDoc({}, false));
+      (require('@/lib/firebase-admin').mockTenantsDoc.get as jest.Mock).mockResolvedValue(buildDoc({}, true));
+
+      (require('@/lib/firebase-admin').mockSettingsDoc.get as jest.Mock).mockResolvedValue(buildDoc({}, false));
 
       const result = await service.checkHealth('tenant_1');
 
@@ -114,12 +157,15 @@ describe('ConfigurationHealthService', () => {
     test('should return INVALID when tenant does not exist', async () => {
       mockAdminDb.collection.mockReturnValue({
         doc: (...args: any[]) => {
-          if (args[0] === 'tenants' && args[1] === 'tenant_1') return mockTenantsRef;
+          const mockTenantsDoc = require('@/lib/firebase-admin').mockTenantsDoc;
+          if (args[0] === 'tenant_1') {
+            return mockTenantsDoc;
+          }
           return { get: jest.fn() };
         },
       });
 
-      mockTenantsRef.get.mockResolvedValue(buildDoc({}, false));
+      (require('@/lib/firebase-admin').mockTenantsDoc.get as jest.Mock).mockResolvedValue(buildDoc({}, false));
 
       const result = await service.checkHealth('tenant_1');
 
@@ -130,24 +176,21 @@ describe('ConfigurationHealthService', () => {
     test('should return PARTIALLY_CONFIGURED when metadata is missing', async () => {
       mockAdminDb.collection.mockReturnValue({
         doc: (...args: any[]) => {
-          if (args[0] === 'tenants' && args[1] === 'tenant_1') return mockTenantsRef;
+          const mockTenantsDoc = require('@/lib/firebase-admin').mockTenantsDoc;
+          if (args[0] === 'tenant_1') {
+            return mockTenantsDoc;
+          }
           return { get: jest.fn() };
         },
       });
 
-      mockTenantsRef.get.mockResolvedValue(buildDoc({}, true));
-      mockConfigRef.get.mockResolvedValue(buildDoc({
+      (require('@/lib/firebase-admin').mockTenantsDoc.get as jest.Mock).mockResolvedValue(buildDoc({}, true));
+
+      (require('@/lib/firebase-admin').mockSettingsDoc.get as jest.Mock).mockResolvedValue(buildDoc({
         state: 'Published',
         metadata: { configurationVersion: 1, schemaVersion: 2 },
         version: { number: 1 },
       }, true));
-
-      mockAdminDb.collection.mockReturnValue({
-        doc: (...args: any[]) => {
-          if (args[1] === 'config') return mockConfigRef;
-          return mockTenantsRef;
-        },
-      });
 
       const result = await service.checkHealth('tenant_1');
 
