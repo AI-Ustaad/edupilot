@@ -37,4 +37,9 @@ export class TenantRepository extends BaseRepository<Tenant> implements ITenantR
     const snapshot = await this.db.collection(this.collectionName).get();
     return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Tenant));
   }
+
+  async verifyTenantExists(tenantId: string): Promise<boolean> {
+    const doc = await this.db.collection(this.collectionName).doc(tenantId).get();
+    return doc.exists;
+  }
 }

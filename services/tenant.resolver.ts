@@ -1,4 +1,4 @@
-import { adminDb } from "@/lib/firebase-admin";
+import { TenantRepository } from "@/repositories/tenant.repository";
 import { logger } from "@/lib/logger/logger";
 import { TenantResolutionError } from "@/lib/errors/configuration.errors";
 import { ITenantResolver, ResolvedTenant, TenantResolverContext } from "@/interfaces/ITenantResolver";
@@ -6,6 +6,7 @@ import type { RequestContext } from "@/route-helpers/request-context";
 
 export class TenantResolver implements ITenantResolver {
   private readonly USERS_COLLECTION = "users";
+  private tenantRepo = new TenantRepository();
 
   async resolve(context: TenantResolverContext): Promise<ResolvedTenant> {
     const { user } = context;
@@ -81,26 +82,18 @@ export class TenantResolver implements ITenantResolver {
     return `tenant_${uid}`;
   }
 
-  private simpleHash(str: string): string {
+  private simpleHash(str: string): number {
     let hash = 0;
     for (let i = 0; i < str.length; i++) {
       const char = str.charCodeAt(i);
       hash = ((hash << 5) - hash) + char;
       hash = hash & hash;
     }
-    return Math.abs(hash).toString(36);
+    return Math.abs(hash);
   }
 
   async verifyTenantExists(tenantId: string): Promise<boolean> {
-    try {
-      const doc = await adminDb.collection("tenants").doc(tenantId).get();
-      return doc.exists;
-    } catch (error) {
-      logger.error("TENANT_VERIFICATION_FAILED", {
-        metadata: { tenantId, error },
-      });
-      return false;
-    }
+    return this.tenantRepo.verifyTenantExists(tenantId);
   }
 }
 

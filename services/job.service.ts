@@ -1,12 +1,11 @@
 import { JobRepository } from "@/repositories/job.repository";
 import type { IJobService } from "@/interfaces/IJobService";
 
-export class JobService {
+export class JobService implements IJobService {
   private jobRepo = new JobRepository();
 
-  static async createJob(tenantId: string, type: string, createdBy: string, totalItems: number = 0): Promise<string> {
-    const jobRepo = new JobRepository();
-    return jobRepo.create({
+  async createJob(tenantId: string, type: string, createdBy: string, totalItems: number = 0): Promise<string> {
+    return this.jobRepo.create({
       type,
       status: "pending",
       progress: 0,
@@ -16,19 +15,21 @@ export class JobService {
     }, tenantId);
   }
 
-  static async updateProgress(
+  async updateProgress(
     tenantId: string,
     jobId: string,
     processedItems: number,
     totalItems: number,
     status: "processing" | "completed" | "failed" = "processing"
   ): Promise<void> {
-    const jobRepo = new JobRepository();
-    await jobRepo.updateProgress(tenantId, jobId, processedItems, totalItems, status);
+    await this.jobRepo.updateProgress(tenantId, jobId, processedItems, totalItems, status);
   }
 
-  static async failJob(tenantId: string, jobId: string, errorMessage: string): Promise<void> {
-    const jobRepo = new JobRepository();
-    await jobRepo.failJob(tenantId, jobId, errorMessage);
+  async failJob(tenantId: string, jobId: string, errorMessage: string): Promise<void> {
+    await this.jobRepo.failJob(tenantId, jobId, errorMessage);
+  }
+
+  async findById(tenantId: string, jobId: string) {
+    return this.jobRepo.findById(tenantId, jobId);
   }
 }

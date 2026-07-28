@@ -13,12 +13,13 @@ import { logger } from "@/lib/logger/logger";
 export async function runReportWorker(data: any) {
   const { tenantId, jobId, studentIds, term } = data;
   const total = studentIds.length;
+  const jobService = new JobService();
 
   logger.info(`Worker: Starting report generation for Job: ${jobId}`);
   
   try {
     // جاب کا اسٹیٹس 'processing' کر دیں
-    await JobService.updateProgress(tenantId, jobId, 0, total, "processing");
+    await jobService.updateProgress(tenantId, jobId, 0, total, "processing");
 
     // School Branding ایک ہی بار فیچ کریں
     const settingsSnap = await adminDb.collection("settings").doc(tenantId).get();
@@ -92,11 +93,11 @@ export async function runReportWorker(data: any) {
       });
       
       // 7. ہر رپورٹ بننے کے بعد فرنٹ اینڈ کے لیے لائیو پروگریس (Progress) اپڈیٹ کریں
-      await JobService.updateProgress(tenantId, jobId, i + 1, total, "processing");
+      await jobService.updateProgress(tenantId, jobId, i + 1, total, "processing");
     }
     
     // 100% مکمل!
-    await JobService.updateProgress(tenantId, jobId, total, total, "completed");
+    await jobService.updateProgress(tenantId, jobId, total, total, "completed");
     logger.info(`Worker: Reports successfully generated for Job: ${jobId}`);
     
     // Event Bus کو بتائیں تاکہ اگر کوئی نوٹیفکیشن بھیجنا ہو تو وہ چلا جائے
@@ -104,7 +105,7 @@ export async function runReportWorker(data: any) {
 
   } catch (error: any) {
     logger.error(`Worker: Failed Job ${jobId}:`, { metadata: { error: error.message } });
-    await JobService.failJob(tenantId, jobId, error.message);
+    await jobService.failJob(tenantId, jobId, error.message);
     throw error; 
   }
 }

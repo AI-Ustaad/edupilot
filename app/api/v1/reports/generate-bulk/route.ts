@@ -24,7 +24,8 @@ export const POST = withErrorHandler(
         const userId = user?.uid || "system";
 
         // 1. ڈیٹا بیس میں جاب رجسٹر کریں (Progress 0%)
-        const jobId = await JobService.createJob(tenantId, "REPORT_GENERATION", userId, totalStudents);
+        const jobService = new JobService();
+        const jobId = await jobService.createJob(tenantId, "REPORT_GENERATION", userId, totalStudents);
 
         // 2. QStash کو بیک گراؤنڈ میں کام کرنے کا آرڈر دیں
         await Queue.publishJob("REPORT_GENERATION", {

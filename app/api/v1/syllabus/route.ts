@@ -1,10 +1,10 @@
 export const dynamic = 'force-dynamic';
 import { withAuth, withTenant, withErrorHandler } from "@/route-helpers";
 import { createSuccessResponse } from "@/lib/api/response";
-import { SyllabusRepository } from "@/repositories/syllabus.repository";
+import { SyllabusService } from "@/services/syllabus.service";
 import type { TenantContext } from "@/types/api";
 
-const syllabusRepo = new SyllabusRepository();
+const syllabusService = new SyllabusService();
 
 export const GET = withErrorHandler(
   withAuth(
@@ -13,7 +13,7 @@ export const GET = withErrorHandler(
       const classGrade = searchParams.get("class");
       const subject = searchParams.get("subject");
 
-      const data = await syllabusRepo.findWithFilters(tenantId, {
+      const data = await syllabusService.findWithFilters(tenantId, {
         classGrade: classGrade || undefined,
         subject: subject || undefined,
       });

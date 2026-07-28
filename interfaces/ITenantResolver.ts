@@ -20,4 +20,5 @@ export interface TenantResolverContext {
 export interface ITenantResolver {
   resolve(context: TenantResolverContext): Promise<ResolvedTenant>;
   resolveFromContext(requestContext: RequestContext, user?: TenantResolverContext["user"]): Promise<ResolvedTenant>;
+  verifyTenantExists(tenantId: string): Promise<boolean>;
 }

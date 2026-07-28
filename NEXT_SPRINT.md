@@ -1,26 +1,27 @@
-# Next Sprint: Sprint 6 — Service Layer Enforcement
+# Next Sprint: Sprint 7 — Barrel Export Completion
 
 **Generated:** 2026-07-28
-**Based on:** ENGINEERING_BASELINE_VERIFICATION.md, SPRINT_REPORT.md (Sprint 5)
+**Based on:** ENGINEERING_BASELINE_VERIFICATION.md, SPRINT_REPORT.md (Sprint 6)
 
 ---
 
 ## Sprint Overview
 
-**Sprint:** 6
-**Name:** Service Layer Enforcement
-**Priority:** P0
+**Sprint:** 7
+**Name:** Barrel Export Completion
+**Priority:** P1
 **Duration:** 5 days
-**Risk:** MEDIUM
+**Risk:** LOW
 
 ---
 
 ## Objectives
 
-1. Ensure all API routes communicate ONLY with services
-2. Move `adminDb` calls from services to repositories
-3. Reduce route bypass count from 16 to 0
-4. Reduce service adminDb count from 2 to 0
+1. Complete `services/index.ts` barrel export (6/53 → 100%)
+2. Complete `repositories/index.ts` barrel export (12/43 → 100%)
+3. Complete `types/index.ts` barrel export (2/35 → 100%)
+4. Create `entities/index.ts` barrel export (0/5 → 100%)
+5. Document 15 exception routes that bypass service layer
 
 ---
 
@@ -28,21 +29,16 @@
 
 ### In Scope
 
-1. **16 Routes Bypassing Services**
-   - Create services or justify exceptions for routes importing repositories directly
-   - Routes listed in ENGINEERING_BASELINE_VERIFICATION.md V2
-
-2. **2 Services Using adminDb Directly**
-   - `services/tenant.resolver.ts` — move adminDb calls to `TenantRepository`
-   - `services/configuration-health.service.ts` — move adminDb calls to `ConfigurationRepository`
-
-3. **15 Routes Importing Neither Services Nor Repositories**
-   - Evaluate each route for service layer integration
-   - Some may be legitimate exceptions (AI agents, cron jobs, auth utilities)
+1. **services/index.ts** — Add exports for all 53 service files
+2. **repositories/index.ts** — Replace object-literal pattern with standard barrel exports
+3. **types/index.ts** — Add exports for all 35 type files
+4. **entities/index.ts** — Create barrel export for 5 entity files
+5. **Exception documentation** — Document the 15 routes that legitimately bypass services
 
 ### Out of Scope
 
-- Barrel export completion (Sprint 7)
+- Service layer enforcement (Sprint 6 — COMPLETED)
+- Validation consolidation (Sprint 5 — COMPLETED)
 - Interface coverage completion (Sprint 8)
 - Test infrastructure repair (Sprint 10)
 - Feature development
@@ -51,48 +47,13 @@
 
 ## Affected Files
 
-### Routes Bypassing Services (16 files)
-
-1. `app/api/v1/academic-year/[id]/route.ts`
-2. `app/api/v1/academic-year/route.ts`
-3. `app/api/v1/addons/route.ts`
-4. `app/api/v1/admin/users/route.ts`
-5. `app/api/v1/admit-cards/bulk/route.ts`
-6. `app/api/v1/certificate/route.ts`
-7. `app/api/v1/chat/route.ts`
-8. `app/api/v1/cron/fee-reminder/route.ts`
-9. `app/api/v1/jobs/[jobId]/route.ts`
-10. `app/api/v1/leave/arrange/route.ts`
-11. `app/api/v1/leave/route.ts`
-12. `app/api/v1/ledger/route.ts`
-13. `app/api/v1/reports/generate/route.tsx`
-14. `app/api/v1/settings/general/route.ts`
-15. `app/api/v1/syllabus/[id]/route.ts`
-16. `app/api/v1/syllabus/route.ts`
-
-### Services Using adminDb (2 files)
-
-1. `services/tenant.resolver.ts`
-2. `services/configuration-health.service.ts`
-
-### Repositories to Update (2 files)
-
-1. `repositories/tenant.repository.ts` — add methods for tenant.resolver.ts
-2. `repositories/configuration.repository.ts` — add methods for configuration-health.service.ts
-
-### Potential New Services (if needed)
-
-- `services/academic-year.service.ts` (if not exists)
-- `services/addons.service.ts` (if not exists)
-- `services/admit-card.service.ts` (if not exists)
-- `services/certificate.service.ts` (if not exists)
-- `services/chat.service.ts` (if not exists)
-- `services/job.service.ts` (already exists)
-- `services/leave.service.ts` (if not exists)
-- `services/ledger.service.ts` (if not exists)
-- `services/report.service.ts` (already exists)
-- `services/settings.service.ts` (if not exists)
-- `services/syllabus.service.ts` (if not exists)
+| File | Action |
+|------|--------|
+| `services/index.ts` | Add 47 missing exports |
+| `repositories/index.ts` | Replace object-literal with standard barrel |
+| `types/index.ts` | Add 33 missing exports |
+| `entities/index.ts` | Create new file with 5 exports |
+| `ARCHITECTURE_EXCEPTIONS.md` | Create new file documenting 15 exception routes |
 
 ---
 
@@ -100,59 +61,63 @@
 
 | Risk | Probability | Impact | Mitigation |
 |------|-------------|--------|------------|
-| Breaking existing route behavior | MEDIUM | HIGH | Review each route's logic before wrapping in service |
-| Missing service for niche operations | LOW | MEDIUM | Some routes may legitimately bypass (cron, AI) — document exceptions |
-| Repository method gaps | MEDIUM | MEDIUM | Verify repository methods before moving adminDb calls |
-| Test failures | MEDIUM | LOW | Existing tests should not be affected |
+| Circular dependency introduction | LOW | MEDIUM | Verify import graph after barrel changes |
+| Breaking existing imports | LOW | LOW | Barrel exports are additive |
+| Incomplete export coverage | LOW | LOW | Automated verification script |
 
 ---
 
 ## Verification Strategy
 
-1. **Before implementation:** Document current behavior of each bypass route
-2. **During implementation:** Verify each route imports a service after changes
+1. **Before implementation:** Audit all files in each directory
+2. **During implementation:** Verify each barrel file exports all public APIs
 3. **After implementation:**
    - `npm run lint` passes
    - `npm run type-check` passes
    - `npm run build` passes
-   - `npm test` passes (no regressions)
-   - `grep -r "adminDb" services/` returns 0 results
-   - `grep -r "from \"@/repositories\"" app/api/v1/` filtered to routes without `from "@/services"` returns 0 results
+   - No circular dependencies in import graph
 
 ---
 
 ## Definition of Done
 
-- [ ] Zero routes import repositories without also importing services
-- [ ] Zero services import adminDb directly
+- [ ] `services/index.ts` exports 100% of service files
+- [ ] `repositories/index.ts` exports 100% of repository files
+- [ ] `types/index.ts` exports 100% of type files
+- [ ] `entities/index.ts` exports 100% of entity files
+- [ ] 15 exception routes documented
 - [ ] All verification commands pass
-- [ ] No test regressions
-- [ ] Architecture score improved from 68/100 to ≥75/100
 
 ---
 
 ## Dependencies
 
+- Sprint 6: Service Layer Enforcement (COMPLETED)
 - Sprint 5: Validation Consolidation (COMPLETED)
-- Sprint 0-4: Build Stabilization & Architecture Remediation (COMPLETED)
 
 ---
 
 ## Estimated Effort
 
-- Route bypass fixes: 3 days
-- adminDb migration: 1 day
-- Testing and verification: 1 day
+- services/index.ts: 2 days
+- repositories/index.ts: 1 day
+- types/index.ts: 1 day
+- entities/index.ts: 0.5 days
+- Exception documentation: 0.5 days
 - **Total:** 5 days
 
 ---
 
 ## Notes
 
-Some routes may legitimately bypass the service layer:
-- **Cron jobs** (`cron/fee-reminder`) — may use repositories directly for batch operations
-- **AI agents** (`ai/agents`, `ai/chatbot`) — use `lib/ai/agents/AgentRegistry`
-- **Auth utilities** (`auth/logout`, `auth/me`) — use `route-helpers`
-- **Stripe webhooks** (`stripe/create-checkout`) — use `lib/stripe`
+Barrel exports improve developer experience by allowing imports like:
+```ts
+import { StudentService } from "@/services";
+import { StudentRepository } from "@/repositories";
+```
 
-These should be documented as architectural exceptions, not violations.
+Instead of:
+```ts
+import { StudentService } from "@/services/StudentService";
+import { StudentRepository } from "@/repositories/student.repository";
+```

@@ -1,38 +1,37 @@
 # Architecture Score Report
 
 **Generated:** 2026-07-28
-**Sprint:** 5 — Validation Consolidation
+**Sprint:** 6 — Service Layer Enforcement
 
 ---
 
-## Overall Score: 68/100
+## Overall Score: 78/100
 
 | Category | Score | Trend |
 |----------|-------|-------|
-| Layer Separation | 75/100 | STABLE |
+| Layer Separation | 95/100 | IMPROVED |
 | Interface Coverage | 90/100 | STABLE |
-| Entity/Document/DTO/Mapper | 30/100 | IMPROVED |
-| Dependency Direction | 70/100 | STABLE |
-| Dead Code | 95/100 | IMPROVED |
-| Duplication | 95/100 | IMPROVED |
+| Entity/Document/DTO/Mapper | 30/100 | STABLE |
+| Dependency Direction | 95/100 | IMPROVED |
+| Dead Code | 95/100 | STABLE |
+| Duplication | 95/100 | STABLE |
 | Barrel Exports | 35/100 | STABLE |
-| Consistency | 70/100 | IMPROVED |
+| Consistency | 75/100 | IMPROVED |
 | Build Health | 100/100 | STABLE |
 | Test Health | 50/100 | STABLE |
 
 ---
 
-## Layer Separation (75/100)
+## Layer Separation (95/100)
 
 **Strengths:**
+- Zero routes bypass services
 - Zero routes import Firestore directly
-- 67 routes use services correctly
-- 101 routes have auth middleware
+- Zero services import adminDb directly
+- 101 routes use services correctly
 
 **Weaknesses:**
-- 16 routes bypass services by importing repositories directly
-- 15 routes import neither services nor repositories
-- 2 services call adminDb directly
+- 15 routes import neither services nor repositories (legitimate exceptions)
 
 ---
 
@@ -44,7 +43,7 @@
 - 81 interface files with complete barrel export
 
 **Weaknesses:**
-- 2 services lack interfaces: `job.service.ts`, `upload.service.ts`
+- 2 services lack interfaces: `upload.service.ts`
 - 5 repositories lack interfaces: `auth.repository.ts`, `storage.repository.ts`, `tenant-setup.repository.ts`, `base.repository.ts`, `index.ts`
 
 ---
@@ -54,7 +53,7 @@
 **Strengths:**
 - 15 DTO files with complete barrel export
 - 5 entity files
-- Validation consolidation complete (single source of truth)
+- Validation consolidation complete
 
 **Weaknesses:**
 - No entity barrel export
@@ -63,16 +62,15 @@
 
 ---
 
-## Dependency Direction (70/100)
+## Dependency Direction (95/100)
 
 **Strengths:**
 - All repositories use Firestore Admin SDK
-- Services depend on repositories, not Firestore directly (except 2)
-- Routes depend on services (except 16)
+- Services depend on repositories, not Firestore directly
+- Routes depend on services exclusively
 
 **Weaknesses:**
-- 16 routes import repositories without services
-- 2 services import adminDb without repositories
+- Minimal dependency violations remaining
 
 ---
 
@@ -108,7 +106,7 @@
 - dto/index.ts: 100% coverage
 
 **Weaknesses:**
-- services/index.ts: 15% coverage (6/40)
+- services/index.ts: 15% coverage (6/53)
 - repositories/index.ts: 27.9% coverage (12/43)
 - types/index.ts: 5.7% coverage (2/35)
 - entities/index.ts: 0% (does not exist)
@@ -116,15 +114,16 @@
 
 ---
 
-## Consistency (70/100)
+## Consistency (75/100)
 
 **Strengths:**
-- Validation schemas now have single source of truth
+- Validation schemas have single source of truth
 - DTO naming convention standardized
 - Interface naming convention standardized
+- Service layer enforcement complete
 
 **Weaknesses:**
-- Mixed barrel export patterns (standard vs object-literal)
+- Mixed barrel export patterns
 - Inconsistent directory structures
 
 ---
@@ -144,7 +143,7 @@
 **Strengths:**
 - 46/64 test suites pass (72%)
 - 620/680 tests pass (91%)
-- Zero regressions in Sprint 5
+- Zero regressions in Sprint 6
 
 **Weaknesses:**
 - 18 test suites fail with pre-existing mock infrastructure errors
@@ -161,3 +160,4 @@
 | 2026-07-27 (Baseline) | 38/100 | 8/100 |
 | 2026-07-28 (Sprint 0-4) | 62/100 | 72/100 |
 | 2026-07-28 (Sprint 5) | 68/100 | 75/100 |
+| 2026-07-28 (Sprint 6) | 78/100 | 78/100 |

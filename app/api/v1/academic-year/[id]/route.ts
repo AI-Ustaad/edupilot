@@ -2,7 +2,7 @@ export const dynamic = 'force-dynamic';
 
 import { withAuth, withTenant, withErrorHandler } from "@/route-helpers";
 import { createSuccessResponse, createErrorResponse } from "@/lib/api/response";
-import { AcademicYearRepository } from "@/repositories/academic-year.repository";
+import { AcademicYearService } from "@/services/academic-year.service";
 
 export const GET = withAuth(
   withTenant(
@@ -14,8 +14,8 @@ export const GET = withAuth(
         return createErrorResponse(400, "Academic year ID is missing");
       }
 
-      const repo = new AcademicYearRepository();
-      const doc = await repo.findById(id, tenantId);
+      const service = new AcademicYearService();
+      const doc = await service.findById(id, tenantId);
 
       if (!doc) {
         return createErrorResponse(404, "Academic year not found");

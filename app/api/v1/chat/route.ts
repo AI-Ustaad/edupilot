@@ -1,12 +1,10 @@
 export const dynamic = 'force-dynamic';
-
-import { withErrorHandler, withAuth, withTenant } from "@/route-helpers";
+import { withAuth, withTenant, withErrorHandler } from "@/route-helpers";
 import { withPermission } from "@/lib/auth/rbac";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 import { createSuccessResponse, createErrorResponse, createApiResponse } from "@/lib/api/response";
-import { ChatRepository } from "@/repositories/chat.repository";
-
-const chatRepo = new ChatRepository();
+import { ChatService } from "@/services/chat.service";
+import type { TenantContext } from "@/types/api";
 
 export const GET = withErrorHandler(
   withAuth(
@@ -17,7 +15,8 @@ export const GET = withErrorHandler(
         const teacherId = searchParams.get("teacherId");
         const parentId = searchParams.get("parentId");
 
-        const messages = await chatRepo.findByTenant(tenantId, teacherId || undefined, parentId || undefined);
+        const service = new ChatService();
+        const messages = await service.findByTenant(tenantId, teacherId || undefined, parentId || undefined);
         
         return createSuccessResponse(messages);
       })
@@ -28,15 +27,15 @@ export const GET = withErrorHandler(
 export const POST = withErrorHandler(
   withAuth(
     withTenant(
-      withPermission(PERMISSIONS.chat.send)(async (req: Request, context: any) => {
-        const { tenantId, user } = context;
+      withPermission(PERMISSIONS.chat.send)(async (req: Request, { tenantId, user }: TenantContext) => {
         const { teacherId, parentId, text } = await req.json();
         
         if (!teacherId || !parentId || !text || !text.trim()) {
           return createErrorResponse(400, "Missing fields");
         }
         
-        const id = await chatRepo.createMessage({
+        const service = new ChatService();
+        const id = await service.createMessage({
           teacherId,
           parentId,
           text: text.trim(),

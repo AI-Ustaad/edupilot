@@ -13,4 +13,5 @@ export interface ITenantRepository {
   paginate(...args: any[]): Promise<any>;
   softDelete(...args: any[]): Promise<any>;
   update(...args: any[]): Promise<any>;
+  verifyTenantExists(tenantId: string): Promise<boolean>;
 }

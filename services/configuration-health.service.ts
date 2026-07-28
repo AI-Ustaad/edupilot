@@ -1,10 +1,14 @@
-import { adminDb } from "@/lib/firebase-admin";
+import { ConfigurationRepository } from "@/repositories/configuration.repository";
+import { TenantRepository } from "@/repositories/tenant.repository";
 import { logger } from "@/lib/logger/logger";
 import { ConfigurationInvalidError } from "@/lib/errors/configuration.errors";
 import type { ConfigurationHealthResult } from "@/types/configuration/status";
 import type { IConfigurationHealthService } from "@/interfaces/IConfigurationHealthService";
 
 export class ConfigurationHealthService implements IConfigurationHealthService {
+  private configRepo = new ConfigurationRepository();
+  private tenantRepo = new TenantRepository();
+
   async checkHealth(tenantId: string): Promise<ConfigurationHealthResult> {
     const diagnostics = {
       configExists: false,
@@ -18,27 +22,20 @@ export class ConfigurationHealthService implements IConfigurationHealthService {
     };
 
     try {
-      const tenantDoc = await adminDb.collection("tenants").doc(tenantId).get();
-      diagnostics.tenantValid = tenantDoc.exists;
+      diagnostics.tenantValid = await this.tenantRepo.verifyTenantExists(tenantId);
 
       if (!diagnostics.tenantValid) {
         return this.buildResult(false, diagnostics, "INVALID");
       }
 
-      const configRef = adminDb.collection("tenants").doc(tenantId).collection("settings").doc("config");
-      const configDoc = await configRef.get();
+      const config = await this.configRepo.getConfiguration(tenantId);
+      diagnostics.configExists = !!config;
 
-      diagnostics.configExists = configDoc.exists;
-
-      if (!configDoc.exists) {
+      if (!config) {
         return this.buildResult(false, diagnostics, "NOT_CONFIGURED");
       }
 
-      const data = configDoc.data();
-
-      if (!data) {
-        return this.buildResult(false, diagnostics, "NOT_CONFIGURED");
-      }
+      const data = config as any;
 
       diagnostics.metadataExists = this.hasMetadata(data);
       diagnostics.schoolProfileExists = this.hasSchoolProfile(data);

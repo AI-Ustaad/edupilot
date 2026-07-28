@@ -1,7 +1,7 @@
 # Technical Debt Register
 
 **Generated:** 2026-07-28
-**Sprint:** 5 — Validation Consolidation
+**Sprint:** 6 — Service Layer Enforcement
 
 ---
 
@@ -9,11 +9,11 @@
 
 | Category | Items | Total Effort |
 |----------|-------|--------------|
-| P0 — Critical | 3 | 8 days |
-| P1 — High | 4 | 12 days |
+| P0 — Critical | 0 | 0 days |
+| P1 — High | 4 | 13 days |
 | P2 — Medium | 3 | 8 days |
 | P3 — Low | 2 | 6 days |
-| **Total** | **12** | **34 days** |
+| **Total** | **9** | **27 days** |
 
 ---
 
@@ -21,9 +21,7 @@
 
 | # | Item | Impact | Effort | Sprint |
 |---|------|--------|--------|--------|
-| 1 | 16 routes bypass service layer | HIGH | 5 days | Sprint 6 |
-| 2 | 2 services call adminDb directly | HIGH | 1 day | Sprint 6 |
-| 3 | 15 routes import neither services nor repositories | MEDIUM | 3 days | Sprint 6 |
+| — | No critical debt remaining | — | — | — |
 
 ---
 
@@ -31,10 +29,10 @@
 
 | # | Item | Impact | Effort | Sprint |
 |---|------|--------|--------|--------|
-| 4 | Barrel exports incomplete (services 15%) | HIGH | 2 days | Sprint 7 |
-| 5 | Barrel exports incomplete (repositories 27.9%) | HIGH | 2 days | Sprint 7 |
-| 6 | Barrel exports incomplete (types 5.7%) | HIGH | 1 day | Sprint 7 |
-| 7 | 5 repositories lack interfaces | MEDIUM | 2 days | Sprint 8 |
+| 1 | Barrel exports incomplete (services 15%) | HIGH | 3 days | Sprint 7 |
+| 2 | Barrel exports incomplete (repositories 27.9%) | HIGH | 2 days | Sprint 7 |
+| 3 | Barrel exports incomplete (types 5.7%) | HIGH | 1 day | Sprint 7 |
+| 4 | 15 exception routes need service layer | MEDIUM | 7 days | Sprint 7 |
 
 ---
 
@@ -42,9 +40,9 @@
 
 | # | Item | Impact | Effort | Sprint |
 |---|------|--------|--------|--------|
-| 8 | 2 services lack interfaces | MEDIUM | 1 day | Sprint 8 |
-| 9 | 16 repositories don't extend BaseRepository | MEDIUM | 3 days | Sprint 8 |
-| 10 | 18 pre-existing test suite failures | LOW | 5 days | Sprint 10 |
+| 5 | 5 repositories lack interfaces | MEDIUM | 2 days | Sprint 8 |
+| 6 | 2 services lack interfaces | MEDIUM | 1 day | Sprint 8 |
+| 7 | 16 repositories don't extend BaseRepository | MEDIUM | 3 days | Sprint 8 |
 
 ---
 
@@ -52,8 +50,8 @@
 
 | # | Item | Impact | Effort | Sprint |
 |---|------|--------|--------|--------|
-| 11 | No entity barrel export | LOW | 1 day | Sprint 9 |
-| 12 | No automated architecture tests | MEDIUM | 4 days | Sprint 11 |
+| 8 | 18 pre-existing test suite failures | LOW | 5 days | Sprint 10 |
+| 9 | No automated architecture tests | MEDIUM | 4 days | Sprint 11 |
 
 ---
 
@@ -66,6 +64,7 @@
 | Sprint 0 | Missing type-check script | 0.5 days |
 | Sprint 1-4 | Interface coverage (7→38 services, 27→38 repos) | 10 days |
 | Sprint 5 | Split-brain validation (5 duplicate schemas) | 2 days |
+| Sprint 6 | Service layer enforcement (16 bypass routes, 2 adminDb services) | 8 days |
 
 ---
 
@@ -76,14 +75,15 @@
 | 2026-07-26 | 15 | 45 days |
 | 2026-07-27 | 12 | 38 days |
 | 2026-07-28 (Sprint 5) | 12 | 34 days |
+| 2026-07-28 (Sprint 6) | 9 | 27 days |
 
-**Net reduction:** 3 items, 11 days effort
+**Net reduction:** 3 items, 7 days effort
 
 ---
 
 ## Recommendations
 
-1. **Prioritize Sprint 6** — Service layer enforcement is the highest remaining architectural risk
-2. **Batch barrel exports** — Complete all barrel exports in Sprint 7 to improve import consistency
+1. **Prioritize Sprint 7** — Barrel exports improve developer experience and import consistency
+2. **Document exceptions** — The 15 routes that bypass services should be explicitly documented
 3. **Address test failures** — Pre-existing test failures should be fixed before adding new tests
 4. **Automate architecture checks** — Prevent future debt accumulation with CI gates
