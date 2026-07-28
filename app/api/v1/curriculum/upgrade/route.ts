@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { withAuth, withTenant, withErrorHandler } from "@/route-helpers";
 import { versionEngine } from "@/education/engines/version.engine";
 import { ConfigurationRepository } from "@/repositories/configuration.repository";
+import { configurationService } from "@/services/configuration.service";
 import { createSuccessResponse, createErrorResponse } from "@/lib/api/response";
 import type { TenantContext } from "@/types/api";
 
@@ -11,14 +12,19 @@ import type { TenantContext } from "@/types/api";
 export const GET = withErrorHandler(
   withAuth(
     withTenant(async (_req: Request, { tenantId }: TenantContext) => {
-      const repo = new ConfigurationRepository();
-      const currentConfig = await repo.getActiveConfiguration(tenantId);
+      const currentConfig = await configurationService.getConfigurationViewModel(tenantId);
       
       if (!currentConfig) {
         return createErrorResponse(404, "Configuration not found");
       }
 
-      const upgradeStatus = await versionEngine.checkForUpgrades(currentConfig);
+      const repo = new ConfigurationRepository();
+      const dbConfig = await repo.getConfiguration(tenantId);
+      if (!dbConfig) {
+        return createErrorResponse(404, "Configuration not found");
+      }
+
+      const upgradeStatus = await versionEngine.checkForUpgrades(dbConfig);
       return createSuccessResponse(upgradeStatus);
     })
   )
@@ -31,7 +37,7 @@ export const POST = withErrorHandler(
       const { newVersionId } = await req.json();
       
       const repo = new ConfigurationRepository();
-      const currentConfig = await repo.getActiveConfiguration(tenantId);
+      const currentConfig = await repo.getConfiguration(tenantId);
       
       if (!currentConfig) {
         return createErrorResponse(404, "Configuration not found");

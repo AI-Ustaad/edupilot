@@ -57,6 +57,11 @@ export function mapToMasterConfiguration(
     timezone: 'UTC',
     academicYearId: legacy.currentAcademicYearId || null,
     currentSnapshotId: null,
+    isConfigured: legacy.status === 'configured',
+    configuredAt: legacy.completedAt,
+    configuredBy: legacy.completedBy,
+    publishedAt: legacy.completedAt,
+    lastModified: legacy.completedAt || new Date().toISOString(),
   };
 
   // 5. Map Academic Structure (ConfiguredClass -> AcademicClass)

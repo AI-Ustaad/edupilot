@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextResponse } from "next/server";
 import { logger } from "@/lib/logger/logger";
 import { AppError } from "@/errors/AppError";
 
@@ -7,7 +7,6 @@ export function withErrorHandler(handler: Function) {
     try {
       return await handler(req, context);
     } catch (error: any) {
-      // Structured logging with full context
       const requestId = req.headers.get("x-request-id") || "unknown";
       const tenantId = context?.tenantId || context?.user?.tenantId || "unknown";
       const userId = context?.user?.uid || "unknown";
@@ -24,7 +23,6 @@ export function withErrorHandler(handler: Function) {
         },
       });
 
-      // If it's a known AppError, use its status code
       if (error instanceof AppError) {
         return NextResponse.json(
           {
@@ -40,7 +38,6 @@ export function withErrorHandler(handler: Function) {
         );
       }
 
-      // Unknown errors → 500
       return NextResponse.json(
         {
           success: false,

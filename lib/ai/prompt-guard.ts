@@ -1,14 +1,11 @@
 // lib/ai/prompt-guard.ts
+import { configurationService } from "@/services/configuration.service";
 import { buildAiContext } from "./context-builder";
-import { ConfigurationRepository } from "@/repositories/configuration.repository"; // 🚀 FIX: Import Class
-
-const repo = new ConfigurationRepository();
 
 export async function getSystemPrompt(tenantId: string, userRole: string) {
-  // Fetch config from DB
-  const config = await repo.getActiveConfiguration(tenantId);
+  const result = await configurationService.loadConfiguration(tenantId);
+  const config = result.configuration;
   
-  // Build AI Context
   const schoolContext = buildAiContext(config);
   
   return `

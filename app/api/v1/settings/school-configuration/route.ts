@@ -1,13 +1,14 @@
 // app/api/v1/settings/school-configuration/route.ts
 export const dynamic = "force-dynamic";
 
+import { NextResponse } from "next/server";
 import { withAuth, withTenant, withErrorHandler } from "@/route-helpers";
-import { configurationService } from "@/services/configuration.service"; 
+import { configurationService } from "@/services/configuration.service";
+import { configurationCacheService } from "@/services/configuration-cache.service";
 import { createSuccessResponse, createErrorResponse } from "@/lib/api/response";
 import type { TenantContext } from "@/types/api";
 import { z } from "zod";
 
-// 🚀 NEW: Zod Schema for the new Smart Wizard Payload
 const SmartConfigSchema = z.object({
   schoolProfile: z.object({
     name: z.string().min(2, "School name is required"),
@@ -29,33 +30,63 @@ const SmartConfigSchema = z.object({
 
 export const GET = withErrorHandler(
   withAuth(
-    withTenant(async (_req: Request, { tenantId }: TenantContext) => {
+    withTenant(async (_req: Request, context: TenantContext) => {
+      const { tenantId } = context;
+
+      const loadResult = await configurationService.loadConfiguration(tenantId);
+
+      if (loadResult.status === "NOT_CONFIGURED") {
+        return NextResponse.json({
+          success: true,
+          data: {
+            configuration: null,
+            history: [],
+            status: loadResult.status,
+            nextAction: loadResult.nextAction,
+          },
+        });
+      }
+
       const configuration = await configurationService.getConfigurationViewModel(tenantId);
       const history = await configurationService.getConfigurationHistoryViewModel(tenantId);
       
-      return createSuccessResponse({ configuration, history });
+      await configurationCacheService.setConfiguration(tenantId, configuration, 300);
+
+      return createSuccessResponse({ configuration, history, status: loadResult.status });
     })
   )
 );
 
 export const POST = withErrorHandler(
   withAuth(
-    async (req: Request, context: any) => {
-      const user = context.user;
-      const tenantId = user.tenantId || `tenant_${user.uid}`;
-      
+    withTenant(async (req: Request, context: TenantContext) => {
+      const { tenantId, user } = context;
+
+      if (!user) {
+        return createErrorResponse(401, "Unauthorized");
+      }
+
       const body = await req.json();
       
-      // Validate with new schema
       const parsed = SmartConfigSchema.safeParse(body);
       if (!parsed.success) {
         return createErrorResponse(400, "Invalid configuration payload", parsed.error.errors);
       }
 
-      // Save via Service
-      await configurationService.saveAndPublishConfiguration(parsed.data, tenantId, user.uid);
+      try {
+        const result = await configurationService.saveAndPublishConfiguration(parsed.data, tenantId, user.uid);
 
-      return createSuccessResponse({ success: true }, { message: "Configuration Published Successfully" });
-    }
+        return createSuccessResponse({
+          success: true,
+          configuration: result,
+          status: "CONFIGURED",
+        }, { message: "Configuration Published Successfully" });
+      } catch (error) {
+        return NextResponse.json({
+          success: false,
+          error: error instanceof Error ? error.message : "Failed to save configuration",
+        }, { status: 400 });
+      }
+    })
   )
 );

@@ -12,7 +12,7 @@ export interface ConfigurationVersion {
   reason: string;
   comment?: string;
   rollbackTo?: string;
-  checksum: string; // For data integrity checks
+  checksum: string;
 }
 
 export interface ConfigurationMetadata {
@@ -24,4 +24,85 @@ export interface ConfigurationMetadata {
   timezone: string;
   academicYearId: string | null;
   currentSnapshotId: string | null;
+  isConfigured: boolean;
+  configuredAt?: string;
+  configuredBy?: string;
+  publishedAt?: string;
+  lastModified: string;
+}
+
+export interface MasterSchoolConfiguration {
+  id: string;
+  tenantId: string;
+  state: ConfigurationState;
+  metadata: ConfigurationMetadata;
+  version: ConfigurationVersion;
+  school: {
+    name: string;
+    type: "Private" | "Government" | "Madrissa";
+    curriculumId: string;
+    boardName: string;
+    country: string;
+    logoUrl?: string;
+  };
+  academic: {
+    levels: string[];
+    classes: Array<{
+      id: string;
+      name: string;
+      level: string;
+      subjects: string[];
+    }>;
+    sectionNames: string[];
+    subjects: string[];
+    requiredLabs: string[];
+    requiredTeachers: Record<string, number>;
+  };
+  features: {
+    ai: {
+      enabled: boolean;
+      version: string;
+      permissions: string[];
+      beta: boolean;
+      providers: string[];
+      activeProvider: string;
+      quota: number;
+    };
+    library: {
+      enabled: boolean;
+      version: string;
+      permissions: string[];
+      beta: boolean;
+    };
+    transport: {
+      enabled: boolean;
+      version: string;
+      permissions: string[];
+      beta: boolean;
+    };
+    fees: {
+      enabled: boolean;
+      version: string;
+      permissions: string[];
+      beta: boolean;
+    };
+    attendance: {
+      enabled: boolean;
+      version: string;
+      permissions: string[];
+      beta: boolean;
+    };
+    exams: {
+      enabled: boolean;
+      version: string;
+      permissions: string[];
+      beta: boolean;
+    };
+  };
+}
+
+export interface ConfigurationServiceResult<T> {
+  success: boolean;
+  data: T | null;
+  error: string | null;
 }

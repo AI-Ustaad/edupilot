@@ -22,9 +22,7 @@ export function withAuth(handler: Function) {
         );
       }
 
-      // ✅ Inject authenticated user
       context.user = user;
-
       return handler(req, context);
     } catch (error) {
       logger.error(
