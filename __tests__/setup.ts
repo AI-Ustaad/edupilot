@@ -1,4 +1,3 @@
-// __tests__/setup.ts
 import {
   createMockAdminDb,
   createMockFirestore,
@@ -19,7 +18,12 @@ import {
 
 jest.mock('@/lib/firebase-admin', () => ({
   adminDb: createMockAdminDb(),
-  adminAuth: {},
+  adminAuth: {
+    createUser: jest.fn(),
+    setCustomUserClaims: jest.fn(),
+    verifySessionCookie: jest.fn(),
+    verifyIdToken: jest.fn(),
+  },
   adminStorage: {},
   dbTimestamp: new Date().toISOString(),
 }));

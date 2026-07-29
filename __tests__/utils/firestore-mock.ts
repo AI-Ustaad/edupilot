@@ -3,15 +3,18 @@ import { jest } from "@jest/globals";
 
 export type MockDocData = Record<string, any>;
 
+const pathCache = new Map<string, any>();
+
 export interface MockDocRef {
   id: string;
-  data: () => MockDocData | undefined;
+  data: jest.Mock;
   exists: boolean;
   get: jest.Mock;
   set: jest.Mock;
   update: jest.Mock;
   delete: jest.Mock;
   ref: { id: string };
+  collection: jest.Mock;
 }
 
 export interface MockQuery {
@@ -54,32 +57,33 @@ export interface MockAdminDb extends MockFirestore {
 function createMockDocRef(id: string, data: MockDocData | undefined, exists: boolean = true): MockDocRef {
   return {
     id,
-    data: jest.fn().mockReturnValue(data),
+    data: jest.fn<any>().mockReturnValue(data),
     exists,
-    get: jest.fn().mockResolvedValue({ id, data: () => data, exists }),
-    set: jest.fn().mockResolvedValue(undefined),
-    update: jest.fn().mockResolvedValue(undefined),
-    delete: jest.fn().mockResolvedValue(undefined),
+    get: jest.fn<any>().mockResolvedValue({ id, data: () => data, exists }),
+    set: jest.fn<any>().mockResolvedValue(undefined),
+    update: jest.fn<any>().mockResolvedValue(undefined),
+    delete: jest.fn<any>().mockResolvedValue(undefined),
     ref: { id },
+    collection: jest.fn(),
   };
 }
 
 function createMockQuery(docs: MockDocRef[]): MockQuery {
-  const mockGet = jest.fn().mockResolvedValue({
+  const mockGet = jest.fn<any>().mockResolvedValue({
     docs: docs.map(d => ({ id: d.id, data: () => d.data(), ref: d.ref })),
     size: docs.length,
     empty: docs.length === 0,
   });
 
   return {
-    where: jest.fn().mockReturnThis(),
-    orderBy: jest.fn().mockReturnThis(),
-    limit: jest.fn().mockReturnThis(),
-    startAfter: jest.fn().mockReturnThis(),
-    count: jest.fn().mockReturnValue({
-      get: jest.fn().mockResolvedValue({ data: () => ({ count: docs.length }) }),
+    where: jest.fn<any>().mockReturnThis(),
+    orderBy: jest.fn<any>().mockReturnThis(),
+    limit: jest.fn<any>().mockReturnThis(),
+    startAfter: jest.fn<any>().mockReturnThis(),
+    count: jest.fn<any>().mockReturnValue({
+      get: jest.fn<any>().mockResolvedValue({ data: () => ({ count: docs.length }) }),
     }),
-    select: jest.fn().mockReturnThis(),
+    select: jest.fn<any>().mockReturnThis(),
     get: mockGet,
   };
 }
@@ -88,35 +92,47 @@ function createMockCollection(docs: MockDocRef[] = [], collectionName: string = 
   const mockQuery = createMockQuery(docs);
   
   return {
-    doc: jest.fn((id?: string) => {
-      if (id) {
-        const doc = docs.find(d => d.id === id) || createMockDocRef(id, undefined, false);
-        return doc;
+    doc: jest.fn<any>((id?: string) => {
+      if (!id) id = "mock-doc-id";
+      const fullPath = collectionName + "/" + id;
+      if (pathCache.has(fullPath)) {
+        return pathCache.get(fullPath);
       }
-      return createMockDocRef("mock-doc-id", undefined, false);
+      const docRef = createMockDocRef(id, undefined, false);
+      docRef.collection = jest.fn<any>((subCollectionName: string) => {
+        const subPath = fullPath + "/" + subCollectionName;
+        if (pathCache.has(subPath)) {
+          return pathCache.get(subPath);
+        }
+        const subCollection = createMockCollection([], subCollectionName);
+        pathCache.set(subPath, subCollection);
+        return subCollection;
+      });
+      pathCache.set(fullPath, docRef);
+      return docRef;
     }),
-    add: jest.fn().mockResolvedValue({ id: "added-id" }),
-    get: jest.fn().mockResolvedValue({
+    add: jest.fn<any>().mockResolvedValue({ id: "added-id" }),
+    get: jest.fn<any>().mockResolvedValue({
       docs: docs.map(d => ({ id: d.id, data: () => d.data(), ref: d.ref })),
       size: docs.length,
       empty: docs.length === 0,
     }),
-    where: jest.fn().mockReturnValue(mockQuery),
-    orderBy: jest.fn().mockReturnValue(mockQuery),
-    limit: jest.fn().mockReturnValue(mockQuery),
-    startAfter: jest.fn().mockReturnValue(mockQuery),
-    count: jest.fn().mockReturnValue({
-      get: jest.fn().mockResolvedValue({ data: () => ({ count: docs.length }) }),
+    where: jest.fn<any>().mockReturnValue(mockQuery),
+    orderBy: jest.fn<any>().mockReturnValue(mockQuery),
+    limit: jest.fn<any>().mockReturnValue(mockQuery),
+    startAfter: jest.fn<any>().mockReturnValue(mockQuery),
+    count: jest.fn<any>().mockReturnValue({
+      get: jest.fn<any>().mockResolvedValue({ data: () => ({ count: docs.length }) }),
     }),
-    select: jest.fn().mockReturnValue(mockQuery),
-    batch: jest.fn().mockReturnValue({
+    select: jest.fn<any>().mockReturnValue(mockQuery),
+    batch: jest.fn<any>().mockReturnValue({
       set: jest.fn(),
       update: jest.fn(),
       delete: jest.fn(),
-      commit: jest.fn().mockResolvedValue(undefined),
+      commit: jest.fn<any>().mockResolvedValue(undefined),
     }),
-    runTransaction: jest.fn((fn) => fn({
-      get: jest.fn().mockResolvedValue({ exists: true, data: () => ({}) }),
+    runTransaction: jest.fn<any>((fn: any) => fn({
+      get: jest.fn<any>().mockResolvedValue({ exists: true, data: () => ({}) }),
       set: jest.fn(),
       update: jest.fn(),
       delete: jest.fn(),
@@ -133,20 +149,20 @@ export function createMockFirestore(collections: Record<string, MockDocRef[]> = 
   }
 
   return {
-    collection: jest.fn((name: string) => {
+    collection: jest.fn<any>((name: string) => {
       if (!collectionMocks[name]) {
         collectionMocks[name] = createMockCollection([], name);
       }
       return collectionMocks[name];
     }),
-    batch: jest.fn().mockReturnValue({
+    batch: jest.fn<any>().mockReturnValue({
       set: jest.fn(),
       update: jest.fn(),
       delete: jest.fn(),
-      commit: jest.fn().mockResolvedValue(undefined),
+      commit: jest.fn<any>().mockResolvedValue(undefined),
     }),
-    runTransaction: jest.fn((fn) => fn({
-      get: jest.fn().mockResolvedValue({ exists: true, data: () => ({}) }),
+    runTransaction: jest.fn<any>((fn: any) => fn({
+      get: jest.fn<any>().mockResolvedValue({ exists: true, data: () => ({}) }),
       set: jest.fn(),
       update: jest.fn(),
       delete: jest.fn(),
