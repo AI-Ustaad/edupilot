@@ -13,37 +13,64 @@ jest.mock('@/lib/firebase-admin', () => {
       get: jest.fn().mockResolvedValue(mockCountSnap),
     }),
   };
-  const makeDoc = () => ({
-    get: jest.fn(),
-    set: jest.fn().mockResolvedValue(undefined),
-    update: jest.fn().mockResolvedValue(undefined),
-    delete: jest.fn().mockResolvedValue(undefined),
-    id: 'mock-doc-id',
-    collection: jest.fn(() => makeCollection()),
-  });
-  const makeCollection = () => ({
-    add: jest.fn().mockResolvedValue({ id: 'added-id' }),
-    doc: jest.fn().mockReturnValue(makeDoc()),
-    where: jest.fn().mockReturnValue(mockQuery),
-    get: jest.fn().mockResolvedValue({ docs: [] }),
-  });
-  const mockDocRef = makeDoc();
-  const mockCollection = makeCollection();
+
+  // Stable memoized mocks
+  const collectionCache = new Map();
+  const docCache = new Map();
+
+  const makeDoc = (fullPath: string) => {
+    if (docCache.has(fullPath)) {
+      return docCache.get(fullPath);
+    }
+
+    const doc = {
+      get: jest.fn().mockResolvedValue({ exists: false, data: () => undefined }),
+      set: jest.fn().mockResolvedValue(undefined),
+      update: jest.fn().mockResolvedValue(undefined),
+      delete: jest.fn().mockResolvedValue(undefined),
+      id: fullPath.split('/').pop() || 'mock-doc-id',
+      collection: jest.fn((subCollectionName: string) => {
+        return makeCollection(fullPath + '/' + subCollectionName);
+      }),
+    };
+
+    docCache.set(fullPath, doc);
+    return doc;
+  };
+
+  const makeCollection = (path: string) => {
+    if (collectionCache.has(path)) {
+      return collectionCache.get(path);
+    }
+
+    const collection = {
+      add: jest.fn().mockResolvedValue({ id: 'added-id' }),
+      doc: jest.fn((docId?: string) => {
+        const id = docId || 'mock-doc-id';
+        return makeDoc(path + '/' + id);
+      }),
+      where: jest.fn().mockReturnValue(mockQuery),
+      get: jest.fn().mockResolvedValue({ docs: [] }),
+    };
+
+    collectionCache.set(path, collection);
+    return collection;
+  };
+
   const mockBatch = {
     delete: jest.fn(),
     set: jest.fn(),
     update: jest.fn(),
     commit: jest.fn().mockResolvedValue(undefined),
   };
+
   return {
     adminDb: {
-      collection: jest.fn(() => makeCollection()),
+      collection: jest.fn((name: string) => makeCollection(name)),
       batch: jest.fn().mockReturnValue(mockBatch),
     },
     dbTimestamp: new Date().toISOString(),
-    mockDocRef,
     mockQuery,
-    mockCollection,
     mockBatch,
   };
 });
@@ -76,7 +103,9 @@ describe('JobRepository', () => {
     expect(targetCollection.add).toHaveBeenCalledWith(
       expect.objectContaining({
         type: 'import',
-        tenantId,
+        createdBy: 'user-1',
+        createdAt: expect.any(String),
+        updatedAt: expect.any(String),
       })
     );
   });
