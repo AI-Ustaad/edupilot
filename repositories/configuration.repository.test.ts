@@ -1,21 +1,29 @@
 import { ConfigurationRepository } from '@/repositories/configuration.repository';
 
 jest.mock('@/lib/firebase-admin', () => {
-  const mockDocRef = {
-    get: jest.fn(),
-    set: jest.fn().mockResolvedValue(undefined),
-    update: jest.fn().mockResolvedValue(undefined),
-    delete: jest.fn().mockResolvedValue(undefined),
-    id: 'mock-doc-id',
-    collection: jest.fn(),
+  const createMockDocRef = () => {
+    const docRef = {
+      get: jest.fn(),
+      set: jest.fn().mockResolvedValue(undefined),
+      update: jest.fn().mockResolvedValue(undefined),
+      delete: jest.fn().mockResolvedValue(undefined),
+      id: 'mock-doc-id',
+      collection: jest.fn(() => createMockCollection()),
+    };
+    return docRef;
   };
-  const mockCollection = {
-    doc: jest.fn().mockReturnValue(mockDocRef),
+
+  const createMockCollection = () => ({
+    doc: jest.fn(createMockDocRef),
     get: jest.fn(),
     add: jest.fn().mockResolvedValue({ id: 'config-123' }),
     orderBy: jest.fn().mockReturnThis(),
     limit: jest.fn().mockReturnThis(),
-  };
+  });
+
+  const mockCollection = createMockCollection();
+  const mockDocRef = createMockDocRef();
+
   return {
     adminDb: {
       collection: jest.fn().mockReturnValue(mockCollection),
@@ -53,18 +61,22 @@ describe('ConfigurationRepository', () => {
       const { adminDb } = require('@/lib/firebase-admin');
       adminDb.collection.mockReturnValue({
         doc: jest.fn().mockReturnValue({
-          get: jest.fn().mockResolvedValue({
-            exists: true,
-            id: 'config',
-            data: () => ({
-              id: 'config',
-              tenantId,
-              state: 'Published',
-              metadata: { tenantId, configurationVersion: 1, schemaVersion: 2, lastModified: new Date().toISOString() },
-              version: { number: 1, createdBy: 'user1', createdAt: new Date().toISOString(), reason: 'Initial' },
-              school: { name: 'Test School', type: 'Private', curriculumId: 'c1', boardName: 'FBISE', country: 'PK' },
-              academic: { levels: [], classes: [], sectionNames: [], subjects: [], requiredLabs: [], requiredTeachers: {} },
-              features: { ai: { enabled: true }, library: { enabled: true } },
+          collection: jest.fn().mockReturnValue({
+            doc: jest.fn().mockReturnValue({
+              get: jest.fn().mockResolvedValue({
+                exists: true,
+                id: 'config',
+                data: () => ({
+                  id: 'config',
+                  tenantId,
+                  state: 'Published',
+                  metadata: { tenantId, configurationVersion: 1, schemaVersion: 2, lastModified: new Date().toISOString() },
+                  version: { number: 1, createdBy: 'user1', createdAt: new Date().toISOString(), reason: 'Initial' },
+                  school: { name: 'Test School', type: 'Private', curriculumId: 'c1', boardName: 'FBISE', country: 'PK' },
+                  academic: { levels: [], classes: [], sectionNames: [], subjects: [], requiredLabs: [], requiredTeachers: {} },
+                  features: { ai: { enabled: true }, library: { enabled: true } },
+                }),
+              }),
             }),
           }),
         }),
@@ -79,7 +91,11 @@ describe('ConfigurationRepository', () => {
       const { adminDb } = require('@/lib/firebase-admin');
       adminDb.collection.mockReturnValue({
         doc: jest.fn().mockReturnValue({
-          get: jest.fn().mockResolvedValue({ exists: false, data: () => null }),
+          collection: jest.fn().mockReturnValue({
+            doc: jest.fn().mockReturnValue({
+              get: jest.fn().mockResolvedValue({ exists: false, data: () => null }),
+            }),
+          }),
         }),
       });
 
@@ -88,6 +104,18 @@ describe('ConfigurationRepository', () => {
     });
 
     test('should save configuration', async () => {
+      const { adminDb } = require('@/lib/firebase-admin');
+      const mockDocRef = {
+        set: jest.fn().mockResolvedValue(undefined),
+      };
+      adminDb.collection.mockReturnValue({
+        doc: jest.fn().mockReturnValue({
+          collection: jest.fn().mockReturnValue({
+            doc: jest.fn().mockReturnValue(mockDocRef),
+          }),
+        }),
+      });
+
       const mockConfig = {
         id: 'current',
         tenantId,
@@ -100,29 +128,33 @@ describe('ConfigurationRepository', () => {
       };
 
       await repo.saveConfiguration(tenantId, mockConfig as any);
-      const { mockDocRef } = require('@/lib/firebase-admin');
       expect(mockDocRef.set).toHaveBeenCalled();
     });
 
     test('should update configuration', async () => {
       const { adminDb } = require('@/lib/firebase-admin');
+      const mockDocRef = {
+        get: jest.fn().mockResolvedValue({
+          exists: true,
+          id: 'config',
+          data: () => ({
+            id: 'config',
+            tenantId,
+            state: 'Published',
+            metadata: { tenantId, configurationVersion: 1 },
+            version: { number: 1 },
+            school: { name: 'Test' },
+            academic: { levels: [], classes: [], sectionNames: [], subjects: [], requiredLabs: [], requiredTeachers: {} },
+            features: {},
+          }),
+        }),
+        set: jest.fn().mockResolvedValue(undefined),
+      };
       adminDb.collection.mockReturnValue({
         doc: jest.fn().mockReturnValue({
-          get: jest.fn().mockResolvedValue({
-            exists: true,
-            id: 'config',
-            data: () => ({
-              id: 'config',
-              tenantId,
-              state: 'Published',
-              metadata: { tenantId, configurationVersion: 1 },
-              version: { number: 1 },
-              school: { name: 'Test' },
-              academic: { levels: [], classes: [], sectionNames: [], subjects: [], requiredLabs: [], requiredTeachers: {} },
-              features: {},
-            }),
+          collection: jest.fn().mockReturnValue({
+            doc: jest.fn().mockReturnValue(mockDocRef),
           }),
-          set: jest.fn().mockResolvedValue(undefined),
         }),
       });
 
@@ -131,6 +163,34 @@ describe('ConfigurationRepository', () => {
     });
 
     test('should publish configuration', async () => {
+      const { adminDb } = require('@/lib/firebase-admin');
+      const mockConfigDocRef = {
+        set: jest.fn().mockResolvedValue(undefined),
+      };
+      const mockHistoryDocRef = {
+        set: jest.fn().mockResolvedValue(undefined),
+      };
+
+      adminDb.collection.mockReturnValue({
+        doc: jest.fn().mockReturnValue({
+          collection: jest.fn((collectionName: string) => {
+            if (collectionName === 'settings') {
+              return {
+                doc: jest.fn().mockReturnValue({
+                  ...mockConfigDocRef,
+                  collection: jest.fn().mockReturnValue({
+                    doc: jest.fn().mockReturnValue(mockHistoryDocRef),
+                  }),
+                }),
+              };
+            }
+            return {
+              doc: jest.fn().mockReturnValue(mockHistoryDocRef),
+            };
+          }),
+        }),
+      });
+
       const mockConfig = {
         id: 'current',
         tenantId,
@@ -150,15 +210,18 @@ describe('ConfigurationRepository', () => {
 
     test('should delete configuration', async () => {
       const { adminDb } = require('@/lib/firebase-admin');
+      const mockDocRef = {
+        delete: jest.fn().mockResolvedValue(undefined),
+      };
       adminDb.collection.mockReturnValue({
         doc: jest.fn().mockReturnValue({
-          get: jest.fn().mockResolvedValue({ exists: true }),
-          delete: jest.fn().mockResolvedValue(undefined),
+          collection: jest.fn().mockReturnValue({
+            doc: jest.fn().mockReturnValue(mockDocRef),
+          }),
         }),
       });
 
       await repo.deleteConfiguration(tenantId);
-      const { mockDocRef } = require('@/lib/firebase-admin');
       expect(mockDocRef.delete).toHaveBeenCalled();
     });
 
@@ -166,7 +229,11 @@ describe('ConfigurationRepository', () => {
       const { adminDb } = require('@/lib/firebase-admin');
       adminDb.collection.mockReturnValue({
         doc: jest.fn().mockReturnValue({
-          get: jest.fn().mockResolvedValue({ exists: true, data: () => ({}) }),
+          collection: jest.fn().mockReturnValue({
+            doc: jest.fn().mockReturnValue({
+              get: jest.fn().mockResolvedValue({ exists: true, data: () => ({}) }),
+            }),
+          }),
         }),
       });
 
@@ -180,15 +247,33 @@ describe('ConfigurationRepository', () => {
       const { adminDb } = require('@/lib/firebase-admin');
       adminDb.collection.mockReturnValue({
         doc: jest.fn().mockReturnValue({
-          collection: jest.fn().mockReturnValue({
-            orderBy: jest.fn().mockReturnThis(),
-            limit: jest.fn().mockReturnThis(),
-            get: jest.fn().mockResolvedValue({
-              docs: [
-                { id: 'h1', data: () => ({ version: { number: 2 } }) },
-                { id: 'h2', data: () => ({ version: { number: 1 } }) },
-              ],
-            }),
+          collection: jest.fn((collectionName: string) => {
+            if (collectionName === 'settings') {
+              return {
+                doc: jest.fn().mockReturnValue({
+                  collection: jest.fn().mockReturnValue({
+                    orderBy: jest.fn().mockReturnThis(),
+                    limit: jest.fn().mockReturnThis(),
+                    get: jest.fn().mockResolvedValue({
+                      docs: [
+                        { id: 'h1', data: () => ({ version: { number: 2 } }) },
+                        { id: 'h2', data: () => ({ version: { number: 1 } }) },
+                      ],
+                    }),
+                  }),
+                }),
+              };
+            }
+            return {
+              orderBy: jest.fn().mockReturnThis(),
+              limit: jest.fn().mockReturnThis(),
+              get: jest.fn().mockResolvedValue({
+                docs: [
+                  { id: 'h1', data: () => ({ version: { number: 2 } }) },
+                  { id: 'h2', data: () => ({ version: { number: 1 } }) },
+                ],
+              }),
+            };
           }),
         }),
       });
@@ -201,10 +286,23 @@ describe('ConfigurationRepository', () => {
       const { adminDb } = require('@/lib/firebase-admin');
       adminDb.collection.mockReturnValue({
         doc: jest.fn().mockReturnValue({
-          collection: jest.fn().mockReturnValue({
-            orderBy: jest.fn().mockReturnThis(),
-            limit: jest.fn().mockReturnThis(),
-            get: jest.fn().mockRejectedValue(new Error('Firestore error')),
+          collection: jest.fn((collectionName: string) => {
+            if (collectionName === 'settings') {
+              return {
+                doc: jest.fn().mockReturnValue({
+                  collection: jest.fn().mockReturnValue({
+                    orderBy: jest.fn().mockReturnThis(),
+                    limit: jest.fn().mockReturnThis(),
+                    get: jest.fn().mockRejectedValue(new Error('Firestore error')),
+                  }),
+                }),
+              };
+            }
+            return {
+              orderBy: jest.fn().mockReturnThis(),
+              limit: jest.fn().mockReturnThis(),
+              get: jest.fn().mockRejectedValue(new Error('Firestore error')),
+            };
           }),
         }),
       });

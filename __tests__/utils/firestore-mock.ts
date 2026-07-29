@@ -54,8 +54,8 @@ export interface MockAdminDb extends MockFirestore {
   runTransaction: jest.Mock;
 }
 
-function createMockDocRef(id: string, data: MockDocData | undefined, exists: boolean = true): MockDocRef {
-  return {
+function createMockDocRef(id: string, data: MockDocData | undefined, exists: boolean = true, fullPath: string = ""): MockDocRef {
+  const docRef: MockDocRef = {
     id,
     data: jest.fn<any>().mockReturnValue(data),
     exists,
@@ -64,8 +64,17 @@ function createMockDocRef(id: string, data: MockDocData | undefined, exists: boo
     update: jest.fn<any>().mockResolvedValue(undefined),
     delete: jest.fn<any>().mockResolvedValue(undefined),
     ref: { id },
-    collection: jest.fn(),
+    collection: jest.fn<any>((subCollectionName: string) => {
+      const subPath = fullPath + "/" + subCollectionName;
+      if (pathCache.has(subPath)) {
+        return pathCache.get(subPath);
+      }
+      const subCollection = createMockCollection([], subCollectionName);
+      pathCache.set(subPath, subCollection);
+      return subCollection;
+    }),
   };
+  return docRef;
 }
 
 function createMockQuery(docs: MockDocRef[]): MockQuery {
@@ -90,7 +99,7 @@ function createMockQuery(docs: MockDocRef[]): MockQuery {
 
 function createMockCollection(docs: MockDocRef[] = [], collectionName: string = "test"): MockCollectionRef {
   const mockQuery = createMockQuery(docs);
-  
+
   return {
     doc: jest.fn<any>((id?: string) => {
       if (!id) id = "mock-doc-id";
@@ -98,16 +107,7 @@ function createMockCollection(docs: MockDocRef[] = [], collectionName: string = 
       if (pathCache.has(fullPath)) {
         return pathCache.get(fullPath);
       }
-      const docRef = createMockDocRef(id, undefined, false);
-      docRef.collection = jest.fn<any>((subCollectionName: string) => {
-        const subPath = fullPath + "/" + subCollectionName;
-        if (pathCache.has(subPath)) {
-          return pathCache.get(subPath);
-        }
-        const subCollection = createMockCollection([], subCollectionName);
-        pathCache.set(subPath, subCollection);
-        return subCollection;
-      });
+      const docRef = createMockDocRef(id, undefined, false, fullPath);
       pathCache.set(fullPath, docRef);
       return docRef;
     }),
