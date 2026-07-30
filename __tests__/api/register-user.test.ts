@@ -4,30 +4,15 @@ describe("Register User API", () => {
   const loadRoute = () => {
     jest.resetModules();
 
-    jest.doMock("@/lib/firebase-admin", () => ({
-      adminAuth: {
-        createUser: jest.fn(),
-        setCustomUserClaims: jest.fn(),
-      },
-    }));
-
-    const createUserMock = jest.fn();
+    const registerUserMock = jest.fn();
     jest.doMock("@/services/auth.service", () => ({
       AuthService: jest.fn(function () {
-        this.createUser = createUserMock;
+        this.registerUser = registerUserMock;
         return this;
       }),
     }));
 
-    const createMock = jest.fn().mockResolvedValue("user123");
-    jest.doMock("@/repositories/user.repository", () => ({
-      UserRepository: jest.fn(function () {
-        this.create = createMock;
-        return this;
-      }),
-    }));
-
-    return { POST: require("@/app/api/v1/auth/register-user/route").POST, createUserMock, createMock };
+    return { POST: require("@/app/api/v1/auth/register-user/route").POST, registerUserMock };
   };
 
   beforeEach(() => {
@@ -35,8 +20,8 @@ describe("Register User API", () => {
   });
 
   it("POST registers user with default student role when no role provided", async () => {
-    const { POST, createUserMock, createMock } = loadRoute();
-    createUserMock.mockResolvedValue({ uid: "user123" });
+    const { POST, registerUserMock } = loadRoute();
+    registerUserMock.mockResolvedValue({ uid: "user123", user: { uid: "user123", email: "test@test.com", role: "student", tenantId: null, onboardingRequired: false } });
 
     const req = new Request("http://localhost/api/v1/auth/register-user", {
       method: "POST",
@@ -47,19 +32,12 @@ describe("Register User API", () => {
 
     expect(res.status).toBe(200);
     expect(json.success).toBe(true);
-    expect(createUserMock).toHaveBeenCalledWith("test@test.com", "password123", { displayName: "Test User" });
-    expect(createMock).toHaveBeenCalledWith({
-      uid: "user123",
-      email: "test@test.com",
-      role: "student",
-      tenantId: null,
-      createdAt: expect.any(Date),
-    });
+    expect(registerUserMock).toHaveBeenCalledWith("test@test.com", "password123", "student", null);
   });
 
   it("POST ignores client-provided role and defaults to student", async () => {
-    const { POST, createUserMock, createMock } = loadRoute();
-    createUserMock.mockResolvedValue({ uid: "user456" });
+    const { POST, registerUserMock } = loadRoute();
+    registerUserMock.mockResolvedValue({ uid: "user456", user: { uid: "user456", email: "hacker@test.com", role: "student", tenantId: null, onboardingRequired: false } });
 
     const req = new Request("http://localhost/api/v1/auth/register-user", {
       method: "POST",
@@ -70,19 +48,12 @@ describe("Register User API", () => {
 
     expect(res.status).toBe(200);
     expect(json.success).toBe(true);
-    expect(createUserMock).toHaveBeenCalledWith("hacker@test.com", "password123", { displayName: "Hacker" });
-    expect(createMock).toHaveBeenCalledWith({
-      uid: "user456",
-      email: "hacker@test.com",
-      role: "student",
-      tenantId: null,
-      createdAt: expect.any(Date),
-    });
+    expect(registerUserMock).toHaveBeenCalledWith("hacker@test.com", "password123", "student", null);
   });
 
   it("POST ignores superAdmin role attempt", async () => {
-    const { POST, createUserMock, createMock } = loadRoute();
-    createUserMock.mockResolvedValue({ uid: "user789" });
+    const { POST, registerUserMock } = loadRoute();
+    registerUserMock.mockResolvedValue({ uid: "user789", user: { uid: "user789", email: "evil@test.com", role: "student", tenantId: null, onboardingRequired: false } });
 
     const req = new Request("http://localhost/api/v1/auth/register-user", {
       method: "POST",
@@ -93,14 +64,7 @@ describe("Register User API", () => {
 
     expect(res.status).toBe(200);
     expect(json.success).toBe(true);
-    expect(createUserMock).toHaveBeenCalledWith("evil@test.com", "password123", { displayName: "Evil" });
-    expect(createMock).toHaveBeenCalledWith({
-      uid: "user789",
-      email: "evil@test.com",
-      role: "student",
-      tenantId: null,
-      createdAt: expect.any(Date),
-    });
+    expect(registerUserMock).toHaveBeenCalledWith("evil@test.com", "password123", "student", null);
   });
 
   it("POST returns 400 for missing required fields", async () => {
@@ -119,8 +83,8 @@ describe("Register User API", () => {
   });
 
   it("POST returns 400 when Firebase createUser fails", async () => {
-    const { POST, createUserMock } = loadRoute();
-    createUserMock.mockRejectedValue(new Error("Email already exists"));
+    const { POST, registerUserMock } = loadRoute();
+    registerUserMock.mockRejectedValue(new Error("Email already exists"));
 
     const req = new Request("http://localhost/api/v1/auth/register-user", {
       method: "POST",
@@ -135,8 +99,8 @@ describe("Register User API", () => {
   });
 
   it("POST accepts tenantId when provided", async () => {
-    const { POST, createUserMock, createMock } = loadRoute();
-    createUserMock.mockResolvedValue({ uid: "user999" });
+    const { POST, registerUserMock } = loadRoute();
+    registerUserMock.mockResolvedValue({ uid: "user999", user: { uid: "user999", email: "tenant@test.com", role: "student", tenantId: "tenant_123", onboardingRequired: false } });
 
     const req = new Request("http://localhost/api/v1/auth/register-user", {
       method: "POST",
@@ -147,13 +111,6 @@ describe("Register User API", () => {
 
     expect(res.status).toBe(200);
     expect(json.success).toBe(true);
-    expect(createUserMock).toHaveBeenCalledWith("tenant@test.com", "password123", { displayName: "Tenant User" });
-    expect(createMock).toHaveBeenCalledWith({
-      uid: "user999",
-      email: "tenant@test.com",
-      role: "student",
-      tenantId: "tenant_123",
-      createdAt: expect.any(Date),
-    });
+    expect(registerUserMock).toHaveBeenCalledWith("tenant@test.com", "password123", "student", "tenant_123");
   });
 });

@@ -11,7 +11,7 @@ import type { IVideoLectureService } from "@/interfaces/IVideoLectureService";
 export class VideoLectureService implements IVideoLectureService {
   private audit = new AuditService();
 
-  constructor(private repo: VideoLectureRepository) {}
+  constructor(private repo: VideoLectureRepository = new VideoLectureRepository()) {}
 
   async create(data: unknown, tenantId: string, userId: string): Promise<VideoLecture> {
     let validated;

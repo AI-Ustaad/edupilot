@@ -10,6 +10,7 @@ import type { StudentEntity, Student360Aggregate, StudentComment, TimelineEntry 
 import type { StudentAnalytics } from "@/types/student";
 import type { PaginatedResult } from "@/types/api";
 import { randomUUID } from "crypto";
+import { nowISO } from "@/lib/date";
 import { eventBus } from "@/lib/events";
 import { EVENTS } from "@/lib/events/event-types";
 
@@ -159,7 +160,7 @@ export class StudentService implements IStudentService {
       id: randomUUID(),
       comment,
       commentedBy: userId,
-      commentedAt: new Date().toISOString(),
+      commentedAt: nowISO(),
       type: 'comment'
     };
 

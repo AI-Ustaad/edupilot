@@ -5,9 +5,7 @@ import { PERMISSIONS } from "@/lib/auth/permissions";
 import { createSuccessResponse, createErrorResponse } from "@/lib/api/response";
 import { StudentService } from "@/services/StudentService";
 import { AttendanceService } from "@/services/attendance.service";
-import { AttendanceRepository } from "@/repositories/attendance.repository";
 import { FeesService } from "@/services/fees.service";
-import { FeesRepository } from "@/repositories/fees.repository";
 import { AuditService } from "@/services/AuditService";
 import type { TenantContext } from "@/types/api";
 
@@ -21,31 +19,27 @@ export const DELETE = withErrorHandler(
           return createErrorResponse(400, "Student ID is required");
         }
 
-        // Verify student exists
         const studentService = new StudentService();
         const student = await studentService.getById(tenantId, studentId);
         if (!student) {
           return createErrorResponse(404, "Student not found");
         }
 
-        // Cascade delete using services (not direct Firestore)
-        const attendanceService = new AttendanceService(new AttendanceRepository());
+        const attendanceService = new AttendanceService();
         const studentAttendance = await attendanceService.findByStudentId(tenantId, studentId);
         for (const rec of studentAttendance) {
           if (!rec.id) continue;
           await attendanceService.deleteAttendance(tenantId, rec.id, user.uid);
         }
 
-        const feesService = new FeesService(new FeesRepository());
-        const studentFees = await (new FeesRepository()).findByStudent(tenantId, studentId, 9999);
+        const feesService = new FeesService();
+        const studentFees = await feesService.findByStudent(tenantId, studentId, 9999);
         for (const fee of studentFees) {
-          await feesService.deleteFee(fee.id, tenantId);
+          await feesService.deleteFee(fee.id!, tenantId);
         }
 
-        // Finally delete the student (this now publishes STUDENT_DELETED event)
         await studentService.hardDelete(tenantId, studentId, user.uid);
 
-        // Audit log
         const audit = new AuditService();
         await audit.log({
           action: "STUDENT_DELETED",

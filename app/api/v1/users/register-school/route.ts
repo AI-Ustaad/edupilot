@@ -5,7 +5,6 @@ import { logger } from "@/lib/logger/logger";
 import { createSuccessResponse, createErrorResponse } from "@/lib/api/response";
 import { eventBus } from "@/lib/events";
 import { EVENTS } from "@/lib/events/event-types";
-import { AcademicYearRepository } from "@/repositories/academic-year.repository";
 import { TenantService } from "@/services/tenant.service";
 
 export const runtime = "nodejs";
@@ -34,16 +33,7 @@ export async function POST(req: NextRequest) {
       userId: user.uid,
     });
 
-    const academicYearRepo = new AcademicYearRepository();
-    const currentYear = new Date().getFullYear();
-    const ayId = await academicYearRepo.create({
-      name: `${currentYear}-${currentYear + 1}`,
-      startDate: `${currentYear}-04-01`,
-      endDate: `${currentYear + 1}-03-31`,
-      isCurrent: true,
-      tenantId,
-      createdBy: user.uid,
-    }, tenantId);
+    const ayId = await tenantService.initializeAcademicYear(tenantId, user.uid);
 
     eventBus.publish(EVENTS.SCHOOL_SETUP_COMPLETED, {
       tenantId,

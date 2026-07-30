@@ -7,7 +7,7 @@ const CACHE_KEY = "branding";
 const CACHE_TTL = 3600; // 1 گھنٹہ
 
 export class TenantBrandingService implements ITenantBrandingService {
-  constructor(private repo: TenantBrandingRepository) {}
+  constructor(private repo: TenantBrandingRepository = new TenantBrandingRepository()) {}
 
   async getBranding(tenantId: string): Promise<TenantBranding | null> {
     return getOrSet(`${CACHE_KEY}:${tenantId}`, async () => {

@@ -40,6 +40,10 @@ export class MarksService implements IMarksService {
     return this.repo.findWithFilters(tenantId, filters);
   }
 
+  async findByStudent(tenantId: string, studentId: string): Promise<(Mark & { id: string })[]> {
+    return this.repo.findByStudent(tenantId, studentId);
+  }
+
   async deleteMark(id: string, tenantId: string, userId: string): Promise<void> {
     const mark = await this.repo.findById(id, tenantId);
     await this.repo.softDeleteMark(id, tenantId, userId);

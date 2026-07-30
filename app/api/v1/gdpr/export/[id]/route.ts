@@ -3,9 +3,7 @@ import { withAuth, withTenant, withErrorHandler } from "@/route-helpers";
 import { createSuccessResponse, createErrorResponse, createApiResponse } from "@/lib/api/response";
 import { StudentService } from "@/services/StudentService";
 import { AttendanceService } from "@/services/attendance.service";
-import { AttendanceRepository } from "@/repositories/attendance.repository";
 import { FeesService } from "@/services/fees.service";
-import { FeesRepository } from "@/repositories/fees.repository";
 import type { TenantContext } from "@/types/api";
 import { withPermission } from "@/lib/auth/rbac";
 import { PERMISSIONS } from "@/lib/auth/permissions";
@@ -21,18 +19,15 @@ export const GET = withErrorHandler(
     withTenant(
       withPermission(PERMISSIONS.students.view)(async (req: Request, { tenantId }: TenantContext) => {
         const id = getIdFromUrl(req);
-                const studentService = new StudentService();
+        const studentService = new StudentService();
         const student = await studentService.getById(tenantId, id);
         if (!student) return createErrorResponse(404, "Student not found");
 
-        const attendanceService = new AttendanceService(new AttendanceRepository());
+        const attendanceService = new AttendanceService();
         const studentAttendance = await attendanceService.findByStudentId(tenantId, id);
 
-        const feesService = new FeesService(new FeesRepository());
-        const studentFeesResult = await feesService.listFees(tenantId, id, 1, 9999);
-        const studentFees = studentFeesResult.data;
-
-        // Add more data types as needed
+        const feesService = new FeesService();
+        const studentFees = await feesService.findByStudent(tenantId, id, 9999);
 
         const exportData = {
           student,

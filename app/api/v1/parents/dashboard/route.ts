@@ -2,9 +2,8 @@ export const dynamic = 'force-dynamic';
 import { withAuth, withTenant, withErrorHandler } from "@/route-helpers";
 import { createSuccessResponse } from "@/lib/api/response";
 import { ParentsService } from "@/services/parents.service";
-import { AttendanceRepository } from "@/repositories/attendance.repository";
+import { AttendanceService } from "@/services/attendance.service";
 import { FeesService } from "@/services/fees.service";
-import { FeesRepository } from "@/repositories/fees.repository";
 import type { TenantContext } from "@/types/api";
 import { withPermission } from '@/lib/auth/rbac';
 import { PERMISSIONS } from '@/lib/auth/permissions';
@@ -14,8 +13,9 @@ export const GET = withErrorHandler(
     withTenant(
       withPermission(PERMISSIONS.parents.view)(async (req: Request, { tenantId, user }: TenantContext) => {
         const parentService = new ParentsService();
+        const attendanceService = new AttendanceService();
+        const feesService = new FeesService();
         
-        // 🟢 Fault-Tolerance: Catch error if children fetching fails
         const children = await parentService.getChildren(user.uid, tenantId).catch(() => []);
         const childIds = children.map(c => c.id);
 
@@ -23,22 +23,16 @@ export const GET = withErrorHandler(
           return createSuccessResponse([]);
         }
 
-        // Batch-fetch attendance safely
-        const attendanceRepo = new AttendanceRepository();
-        const allAttendance = await attendanceRepo.findByStudentIds(tenantId, childIds, 5).catch(() => []);
+        const allAttendance = await attendanceService.findByStudentIds(tenantId, childIds, 5).catch(() => []);
 
-        // Group by studentId in-memory
         const attendanceByStudent: Record<string, string> = {};
         for (const rec of allAttendance) {
           const sid = (rec as any).studentId;
           if (!attendanceByStudent[sid]) {
-            attendanceByStudent[sid] = rec.status;
+            attendanceByStudent[sid] = (rec as any).status;
           }
         }
 
-        const feesService = new FeesService(new FeesRepository());
-        
-        // 🟢 Fault-Tolerance: Ensure one failing query doesn't break Promise.all
         const feesPromises = childIds.map(id =>
           feesService.listFees(tenantId, id, 1, 1).catch(() => ({ data: [] }))
         );

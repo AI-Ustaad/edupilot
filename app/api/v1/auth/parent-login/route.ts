@@ -1,5 +1,4 @@
 import { AuthService } from "@/services/auth.service";
-import { UserRepository } from "@/repositories/user.repository";
 import { checkAuthRateLimit } from "@/lib/ratelimit";
 import { logger } from "@/lib/logger/logger";
 import { createSuccessResponse, createErrorResponse } from "@/lib/api/response";
@@ -7,7 +6,6 @@ import { createSuccessResponse, createErrorResponse } from "@/lib/api/response";
 export const runtime = 'nodejs';
 
 const authService = new AuthService();
-const userRepo = new UserRepository();
 
 export async function POST(req: Request) {
   try {
@@ -25,8 +23,7 @@ export async function POST(req: Request) {
     }
 
     const userRecord = await authService.getUserByEmail(email);
-    
-    const sessionUser = await userRepo.findByUidWithFallback(userRecord.uid, email);
+    const sessionUser = await authService.findUserWithFallback(userRecord.uid, email);
     
     if (sessionUser.role !== "parent") {
       return createErrorResponse(403, "Unauthorized: Parent access only");

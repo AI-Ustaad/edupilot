@@ -12,6 +12,7 @@ import type { ConfigurationLoadResult, ConfigurationStatus, ConfigurationHealthR
 import type { IConfigurationService } from "@/interfaces/IConfigurationService";
 import type { WizardInput } from "@/types/configuration/wizard";
 import { createVersion, buildDefaultConfiguration } from "@/types/configuration/wizard";
+import { nowISO } from "@/lib/date";
 
 export class ConfigurationService implements IConfigurationService {
   constructor(
@@ -139,10 +140,10 @@ export class ConfigurationService implements IConfigurationService {
           timezone: "UTC",
           academicYearId: existing?.metadata.academicYearId || null,
           currentSnapshotId: null,
-          isConfigured: true,
-          configuredAt: new Date().toISOString(),
-          configuredBy: userId,
-          lastModified: new Date().toISOString(),
+           isConfigured: true,
+           configuredAt: nowISO(),
+           configuredBy: userId,
+           lastModified: nowISO(),
         },
         version: createVersion(previousVersion + 1, userId, "Configured via Smart Setup Wizard"),
         school: {

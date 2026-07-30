@@ -1,46 +1,9 @@
 import { EventOutboxRepository } from '@/repositories/event-outbox.repository';
+import { createFirestoreTestFactory } from '@/__tests__/utils/firestore-mock';
 
 jest.mock('@/lib/firebase-admin', () => {
-  const mockDocRef = {
-    get: jest.fn(),
-    set: jest.fn().mockResolvedValue(undefined),
-    update: jest.fn().mockResolvedValue(undefined),
-    delete: jest.fn().mockResolvedValue(undefined),
-    id: 'mock-doc-id',
-  };
-  const mockQuery = {
-    where: jest.fn().mockReturnThis(),
-    orderBy: jest.fn().mockReturnThis(),
-    limit: jest.fn().mockReturnThis(),
-    get: jest.fn().mockResolvedValue({ docs: [] }),
-    count: jest.fn().mockReturnValue({
-      get: jest.fn().mockResolvedValue({ data: () => ({ count: 0 }) }),
-    }),
-  };
-  const mockCollection = {
-    add: jest.fn().mockResolvedValue({ id: 'event-123' }),
-    doc: jest.fn().mockReturnValue(mockDocRef),
-    where: jest.fn().mockReturnValue(mockQuery),
-    get: jest.fn().mockResolvedValue({ docs: [] }),
-  };
-  const mockBatch = {
-    delete: jest.fn(),
-    set: jest.fn(),
-    update: jest.fn(),
-    commit: jest.fn().mockResolvedValue(undefined),
-  };
-  return {
-    adminDb: {
-      collection: jest.fn().mockReturnValue(mockCollection),
-      batch: jest.fn().mockReturnValue(mockBatch),
-      runTransaction: jest.fn().mockImplementation((fn) => fn(mockDocRef)),
-    },
-    dbTimestamp: new Date().toISOString(),
-    mockDocRef,
-    mockQuery,
-    mockCollection,
-    mockBatch,
-  };
+  const { createFirestoreTestFactory } = require('@/__tests__/utils/firestore-mock');
+  return createFirestoreTestFactory();
 });
 
 jest.mock('crypto', () => ({
@@ -53,16 +16,16 @@ describe('EventOutboxRepository', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    const { adminDb, mockCollection, mockDocRef, mockQuery } = require('@/lib/firebase-admin');
+    adminDb.collection.mockReturnValue(mockCollection);
+    mockCollection.doc.mockReturnValue(mockDocRef);
+    mockCollection.where.mockReturnValue(mockQuery);
     repo = new EventOutboxRepository();
   });
 
   test('should enqueue an event and return id', async () => {
-    const { adminDb } = require('@/lib/firebase-admin');
-    adminDb.collection.mockReturnValue({
-      doc: jest.fn().mockReturnValue({
-        set: jest.fn().mockResolvedValue(undefined),
-      }),
-    });
+    const { mockCollection } = require('@/lib/firebase-admin');
+    mockCollection.add.mockResolvedValue({ id: 'uuid-123' });
 
     const eventId = await repo.enqueue('student.created', { tenantId, studentId: 's1' });
     expect(eventId).toBe('uuid-123');
@@ -91,26 +54,22 @@ describe('EventOutboxRepository', () => {
   });
 
   test('should complete a subscriber', async () => {
-    const { adminDb } = require('@/lib/firebase-admin');
+    const { adminDb, mockCollection, mockDocRef } = require('@/lib/firebase-admin');
     const mockSubDoc = {
       update: jest.fn().mockResolvedValue(undefined),
     };
-    adminDb.collection.mockReturnValue({
-      doc: jest.fn().mockReturnValue(mockSubDoc),
-    });
+    mockCollection.doc.mockReturnValue(mockSubDoc);
 
     await repo.completeSubscriber('event-1', 'sub-1');
     expect(mockSubDoc.update).toHaveBeenCalled();
   });
 
   test('should release a subscriber', async () => {
-    const { adminDb } = require('@/lib/firebase-admin');
+    const { adminDb, mockCollection } = require('@/lib/firebase-admin');
     const mockSubDoc = {
       delete: jest.fn().mockResolvedValue(undefined),
     };
-    adminDb.collection.mockReturnValue({
-      doc: jest.fn().mockReturnValue(mockSubDoc),
-    });
+    mockCollection.doc.mockReturnValue(mockSubDoc);
 
     await repo.releaseSubscriber('event-1', 'sub-1');
     expect(mockSubDoc.delete).toHaveBeenCalled();

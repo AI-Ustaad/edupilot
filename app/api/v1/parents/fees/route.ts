@@ -3,7 +3,6 @@ import { withAuth, withTenant, withErrorHandler } from "@/route-helpers";
 import { createSuccessResponse } from "@/lib/api/response";
 import { ParentsService } from "@/services/parents.service";
 import { FeesService } from "@/services/fees.service";
-import { FeesRepository } from "@/repositories/fees.repository";
 import type { TenantContext } from "@/types/api";
 import { withPermission } from '@/lib/auth/rbac';
 import { PERMISSIONS } from '@/lib/auth/permissions';
@@ -19,7 +18,7 @@ export const GET = withErrorHandler(
         const childIds = await parentService.getChildIds(user.uid, tenantId);
         if (childIds.length === 0) return createSuccessResponse([]);
 
-        const feesService = new FeesService(new FeesRepository());
+        const feesService = new FeesService();
         let allFees: any[] = [];
         for (const id of childIds) {
           const result = await feesService.listFees(tenantId, id);

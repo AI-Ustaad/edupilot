@@ -29,7 +29,7 @@ export class UserRepository extends BaseRepository<any> implements IUserReposito
 
     const data = userDoc.data()!;
     return {
-      uid, 
+      uid: userDoc.id,
       email: email || data.email || "",
       role: (data.role as Role) || "guest",
       tenantId: data.tenantId || null,

@@ -1,37 +1,9 @@
 import { ConfigurationRepository } from '@/repositories/configuration.repository';
+import { createFirestoreTestFactory } from '@/__tests__/utils/firestore-mock';
 
 jest.mock('@/lib/firebase-admin', () => {
-  const createMockDocRef = () => {
-    const docRef = {
-      get: jest.fn(),
-      set: jest.fn().mockResolvedValue(undefined),
-      update: jest.fn().mockResolvedValue(undefined),
-      delete: jest.fn().mockResolvedValue(undefined),
-      id: 'mock-doc-id',
-      collection: jest.fn(() => createMockCollection()),
-    };
-    return docRef;
-  };
-
-  const createMockCollection = () => ({
-    doc: jest.fn(createMockDocRef),
-    get: jest.fn(),
-    add: jest.fn().mockResolvedValue({ id: 'config-123' }),
-    orderBy: jest.fn().mockReturnThis(),
-    limit: jest.fn().mockReturnThis(),
-  });
-
-  const mockCollection = createMockCollection();
-  const mockDocRef = createMockDocRef();
-
-  return {
-    adminDb: {
-      collection: jest.fn().mockReturnValue(mockCollection),
-    },
-    dbTimestamp: new Date().toISOString(),
-    mockDocRef,
-    mockCollection,
-  };
+  const { createFirestoreTestFactory } = require('@/__tests__/utils/firestore-mock');
+  return createFirestoreTestFactory();
 });
 
 jest.mock('@/lib/mappers/configuration.mapper', () => ({

@@ -16,3 +16,15 @@ export function formatDate(
     timeZone: timezone,
   }).format(new Date(date));
 }
+
+export function now(): Date {
+  return new Date();
+}
+
+export function nowISO(): string {
+  return new Date().toISOString();
+}
+
+export function today(): string {
+  return new Date().toISOString().slice(0, 10);
+}

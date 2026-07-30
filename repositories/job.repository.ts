@@ -1,5 +1,6 @@
 import { BaseRepository } from "./base.repository";
 import { IJobRepository } from "@/interfaces/IJobRepository";
+import { nowISO } from "@/lib/date";
 
 export interface Job {
   id?: string;
@@ -33,8 +34,8 @@ export class JobRepository extends BaseRepository<Job> implements IJobRepository
   async create(data: Omit<Job, "id" | "createdAt" | "updatedAt">, tenantId: string): Promise<string> {
     const docRef = await this.getCollection(tenantId).add({
       ...data,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+      createdAt: nowISO(),
+      updatedAt: nowISO(),
     });
     return docRef.id;
   }
@@ -45,11 +46,11 @@ export class JobRepository extends BaseRepository<Job> implements IJobRepository
       processedItems,
       progress,
       status,
-      updatedAt: new Date().toISOString(),
+      updatedAt: nowISO(),
     };
 
     if (status === "completed") {
-      updateData.finishedAt = new Date().toISOString();
+      updateData.finishedAt = nowISO();
     }
 
     await this.getCollection(tenantId).doc(jobId).update(updateData);
@@ -59,8 +60,8 @@ export class JobRepository extends BaseRepository<Job> implements IJobRepository
     await this.getCollection(tenantId).doc(jobId).update({
       status: "failed",
       error: errorMessage,
-      updatedAt: new Date().toISOString(),
-      finishedAt: new Date().toISOString(),
+      updatedAt: nowISO(),
+      finishedAt: nowISO(),
     });
   }
 }

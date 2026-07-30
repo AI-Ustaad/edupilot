@@ -107,6 +107,11 @@ export class AttendanceService implements IAttendanceService {
     return docs.map(doc => AttendancePersistenceMapper.fromFirestore(doc));
   }
 
+  async findByStudentIds(tenantId: string, studentIds: string[], limit = 30): Promise<AttendanceEntity[]> {
+    const docs = await this.repository.findByStudentIds(tenantId, studentIds, limit);
+    return docs.map(doc => AttendancePersistenceMapper.fromFirestore(doc));
+  }
+
   async getById(tenantId: string, id: string): Promise<AttendanceEntity | null> {
     const doc = await this.repository.findById(id, tenantId);
     if (!doc) return null;

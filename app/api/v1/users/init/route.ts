@@ -2,10 +2,8 @@ export const dynamic = 'force-dynamic';
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { AuthService } from "@/services/auth.service";
-import { UserRepository } from "@/repositories/user.repository";
 
 const authService = new AuthService();
-const userRepo = new UserRepository();
 
 export async function GET() {
   try {
@@ -17,19 +15,7 @@ export async function GET() {
 
     const decoded = await authService.verifySessionCookie(session);
 
-    const existingUser = await userRepo.findByUidWithFallback(decoded.uid, decoded.email);
-    if (existingUser) {
-      return NextResponse.json({ success: true });
-    }
-
-    await userRepo.create({
-      uid: decoded.uid,
-      email: decoded.email,
-      role: "guest",
-      tenantId: null,
-      onboardingRequired: true,
-      createdAt: new Date(),
-    } as any);
+    await authService.getOrCreateUser(decoded.uid, decoded.email, "guest", null);
 
     return NextResponse.json({ success: true });
   } catch {

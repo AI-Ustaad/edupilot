@@ -4,11 +4,9 @@ import { withPermission } from "@/lib/auth/rbac";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 import { createSuccessResponse, createErrorResponse, createApiResponse } from "@/lib/api/response";
 import { AuthService } from "@/services/auth.service";
-import { UserRepository } from "@/repositories/user.repository";
 import type { TenantContext } from "@/types/api";
 
 const authService = new AuthService();
-const userRepo = new UserRepository();
 
 export const POST = withErrorHandler(
   withAuth(
@@ -26,16 +24,9 @@ export const POST = withErrorHandler(
           return createErrorResponse(400, "Invalid role");
         }
 
-        const { uid } = await authService.createUser(email, password, { role, tenantId });
-        await userRepo.create({
-          uid,
-          email,
-          role,
-          tenantId,
-          createdAt: new Date(),
-        } as any);
+        const { uid, user } = await authService.registerUser(email, password, role, tenantId);
 
-        return createApiResponse(201, { uid });
+        return createApiResponse(201, { uid, user });
       })
     )
   )

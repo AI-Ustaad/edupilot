@@ -1,34 +1,9 @@
 import { FeatureFlagRepository } from '@/repositories/feature-flag.repository';
+import { createFirestoreTestFactory } from '@/__tests__/utils/firestore-mock';
 
 jest.mock('@/lib/firebase-admin', () => {
-  const mockDocRef = {
-    get: jest.fn(),
-    set: jest.fn().mockResolvedValue(undefined),
-    update: jest.fn().mockResolvedValue(undefined),
-    delete: jest.fn().mockResolvedValue(undefined),
-    id: 'mock-doc-id',
-  };
-  const mockCollection = {
-    add: jest.fn().mockResolvedValue({ id: 'flag-123' }),
-    doc: jest.fn().mockReturnValue(mockDocRef),
-    get: jest.fn().mockResolvedValue({ docs: [] }),
-  };
-  const mockBatch = {
-    delete: jest.fn(),
-    set: jest.fn(),
-    update: jest.fn(),
-    commit: jest.fn().mockResolvedValue(undefined),
-  };
-  return {
-    adminDb: {
-      collection: jest.fn().mockReturnValue(mockCollection),
-      batch: jest.fn().mockReturnValue(mockBatch),
-    },
-    dbTimestamp: new Date().toISOString(),
-    mockDocRef,
-    mockCollection,
-    mockBatch,
-  };
+  const { createFirestoreTestFactory } = require('@/__tests__/utils/firestore-mock');
+  return createFirestoreTestFactory();
 });
 
 describe('FeatureFlagRepository', () => {

@@ -1,6 +1,7 @@
 // repositories/settings.repository.ts
 import { BaseRepository } from "./base.repository";
 import type { ISettingsRepository } from "@/interfaces/ISettingsRepository";
+import { nowISO } from "@/lib/date";
 
 export class SettingsRepository extends BaseRepository<any> implements ISettingsRepository {
   constructor() {
@@ -18,7 +19,7 @@ export class SettingsRepository extends BaseRepository<any> implements ISettings
 
   async updateConfig(tenantId: string, data: Record<string, any>): Promise<void> {
     await this.getSettingsRef(tenantId, "config").set(
-      { ...data, updatedAt: new Date().toISOString() },
+      { ...data, updatedAt: nowISO() },
       { merge: true }
     );
   }
@@ -39,10 +40,10 @@ export class SettingsRepository extends BaseRepository<any> implements ISettings
   ): Promise<void> {
     const configRef = this.getSettingsRef(tenantId, "config");
     const batch = this.db.batch();
-    batch.set(configRef, { ...configuration, updatedAt: new Date().toISOString() }, { merge: true });
+    batch.set(configRef, { ...configuration, updatedAt: nowISO() }, { merge: true });
     batch.set(configRef.collection("history").doc(), {
       ...historyEntry,
-      createdAt: new Date().toISOString(),
+      createdAt: nowISO(),
     });
     await batch.commit();
   }
@@ -54,7 +55,7 @@ export class SettingsRepository extends BaseRepository<any> implements ISettings
 
   async updateGeneral(tenantId: string, data: Record<string, any>): Promise<void> {
     await this.getSettingsRef(tenantId, "general").set(
-      { ...data, updatedAt: new Date().toISOString() },
+      { ...data, updatedAt: nowISO() },
       { merge: true }
     );
   }

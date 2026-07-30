@@ -96,6 +96,11 @@ export class FeesService implements IFeesService {
     };
   }
 
+  async findByStudent(tenantId: string, studentId: string, limit = 100): Promise<FeeEntity[]> {
+    const docs = await this.repository.findByStudent(tenantId, studentId, limit);
+    return docs.map(doc => FeePersistenceMapper.fromFirestore(doc));
+  }
+
   async updateFee(tenantId: string, id: string, data: UpdateFeeDTO, userId?: string): Promise<FeeEntity> {
     const existing = await this.repository.findById(id, tenantId);
     if (!existing) throw new Error("Fee record not found");

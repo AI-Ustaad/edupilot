@@ -9,6 +9,7 @@ export interface IFeesService {
   listFees(tenantId: string, studentId?: string, page?: number, limit?: number): Promise<PaginatedResult<FeeEntity>>;
   updateFee(tenantId: string, id: string, data: UpdateFeeDTO, userId?: string): Promise<FeeEntity>;
   deleteFee(tenantId: string, id: string, userId?: string): Promise<void>;
+  findByStudent(tenantId: string, studentId: string, limit?: number): Promise<FeeEntity[]>;
   getTotalRevenue(tenantId: string): Promise<number>;
   getRecentPayments(tenantId: string, limit?: number): Promise<FeeEntity[]>;
 }

@@ -1,78 +1,9 @@
 import { SectionRepository } from '@/repositories/section.repository';
+import { createFirestoreTestFactory } from '@/__tests__/utils/firestore-mock';
 
 jest.mock('@/lib/firebase-admin', () => {
-  const mockCountSnap = { data: () => ({ count: 0 }) };
-  const mockQuery = {
-    where: jest.fn().mockReturnThis(),
-    orderBy: jest.fn().mockReturnThis(),
-    limit: jest.fn().mockReturnThis(),
-    offset: jest.fn().mockReturnThis(),
-    startAfter: jest.fn().mockReturnThis(),
-    get: jest.fn().mockResolvedValue({ docs: [] }),
-    count: jest.fn().mockReturnValue({
-      get: jest.fn().mockResolvedValue(mockCountSnap),
-    }),
-  };
-
-  // Stable memoized mocks
-  const collectionCache = new Map();
-  const docCache = new Map();
-
-  const makeDoc = (fullPath: string) => {
-    if (docCache.has(fullPath)) {
-      return docCache.get(fullPath);
-    }
-
-    const doc = {
-      get: jest.fn().mockResolvedValue({ exists: false, data: () => undefined }),
-      set: jest.fn().mockResolvedValue(undefined),
-      update: jest.fn().mockResolvedValue(undefined),
-      delete: jest.fn().mockResolvedValue(undefined),
-      id: fullPath.split('/').pop() || 'mock-doc-id',
-      collection: jest.fn((subCollectionName: string) => {
-        return makeCollection(fullPath + '/' + subCollectionName);
-      }),
-    };
-
-    docCache.set(fullPath, doc);
-    return doc;
-  };
-
-  const makeCollection = (path: string) => {
-    if (collectionCache.has(path)) {
-      return collectionCache.get(path);
-    }
-
-    const collection = {
-      add: jest.fn().mockResolvedValue({ id: 'added-id' }),
-      doc: jest.fn((docId?: string) => {
-        const id = docId || 'mock-doc-id';
-        return makeDoc(path + '/' + id);
-      }),
-      where: jest.fn().mockReturnValue(mockQuery),
-      get: jest.fn().mockResolvedValue({ docs: [] }),
-    };
-
-    collectionCache.set(path, collection);
-    return collection;
-  };
-
-  const mockBatch = {
-    delete: jest.fn(),
-    set: jest.fn(),
-    update: jest.fn(),
-    commit: jest.fn().mockResolvedValue(undefined),
-  };
-
-  return {
-    adminDb: {
-      collection: jest.fn((name: string) => makeCollection(name)),
-      batch: jest.fn().mockReturnValue(mockBatch),
-    },
-    dbTimestamp: new Date().toISOString(),
-    mockQuery,
-    mockBatch,
-  };
+  const { createFirestoreTestFactory } = require('@/__tests__/utils/firestore-mock');
+  return createFirestoreTestFactory();
 });
 
 describe('SectionRepository', () => {
