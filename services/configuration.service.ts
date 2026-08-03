@@ -104,21 +104,27 @@ export class ConfigurationService implements IConfigurationService {
     }
   }
 
-  async saveAndPublishConfiguration(input: WizardInput, tenantId: string, userId: string): Promise<MasterSchoolConfiguration> {
-    try {
-      const existing = await this.repo.getConfiguration(tenantId);
-      const previousVersion = existing?.version.number || 0;
-      const { schoolProfile, academicStructure } = input;
+async saveAndPublishConfiguration(input: WizardInput, tenantId: string, userId: string): Promise<MasterSchoolConfiguration> {
+     try {
+       const existing = await this.repo.getConfiguration(tenantId);
+       const previousVersion = existing?.version.number || 0;
+       const { schoolProfile, academicStructure } = input;
 
-      if (!academicStructure || !academicStructure.grades || academicStructure.grades.length === 0) {
-        throw new ConfigurationValidationError("Validation Failed: No classes/grades were generated.");
-      }
+       if (existing && existing.state === "Published") {
+         if (existing.metadata.configuredBy && existing.metadata.configuredBy !== userId) {
+           throw new ConfigurationValidationError("Configuration Write Violation: A published configuration exists. Only the original publisher or an administrator can modify it.");
+         }
+       }
 
-      if (!academicStructure.allSubjects || academicStructure.allSubjects.length === 0) {
-        throw new ConfigurationValidationError("Validation Failed: No subjects were found for the selected curriculum.");
-      }
+       if (!academicStructure || !academicStructure.grades || academicStructure.grades.length === 0) {
+         throw new ConfigurationValidationError("Validation Failed: No classes/grades were generated.");
+       }
 
-      const sectionNames: string[] = schoolProfile.sections?.length ? schoolProfile.sections : ["A"];
+       if (!academicStructure.allSubjects || academicStructure.allSubjects.length === 0) {
+         throw new ConfigurationValidationError("Validation Failed: No subjects were found for the selected curriculum.");
+       }
+
+       const sectionNames: string[] = schoolProfile.sections?.length ? schoolProfile.sections : ["A"];
 
       const mappedClasses = academicStructure.grades.map((g: any) => ({
         id: g.id || `cls_${g.name}`,
