@@ -2,6 +2,7 @@
 import type { LucideIcon } from "lucide-react";
 import {
   LayoutDashboard,
+  Settings2,
   Users,
   BookOpen,
   UserCircle,
@@ -23,14 +24,14 @@ import {
   Send,
   Star,
   PlusCircle,
-  // 🚀 Enterprise Admin Tools Icons
   Building2,
+  School,
+  Activity,
   ShieldCheck,
-  Lock,
-  History,
   ToggleRight,
   Palette,
-  School,
+  Lock,
+  History,
 } from "lucide-react";
 
 export interface MenuItemDef {
@@ -316,13 +317,20 @@ const ALL_MENU_GROUPS: MenuGroupDef[] = [
     icon: Settings,
     key: "adminTools",
     items: [
-      {
-        id: "school-setup",
-        name: "School Configuration",
-        icon: School,
-        path: "/admin/school-setup",
-        requiredPermission: "settings.manage",
-      },
+       {
+         id: "configuration-dashboard",
+         name: "Configuration Dashboard",
+         icon: Activity,
+         path: "/admin/configuration-dashboard",
+         requiredPermission: "settings.manage",
+       },
+       {
+         id: "school-setup",
+         name: "School Configuration",
+         icon: School,
+         path: "/admin/school-setup",
+         requiredPermission: "settings.manage",
+       },
       {
         id: "general-settings",
         name: "School Profile",
