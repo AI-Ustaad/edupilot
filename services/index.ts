@@ -1,6 +1,7 @@
 // services/index.ts
 export * from "./StudentService";
 export * from "./StaffService";
+export * from "./AdmissionsService";
 export * from "./attendance.service";
 export * from "./OCRService";
 export * from "./ValidationService";
@@ -21,6 +22,7 @@ export * from "./class.service";
 export * from "./configuration-cache.service";
 export * from "./configuration-health.service";
 export * from "./configuration.service";
+export * from "./configuration-dashboard.service";
 export * from "./curriculum-engine.service";
 export * from "./dashboard.service";
 export * from "./featureFlag.service";
@@ -49,3 +51,8 @@ export * from "./timetable.service";
 export * from "./upload.service";
 export * from "./user-admin.service";
 export * from "./video-lecture.service";
+export * from "./ai.service";
+export * from "./billing.service";
+export * from "./webhook.service";
+export * from "./jobs/background-job.service";
+export * from "./education/education-rules.service";

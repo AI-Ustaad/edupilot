@@ -1,5 +1,6 @@
 // validators/index.ts
 export * from "./attendance";
+export * from "./admission";
 export * from "./marks";
 export * from "./parent";
 export * from "./quiz";
