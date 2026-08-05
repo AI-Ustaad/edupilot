@@ -29,3 +29,5 @@ export class ParentsRepository extends BaseRepository<ParentDocument> implements
     }
   }
 }
+
+export const parentsRepository = new ParentsRepository();

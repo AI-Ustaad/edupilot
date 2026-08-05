@@ -1,0 +1,2 @@
+app/api/v1/curriculum/upgrade/route.ts:import { ConfigurationRepository } from "@/repositories/configuration.repository";
+app/api/v1/classes/route.ts:import { SectionRepository } from "@/repositories/section.repository";

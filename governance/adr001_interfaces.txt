@@ -1,0 +1,93 @@
+services/homework.service.ts:export class HomeworkService implements IHomeworkService {
+services/configuration-dashboard.service.ts:  implements IConfigurationDashboardService
+services/behavior.service.ts:export class BehaviorService implements IBehaviorService {
+services/lesson-plan.service.ts:export class LessonPlanService implements ILessonPlanService {
+services/subscription.service.ts:export class SubscriptionService implements ISubscriptionService {
+services/marks.service.ts:export class MarksService implements IMarksService {
+services/auth.service.ts:export class AuthService implements IAuthService {
+services/dashboard.service.ts:export class DashboardService implements IDashboardService {
+services/bus.service.ts:export class BusService implements IBusService {
+services/fees.service.ts:export class FeesService implements IFeesService {
+services/claims.service.ts:export class ClaimsService implements IClaimsService {
+services/tenant.resolver.ts:export class TenantResolver implements ITenantResolver {
+services/tenant-branding.service.ts:export class TenantBrandingService implements ITenantBrandingService {
+services/curriculum-engine.service.ts:export class CurriculumEngineService implements ICurriculumEngineService {
+services/configuration.service.ts:export class ConfigurationService implements IConfigurationService {
+services/book.service.ts:export class BookService implements IBookService {
+services/video-lecture.service.ts:export class VideoLectureService implements IVideoLectureService {
+services/parents.service.ts:export class ParentsService implements IParentService {
+services/invoice.service.ts:export class InvoiceService implements IInvoiceService {
+services/configuration-cache.service.ts:export class ConfigurationCacheService implements IConfigurationCacheService {
+services/configuration-health.service.ts:export class ConfigurationHealthService implements IConfigurationHealthService {
+services/quiz.service.ts:export class QuizService implements IQuizService {
+services/ai/exam.service.ts:export class ExamService implements IAIExamService {
+services/ai/timetable.service.ts:export class TimetableService implements IAITimetableService {
+services/session.service.ts:export class SessionService implements ISessionService {
+services/report.service.ts:export class ReportService implements IReportService {
+services/featureFlag.service.ts:export class FeatureFlagService implements IFeatureFlagService {
+services/timetable.service.ts:export class TimetableService implements ITimetableService {
+services/job.service.ts:export class JobService implements IJobService {
+services/OCRService.ts:export class OCRService implements IOCRService {
+services/ValidationService.ts:export class ValidationService implements IValidationService {
+services/tenant.service.ts:export class TenantService implements ITenantService {
+services/telemetry.service.ts:export class TelemetryService implements ITelemetryService {
+services/analytics.service.ts:export class AnalyticsService implements IAnalyticsService {
+services/menu.service.ts:export class MenuService implements IMenuService {
+services/attendance.service.ts:export class AttendanceService implements IAttendanceService {
+services/assignment.service.ts:export class AssignmentService implements IAssignmentService {
+services/class.service.ts:export class ClassService implements IClassService {
+services/StudentService.ts:export class StudentService implements IStudentService {
+services/StaffService.ts:export class StaffService implements IStaffService {
+services/AuditService.ts:export class AuditService implements IAuditService {
+repositories/dashboard-stats.repository.ts:export class DashboardStatsRepository extends BaseRepository<DashboardStats> implements IDashboardStatsRepository {
+repositories/room.repository.ts:export class RoomRepository extends BaseRepository<RoomDocument> implements IRoomRepository {
+repositories/marks.repository.ts:export class MarksRepository extends BaseRepository<Mark> implements IMarksRepository {
+repositories/fees.repository.ts:export class FeesRepository extends BaseRepository<FeeDocument> implements IFeesRepository {
+repositories/settings.repository.ts:export class SettingsRepository extends BaseRepository<any> implements ISettingsRepository {
+repositories/ledger.repository.ts:export class LedgerRepository extends BaseRepository<LedgerEntry> implements ILedgerRepository {
+repositories/audit.repository.ts:export class AuditRepository extends BaseRepository<AuditLog> implements IAuditRepository {
+repositories/quiz.repository.ts:export class QuizRepository extends BaseRepository<Quiz> implements IQuizRepository {
+repositories/hostel.repository.ts:export class HostelRepository extends BaseRepository<HostelDocument> implements IHostelRepository {
+repositories/department.repository.ts:export class DepartmentRepository extends BaseRepository<DepartmentDocument> implements IDepartmentRepository {
+repositories/video-lecture.repository.ts:export class VideoLectureRepository extends BaseRepository<VideoLecture> implements IVideoLectureRepository {
+repositories/job.repository.ts:export class JobRepository extends BaseRepository<Job> implements IJobRepository {
+repositories/invoice.repository.ts:export class InvoiceRepository extends BaseRepository<Invoice> implements IInvoiceRepository {
+repositories/academic-year.repository.ts:export class AcademicYearRepository extends BaseRepository<AcademicYear> implements IAcademicYearRepository {
+repositories/behavior.repository.ts:export class BehaviorRepository extends BaseRepository<BehaviorLog> implements IBehaviorRepository {
+repositories/section.repository.ts:export class SectionRepository extends BaseRepository<Section> implements ISectionRepository {
+repositories/tenant-setup.repository.ts:export class TenantSetupRepository implements ITenantSetupRepository {
+repositories/tenant.repository.ts:export class TenantRepository extends BaseRepository<Tenant> implements ITenantRepository {
+repositories/library.repository.ts:export class LibraryRepository extends BaseRepository<LibraryDocument> implements ILibraryRepository {
+repositories/grading.repository.ts:export class GradingRepository extends BaseRepository<GradingDocument> implements IGradingRepository {
+repositories/parents.repository.ts:export class ParentsRepository extends BaseRepository<ParentDocument> implements IParentsRepository {
+repositories/syllabus.repository.ts:export class SyllabusRepository extends BaseRepository<Syllabus> implements ISyllabusRepository {
+repositories/staff.repository.ts:export class StaffRepository extends BaseRepository<StaffDocument> implements IStaffRepository {
+repositories/fee-structure.repository.ts:export class FeeStructureRepository extends BaseRepository<FeeStructureDocument> implements IFeeStructureRepository {
+repositories/homework.repository.ts:export class HomeworkRepository extends BaseRepository<Homework> implements IHomeworkRepository {
+repositories/transport.repository.ts:export class TransportRepository extends BaseRepository<TransportDocument> implements ITransportRepository {
+repositories/lesson-plan.repository.ts:export class LessonPlanRepository extends BaseRepository<LessonPlan> implements ILessonPlanRepository {
+repositories/building.repository.ts:export class BuildingRepository extends BaseRepository<BuildingDocument> implements IBuildingRepository {
+repositories/menu.repository.ts:export class MenuRepository extends BaseRepository<any> implements IMenuRepository {
+repositories/configuration.repository.ts:export class ConfigurationRepository implements IConfigurationRepository {
+repositories/feature-flag.repository.ts:export class FeatureFlagRepository extends BaseRepository<any> implements IFeatureFlagRepository {
+repositories/addons.repository.ts:export class AddonsRepository extends BaseRepository<any> implements IAddonsRepository {
+repositories/leave.repository.ts:export class LeaveRepository extends BaseRepository<LeaveRequest> implements ILeaveRepository {
+repositories/user.repository.ts:export class UserRepository extends BaseRepository<any> implements IUserRepository {
+repositories/event-outbox.repository.ts:export class EventOutboxRepository implements IEventOutboxRepository {
+repositories/shift.repository.ts:export class ShiftRepository extends BaseRepository<ShiftDocument> implements IShiftRepository {
+repositories/storage.repository.ts:export class StorageRepository implements IStorageRepository {
+repositories/bus.repository.ts:export class BusRepository extends BaseRepository<Bus> implements IBusRepository {
+repositories/tenant-branding.repository.ts:export class TenantBrandingRepository extends BaseRepository<TenantBranding> implements ITenantBrandingRepository {
+repositories/assignment.repository.ts:export class AssignmentRepository extends BaseRepository<Assignment> implements IAssignmentRepository {
+repositories/attendance.repository.ts:export class AttendanceRepository extends BaseRepository<AttendanceDocument> implements IAttendanceRepository {
+repositories/chat.repository.ts:export class ChatRepository extends BaseRepository<ChatMessage> implements IChatRepository {
+repositories/house.repository.ts:export class HouseRepository extends BaseRepository<HouseDocument> implements IHouseRepository {
+repositories/student.repository.ts:export class StudentRepository extends BaseRepository<StudentDocument> implements IStudentRepository
+repositories/subscription.repository.ts:export class SubscriptionRepository extends BaseRepository<Subscription> implements ISubscriptionRepository {
+repositories/timetable.repository.ts:export class TimetableRepository extends BaseRepository<TimetableEntry> implements ITimetableRepository {
+repositories/book.repository.ts:export class BookRepository extends BaseRepository<Book> implements IBookRepository {
+repositories/curriculum.repository.ts:export class CurriculumRepository implements ICurriculumRepository {
+repositories/class.repository.ts:export class ClassRepository extends BaseRepository<ClassRecord> implements IClassRepository {
+repositories/ai-usage.repository.ts:export class AiUsageRepository extends BaseRepository<AiUsage> implements IAiUsageRepository {
+repositories/facility.repository.ts:export class FacilityRepository extends BaseRepository<FacilityDocument> implements IFacilityRepository {
+repositories/auth.repository.ts:export class AuthRepository implements IAuthRepository {

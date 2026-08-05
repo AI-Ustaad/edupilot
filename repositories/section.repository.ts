@@ -66,3 +66,5 @@ export class SectionRepository extends BaseRepository<Section> implements ISecti
     return missing.length;
   }
 }
+
+export const sectionRepository = new SectionRepository();

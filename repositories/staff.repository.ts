@@ -376,3 +376,5 @@ export class StaffRepository extends BaseRepository<StaffDocument> implements IS
     }
   }
 }
+
+export const staffRepository = new StaffRepository();

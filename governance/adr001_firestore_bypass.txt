@@ -1,0 +1,135 @@
+repositories/dashboard-stats.repository.ts:import { adminDb, dbTimestamp } from "@/lib/firebase-admin";
+repositories/base.repository.ts:import { adminDb, dbTimestamp } from '@/lib/firebase-admin';
+repositories/base.repository.ts:    this.db = adminDb;
+repositories/ledger.repository.ts:import { adminDb } from "@/lib/firebase-admin";
+repositories/audit.repository.ts:import { adminDb, dbTimestamp } from "@/lib/firebase-admin";
+repositories/invoice.repository.ts:import { adminDb, dbTimestamp } from "@/lib/firebase-admin";
+repositories/academic-year.repository.ts:import { adminDb, dbTimestamp } from "@/lib/firebase-admin";
+repositories/section.repository.test.ts:    const { adminDb } = require('@/lib/firebase-admin');
+repositories/section.repository.test.ts:    const sectionCollection = adminDb.collection('sections');
+repositories/section.repository.test.ts:    const { adminDb } = require('@/lib/firebase-admin');
+repositories/section.repository.test.ts:    const sectionDoc = adminDb.collection('sections').doc('section-456');
+repositories/section.repository.test.ts:    const { adminDb } = require('@/lib/firebase-admin');
+repositories/section.repository.test.ts:    const sectionDoc = adminDb.collection('sections').doc('nonexistent');
+repositories/section.repository.test.ts:    const { adminDb } = require('@/lib/firebase-admin');
+repositories/section.repository.test.ts:    const sectionDoc = adminDb.collection('sections').doc('section-789');
+repositories/section.repository.test.ts:    const { adminDb } = require('@/lib/firebase-admin');
+repositories/section.repository.test.ts:    const sectionDoc = adminDb.collection('sections').doc('nonexistent');
+repositories/section.repository.test.ts:    const { adminDb } = require('@/lib/firebase-admin');
+repositories/section.repository.test.ts:    const sectionDoc = adminDb.collection('sections').doc('section-111');
+repositories/job.repository.test.ts:    const { adminDb } = require('@/lib/firebase-admin');
+repositories/job.repository.test.ts:    const targetCollection = adminDb.collection('tenants').doc(tenantId).collection('jobs');
+repositories/job.repository.test.ts:    const { adminDb } = require('@/lib/firebase-admin');
+repositories/job.repository.test.ts:    const jobDoc = adminDb.collection('tenants').doc(tenantId).collection('jobs').doc('job-456');
+repositories/job.repository.test.ts:    const { adminDb } = require('@/lib/firebase-admin');
+repositories/job.repository.test.ts:    const jobDoc = adminDb.collection('tenants').doc(tenantId).collection('jobs').doc('nonexistent');
+repositories/job.repository.test.ts:    const { adminDb } = require('@/lib/firebase-admin');
+repositories/job.repository.test.ts:    const jobDoc = adminDb.collection('tenants').doc(tenantId).collection('jobs').doc('job-789');
+repositories/job.repository.test.ts:    const { adminDb } = require('@/lib/firebase-admin');
+repositories/job.repository.test.ts:    const jobDoc = adminDb.collection('tenants').doc(tenantId).collection('jobs').doc('job-789');
+repositories/job.repository.test.ts:    const { adminDb } = require('@/lib/firebase-admin');
+repositories/job.repository.test.ts:    const jobDoc = adminDb.collection('tenants').doc(tenantId).collection('jobs').doc('job-999');
+repositories/academic-year.repository.test.ts:    const { adminDb, mockCollection } = require('@/lib/firebase-admin');
+repositories/academic-year.repository.test.ts:    const { adminDb, mockCollection } = require('@/lib/firebase-admin');
+repositories/academic-year.repository.test.ts:    const { adminDb, mockCollection, mockBatch, mockDocRef } = require('@/lib/firebase-admin');
+repositories/section.repository.ts:import { adminDb, dbTimestamp } from "@/lib/firebase-admin";
+repositories/audit.repository.test.ts:    const { adminDb, mockCollection } = require('@/lib/firebase-admin');
+repositories/tenant-setup.repository.ts:import { adminDb, dbTimestamp } from "@/lib/firebase-admin";
+repositories/tenant-setup.repository.ts:    const batch = adminDb.batch();
+repositories/tenant-setup.repository.ts:    const userRef = adminDb.collection("users").doc(userId);
+repositories/tenant-setup.repository.ts:    const tenantRef = adminDb.collection("tenants").doc(tenantId);
+repositories/tenant-setup.repository.ts:    const settingsRef = adminDb.collection("tenants").doc(tenantId).collection("settings").doc("config");
+repositories/tenant-setup.repository.ts:    const sectionsRef = adminDb.collection("sections");
+repositories/tenant-setup.repository.ts:      const deptRef = adminDb.collection("departments").doc();
+repositories/tenant-setup.repository.ts:      const desigRef = adminDb.collection("designations").doc();
+repositories/tenant-setup.repository.ts:    const campusRef = adminDb.collection("campuses").doc();
+repositories/attendance.repository.test.ts:    const { adminDb, mockCollection } = require('@/lib/firebase-admin');
+repositories/attendance.repository.test.ts:    const { adminDb, mockBatch } = require('@/lib/firebase-admin');
+repositories/tenant.repository.ts:import { adminDb, dbTimestamp } from "@/lib/firebase-admin";
+repositories/syllabus.repository.ts:import { adminDb, dbTimestamp } from "@/lib/firebase-admin";
+repositories/configuration.repository.ts:import { adminDb } from "@/lib/firebase-admin";
+repositories/configuration.repository.ts:    return adminDb.collection("tenants").doc(tenantId).collection("settings");
+repositories/behavior.repository.test.ts:    const { adminDb, mockCollection } = require('@/lib/firebase-admin');
+repositories/addons.repository.test.ts:    const { adminDb, mockDocRef } = require('@/lib/firebase-admin');
+repositories/addons.repository.test.ts:    const { adminDb, mockDocRef } = require('@/lib/firebase-admin');
+repositories/addons.repository.test.ts:    const { adminDb, mockDocRef } = require('@/lib/firebase-admin');
+repositories/addons.repository.test.ts:    const { adminDb, mockDocRef } = require('@/lib/firebase-admin');
+repositories/addons.repository.test.ts:    const { adminDb, mockDocRef } = require('@/lib/firebase-admin');
+repositories/student.repository.test.ts:    const { adminDb, mockCollection } = require('@/lib/firebase-admin');
+repositories/settings.repository.test.ts:    adminDb: {
+repositories/settings.repository.test.ts:    const { adminDb } = require('@/lib/firebase-admin');
+repositories/settings.repository.test.ts:    const configDoc = adminDb.collection('tenants').doc(tenantId).collection('settings').doc('config');
+repositories/settings.repository.test.ts:    const { adminDb } = require('@/lib/firebase-admin');
+repositories/settings.repository.test.ts:    const configDoc = adminDb.collection('tenants').doc(tenantId).collection('settings').doc('config');
+repositories/settings.repository.test.ts:    const { adminDb } = require('@/lib/firebase-admin');
+repositories/settings.repository.test.ts:    const configDoc = adminDb.collection('tenants').doc(tenantId).collection('settings').doc('config');
+repositories/settings.repository.test.ts:    const { adminDb, mockQuery } = require('@/lib/firebase-admin');
+repositories/settings.repository.test.ts:    const configDoc = adminDb.collection('tenants').doc(tenantId).collection('settings').doc('config');
+repositories/settings.repository.test.ts:    const { adminDb, mockBatch } = require('@/lib/firebase-admin');
+repositories/settings.repository.test.ts:    const configDoc = adminDb.collection('tenants').doc(tenantId).collection('settings').doc('config');
+repositories/settings.repository.test.ts:    const { adminDb } = require('@/lib/firebase-admin');
+repositories/settings.repository.test.ts:    const generalDoc = adminDb.collection('tenants').doc(tenantId).collection('settings').doc('general');
+repositories/settings.repository.test.ts:    const { adminDb } = require('@/lib/firebase-admin');
+repositories/settings.repository.test.ts:    const generalDoc = adminDb.collection('tenants').doc(tenantId).collection('settings').doc('general');
+repositories/settings.repository.test.ts:    const { adminDb } = require('@/lib/firebase-admin');
+repositories/settings.repository.test.ts:    const generalDoc = adminDb.collection('tenants').doc(tenantId).collection('settings').doc('general');
+repositories/assignment.repository.test.ts:    const { adminDb, mockCollection } = require('@/lib/firebase-admin');
+repositories/bus.repository.test.ts:    const { adminDb, mockCollection } = require('@/lib/firebase-admin');
+repositories/bus.repository.test.ts:    const { adminDb, mockBatch, mockCollection } = require('@/lib/firebase-admin');
+repositories/event-outbox.repository.ts:import { adminDb } from "@/lib/firebase-admin";
+repositories/event-outbox.repository.ts:  private readonly events = adminDb.collection("events");
+repositories/event-outbox.repository.ts:    const claimed = await Promise.all(candidates.map(async (candidate) => adminDb.runTransaction(async (transaction) => {
+repositories/event-outbox.repository.ts:      await adminDb.runTransaction(async (transaction) => {
+repositories/event-outbox.repository.ts:        const deadLetterRef = adminDb.collection("dead_letter_events").doc(event.eventId);
+repositories/event-outbox.repository.ts:    const ref = adminDb.collection("processed_events").doc(`${eventId}_${subscriberId}`);
+repositories/event-outbox.repository.ts:    return adminDb.runTransaction(async (transaction) => {
+repositories/event-outbox.repository.ts:    await adminDb.collection("processed_events").doc(`${eventId}_${subscriberId}`).update({
+repositories/event-outbox.repository.ts:    await adminDb.collection("processed_events").doc(`${eventId}_${subscriberId}`).delete();
+repositories/assignment.repository.ts:import { adminDb, dbTimestamp } from "@/lib/firebase-admin";
+repositories/subscription.repository.ts:import { adminDb, dbTimestamp } from "@/lib/firebase-admin";
+repositories/event-outbox.repository.test.ts:    const { adminDb, mockCollection, mockDocRef, mockQuery } = require('@/lib/firebase-admin');
+repositories/event-outbox.repository.test.ts:    adminDb.collection.mockReturnValue(mockCollection);
+repositories/event-outbox.repository.test.ts:    const { adminDb } = require('@/lib/firebase-admin');
+repositories/event-outbox.repository.test.ts:    adminDb.runTransaction.mockResolvedValue(true);
+repositories/event-outbox.repository.test.ts:    const { adminDb, mockCollection, mockDocRef } = require('@/lib/firebase-admin');
+repositories/event-outbox.repository.test.ts:    const { adminDb, mockCollection } = require('@/lib/firebase-admin');
+repositories/quiz.repository.test.ts:    const { adminDb } = require('@/lib/firebase-admin');
+repositories/quiz.repository.test.ts:    const quizCollection = adminDb.collection('quizzes');
+repositories/quiz.repository.test.ts:    const { adminDb } = require('@/lib/firebase-admin');
+repositories/quiz.repository.test.ts:    const quizDoc = adminDb.collection('quizzes').doc('quiz-456');
+repositories/quiz.repository.test.ts:    const { adminDb } = require('@/lib/firebase-admin');
+repositories/quiz.repository.test.ts:    const quizDoc = adminDb.collection('quizzes').doc('nonexistent');
+repositories/quiz.repository.test.ts:    const { adminDb } = require('@/lib/firebase-admin');
+repositories/quiz.repository.test.ts:    const quizDoc = adminDb.collection('quizzes').doc('quiz-789');
+repositories/quiz.repository.test.ts:    const { adminDb } = require('@/lib/firebase-admin');
+repositories/quiz.repository.test.ts:    const quizDoc = adminDb.collection('quizzes').doc('quiz-999');
+repositories/quiz.repository.test.ts:    const { adminDb } = require('@/lib/firebase-admin');
+repositories/quiz.repository.test.ts:    const subCollection = adminDb.collection('quiz_submissions');
+repositories/configuration.repository.test.ts:      const { adminDb } = require('@/lib/firebase-admin');
+repositories/configuration.repository.test.ts:      adminDb.collection.mockReturnValue({
+repositories/configuration.repository.test.ts:      const { adminDb } = require('@/lib/firebase-admin');
+repositories/configuration.repository.test.ts:      adminDb.collection.mockReturnValue({
+repositories/configuration.repository.test.ts:      const { adminDb } = require('@/lib/firebase-admin');
+repositories/configuration.repository.test.ts:      adminDb.collection.mockReturnValue({
+repositories/configuration.repository.test.ts:      const { adminDb } = require('@/lib/firebase-admin');
+repositories/configuration.repository.test.ts:      adminDb.collection.mockReturnValue({
+repositories/configuration.repository.test.ts:      const { adminDb } = require('@/lib/firebase-admin');
+repositories/configuration.repository.test.ts:      adminDb.collection.mockReturnValue({
+repositories/configuration.repository.test.ts:      const { adminDb } = require('@/lib/firebase-admin');
+repositories/configuration.repository.test.ts:      adminDb.collection.mockReturnValue({
+repositories/configuration.repository.test.ts:      const { adminDb } = require('@/lib/firebase-admin');
+repositories/configuration.repository.test.ts:      adminDb.collection.mockReturnValue({
+repositories/configuration.repository.test.ts:      const { adminDb } = require('@/lib/firebase-admin');
+repositories/configuration.repository.test.ts:      adminDb.collection.mockReturnValue({
+repositories/configuration.repository.test.ts:      const { adminDb } = require('@/lib/firebase-admin');
+repositories/configuration.repository.test.ts:      adminDb.collection.mockReturnValue({
+repositories/configuration.repository.test.ts:      const { adminDb } = require('@/lib/firebase-admin');
+repositories/configuration.repository.test.ts:      adminDb.collection.mockReturnValue({
+repositories/configuration.repository.test.ts:      const { adminDb } = require('@/lib/firebase-admin');
+repositories/configuration.repository.test.ts:      adminDb.collection.mockReturnValue({
+repositories/ai-usage.repository.test.ts:    const { adminDb, mockCollection } = require('@/lib/firebase-admin');
+repositories/book.repository.test.ts:    const { adminDb, mockCollection } = require('@/lib/firebase-admin');
+repositories/base.repository.test.ts:    const { adminDb, mockCollection } = require('@/lib/firebase-admin');
+repositories/base.repository.test.ts:    const { adminDb, mockBatch, mockCollection } = require('@/lib/firebase-admin');
+repositories/class.repository.ts:import { adminDb, dbTimestamp } from "@/lib/firebase-admin";
+repositories/ai-usage.repository.ts:import { adminDb, dbTimestamp } from "@/lib/firebase-admin";

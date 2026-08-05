@@ -1,0 +1,16 @@
+Route,CurrentArchitecture,TargetArchitecture,BusinessRisk,RefactorRequired,EstimatedImpact
+app/api/v1/staff/[id]/route.ts,ROUTE_TO_SERVICE_REPO,ROUTE → SERVICE → REPOSITORY → FIRESTORE,NONE,NONE,Trivial
+app/api/v1/staff/[id]/timeline/route.ts,ROUTE_TO_SERVICE_REPO,ROUTE → SERVICE → REPOSITORY → FIRESTORE,NONE,NONE,Trivial
+app/api/v1/staff/analytics/route.ts,ROUTE_TO_SERVICE_REPO,ROUTE → SERVICE → REPOSITORY → FIRESTORE,NONE,NONE,Trivial
+app/api/v1/staff/bulk/route.ts,ROUTE_TO_SERVICE,ROUTE → SERVICE → REPOSITORY → FIRESTORE,LOW,MINOR,Low
+app/api/v1/staff/ocr/route.ts,ROUTE_TO_SERVICE,ROUTE → SERVICE → REPOSITORY → FIRESTORE,LOW,MINOR,Low
+app/api/v1/staff/route.ts,ROUTE_TO_SERVICE,ROUTE → SERVICE → REPOSITORY → FIRESTORE,LOW,MINOR,Low
+app/api/v1/stripe/create-checkout/route.ts,ROUTE_WITH_BUSINESS_LOGIC,ROUTE → SERVICE → REPOSITORY → FIRESTORE,MEDIUM,CREATE_SERVICE,Medium
+app/api/v1/stripe/webhook/route.ts,ROUTE_TO_SERVICE,ROUTE → SERVICE → REPOSITORY → FIRESTORE,MEDIUM,MINOR,Medium
+app/api/v1/students/360/route.ts,ROUTE_TO_SERVICE_REPO,ROUTE → SERVICE → REPOSITORY → FIRESTORE,NONE,NONE,Trivial
+app/api/v1/students/[id]/comment/route.ts,ROUTE_TO_SERVICE_REPO,ROUTE → SERVICE → REPOSITORY → FIRESTORE,NONE,NONE,Trivial
+app/api/v1/students/[id]/route.ts,ROUTE_TO_SERVICE_REPO,ROUTE → SERVICE → REPOSITORY → FIRESTORE,NONE,NONE,Trivial
+app/api/v1/students/[id]/timeline/route.ts,ROUTE_TO_SERVICE_REPO,ROUTE → SERVICE → REPOSITORY → FIRESTORE,NONE,NONE,Trivial
+app/api/v1/students/bulk/route.ts,ROUTE_TO_SERVICE,ROUTE → SERVICE → REPOSITORY → FIRESTORE,LOW,MINOR,Low
+app/api/v1/students/get/route.ts,ROUTE_TO_SERVICE_REPO,ROUTE → SERVICE → REPOSITORY → FIRESTORE,NONE,NONE,Trivial
+app/api/v1/students/ocr-admission/route.ts,ROUTE_WITH_BUSINESS_LOGIC,ROUTE → SERVICE → REPOSITORY → FIRESTORE,HIGH,CREATE_SERVICE,Medium

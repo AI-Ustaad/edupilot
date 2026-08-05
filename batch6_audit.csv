@@ -1,0 +1,16 @@
+Route,CurrentArchitecture,TargetArchitecture,BusinessRisk,RefactorRequired,EstimatedImpact
+"app/api/v1/parents/route.ts",ROUTE_TO_SERVICE_REPO,ROUTE → SERVICE → REPOSITORY → FIRESTORE,NONE,NONE,Trivial
+"app/api/v1/protected-data/route.ts",ROUTE_TO_SERVICE_REPO,ROUTE → SERVICE → REPOSITORY → FIRESTORE,NONE,NONE,Trivial
+"app/api/v1/quizzes/[id]/route.ts",ROUTE_TO_SERVICE_REPO,ROUTE → SERVICE → REPOSITORY → FIRESTORE,NONE,NONE,Trivial
+"app/api/v1/quizzes/results/route.ts",ROUTE_TO_SERVICE_REPO,ROUTE → SERVICE → REPOSITORY → FIRESTORE,NONE,NONE,Trivial
+"app/api/v1/quizzes/route.ts",ROUTE_TO_SERVICE_REPO,ROUTE → SERVICE → REPOSITORY → FIRESTORE,NONE,NONE,Trivial
+"app/api/v1/quizzes/submit/route.ts",ROUTE_TO_SERVICE_REPO,ROUTE → SERVICE → REPOSITORY → FIRESTORE,LOW,MINOR,Low
+"app/api/v1/reports/generate-bulk/route.ts",ROUTE_WITH_BUSINESS_LOGIC,ROUTE → SERVICE → REPOSITORY → FIRESTORE,MEDIUM,MAJOR,Medium
+"app/api/v1/reports/generate/route.tsx",ROUTE_TO_REPO,ROUTE → SERVICE → REPOSITORY → FIRESTORE,HIGH,CREATE_SERVICE,Medium
+"app/api/v1/results/route.ts",ROUTE_TO_SERVICE_REPO,ROUTE → SERVICE → REPOSITORY → FIRESTORE,NONE,NONE,Trivial
+"app/api/v1/settings/curriculum/route.ts",ROUTE_WITH_BUSINESS_LOGIC,ROUTE → SERVICE → REPOSITORY → FIRESTORE,MEDIUM,MAJOR,Medium
+"app/api/v1/settings/general/route.ts",ROUTE_TO_SERVICE_REPO,ROUTE → SERVICE → REPOSITORY → FIRESTORE,NONE,NONE,Trivial
+"app/api/v1/settings/route.ts",ROUTE_TO_SERVICE_REPO,ROUTE → SERVICE → REPOSITORY → FIRESTORE,LOW,MINOR,Low
+"app/api/v1/settings/school-configuration/route.ts",ROUTE_WITH_BUSINESS_LOGIC,ROUTE → SERVICE → REPOSITORY → FIRESTORE,MEDIUM,MAJOR,Medium
+"app/api/v1/settings/whitelabel/route.ts",ROUTE_TO_SERVICE_REPO,ROUTE → SERVICE → REPOSITORY → FIRESTORE,NONE,NONE,Trivial
+"app/api/v1/staff/[id]/ai/route.ts",ROUTE_TO_SERVICE_REPO,ROUTE → SERVICE → REPOSITORY → FIRESTORE,NONE,NONE,Trivial

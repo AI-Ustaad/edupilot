@@ -39,3 +39,5 @@ export class AcademicYearRepository extends BaseRepository<AcademicYear> impleme
     await this.db.collection(this.collectionName).doc(id).update({ isCurrent: true });
   }
 }
+
+export const academicYearRepository = new AcademicYearRepository();

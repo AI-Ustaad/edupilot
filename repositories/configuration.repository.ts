@@ -251,3 +251,5 @@ export class ConfigurationRepository implements IConfigurationRepository {
     }
   }
 }
+
+export const configurationRepository = new ConfigurationRepository();

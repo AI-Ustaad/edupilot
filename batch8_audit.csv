@@ -1,0 +1,17 @@
+Route,CurrentArchitecture,TargetArchitecture,BusinessRisk,RefactorRequired,EstimatedImpact
+"app/api/v1/students/promote/route.ts",ROUTE_WITH_BUSINESS_LOGIC,ROUTE → SERVICE → REPOSITORY → FIRESTORE,LOW,MINOR,Low
+"app/api/v1/students/risk/route.ts",ROUTE_TO_SERVICE_REPO,ROUTE → SERVICE → REPOSITORY → FIRESTORE,NONE,NONE,Trivial
+"app/api/v1/students/route.ts",ROUTE_TO_SERVICE_REPO,ROUTE → SERVICE → REPOSITORY → FIRESTORE,NONE,NONE,Trivial
+"app/api/v1/subscriptions/activate/route.ts",ROUTE_TO_SERVICE_REPO,ROUTE → SERVICE → REPOSITORY → FIRESTORE,NONE,NONE,Trivial
+"app/api/v1/subscriptions/route.ts",ROUTE_WITH_BUSINESS_LOGIC,ROUTE → SERVICE → REPOSITORY → FIRESTORE,MEDIUM,MINOR,Medium
+"app/api/v1/super-admin/analytics/route.ts",ROUTE_TO_SERVICE_REPO,ROUTE → SERVICE → REPOSITORY → FIRESTORE,NONE,NONE,Trivial
+"app/api/v1/super-admin/telemetry/route.ts",ROUTE_TO_SERVICE,ROUTE → SERVICE → REPOSITORY → FIRESTORE,LOW,MINOR,Low
+"app/api/v1/syllabus/[id]/route.ts",ROUTE_TO_SERVICE_REPO,ROUTE → SERVICE → REPOSITORY → FIRESTORE,NONE,NONE,Trivial
+"app/api/v1/syllabus/route.ts",ROUTE_TO_SERVICE_REPO,ROUTE → SERVICE → REPOSITORY → FIRESTORE,NONE,NONE,Trivial
+"app/api/v1/timetable/route.ts",ROUTE_TO_SERVICE_REPO,ROUTE → SERVICE → REPOSITORY → FIRESTORE,NONE,NONE,Trivial
+"app/api/v1/upload/route.ts",ROUTE_WITH_BUSINESS_LOGIC,ROUTE → SERVICE → REPOSITORY → FIRESTORE,MEDIUM,MINOR,Medium
+"app/api/v1/users/get/route.ts",ROUTE_WITH_BUSINESS_LOGIC,ROUTE → SERVICE → REPOSITORY → FIRESTORE,LOW,CREATE_SERVICE,Low
+"app/api/v1/users/init/route.ts",ROUTE_TO_SERVICE_REPO,ROUTE → SERVICE → REPOSITORY → FIRESTORE,NONE,NONE,Trivial
+"app/api/v1/users/register-school/route.ts",ROUTE_WITH_BUSINESS_LOGIC,ROUTE → SERVICE → REPOSITORY → FIRESTORE,HIGH,MAJOR,High
+"app/api/v1/video-lectures/route.ts",ROUTE_TO_SERVICE_REPO,ROUTE → SERVICE → REPOSITORY → FIRESTORE,NONE,NONE,Trivial
+"app/api/webhooks/qstash/route.ts",ROUTE_WITH_BUSINESS_LOGIC,ROUTE → SERVICE → REPOSITORY → FIRESTORE,HIGH,CREATE_SERVICE,High

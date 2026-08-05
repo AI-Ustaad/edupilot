@@ -1,0 +1,17 @@
+app/api/v1/configuration/dashboard/route.ts:const configurationRepo = new ConfigurationRepository();
+app/api/v1/configuration/dashboard/route.ts:const academicYearRepo = new AcademicYearRepository();
+app/api/v1/configuration/dashboard/route.ts:const classRepo = new ClassRepository();
+app/api/v1/configuration/dashboard/route.ts:const sectionRepo = new SectionRepository();
+app/api/v1/configuration/dashboard/route.ts:const studentRepo = new StudentRepository();
+app/api/v1/configuration/dashboard/route.ts:const staffRepo = new StaffRepository();
+app/api/v1/configuration/dashboard/route.ts:const parentRepo = new ParentsRepository();
+app/api/v1/curriculum/upgrade/route.ts:      const repo = new ConfigurationRepository();
+app/api/v1/curriculum/upgrade/route.ts:      const repo = new ConfigurationRepository();
+app/api/v1/classes/route.ts:        const sectionRepo = new SectionRepository();
+app/api/v1/classes/route.ts:        const sectionRepo = new SectionRepository();
+app/api/v1/classes/route.ts:        const sectionRepo = new SectionRepository();
+app/api/v1/jobs/attendance-report/route.ts:    const tenantRepo = new TenantRepository();
+app/api/v1/jobs/attendance-report/route.ts:      const attendanceService = new AttendanceService(new AttendanceRepository());
+app/api/v1/jobs/fee-reminder/route.ts:    const feesRepo = new FeesRepository();
+app/api/v1/jobs/fee-reminder/route.ts:    const tenantRepo = new TenantRepository();
+app/api/v1/reports/generate/route.tsx:        const student = await (new (await import("@/repositories/student.repository")).StudentRepository()).findById(studentId, tenantId);

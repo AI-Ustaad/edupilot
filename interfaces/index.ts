@@ -28,6 +28,7 @@ export * from "./IConfigurationRepository";
 export * from "./IConfigurationService";
 export * from "./ICurriculumEngineService";
 export * from "./ICurriculumRepository";
+export * from "./IConfigurationDashboardService";
 export * from "./IDashboardService";
 export * from "./IDashboardStatsRepository";
 export * from "./IEventOutboxRepository";

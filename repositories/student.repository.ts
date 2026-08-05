@@ -585,3 +585,5 @@ export class StudentRepository extends BaseRepository<StudentDocument> implement
     }
   }
 }
+
+export const studentRepository = new StudentRepository();
