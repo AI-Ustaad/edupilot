@@ -4,8 +4,9 @@ import { EVENTS } from "@/lib/events/event-types";
 import { ConfigurationRepository } from "@/repositories/configuration.repository";
 import { ConfigurationCacheService } from "@/services/configuration-cache.service";
 import { ConfigurationHealthService } from "@/services/configuration-health.service";
+import { versionEngine, type UpgradeCheckResult } from "@/education/engines/version.engine";
 import { mapConfigurationToViewModel, mapHistory } from "@/lib/mappers";
-import { ConfigurationInvalidError, ConfigurationValidationError } from "@/lib/errors/configuration.errors";
+import { ConfigurationInvalidError, ConfigurationValidationError, ConfigurationNotFoundError } from "@/lib/errors/configuration.errors";
 import type { MasterSchoolConfiguration } from "@/types/configuration";
 import type { SchoolConfigurationViewModel, ConfigurationHistoryViewModel } from "@/types/viewmodels";
 import type { ConfigurationLoadResult, ConfigurationStatus, ConfigurationHealthResult } from "@/types/configuration/status";
@@ -225,6 +226,46 @@ async saveAndPublishConfiguration(input: WizardInput, tenantId: string, userId: 
 
   async getConfigurationForSetup(tenantId: string): Promise<SchoolConfigurationViewModel | null> {
     return this.getConfigurationViewModel(tenantId);
+  }
+
+  async getConfiguration(tenantId: string): Promise<MasterSchoolConfiguration | null> {
+    return this.repo.getConfiguration(tenantId);
+  }
+
+  async saveConfiguration(tenantId: string, config: MasterSchoolConfiguration): Promise<void> {
+    return this.repo.saveConfiguration(tenantId, config);
+  }
+
+  async checkForUpgrades(tenantId: string): Promise<UpgradeCheckResult> {
+    const config = await this.getConfiguration(tenantId);
+    if (!config) {
+      throw new ConfigurationNotFoundError(tenantId);
+    }
+    return versionEngine.checkForUpgrades(config);
+  }
+
+  async upgradeCurriculum(tenantId: string, newVersionId: string, userId: string): Promise<MasterSchoolConfiguration> {
+    const currentConfig = await this.getConfiguration(tenantId);
+    if (!currentConfig) {
+      throw new ConfigurationNotFoundError(tenantId);
+    }
+
+    const upgradePatch = await versionEngine.applyUpgrade(currentConfig, newVersionId);
+
+    const updatedConfig: MasterSchoolConfiguration = {
+      ...currentConfig,
+      ...upgradePatch,
+      version: {
+        ...currentConfig.version,
+        number: currentConfig.version.number + 1,
+        reason: `Upgraded to Curriculum Version: ${newVersionId}`,
+        publishedAt: new Date().toISOString(),
+        publishedBy: userId,
+      },
+    };
+
+    await this.saveConfiguration(tenantId, updatedConfig);
+    return updatedConfig;
   }
 }
 
