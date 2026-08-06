@@ -15,7 +15,7 @@ export class ClassService implements IClassService {
     return safeArray(records);
   }
 
-  async createClass(data: { classGrade: string; sectionName: string }, tenantId: string) {
+  async createClass(data: { classGrade: string; sectionName: string; subjects?: { core: string[]; electives: string[] }; createdBy?: string }, tenantId: string) {
     return this.repo.createClass(data, tenantId);
   }
 

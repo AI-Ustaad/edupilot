@@ -7,6 +7,8 @@ export interface ClassRecord {
   classGrade: string;
   sectionName: string;
   incharge?: string;
+  subjects?: { core: string[]; electives: string[] };
+  createdBy?: string;
   tenantId: string;
   deleted?: boolean;
   createdAt?: any;
@@ -28,7 +30,7 @@ export class ClassRepository extends BaseRepository<ClassRecord> implements ICla
       .filter(r => !r.deleted);
   }
 
-  async createClass(data: { classGrade: string; sectionName: string }, tenantId: string): Promise<string> {
+  async createClass(data: { classGrade: string; sectionName: string; subjects?: { core: string[]; electives: string[] }; createdBy?: string }, tenantId: string): Promise<string> {
     const id = await this.create(
       { ...data, tenantId, createdAt: dbTimestamp } as any,
       tenantId

@@ -1,10 +1,10 @@
-import { FieldValue } from "firebase-admin/firestore";
 import { withErrorHandler, withAuth, withTenant } from "@/route-helpers";
 import { withPermission } from "@/lib/auth/rbac";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 import { createSuccessResponse, createErrorResponse, createApiResponse } from "@/lib/api/response";
 import { AuditService } from "@/services/AuditService";
 import { SectionRepository } from "@/repositories/section.repository";
+import { classService } from "@/services/class.service";
 import type { TenantContext } from "@/types/api";
 
 export const runtime = 'nodejs';
@@ -39,8 +39,7 @@ export const POST = withErrorHandler(
           return createErrorResponse(400, "Class and Section name required");
         }
 
-        const sectionRepo = new SectionRepository();
-        const id = await sectionRepo.create({ classGrade, sectionName, subjects: subjects || { core: [], electives: [] }, tenantId, deleted: false, createdBy: user.uid } as any, tenantId);
+        const id = await classService.createClass({ classGrade, sectionName, subjects: subjects || { core: [], electives: [] }, createdBy: user.uid }, tenantId);
 
         const audit = new AuditService();
         await audit.log({
