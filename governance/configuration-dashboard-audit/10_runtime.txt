@@ -1,0 +1,35 @@
+app/(protected)/admin/configuration-dashboard/page.tsx:import { useConfigurationDashboard } from "@/hooks/useConfigurationDashboard";
+app/(protected)/admin/configuration-dashboard/page.tsx:  const { data, isLoading, error, refetch } = useConfigurationDashboard();
+hooks/useConfigurationDashboard.ts:export function useConfigurationDashboard() {
+hooks/useAI.ts:import { safeObject } from "@/lib/api/safeResponse";
+hooks/useAI.ts:      return safeObject(res); // Returns { answer: "..." }
+hooks/useAI.ts:      return safeObject(res); // Returns { mcqs: [...], shortAnswers: [...], longAnswer: {...} }
+hooks/useAI.ts:      return safeObject(res);
+hooks/useAI.ts:      return safeObject(res);
+hooks/useAI.ts:      return safeObject(res);
+hooks/useSchool.ts:import { safeObject } from "@/lib/api/safeResponse";
+hooks/useSchool.ts:      const result = safeObject(await apiClient.get("/settings/school-configuration"));
+hooks/useAdmin.ts:import { safeArray, safeObject } from "@/lib/api/safeResponse";
+hooks/useAdmin.ts:    queryFn: async () => safeObject(await apiClient.get("/settings/whitelabel")),
+hooks/useAdmin.ts:    queryFn: async () => safeObject(await apiClient.get("/admin/feature-flags")),
+hooks/useTelemetry.ts:import { safeObject } from "@/lib/api/safeResponse";
+hooks/useTelemetry.ts:    queryFn: async () => safeObject(await apiClient.get("/super-admin/telemetry")),
+hooks/useGeneralSettings.ts:import { safeObject } from "@/lib/api/safeResponse";
+hooks/useGeneralSettings.ts:    queryFn: async () => safeObject(await apiClient.get("/settings/general")),
+hooks/useConfigurationDashboard.ts:import { safeObject } from "@/lib/api/safeResponse";
+hooks/useConfigurationDashboard.ts:      return safeObject(res);
+hooks/useStudents.ts:import { safeArray, safeObject } from "@/lib/api/safeResponse";
+hooks/useStudents.ts:      return safeObject(payload);
+hooks/useStudents.ts:      return safeObject(payload);
+hooks/useStudents.ts:        return safeObject(payload);
+hooks/useDashboard.ts:import { safeObject, safeArray } from "@/lib/api/safeResponse";
+hooks/useDashboard.ts:      return safeObject(res);
+hooks/useAIAgents.ts:import { safeObject } from "@/lib/api/safeResponse";
+hooks/useAIAgents.ts:      return safeObject(res);
+hooks/useAIAgents.ts:      return safeObject(res);
+hooks/useDashboardMetrics.ts:import { safeObject } from "@/lib/api/safeResponse";
+hooks/useDashboardMetrics.ts:    queryFn: async () => safeObject(await apiClient.get("/dashboard")),
+hooks/useSettings.ts:import { safeObject } from "@/lib/api/safeResponse";
+hooks/useSettings.ts:    queryFn: async () => safeObject(await apiClient.get("/settings")),
+hooks/useAnalytics.ts:import { safeObject, safeArray } from "@/lib/api/safeResponse";
+hooks/useAnalytics.ts:      return safeObject(res);

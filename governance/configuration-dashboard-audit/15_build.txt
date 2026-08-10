@@ -1,0 +1,254 @@
+
+> edupilot@0.1.0 build
+> next build
+
+  ▲ Next.js 14.2.3
+  - Environments: .env.local
+
+   Creating an optimized production build ...
+ ⚠ Compiled with warnings
+
+./node_modules/require-in-the-middle/index.js
+Critical dependency: require function is used in a way in which dependencies cannot be statically extracted
+
+Import trace for requested module:
+./node_modules/require-in-the-middle/index.js
+./node_modules/@opentelemetry/instrumentation/build/esm/platform/node/instrumentation.js
+./node_modules/@opentelemetry/instrumentation/build/esm/platform/node/index.js
+./node_modules/@opentelemetry/instrumentation/build/esm/platform/index.js
+./node_modules/@opentelemetry/instrumentation/build/esm/index.js
+./node_modules/@sentry/node/build/cjs/integrations/tracing/express.js
+./node_modules/@sentry/node/build/cjs/index.js
+./node_modules/@sentry/nextjs/build/cjs/index.server.js
+./app/sentry-example-page/page.tsx
+
+   Linting and checking validity of types ...
+
+./app/(protected)/admin/promote/page.tsx
+31:9  Warning: The 'students' conditional could make the dependencies of useMemo Hook (at line 37) change on every render. Move it inside the useMemo callback. Alternatively, wrap the initialization of 'students' in its own useMemo() Hook.  react-hooks/exhaustive-deps
+
+./app/(protected)/staff/page.tsx
+257:29  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+info  - Need to disable some ESLint rules? Learn more here: https://nextjs.org/docs/basic-features/eslint#disabling-rules
+   Collecting page data ...
+   Generating static pages (0/85) ...
+   Generating static pages (21/85) 
+   Generating static pages (42/85) 
+   Generating static pages (63/85) 
+ ✓ Generating static pages (85/85)
+   Finalizing page optimization ...
+   Collecting build traces ...
+
+Route (app)                                Size     First Load JS
+┌ ƒ /                                      8.28 kB         136 kB
+├ ƒ /_not-found                            883 B          88.5 kB
+├ ƒ /admin/academic-year                   2.1 kB          162 kB
+├ ƒ /admin/admissions                      8.51 kB         161 kB
+├ ƒ /admin/analytics                       3.1 kB          219 kB
+├ ƒ /admin/audit                           2.87 kB         163 kB
+├ ƒ /admin/buses                           1.97 kB         162 kB
+├ ƒ /admin/configuration-dashboard         5.06 kB         125 kB
+├ ƒ /admin/feature-flags                   2.33 kB         163 kB
+├ ƒ /admin/menu-manager                    20.9 kB         165 kB
+├ ƒ /admin/parents                         3.22 kB         162 kB
+├ ƒ /admin/promote                         4.21 kB         163 kB
+├ ƒ /admin/school-setup                    11.2 kB         164 kB
+├ ƒ /admin/sections                        5.52 kB         125 kB
+├ ƒ /admin/security                        7.28 kB         151 kB
+├ ƒ /admin/syllabus                        7.83 kB         128 kB
+├ ƒ /admin/users                           2.59 kB         163 kB
+├ ƒ /admin/whitelabel                      3.04 kB         163 kB
+├ ƒ /ai-chatbot                            5.67 kB         120 kB
+├ ƒ /ai-exam-questions                     7.23 kB         160 kB
+├ ƒ /ai-timetable                          6.49 kB         159 kB
+├ ƒ /ai/principal-copilot                  8 kB            155 kB
+├ ƒ /ai/report-comments                    3.79 kB         163 kB
+├ ƒ /ai/smart-book-center                  5.89 kB         120 kB
+├ ƒ /api/health                            0 B                0 B
+├ ƒ /api/sentry-example-api                0 B                0 B
+├ ƒ /api/v1/academic-year                  0 B                0 B
+├ ƒ /api/v1/academic-year/[id]             0 B                0 B
+├ ƒ /api/v1/addons                         0 B                0 B
+├ ƒ /api/v1/admin/delete-student           0 B                0 B
+├ ƒ /api/v1/admin/feature-flags            0 B                0 B
+├ ƒ /api/v1/admin/parents                  0 B                0 B
+├ ƒ /api/v1/admin/rebuild-stats            0 B                0 B
+├ ƒ /api/v1/admin/users                    0 B                0 B
+├ ƒ /api/v1/admin/users/role               0 B                0 B
+├ ƒ /api/v1/admissions/approve             0 B                0 B
+├ ƒ /api/v1/admit-cards/bulk               0 B                0 B
+├ ƒ /api/v1/ai/agents                      0 B                0 B
+├ ƒ /api/v1/ai/chatbot                     0 B                0 B
+├ ƒ /api/v1/ai/exam-paper                  0 B                0 B
+├ ƒ /api/v1/ai/exam-questions              0 B                0 B
+├ ƒ /api/v1/ai/report-comments             0 B                0 B
+├ ƒ /api/v1/ai/smart-book-center           0 B                0 B
+├ ƒ /api/v1/ai/timetable                   0 B                0 B
+├ ƒ /api/v1/analytics                      0 B                0 B
+├ ƒ /api/v1/assignments                    0 B                0 B
+├ ƒ /api/v1/assignments/[id]               0 B                0 B
+├ ƒ /api/v1/assignments/submit             0 B                0 B
+├ ƒ /api/v1/attendance                     0 B                0 B
+├ ƒ /api/v1/attendance/[id]                0 B                0 B
+├ ƒ /api/v1/attendance/export              0 B                0 B
+├ ƒ /api/v1/audit                          0 B                0 B
+├ ƒ /api/v1/auth/login                     0 B                0 B
+├ ƒ /api/v1/auth/logout                    0 B                0 B
+├ ƒ /api/v1/auth/me                        0 B                0 B
+├ ƒ /api/v1/auth/parent-login              0 B                0 B
+├ ƒ /api/v1/auth/register-user             0 B                0 B
+├ ƒ /api/v1/auth/session                   0 B                0 B
+├ ƒ /api/v1/behavior                       0 B                0 B
+├ ƒ /api/v1/books                          0 B                0 B
+├ ƒ /api/v1/books/books/[id]               0 B                0 B
+├ ƒ /api/v1/buses                          0 B                0 B
+├ ƒ /api/v1/buses/[id]                     0 B                0 B
+├ ƒ /api/v1/certificate                    0 B                0 B
+├ ƒ /api/v1/chat                           0 B                0 B
+├ ƒ /api/v1/classes                        0 B                0 B
+├ ƒ /api/v1/configuration/dashboard        0 B                0 B
+├ ƒ /api/v1/create-user                    0 B                0 B
+├ ƒ /api/v1/cron/fee-reminder              0 B                0 B
+├ ƒ /api/v1/curriculum/engine              0 B                0 B
+├ ƒ /api/v1/curriculum/load                0 B                0 B
+├ ƒ /api/v1/curriculum/preview             0 B                0 B
+├ ƒ /api/v1/curriculum/upgrade             0 B                0 B
+├ ƒ /api/v1/dashboard                      0 B                0 B
+├ ƒ /api/v1/education/rules                0 B                0 B
+├ ƒ /api/v1/feature-flags                  0 B                0 B
+├ ƒ /api/v1/feature-flags/disabled         0 B                0 B
+├ ƒ /api/v1/fees                           0 B                0 B
+├ ƒ /api/v1/fees/[id]                      0 B                0 B
+├ ƒ /api/v1/gdpr/delete/[id]               0 B                0 B
+├ ƒ /api/v1/gdpr/export/[id]               0 B                0 B
+├ ƒ /api/v1/homework                       0 B                0 B
+├ ƒ /api/v1/jobs/[jobId]                   0 B                0 B
+├ ƒ /api/v1/jobs/attendance-report         0 B                0 B
+├ ƒ /api/v1/jobs/events                    0 B                0 B
+├ ƒ /api/v1/jobs/fee-reminder              0 B                0 B
+├ ƒ /api/v1/leave                          0 B                0 B
+├ ƒ /api/v1/leave/arrange                  0 B                0 B
+├ ƒ /api/v1/ledger                         0 B                0 B
+├ ƒ /api/v1/lesson-plans                   0 B                0 B
+├ ƒ /api/v1/marks                          0 B                0 B
+├ ƒ /api/v1/marks/bulk                     0 B                0 B
+├ ƒ /api/v1/marks/publish                  0 B                0 B
+├ ƒ /api/v1/marks/skills                   0 B                0 B
+├ ƒ /api/v1/menu                           0 B                0 B
+├ ƒ /api/v1/ocr/extract                    0 B                0 B
+├ ƒ /api/v1/parents                        0 B                0 B
+├ ƒ /api/v1/parents/attendance             0 B                0 B
+├ ƒ /api/v1/parents/dashboard              0 B                0 B
+├ ƒ /api/v1/parents/fees                   0 B                0 B
+├ ƒ /api/v1/parents/results                0 B                0 B
+├ ƒ /api/v1/protected-data                 0 B                0 B
+├ ƒ /api/v1/quizzes                        0 B                0 B
+├ ƒ /api/v1/quizzes/[id]                   0 B                0 B
+├ ƒ /api/v1/quizzes/results                0 B                0 B
+├ ƒ /api/v1/quizzes/submit                 0 B                0 B
+├ ƒ /api/v1/reports/generate               0 B                0 B
+├ ƒ /api/v1/reports/generate-bulk          0 B                0 B
+├ ƒ /api/v1/results                        0 B                0 B
+├ ƒ /api/v1/settings                       0 B                0 B
+├ ƒ /api/v1/settings/curriculum            0 B                0 B
+├ ƒ /api/v1/settings/general               0 B                0 B
+├ ƒ /api/v1/settings/school-configuration  0 B                0 B
+├ ƒ /api/v1/settings/whitelabel            0 B                0 B
+├ ƒ /api/v1/staff                          0 B                0 B
+├ ƒ /api/v1/staff/[id]                     0 B                0 B
+├ ƒ /api/v1/staff/[id]/ai                  0 B                0 B
+├ ƒ /api/v1/staff/[id]/timeline            0 B                0 B
+├ ƒ /api/v1/staff/analytics                0 B                0 B
+├ ƒ /api/v1/staff/bulk                     0 B                0 B
+├ ƒ /api/v1/staff/ocr                      0 B                0 B
+├ ƒ /api/v1/stripe/create-checkout         0 B                0 B
+├ ƒ /api/v1/stripe/webhook                 0 B                0 B
+├ ƒ /api/v1/students                       0 B                0 B
+├ ƒ /api/v1/students/[id]                  0 B                0 B
+├ ƒ /api/v1/students/[id]/comment          0 B                0 B
+├ ƒ /api/v1/students/[id]/timeline         0 B                0 B
+├ ƒ /api/v1/students/360                   0 B                0 B
+├ ƒ /api/v1/students/bulk                  0 B                0 B
+├ ƒ /api/v1/students/get                   0 B                0 B
+├ ƒ /api/v1/students/ocr-admission         0 B                0 B
+├ ƒ /api/v1/students/promote               0 B                0 B
+├ ƒ /api/v1/students/risk                  0 B                0 B
+├ ƒ /api/v1/subscriptions                  0 B                0 B
+├ ƒ /api/v1/subscriptions/activate         0 B                0 B
+├ ƒ /api/v1/super-admin/analytics          0 B                0 B
+├ ƒ /api/v1/super-admin/telemetry          0 B                0 B
+├ ƒ /api/v1/syllabus                       0 B                0 B
+├ ƒ /api/v1/syllabus/[id]                  0 B                0 B
+├ ƒ /api/v1/timetable                      0 B                0 B
+├ ƒ /api/v1/upload                         0 B                0 B
+├ ƒ /api/v1/users/get                      0 B                0 B
+├ ƒ /api/v1/users/init                     0 B                0 B
+├ ƒ /api/v1/users/register-school          0 B                0 B
+├ ƒ /api/v1/video-lectures                 0 B                0 B
+├ ƒ /api/webhooks/qstash                   0 B                0 B
+├ ƒ /attendance                            5.18 kB         270 kB
+├ ƒ /callback                              1.47 kB         203 kB
+├ ƒ /classes                               10 kB           163 kB
+├ ƒ /dashboard                             4.8 kB          266 kB
+├ ƒ /demo                                  3.27 kB         206 kB
+├ ƒ /exams                                 9.2 kB          129 kB
+├ ƒ /fees                                  5.96 kB         165 kB
+├ ƒ /leave-requests                        8.22 kB         161 kB
+├ ƒ /login                                 2.81 kB         204 kB
+├ ƒ /marks                                 5.41 kB         165 kB
+├ ƒ /onboarding                            147 B          87.7 kB
+├ ƒ /parent/chat                           3.71 kB         115 kB
+├ ƒ /parent/dashboard                      6.66 kB         160 kB
+├ ƒ /result                                168 kB          288 kB
+├ ƒ /sentry-example-page                   18.6 kB         106 kB
+├ ƒ /settings                              4.64 kB         162 kB
+├ ƒ /settings/addons                       5.8 kB          150 kB
+├ ƒ /settings/billing                      7.17 kB         151 kB
+├ ƒ /settings/Curriculum                   5.62 kB         126 kB
+├ ƒ /settings/general                      4.64 kB         162 kB
+├ ƒ /settings/school-configuration         147 B          87.7 kB
+├ ƒ /settings/whitelabel                   2.23 kB         163 kB
+├ ƒ /signup                                2.97 kB         204 kB
+├ ƒ /staff                                 7.18 kB         175 kB
+├ ƒ /staff-attendance                      1.41 kB          89 kB
+├ ƒ /staff-profile                         6.84 kB         168 kB
+├ ƒ /staff/[id]/edit                       4.57 kB         171 kB
+├ ƒ /staff/add                             3.96 kB         171 kB
+├ ƒ /staff/departments                     1.33 kB         163 kB
+├ ƒ /staff/ocr                             2.67 kB         164 kB
+├ ƒ /student-profile                       3.37 kB         163 kB
+├ ƒ /students                              3.3 kB          169 kB
+├ ƒ /students/[id]                         2.58 kB         162 kB
+├ ƒ /students/add                          7.65 kB         133 kB
+├ ƒ /students/ocr-admission                4.16 kB         163 kB
+├ ƒ /study-center                          1.6 kB          127 kB
+├ ƒ /super-admin/analytics                 5.65 kB         227 kB
+├ ƒ /super-admin/telemetry                 3.08 kB         224 kB
+├ ƒ /syllabus                              1.45 kB         126 kB
+├ ƒ /teacher/assignments                   8.93 kB         169 kB
+├ ƒ /teacher/assignments/create            9.45 kB         162 kB
+├ ƒ /teacher/assignments/submissions       4.19 kB         124 kB
+├ ƒ /teacher/behavior                      3.53 kB         163 kB
+├ ƒ /teacher/book-center                   8.78 kB         162 kB
+├ ƒ /teacher/chat                          4.22 kB         269 kB
+├ ƒ /teacher/exam-center                   3.58 kB         115 kB
+├ ƒ /teacher/homework                      9.68 kB         163 kB
+├ ƒ /teacher/lesson-plans                  9.53 kB         162 kB
+├ ƒ /teacher/manage-books                  9.59 kB         163 kB
+├ ƒ /teacher/quizzes                       9.81 kB         170 kB
+├ ƒ /teacher/quizzes/results               4.27 kB         124 kB
+├ ƒ /teacher/skills                        3.55 kB         163 kB
+├ ƒ /teacher/video-lectures                1.85 kB         127 kB
+├ ƒ /timetable                             9.3 kB          162 kB
+└ ƒ /video-lectures                        1.81 kB         127 kB
++ First Load JS shared by all              87.6 kB
+  ├ chunks/7023-42a694311e61e458.js        31.6 kB
+  ├ chunks/fd9d1056-8f4fb286d28e1600.js    53.7 kB
+  └ other shared chunks (total)            2.29 kB
+
+
+ƒ Middleware                               25.4 kB
+
+ƒ  (Dynamic)  server-rendered on demand
+

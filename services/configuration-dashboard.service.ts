@@ -9,6 +9,17 @@ import { SectionRepository } from "@/repositories/section.repository";
 import { StudentRepository } from "@/repositories/student.repository";
 import { StaffRepository } from "@/repositories/staff.repository";
 import { ParentsRepository } from "@/repositories/parents.repository";
+import { RoomRepository } from "@/repositories/room.repository";
+import { BuildingRepository } from "@/repositories/building.repository";
+import { FacilityRepository } from "@/repositories/facility.repository";
+import { LibraryRepository } from "@/repositories/library.repository";
+import { TransportRepository } from "@/repositories/transport.repository";
+import { HostelRepository } from "@/repositories/hostel.repository";
+import { FeeStructureRepository } from "@/repositories/fee-structure.repository";
+import { HouseRepository } from "@/repositories/house.repository";
+import { ShiftRepository } from "@/repositories/shift.repository";
+import { GradingRepository } from "@/repositories/grading.repository";
+import { DepartmentRepository } from "@/repositories/department.repository";
 import type {
   IConfigurationDashboardService,
   ConfigurationDashboardMetrics,
@@ -25,7 +36,18 @@ export class ConfigurationDashboardService
     private readonly sectionRepo: SectionRepository,
     private readonly studentRepo: StudentRepository,
     private readonly staffRepo: StaffRepository,
-    private readonly parentRepo: ParentsRepository
+    private readonly parentRepo: ParentsRepository,
+    private readonly roomRepo: RoomRepository,
+    private readonly buildingRepo: BuildingRepository,
+    private readonly facilityRepo: FacilityRepository,
+    private readonly libraryRepo: LibraryRepository,
+    private readonly transportRepo: TransportRepository,
+    private readonly hostelRepo: HostelRepository,
+    private readonly feeStructureRepo: FeeStructureRepository,
+    private readonly houseRepo: HouseRepository,
+    private readonly shiftRepo: ShiftRepository,
+    private readonly gradingRepo: GradingRepository,
+    private readonly departmentRepo: DepartmentRepository
   ) {}
 
   async getDashboardMetrics(
@@ -101,6 +123,17 @@ export class ConfigurationDashboardService
       students,
       staffList,
       parentsList,
+      rooms,
+      buildings,
+      facilities,
+      library,
+      transport,
+      hostel,
+      feeStructure,
+      houses,
+      shifts,
+      grading,
+      departments,
     ] = await Promise.all([
       this.academicYearRepo.findAllByTenant(tenantId).catch(() => []),
       this.classRepo.getAll(tenantId).catch(() => []),
@@ -108,6 +141,17 @@ export class ConfigurationDashboardService
       this.studentRepo.count(tenantId).catch(() => 0),
       this.staffRepo.findAll(tenantId).catch(() => []),
       this.parentRepo.findAll(tenantId).catch(() => []),
+      this.roomRepo.getAll(tenantId).catch(() => []),
+      this.buildingRepo.getAll(tenantId).catch(() => []),
+      this.facilityRepo.getAll(tenantId).catch(() => []),
+      this.libraryRepo.getAll(tenantId).catch(() => []),
+      this.transportRepo.getAll(tenantId).catch(() => []),
+      this.hostelRepo.getAll(tenantId).catch(() => []),
+      this.feeStructureRepo.getFeeStructures(tenantId).catch(() => []),
+      this.houseRepo.getAll(tenantId).catch(() => []),
+      this.shiftRepo.getAll(tenantId).catch(() => []),
+      this.gradingRepo.getAll(tenantId).catch(() => []),
+      this.departmentRepo.getAll(tenantId).catch(() => []),
     ]);
 
     return {
@@ -117,17 +161,17 @@ export class ConfigurationDashboardService
       students,
       staff: Array.isArray(staffList) ? staffList.length : 0,
       parents: Array.isArray(parentsList) ? parentsList.length : 0,
-      rooms: 0,
-      buildings: 0,
-      facilities: 0,
-      library: 0,
-      transport: 0,
-      hostel: 0,
-      feeStructure: 0,
-      houses: 0,
-      shifts: 0,
-      grading: 0,
-      departments: 0,
+      rooms: Array.isArray(rooms) ? rooms.length : 0,
+      buildings: Array.isArray(buildings) ? buildings.length : 0,
+      facilities: Array.isArray(facilities) ? facilities.length : 0,
+      library: Array.isArray(library) ? library.length : 0,
+      transport: Array.isArray(transport) ? transport.length : 0,
+      hostel: Array.isArray(hostel) ? hostel.length : 0,
+      feeStructure: Array.isArray(feeStructure) ? feeStructure.length : 0,
+      houses: Array.isArray(houses) ? houses.length : 0,
+      shifts: Array.isArray(shifts) ? shifts.length : 0,
+      grading: Array.isArray(grading) ? grading.length : 0,
+      departments: Array.isArray(departments) ? departments.length : 0,
     };
   }
 
@@ -276,5 +320,16 @@ export const configurationDashboardService = new ConfigurationDashboardService(
   new SectionRepository(),
   new StudentRepository(),
   new StaffRepository(),
-  new ParentsRepository()
+  new ParentsRepository(),
+  new RoomRepository(),
+  new BuildingRepository(),
+  new FacilityRepository(),
+  new LibraryRepository(),
+  new TransportRepository(),
+  new HostelRepository(),
+  new FeeStructureRepository(),
+  new HouseRepository(),
+  new ShiftRepository(),
+  new GradingRepository(),
+  new DepartmentRepository()
 );

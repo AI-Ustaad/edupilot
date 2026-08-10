@@ -1,0 +1,7 @@
+services/configuration.service.ts:  async checkForUpgrades(tenantId: string): Promise<UpgradeCheckResult> {
+services/configuration.service.ts:    return versionEngine.checkForUpgrades(config);
+app/api/v1/curriculum/upgrade/route.ts:      const upgradeStatus = await configurationService.checkForUpgrades(tenantId);
+services/configuration.service.ts:  async upgradeCurriculum(tenantId: string, newVersionId: string, userId: string): Promise<MasterSchoolConfiguration> {
+app/api/v1/curriculum/upgrade/route.ts:      const updatedConfig = await configurationService.upgradeCurriculum(tenantId, newVersionId, user.uid);
+services/configuration-dashboard.service.ts:      configurationCompletion: completion,
+app/(protected)/admin/configuration-dashboard/page.tsx:  const completion = data?.configurationCompletion || { percentage: 0, total: 0, completed: 0, missing: [] };

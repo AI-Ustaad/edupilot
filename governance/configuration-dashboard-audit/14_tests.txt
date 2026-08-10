@@ -1,0 +1,108 @@
+
+> edupilot@0.1.0 test
+> jest
+
+PASS repositories/staff.repository.test.ts
+PASS __tests__/lib/mappers/staff.mapper.test.ts
+PASS repositories/attendance.repository.test.ts
+PASS __tests__/lib/mappers/student.mapper.test.ts
+PASS __tests__/lib/mappers/shared.test.ts
+PASS repositories/subscription.repository.test.ts
+PASS repositories/configuration.repository.test.ts
+PASS __tests__/services/configuration.service.test.ts
+PASS repositories/marks.repository.test.ts
+PASS __tests__/validators/all-validators.test.ts
+PASS __tests__/api/register-user.test.ts
+PASS __tests__/api/admin-users.test.ts
+PASS __tests__/api/job-status.test.ts
+PASS __tests__/api/chat.test.ts
+PASS __tests__/api/admin-users-role.test.ts
+PASS __tests__/api/attendance-report.test.ts
+PASS repositories/dashboard-stats.repository.test.ts
+PASS repositories/event-outbox.repository.test.ts
+PASS __tests__/lib/events/event-worker.test.ts
+PASS __tests__/architecture-compliance.test.ts
+PASS repositories/bus.repository.test.ts
+PASS __tests__/api/students.test.ts
+PASS __tests__/lib/tenant-resolver.test.ts
+PASS __tests__/repositories/subscription.repository.test.ts
+PASS __tests__/api/settings/school-configuration.test.ts
+PASS repositories/student.repository.test.ts
+PASS repositories/book.repository.test.ts
+PASS repositories/ledger.repository.test.ts
+PASS __tests__/api/ledger.test.ts
+PASS repositories/video-lecture.repository.test.ts
+PASS repositories/ai-usage.repository.test.ts
+PASS __tests__/integration/enterprise-workflows.test.ts
+PASS repositories/tenant.repository.test.ts
+PASS repositories/assignment.repository.test.ts
+PASS repositories/behavior.repository.test.ts
+PASS repositories/timetable.repository.test.ts
+PASS __tests__/services/configuration-cache.service.test.ts
+PASS __tests__/api/education-rules.test.ts
+PASS repositories/class.repository.test.ts
+PASS repositories/quiz.repository.test.ts
+PASS repositories/homework.repository.test.ts
+PASS repositories/curriculum.repository.test.ts
+PASS repositories/menu.repository.test.ts
+PASS repositories/lesson-plan.repository.test.ts
+PASS repositories/audit.repository.test.ts
+PASS repositories/base.repository.test.ts
+PASS repositories/academic-year.repository.test.ts
+PASS __tests__/debug.test.ts
+  ● Console
+
+    console.log
+      doc: {
+        get: [Function: mockConstructor] {
+          _isMockFunction: true,
+          getMockImplementation: [Function (anonymous)],
+          mock: [Getter/Setter],
+          mockClear: [Function (anonymous)],
+          mockReset: [Function (anonymous)],
+          mockRestore: [Function (anonymous)],
+          mockReturnValueOnce: [Function (anonymous)],
+          mockResolvedValueOnce: [Function (anonymous)],
+          mockRejectedValueOnce: [Function (anonymous)],
+          mockReturnValue: [Function (anonymous)],
+          mockResolvedValue: [Function (anonymous)],
+          mockRejectedValue: [Function (anonymous)],
+          mockImplementationOnce: [Function (anonymous)],
+          withImplementation: [Function: bound withImplementation],
+          mockImplementation: [Function (anonymous)],
+          mockReturnThis: [Function (anonymous)],
+          mockName: [Function (anonymous)],
+          getMockName: [Function (anonymous)]
+        }
+      }
+
+      at Object.<anonymous> (__tests__/debug.test.ts:17:13)
+
+    console.log
+      same mockDoc? true
+
+      at Object.<anonymous> (__tests__/debug.test.ts:18:13)
+
+PASS repositories/leave.repository.test.ts
+PASS repositories/parents.repository.test.ts
+PASS repositories/user.repository.test.ts
+PASS __tests__/api/curriculum-engine.test.ts
+PASS repositories/tenant-branding.repository.test.ts
+PASS __tests__/lib/events/event-bus.test.ts
+PASS __tests__/services/configuration-health.service.test.ts
+PASS __tests__/lib/auth-server.test.ts
+PASS repositories/chat.repository.test.ts
+PASS repositories/syllabus.repository.test.ts
+PASS repositories/section.repository.test.ts
+PASS repositories/invoice.repository.test.ts
+PASS repositories/settings.repository.test.ts
+PASS repositories/feature-flag.repository.test.ts
+PASS repositories/addons.repository.test.ts
+PASS repositories/fees.repository.test.ts
+PASS repositories/job.repository.test.ts
+
+Test Suites: 65 passed, 65 total
+Tests:       698 passed, 698 total
+Snapshots:   0 total
+Time:        5.162 s
+Ran all test suites.

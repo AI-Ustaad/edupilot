@@ -1,0 +1,32 @@
+repositories/configuration.repository.ts:import type { IConfigurationRepository } from "@/interfaces/IConfigurationRepository";
+repositories/configuration.repository.ts:export class ConfigurationRepository implements IConfigurationRepository {
+repositories/configuration.repository.ts:export const configurationRepository = new ConfigurationRepository();
+repositories/configuration.repository.test.ts:import { ConfigurationRepository } from '@/repositories/configuration.repository';
+repositories/configuration.repository.test.ts:describe('ConfigurationRepository', () => {
+repositories/configuration.repository.test.ts:  let repo: ConfigurationRepository;
+repositories/configuration.repository.test.ts:    repo = new ConfigurationRepository();
+services/configuration-dashboard.service.ts:  ConfigurationRepository,
+services/configuration-dashboard.service.ts:    private readonly configurationRepo: ConfigurationRepository,
+services/configuration-dashboard.service.ts:  new ConfigurationRepository(),
+services/configuration.service.ts:import { ConfigurationRepository } from "@/repositories/configuration.repository";
+services/configuration.service.ts:    private readonly repo = new ConfigurationRepository(),
+services/configuration-health.service.ts:import { ConfigurationRepository } from "@/repositories/configuration.repository";
+services/configuration-health.service.ts:  private configRepo = new ConfigurationRepository();
+repositories/academic-year.repository.ts:import type { IAcademicYearRepository } from "@/interfaces/IAcademicYearRepository";
+repositories/academic-year.repository.ts:export class AcademicYearRepository extends BaseRepository<AcademicYear> implements IAcademicYearRepository {
+repositories/academic-year.repository.ts:export const academicYearRepository = new AcademicYearRepository();
+repositories/academic-year.repository.test.ts:import { AcademicYearRepository } from '@/repositories/academic-year.repository';
+repositories/academic-year.repository.test.ts:describe('AcademicYearRepository', () => {
+repositories/academic-year.repository.test.ts:  let repo: AcademicYearRepository;
+repositories/academic-year.repository.test.ts:    repo = new AcademicYearRepository();
+services/configuration-dashboard.service.ts:  AcademicYearRepository,
+services/configuration-dashboard.service.ts:    private readonly academicYearRepo: AcademicYearRepository,
+services/configuration-dashboard.service.ts:  new AcademicYearRepository(),
+services/academic-year.service.ts:import { AcademicYearRepository } from "@/repositories/academic-year.repository";
+services/academic-year.service.ts:import type { IAcademicYearRepository } from "@/interfaces/IAcademicYearRepository";
+services/academic-year.service.ts:  private repository: IAcademicYearRepository;
+services/academic-year.service.ts:  constructor(repository?: IAcademicYearRepository) {
+services/academic-year.service.ts:    this.repository = repository ?? new AcademicYearRepository();
+services/tenant.service.ts:import { AcademicYearRepository } from "@/repositories/academic-year.repository";
+services/tenant.service.ts:  private academicYearRepo: AcademicYearRepository;
+services/tenant.service.ts:    this.academicYearRepo = new AcademicYearRepository();

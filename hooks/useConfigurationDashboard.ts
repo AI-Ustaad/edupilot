@@ -13,7 +13,8 @@ export function useConfigurationDashboard() {
     queryKey: key(tenantId),
     queryFn: async () => {
       const res = await apiClient.get("/configuration/dashboard");
-      return safeObject(res);
+      const payload = res?.data?.data ?? res?.data;
+      return safeObject(payload);
     },
     enabled: !!tenantId && tenantId !== "unknown",
     staleTime: 60_000,

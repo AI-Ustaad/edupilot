@@ -1,0 +1,30 @@
+services/configuration-dashboard.service.ts:export class ConfigurationDashboardService
+services/configuration-modules.service.ts:export class ConfigurationModulesService {
+services/configuration.service.ts:export class ConfigurationService implements IConfigurationService {
+services/configuration-cache.service.ts:export class ConfigurationCacheService implements IConfigurationCacheService {
+services/configuration-health.service.ts:export class ConfigurationHealthService implements IConfigurationHealthService {
+services/configuration-dashboard.service.ts:  implements IConfigurationDashboardService
+services/configuration.service.ts:export class ConfigurationService implements IConfigurationService {
+services/configuration-cache.service.ts:export class ConfigurationCacheService implements IConfigurationCacheService {
+services/configuration-health.service.ts:export class ConfigurationHealthService implements IConfigurationHealthService {
+services/configuration-dashboard.service.ts:  new ConfigurationRepository(),
+services/configuration-dashboard.service.ts:  new AcademicYearRepository(),
+services/configuration-dashboard.service.ts:  new ClassRepository(),
+services/configuration-dashboard.service.ts:  new SectionRepository(),
+services/configuration-dashboard.service.ts:  new StudentRepository(),
+services/configuration-dashboard.service.ts:  new StaffRepository(),
+services/configuration-dashboard.service.ts:  new ParentsRepository()
+services/configuration-health.service.ts:  private configRepo = new ConfigurationRepository();
+services/configuration-health.service.ts:  private tenantRepo = new TenantRepository();
+services/configuration-modules.service.ts:    this.roomRepo = new RoomRepository();
+services/configuration-modules.service.ts:    this.buildingRepo = new BuildingRepository();
+services/configuration-modules.service.ts:    this.facilityRepo = new FacilityRepository();
+services/configuration-modules.service.ts:    this.departmentRepo = new DepartmentRepository();
+services/configuration-modules.service.ts:    this.libraryRepo = new LibraryRepository();
+services/configuration-modules.service.ts:    this.transportRepo = new TransportRepository();
+services/configuration-modules.service.ts:    this.hostelRepo = new HostelRepository();
+services/configuration-modules.service.ts:    this.feeStructureRepo = new FeeStructureRepository();
+services/configuration-modules.service.ts:    this.houseRepo = new HouseRepository();
+services/configuration-modules.service.ts:    this.shiftRepo = new ShiftRepository();
+services/configuration-modules.service.ts:    this.gradingRepo = new GradingRepository();
+services/configuration.service.ts:    private readonly repo = new ConfigurationRepository(),

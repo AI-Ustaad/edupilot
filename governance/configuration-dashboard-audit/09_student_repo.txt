@@ -1,0 +1,86 @@
+repositories/student.repository.test.ts:import { StudentRepository } from '@/repositories/student.repository';
+repositories/student.repository.test.ts:describe('StudentRepository', () => {
+repositories/student.repository.test.ts:  let repo: StudentRepository;
+repositories/student.repository.test.ts:    repo = new StudentRepository();
+repositories/student.repository.ts:import { IStudentRepository } from "@/interfaces/IStudentRepository";
+repositories/student.repository.ts:export class StudentRepository extends BaseRepository<StudentDocument> implements IStudentRepository
+repositories/student.repository.ts:export const studentRepository = new StudentRepository();
+services/configuration-dashboard.service.ts:import { StudentRepository } from "@/repositories/student.repository";
+services/configuration-dashboard.service.ts:    private readonly studentRepo: StudentRepository,
+services/configuration-dashboard.service.ts:  new StudentRepository(),
+services/fee-reminder.service.ts:import { StudentRepository } from "@/repositories/student.repository";
+services/fee-reminder.service.ts:  private studentRepo = new StudentRepository();
+services/behavior.service.ts:import { StudentRepository } from "@/repositories/student.repository";
+services/behavior.service.ts:  private studentRepo: StudentRepository;
+services/behavior.service.ts:    this.studentRepo = new StudentRepository();
+services/marks.service.ts:import { StudentRepository } from "@/repositories/student.repository";
+services/marks.service.ts:    const studentRepo = new StudentRepository();
+services/certificate.service.ts:import { StudentRepository } from "@/repositories/student.repository";
+services/certificate.service.ts:import type { IStudentRepository } from "@/interfaces/IStudentRepository";
+services/certificate.service.ts:  private studentRepo: IStudentRepository;
+services/certificate.service.ts:  constructor(studentRepo?: IStudentRepository) {
+services/certificate.service.ts:    this.studentRepo = studentRepo ?? new StudentRepository();
+services/parents.service.ts:import { StudentRepository } from "@/repositories/student.repository";
+services/parents.service.ts:  private studentRepo: StudentRepository;
+services/parents.service.ts:    studentRepo?: StudentRepository
+services/parents.service.ts:    this.studentRepo = studentRepo ?? new StudentRepository();
+services/AdmissionsService.ts:import { StudentRepository } from "@/repositories/student.repository";
+services/AdmissionsService.ts:import type { IStudentRepository } from "@/interfaces/IStudentRepository";
+services/AdmissionsService.ts:  private repository: IStudentRepository;
+services/AdmissionsService.ts:  constructor(repository?: IStudentRepository) {
+services/AdmissionsService.ts:    this.repository = repository ?? new StudentRepository();
+services/report.service.ts:import { StudentRepository } from "@/repositories/student.repository";
+services/report.service.ts:    const studentRepo = new StudentRepository();
+services/analytics.service.ts:import { StudentRepository } from "@/repositories/student.repository";
+services/analytics.service.ts:  private studentRepo: StudentRepository;
+services/analytics.service.ts:    this.studentRepo = new StudentRepository();
+services/admit-card.service.ts:import { StudentRepository } from "@/repositories/student.repository";
+services/admit-card.service.ts:import type { IStudentRepository } from "@/interfaces/IStudentRepository";
+services/admit-card.service.ts:  private studentRepo: IStudentRepository;
+services/admit-card.service.ts:  constructor(studentRepo?: IStudentRepository) {
+services/admit-card.service.ts:    this.studentRepo = studentRepo ?? new StudentRepository();
+services/StudentService.ts:import { StudentRepository } from "@/repositories/student.repository";
+services/StudentService.ts:import type { IStudentRepository } from "@/interfaces/IStudentRepository";
+services/StudentService.ts:  private repository: IStudentRepository;
+services/StudentService.ts:  constructor(repository?: IStudentRepository) {
+services/StudentService.ts:    this.repository = repository ?? new StudentRepository();
+services/StudentService.ts:    await this.repository.update(studentId, updatePayload as Parameters<IStudentRepository["update"]>[1], tenantId);
+app/api/v1/reports/generate/route.tsx:        const student = await (new (await import("@/repositories/student.repository")).StudentRepository()).findById(studentId, tenantId);
+repositories/staff.repository.test.ts:import { StaffRepository } from '@/repositories/staff.repository';
+repositories/staff.repository.test.ts:describe('StaffRepository', () => {
+repositories/staff.repository.test.ts:  let repo: StaffRepository;
+repositories/staff.repository.test.ts:    repo = new StaffRepository();
+repositories/staff.repository.ts:import type { IStaffRepository } from "@/interfaces/IStaffRepository";
+repositories/staff.repository.ts:export class StaffRepository extends BaseRepository<StaffDocument> implements IStaffRepository {
+repositories/staff.repository.ts:export const staffRepository = new StaffRepository();
+services/configuration-dashboard.service.ts:import { StaffRepository } from "@/repositories/staff.repository";
+services/configuration-dashboard.service.ts:    private readonly staffRepo: StaffRepository,
+services/configuration-dashboard.service.ts:  new StaffRepository(),
+services/leave.service.ts:import { StaffRepository } from "@/repositories/staff.repository";
+services/leave.service.ts:  private staffRepo: StaffRepository;
+services/leave.service.ts:  constructor(leaveRepo?: ILeaveRepository, staffRepo?: StaffRepository) {
+services/leave.service.ts:    this.staffRepo = staffRepo ?? new StaffRepository();
+services/analytics.service.ts:import { StaffRepository } from "@/repositories/staff.repository";
+services/analytics.service.ts:  private staffRepo: StaffRepository;
+services/analytics.service.ts:    this.staffRepo = new StaffRepository();
+services/StaffService.ts:import { IStaffRepository } from "@/interfaces/IStaffRepository";
+services/StaffService.ts:import { StaffRepository } from "@/repositories/staff.repository";
+services/StaffService.ts:  private repository: IStaffRepository;
+services/StaffService.ts:  constructor(repository?: IStaffRepository) {
+services/StaffService.ts:    this.repository = repository ?? new StaffRepository();
+repositories/section.repository.test.ts:import { SectionRepository } from '@/repositories/section.repository';
+repositories/section.repository.test.ts:describe('SectionRepository', () => {
+repositories/section.repository.test.ts:  let repo: SectionRepository;
+repositories/section.repository.test.ts:    repo = new SectionRepository();
+repositories/section.repository.ts:import type { ISectionRepository } from "@/interfaces/ISectionRepository";
+repositories/section.repository.ts:export class SectionRepository extends BaseRepository<Section> implements ISectionRepository {
+repositories/section.repository.ts:export const sectionRepository = new SectionRepository();
+services/configuration-dashboard.service.ts:import { SectionRepository } from "@/repositories/section.repository";
+services/configuration-dashboard.service.ts:    private readonly sectionRepo: SectionRepository,
+services/configuration-dashboard.service.ts:  new SectionRepository(),
+services/tenant.service.ts:import { SectionRepository } from "@/repositories/section.repository";
+services/tenant.service.ts:  private sectionRepo: SectionRepository;
+services/tenant.service.ts:    this.sectionRepo = new SectionRepository();
+app/api/v1/classes/route.ts:import { SectionRepository } from "@/repositories/section.repository";
+app/api/v1/classes/route.ts:        const sectionRepo = new SectionRepository();
+app/api/v1/classes/route.ts:        const sectionRepo = new SectionRepository();

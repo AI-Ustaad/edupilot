@@ -1,0 +1,13 @@
+app/(protected)/admin/configuration-dashboard/page.tsx:  const schoolInfo = data?.schoolInfo || {};
+app/(protected)/admin/configuration-dashboard/page.tsx:          <div><p className="text-xs text-gray-400 font-medium">School Name</p><p className="font-bold text-gray-900">{schoolInfo.name || "N/A"}</p></div>
+app/(protected)/admin/configuration-dashboard/page.tsx:          <div><p className="text-xs text-gray-400 font-medium">Type</p><p className="font-bold text-gray-900">{schoolInfo.type || "N/A"}</p></div>
+app/(protected)/admin/configuration-dashboard/page.tsx:          <div><p className="text-xs text-gray-400 font-medium">Board</p><p className="font-bold text-gray-900">{schoolInfo.boardName || "N/A"}</p></div>
+app/(protected)/admin/configuration-dashboard/page.tsx:          <div><p className="text-xs text-gray-400 font-medium">Country</p><p className="font-bold text-gray-900">{schoolInfo.country || "N/A"}</p></div>
+hooks/useAiContext.ts:  const schoolInfo = `School: ${cfg.school?.name || 'N/A'} | Board: ${cfg.school?.boardName || 'N/A'}`;
+services/configuration-dashboard.service.ts:      schoolInfo: config?.school || null,
+app/(protected)/admin/configuration-dashboard/page.tsx:        <MetricCard label="Students" value={data?.configuredStudents || 0} icon={Users} color="bg-emerald-50 text-emerald-600" />
+app/(protected)/admin/configuration-dashboard/page.tsx:            { label: "Students", status: data?.configuredStudents > 0 ? "Configured" : "Not Configured", icon: Users, count: data?.configuredStudents },
+services/configuration-dashboard.service.ts:      configuredStudents: counts.students,
+app/(protected)/admin/configuration-dashboard/page.tsx:        <MetricCard label="Teachers" value={data?.configuredTeachers || 0} icon={Briefcase} color="bg-pink-50 text-pink-600" />
+app/(protected)/admin/configuration-dashboard/page.tsx:            { label: "Teachers", status: data?.configuredTeachers > 0 ? "Configured" : "Not Configured", icon: Briefcase, count: data?.configuredTeachers },
+services/configuration-dashboard.service.ts:      configuredTeachers: counts.staff,
