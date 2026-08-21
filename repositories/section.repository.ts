@@ -1,6 +1,7 @@
 import { BaseRepository } from "./base.repository";
 import { adminDb, dbTimestamp } from "@/lib/firebase-admin";
 import type { ISectionRepository } from "@/interfaces/ISectionRepository";
+import { normalizeNaturalKey, sectionNaturalKey, sectionDocId } from "@/lib/utils/normalization";
 
 export interface Section {
   classGrade: string;
@@ -27,6 +28,14 @@ export class SectionRepository extends BaseRepository<Section> implements ISecti
     return snapshot.docs
       .map(doc => ({ id: doc.id, ...doc.data() } as Section & { id: string }))
       .filter(s => !s.deleted);
+  }
+
+  async findAllIncludingDeleted(tenantId: string): Promise<(Section & { id: string })[]> {
+    const snapshot = await this.db
+      .collection(this.collectionName)
+      .where("tenantId", "==", tenantId)
+      .get();
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Section & { id: string }));
   }
 
   async softDeleteBySectionId(id: string, tenantId: string, userId: string): Promise<void> {
@@ -59,10 +68,44 @@ export class SectionRepository extends BaseRepository<Section> implements ISecti
     userId: string
   ): Promise<number> {
     const existing = await this.findAllActive(tenantId);
-    const keys = new Set(existing.map((section) => `${section.classGrade}::${section.sectionName}`.toLowerCase()));
-    const missing = structure.filter((section) => !keys.has(`${section.classGrade}::${section.sectionName}`.toLowerCase()));
+    const keys = new Set(existing.map((section) => sectionNaturalKey(tenantId, section.classGrade, section.sectionName)));
+    const missing = structure.filter(
+      (section) => !keys.has(sectionNaturalKey(tenantId, section.classGrade, section.sectionName))
+    );
     if (!missing.length) return 0;
     await this.bulkCreate(missing.map((section) => ({ ...section, tenantId, deleted: false, createdBy: userId })), tenantId);
+    return missing.length;
+  }
+
+  async createMissingSections(
+    tenantId: string,
+    structure: Array<{ classGrade: string; sectionName: string; subjects?: { core: string[]; electives: string[] } }>,
+    userId: string
+  ): Promise<number> {
+    const existing = await this.findAllIncludingDeleted(tenantId);
+    const existingKeys = new Set(
+      existing.map((section) => sectionNaturalKey(tenantId, section.classGrade, section.sectionName))
+    );
+
+    const missing = structure.filter(
+      (section) => !existingKeys.has(sectionNaturalKey(tenantId, section.classGrade, section.sectionName))
+    );
+
+    if (!missing.length) return 0;
+
+    const entries = missing.map((section) => ({
+      id: sectionDocId(tenantId, section.classGrade, section.sectionName),
+      data: {
+        classGrade: section.classGrade,
+        sectionName: section.sectionName,
+        subjects: section.subjects,
+        tenantId,
+        deleted: false,
+        createdBy: userId,
+      } as Omit<Section, 'id' | 'createdAt' | 'updatedAt'>,
+    }));
+
+    await this.bulkSetWithIds(entries, tenantId);
     return missing.length;
   }
 }

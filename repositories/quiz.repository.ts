@@ -19,9 +19,10 @@ export class QuizRepository extends BaseRepository<Quiz> implements IQuizReposit
     return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as QuizSubmission & { id: string }));
   }
 
-  async createSubmission(data: Omit<QuizSubmission, "id" | "createdAt">, _tenantId: string): Promise<string> {
+  async createSubmission(data: Omit<QuizSubmission, "id" | "createdAt">, tenantId: string): Promise<string> {
     const docRef = await this.db.collection("quiz_submissions").add({
       ...data,
+      tenantId,
       createdAt: dbTimestamp,
     });
     return docRef.id;

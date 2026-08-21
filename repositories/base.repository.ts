@@ -162,4 +162,48 @@ export class BaseRepository<T> {
     await batch.commit();
     return ids;
   }
+
+  async setWithId(
+    id: string,
+    data: Omit<T, 'id' | 'createdAt' | 'updatedAt'>,
+    tenantId: string
+  ): Promise<void> {
+    const docRef = this.db.collection(this.collectionName).doc(id);
+    await docRef.set(
+      {
+        ...data,
+        tenantId,
+        createdAt: dbTimestamp,
+        updatedAt: dbTimestamp,
+      },
+      { merge: true }
+    );
+  }
+
+  async bulkSetWithIds(
+    entries: Array<{ id: string; data: Omit<T, 'id' | 'createdAt' | 'updatedAt'> }>,
+    tenantId: string
+  ): Promise<void> {
+    const col = this.db.collection(this.collectionName);
+    const BATCH_SIZE = 500;
+
+    for (let i = 0; i < entries.length; i += BATCH_SIZE) {
+      const batch = this.db.batch();
+      const chunk = entries.slice(i, i + BATCH_SIZE);
+      chunk.forEach(({ id, data }) => {
+        const docRef = col.doc(id);
+        batch.set(
+          docRef,
+          {
+            ...data,
+            tenantId,
+            createdAt: dbTimestamp,
+            updatedAt: dbTimestamp,
+          },
+          { merge: true }
+        );
+      });
+      await batch.commit();
+    }
+  }
 }

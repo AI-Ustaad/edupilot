@@ -213,7 +213,16 @@ describe('ConfigurationService', () => {
       const repoMock = new ConfigurationRepository() as jest.Mocked<ConfigurationRepository>;
       repoMock.publishConfiguration = jest.fn().mockResolvedValue({ ...mockConfigData(tenantId), state: 'Published' } as any);
       repoMock.getConfiguration = jest.fn().mockResolvedValue(null);
-      const svc = new ConfigurationService(repoMock, mockCache, mockHealthService);
+      repoMock.saveConfiguration = jest.fn().mockResolvedValue(undefined);
+      const provisioning = {
+        provisionFromConfiguration: jest.fn().mockResolvedValue({
+          academicYearId: 'academic-year-1',
+          sectionsCreated: 2,
+          departmentsCreated: 1,
+          warnings: [],
+        }),
+      };
+      const svc = new ConfigurationService(repoMock, mockCache, mockHealthService, provisioning);
 
       const input = {
         schoolProfile: { name: 'Test School', type: 'Private', curriculumId: 'federal', sections: ['A'] },
@@ -230,6 +239,32 @@ describe('ConfigurationService', () => {
 
       expect(result.state).toBe('Published');
       expect(repoMock.publishConfiguration).toHaveBeenCalled();
+      expect(provisioning.provisionFromConfiguration).toHaveBeenCalledWith(tenantId, result, 'user1');
+      expect(repoMock.saveConfiguration).toHaveBeenCalledWith(
+        tenantId,
+        expect.objectContaining({ metadata: expect.objectContaining({ academicYearId: 'academic-year-1' }) })
+      );
+    });
+
+    test('does not report a configuration as published when provisioning fails', async () => {
+      const repoMock = new ConfigurationRepository() as jest.Mocked<ConfigurationRepository>;
+      repoMock.publishConfiguration = jest.fn().mockResolvedValue(undefined as any);
+      repoMock.getConfiguration = jest.fn().mockResolvedValue(null);
+      const provisioning = {
+        provisionFromConfiguration: jest.fn().mockRejectedValue(new Error('section write failed')),
+      };
+      const svc = new ConfigurationService(repoMock, mockCache, mockHealthService, provisioning);
+      const input = {
+        schoolProfile: { name: 'Test School', type: 'Private', curriculumId: 'federal', sections: ['A'] },
+        academicStructure: {
+          levels: [] as any[],
+          grades: [{ id: 'g1', name: 'Grade 1', levelId: 'Primary', schemeOfStudy: { subjects: [{ name: 'Math' }] } }],
+          allSubjects: [{ name: 'Math' }],
+        },
+      };
+
+      await expect(svc.saveAndPublishConfiguration(input, tenantId, 'user1')).rejects.toThrow('section write failed');
+      expect(mockCache.setConfiguration).not.toHaveBeenCalled();
     });
   });
 

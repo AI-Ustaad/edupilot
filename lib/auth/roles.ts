@@ -63,4 +63,10 @@ export const ROLE_PERMISSIONS: Record<string, string[]> = {
   ],
 };
 
+// These are canonical role names produced by the auth/tenant layer. They are
+// operationally school administrators and must not be rejected solely because
+// the permission table used its legacy `admin` key.
+ROLE_PERMISSIONS.schoolAdmin = [...ROLE_PERMISSIONS.admin];
+ROLE_PERMISSIONS.superAdmin = [...ROLE_PERMISSIONS.admin];
+
 export type Role = keyof typeof ROLE_PERMISSIONS;

@@ -32,12 +32,16 @@ describe('FeesRepository', () => {
     const { mockQuery } = require('@/lib/firebase-admin');
     mockQuery.get.mockResolvedValue({
       docs: [
-        { id: 'f1', data: () => ({ tenantId, studentId: 's1', paid: true }) },
+        { id: 'f1', data: () => ({ tenantId, studentId: 's1', status: 'paid' }) },
+        { id: 'f2', data: () => ({ tenantId, studentId: 's1', status: 'pending' }) },
       ],
     });
 
     const fees = await repo.findWithFilters(tenantId, { studentId: 's1', paid: true });
-    expect(fees).toHaveLength(1);
+    expect(fees).toEqual([expect.objectContaining({ id: 'f1', status: 'paid' })]);
+
+    const unpaid = await repo.findWithFilters(tenantId, { studentId: 's1', paid: false });
+    expect(unpaid).toEqual([expect.objectContaining({ id: 'f2', status: 'pending' })]);
   });
 
   test('should get total revenue', async () => {

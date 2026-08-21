@@ -3,6 +3,7 @@ export interface IAcademicYearRepository {
   bulkCreate(...args: any[]): Promise<any>;
   count(...args: any[]): Promise<any>;
   create(...args: any[]): Promise<any>;
+  createIfAbsentByName(...args: any[]): Promise<any>;
   delete(...args: any[]): Promise<any>;
   exists(...args: any[]): Promise<any>;
   findAll(...args: any[]): Promise<any>;

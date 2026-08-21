@@ -4,6 +4,10 @@ import type { CreateStudentDTO, UpdateStudentDTO } from "@/dto";
 import { StudentPersistenceMapper } from "@/lib/mappers/StudentPersistenceMapper";
 import { BusinessError } from "@/errors";
 import { StudentRepository } from "@/repositories/student.repository";
+import { AttendanceRepository } from "@/repositories/attendance.repository";
+import { FeesRepository } from "@/repositories/fees.repository";
+import { MarksRepository } from "@/repositories/marks.repository";
+import { BehaviorRepository } from "@/repositories/behavior.repository";
 import type { IStudentRepository } from "@/interfaces/IStudentRepository";
 import type { IStudentService } from "@/interfaces/IStudentService";
 import type { StudentEntity, Student360Aggregate, StudentComment, TimelineEntry } from "@/entities/student.entity";
@@ -14,11 +18,25 @@ import { nowISO } from "@/lib/date";
 import { eventBus } from "@/lib/events";
 import { EVENTS } from "@/lib/events/event-types";
 
+type Student360DataSources = {
+  attendance: Pick<AttendanceRepository, "findByStudentId">;
+  fees: Pick<FeesRepository, "findByStudent">;
+  marks: Pick<MarksRepository, "findByStudent">;
+  behavior: Pick<BehaviorRepository, "findByStudent">;
+};
+
 export class StudentService implements IStudentService {
   private repository: IStudentRepository;
+  private readonly student360Sources: Student360DataSources;
 
-  constructor(repository?: IStudentRepository) {
+  constructor(repository?: IStudentRepository, student360Sources?: Student360DataSources) {
     this.repository = repository ?? new StudentRepository();
+    this.student360Sources = student360Sources ?? {
+      attendance: new AttendanceRepository(),
+      fees: new FeesRepository(),
+      marks: new MarksRepository(),
+      behavior: new BehaviorRepository(),
+    };
   }
 
   async create(data: CreateStudentDTO, tenantId: string, userId: string): Promise<StudentEntity> {
@@ -57,8 +75,32 @@ export class StudentService implements IStudentService {
   }
 
   async update(tenantId: string, studentId: string, data: UpdateStudentDTO, userId: string): Promise<StudentEntity | null> {
-    const entity = StudentPersistenceMapper.fromDTO(data);
+    const existing = await this.repository.findById(studentId, tenantId);
+    if (!existing) return null;
+
+    // Update DTOs are partial. Mapping them directly fills omitted nested
+    // fields with create-time defaults, which silently overwrites persisted
+    // student data. Merge at the domain boundary before writing the document.
+    const current = StudentPersistenceMapper.fromFirestore(existing);
+    const merged = {
+      identity: { ...current.identity, ...data.identity },
+      personal: { ...current.personal, ...data.personal },
+      academic: { ...current.academic, ...data.academic },
+      parentReferences: { ...current.parentReferences, ...data.parentReferences },
+      contacts: { ...current.contacts, ...data.contacts },
+      guardian: { ...current.guardian, ...data.guardian },
+      medical: { ...current.medical, ...data.medical },
+      demographics: { ...current.demographics, ...data.demographics },
+      status: data.status ?? current.status,
+      metadata: { ...current.metadata, ...data.metadata },
+    };
+    const entity = StudentPersistenceMapper.fromDTO(merged);
     const document = StudentPersistenceMapper.toFirestore(entity, userId);
+    document.metadata = {
+      ...existing.metadata,
+      ...document.metadata,
+      createdAt: existing.metadata?.createdAt,
+    };
     
     const updatePayload: Record<string, unknown> = { ...document, updatedBy: userId, updatedAt: new Date() };
     Object.keys(updatePayload).forEach(key => {
@@ -133,18 +175,49 @@ export class StudentService implements IStudentService {
     const student = await this.getById(tenantId, studentId);
     if (!student) return null;
 
+    const [attendanceRecords, feeRecords, marks, behaviorLogs, timeline] = await Promise.all([
+      this.student360Sources.attendance.findByStudentId(tenantId, studentId),
+      this.student360Sources.fees.findByStudent(tenantId, studentId),
+      this.student360Sources.marks.findByStudent(tenantId, studentId),
+      this.student360Sources.behavior.findByStudent(studentId, tenantId),
+      this.getTimeline(tenantId, studentId),
+    ]);
+
+    const present = attendanceRecords.filter((record) => record.status === "Present" || record.status === "Late").length;
+    const absent = attendanceRecords.filter((record) => record.status === "Absent").length;
+    const late = attendanceRecords.filter((record) => record.status === "Late").length;
+    const attendancePercentage = attendanceRecords.length > 0
+      ? Math.round((present / attendanceRecords.length) * 100)
+      : 0;
+
+    const feeAmount = (fee: { amountPaid?: number }) => Number(fee.amountPaid) || 0;
+    const totalDue = feeRecords.reduce((sum, fee) => sum + feeAmount(fee), 0);
+    const totalPaid = feeRecords
+      .filter((fee) => fee.status?.trim().toLowerCase() === "paid")
+      .reduce((sum, fee) => sum + feeAmount(fee), 0);
+
+    const markPercentages = marks.map((mark) => {
+      const supplied = Number(mark.percentage);
+      if (Number.isFinite(supplied)) return supplied;
+      const total = Number(mark.totalMarks) || 0;
+      return total > 0 ? ((Number(mark.marksObtained) || 0) / total) * 100 : 0;
+    });
+    const markAverage = markPercentages.length > 0
+      ? Math.round(markPercentages.reduce((sum, percentage) => sum + percentage, 0) / markPercentages.length)
+      : 0;
+
     return {
       student: {
         ...student,
         id: student.studentId || student.id!,
       },
-      attendance: { present: 0, absent: 0, late: 0, percentage: 0 },
-      fees: { totalDue: 0, totalPaid: 0, outstanding: 0, records: [] },
-      marks: { exams: [], average: 0, trend: "stable" },
-      behavior: { logs: [], incidents: 0 },
+      attendance: { present, absent, late, percentage: attendancePercentage },
+      fees: { totalDue, totalPaid, outstanding: Math.max(0, totalDue - totalPaid), records: feeRecords },
+      marks: { exams: marks, average: markAverage, trend: "stable" },
+      behavior: { logs: behaviorLogs, incidents: behaviorLogs.filter((log) => Number(log.points) < 0).length },
       transport: null,
       hostel: null,
-      timeline: [],
+      timeline,
       aiSummary: "",
     };
   }

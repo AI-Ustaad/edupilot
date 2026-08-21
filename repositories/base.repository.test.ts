@@ -224,4 +224,121 @@ describe('BaseRepository', () => {
     expect(mockBatch.set).toHaveBeenCalledTimes(2);
     expect(mockBatch.commit).toHaveBeenCalled();
   });
+
+  test('should set document with deterministic id', async () => {
+    const { adminDb, mockCollection, mockDocRef } = require('@/lib/firebase-admin');
+    mockCollection.doc.mockReturnValue(mockDocRef);
+    mockDocRef.set.mockResolvedValue(undefined);
+
+    await repo.setWithId('det-1', { name: 'Deterministic' } as any, tenantId);
+    expect(mockDocRef.set).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: 'Deterministic',
+        tenantId,
+      }),
+      { merge: true }
+    );
+  });
+
+  test('should bulk set documents with deterministic ids', async () => {
+    const { adminDb, mockBatch, mockCollection } = require('@/lib/firebase-admin');
+    mockBatch.commit.mockResolvedValue(undefined);
+
+    const mockDocRef1 = { id: 'det-1', set: jest.fn().mockResolvedValue(undefined) };
+    const mockDocRef2 = { id: 'det-2', set: jest.fn().mockResolvedValue(undefined) };
+    mockCollection.doc.mockImplementation((id: string) => {
+      if (id === 'det-1') return mockDocRef1;
+      if (id === 'det-2') return mockDocRef2;
+      return { id: 'default', set: jest.fn().mockResolvedValue(undefined) };
+    });
+
+    const entries = [
+      { id: 'det-1', data: { name: 'Doc 1' } },
+      { id: 'det-2', data: { name: 'Doc 2' } },
+    ];
+    await repo.bulkSetWithIds(entries as any, tenantId);
+    expect(mockBatch.set).toHaveBeenCalledTimes(2);
+    expect(mockBatch.set).toHaveBeenNthCalledWith(1, mockDocRef1, expect.objectContaining({ name: 'Doc 1', tenantId }), { merge: true });
+    expect(mockBatch.set).toHaveBeenNthCalledWith(2, mockDocRef2, expect.objectContaining({ name: 'Doc 2', tenantId }), { merge: true });
+    expect(mockBatch.commit).toHaveBeenCalled();
+  });
+
+  describe('bulkSetWithIds batching', () => {
+    const makeEntries = (n: number) =>
+      Array.from({ length: n }, (_, i) => ({ id: `key-${i}`, data: { name: `Doc ${i}` } }));
+
+    async function run(n: number) {
+      const { adminDb, mockBatch, mockCollection } = require('@/lib/firebase-admin');
+      mockBatch.set.mockClear();
+      mockBatch.commit.mockClear();
+      mockCollection.doc.mockClear();
+      mockCollection.doc.mockReturnValue({ id: 'any', set: jest.fn(), get: jest.fn() });
+      adminDb.batch.mockClear();
+      adminDb.batch.mockReturnValue(mockBatch);
+      await repo.bulkSetWithIds(makeEntries(n) as any, tenantId);
+      return { mockBatch, mockCollection };
+    }
+
+    test('499 entries → 1 batch', async () => {
+      const { mockBatch } = await run(499);
+      expect(mockBatch.set).toHaveBeenCalledTimes(499);
+      expect(mockBatch.commit).toHaveBeenCalledTimes(1);
+    });
+
+    test('500 entries → 1 batch', async () => {
+      const { mockBatch } = await run(500);
+      expect(mockBatch.set).toHaveBeenCalledTimes(500);
+      expect(mockBatch.commit).toHaveBeenCalledTimes(1);
+    });
+
+    test('501 entries → 2 batches', async () => {
+      const { mockBatch } = await run(501);
+      expect(mockBatch.set).toHaveBeenCalledTimes(501);
+      expect(mockBatch.commit).toHaveBeenCalledTimes(2);
+    });
+
+    test('1000 entries → 2 batches', async () => {
+      const { mockBatch } = await run(1000);
+      expect(mockBatch.set).toHaveBeenCalledTimes(1000);
+      expect(mockBatch.commit).toHaveBeenCalledTimes(2);
+    });
+
+    test('empty entries → no batches, no commits', async () => {
+      const { mockBatch } = await run(0);
+      expect(mockBatch.set).not.toHaveBeenCalled();
+      expect(mockBatch.commit).not.toHaveBeenCalled();
+    });
+
+    test('merge semantics and deterministic ids are preserved across batches', async () => {
+      const { mockBatch, mockCollection } = await run(501);
+      // First entry of first batch and first entry of second batch both written with merge:true
+      expect(mockBatch.set).toHaveBeenNthCalledWith(1, expect.anything(), expect.objectContaining({ name: 'Doc 0', tenantId }), { merge: true });
+      expect(mockBatch.set).toHaveBeenLastCalledWith(expect.anything(), expect.objectContaining({ name: 'Doc 500', tenantId }), { merge: true });
+      // Each entry maps to a deterministic doc id
+      expect(mockCollection.doc).toHaveBeenCalledWith('key-0');
+      expect(mockCollection.doc).toHaveBeenCalledWith('key-500');
+      expect(mockCollection.doc).toHaveBeenCalledTimes(501);
+    });
+
+    test('tenant id is injected into every entry', async () => {
+      const { mockBatch } = await run(600);
+      mockBatch.set.mock.calls.forEach((call: any[]) => {
+        expect(call[1]).toEqual(expect.objectContaining({ tenantId }));
+        expect(call[2]).toEqual({ merge: true });
+      });
+    });
+
+    test('propagates batch commit failure', async () => {
+      const { adminDb, mockBatch, mockCollection } = require('@/lib/firebase-admin');
+      mockCollection.doc.mockReturnValue({ id: 'any', set: jest.fn() });
+      const failingBatch = {
+        set: jest.fn().mockResolvedValue(undefined),
+        update: jest.fn(),
+        delete: jest.fn(),
+        commit: jest.fn().mockRejectedValue(new Error('batch failed')),
+      };
+      adminDb.batch.mockReturnValue(failingBatch);
+      await expect(repo.bulkSetWithIds(makeEntries(3) as any, tenantId)).rejects.toThrow('batch failed');
+    });
+  });
 });

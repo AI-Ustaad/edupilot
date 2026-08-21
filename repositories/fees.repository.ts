@@ -36,15 +36,21 @@ export class FeesRepository extends BaseRepository<FeeDocument> implements IFees
     if (filters?.studentId) {
       query = query.where("studentId", "==", filters.studentId);
     }
-    if (filters?.paid !== undefined) {
-      query = query.where("paid", "==", filters.paid);
-    }
     if (filters?.dueBefore) {
       query = query.where("dueDate", "<", filters.dueBefore);
     }
 
     const snapshot = await query.get();
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as FeeDocument & { id: string }));
+    const fees = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as FeeDocument & { id: string }));
+
+    // `status` is the canonical persisted payment state. The previous query
+    // used a nonexistent `paid` field, which made every overdue reminder miss
+    // the records created by FeesService.
+    if (filters?.paid === undefined) return fees;
+    return fees.filter((fee) => {
+      const isPaid = fee.status?.trim().toLowerCase() === "paid";
+      return filters.paid ? isPaid : !isPaid;
+    });
   }
 
   async getTotalRevenue(tenantId: string): Promise<number> {

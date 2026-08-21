@@ -57,6 +57,7 @@ export interface MasterSchoolConfiguration {
     subjects: string[];
     requiredLabs: string[];
     requiredTeachers: Record<string, number>;
+    departments?: any[];
   };
   features: {
     ai: {

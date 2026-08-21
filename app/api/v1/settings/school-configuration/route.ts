@@ -4,7 +4,6 @@ export const dynamic = "force-dynamic";
 import { NextResponse } from "next/server";
 import { withAuth, withTenant, withErrorHandler } from "@/route-helpers";
 import { configurationService } from "@/services/configuration.service";
-import { configurationCacheService } from "@/services/configuration-cache.service";
 import { createSuccessResponse, createErrorResponse } from "@/lib/api/response";
 import type { TenantContext } from "@/types/api";
 import { z } from "zod";
@@ -50,8 +49,6 @@ export const GET = withErrorHandler(
       const configuration = await configurationService.getConfigurationViewModel(tenantId);
       const history = await configurationService.getConfigurationHistoryViewModel(tenantId);
       
-      await configurationCacheService.setConfiguration(tenantId, configuration, 300);
-
       return createSuccessResponse({ configuration, history, status: loadResult.status });
     })
   )

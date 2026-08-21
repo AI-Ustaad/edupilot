@@ -35,15 +35,15 @@ export class DashboardService implements IDashboardService {
         studentAnalytics,
         staffAnalytics,
       ] = await Promise.all([
-        this.studentService.count(tenantId).catch(() => 0),
-        this.staffService.count(tenantId).catch(() => 0),
-        this.feesService.getTotalRevenue(tenantId).catch(() => 0),
-        this.attendanceService.getTodayAttendance(tenantId).catch(() => null),
-        this.attendanceService.getWeeklyAttendanceTrend(tenantId).catch(() => []),
-        this.studentService.countByClass(tenantId).catch(() => ({})),
-        this.feesService.getRecentPayments(tenantId, 5).catch(() => []),
-        this.studentService.getAnalytics(tenantId).catch(() => null),
-        this.staffService.getAnalytics(tenantId).catch(() => null),
+        this.studentService.count(tenantId),
+        this.staffService.count(tenantId),
+        this.feesService.getTotalRevenue(tenantId),
+        this.attendanceService.getTodayAttendance(tenantId),
+        this.attendanceService.getWeeklyAttendanceTrend(tenantId),
+        this.studentService.countByClass(tenantId),
+        this.feesService.getRecentPayments(tenantId, 5),
+        this.studentService.getAnalytics(tenantId),
+        this.staffService.getAnalytics(tenantId),
       ]);
 
       const classDistribution = Object.entries(classCountMap || {}).map(([name, value]) => ({
@@ -101,9 +101,9 @@ export class DashboardService implements IDashboardService {
 
   async rebuildStats(tenantId: string): Promise<{ students: number; staff: number; revenue: number }> {
     const [studentCount, staffCount, totalRevenue] = await Promise.all([
-      this.studentService.count(tenantId).catch(() => 0),
-      this.staffService.count(tenantId).catch(() => 0),
-      this.feesService.getTotalRevenue(tenantId).catch(() => 0),
+      this.studentService.count(tenantId),
+      this.staffService.count(tenantId),
+      this.feesService.getTotalRevenue(tenantId),
     ]);
 
     return { students: studentCount, staff: staffCount, revenue: totalRevenue };

@@ -45,20 +45,22 @@ export async function POST(req: Request) {
 
       case "invoice.payment_succeeded": {
         const invoice = event.data.object as Stripe.Invoice;
-        const tenantId = invoice.metadata?.tenantId as string;
+        const tenantId = (invoice.metadata?.tenantId || (invoice as any).subscription_details?.metadata?.tenantId) as string;
 
-        if (tenantId) {
-          await invoiceService.createFromStripe({
-            tenantId,
-            stripeInvoiceId: invoice.id,
-            amountPaid: invoice.amount_paid / 100,
-            currency: invoice.currency,
-            periodStart: new Date(invoice.period_start * 1000),
-            periodEnd: new Date(invoice.period_end * 1000),
-          });
-
-          await subscriptionService.updateSubscription(tenantId, { status: "active" });
+        if (!tenantId) {
+          throw new Error(`Stripe invoice ${invoice.id} is missing tenant metadata`);
         }
+
+        await invoiceService.createFromStripe({
+          tenantId,
+          stripeInvoiceId: invoice.id,
+          amountPaid: invoice.amount_paid / 100,
+          currency: invoice.currency,
+          periodStart: new Date(invoice.period_start * 1000),
+          periodEnd: new Date(invoice.period_end * 1000),
+        });
+
+        await subscriptionService.updateSubscription(tenantId, { status: "active" });
         break;
       }
 
@@ -66,10 +68,11 @@ export async function POST(req: Request) {
         const subscription = event.data.object as Stripe.Subscription;
         const tenantId = subscription.metadata?.tenantId as string;
 
-        if (tenantId) {
-          await subscriptionService.cancelSubscription(tenantId);
-          logger.info(`Tenant ${tenantId} subscription canceled. Downgraded to free.`);
+        if (!tenantId) {
+          throw new Error(`Stripe subscription ${subscription.id} is missing tenant metadata`);
         }
+        await subscriptionService.cancelSubscription(tenantId);
+        logger.info(`Tenant ${tenantId} subscription canceled. Downgraded to free.`);
         break;
       }
 

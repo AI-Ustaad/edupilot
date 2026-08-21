@@ -16,14 +16,14 @@ export const GET = withErrorHandler(
         const attendanceService = new AttendanceService();
         const feesService = new FeesService();
         
-        const children = await parentService.getChildren(user.uid, tenantId).catch(() => []);
+        const children = await parentService.getChildren(user.uid, tenantId);
         const childIds = children.map(c => c.id);
 
         if (childIds.length === 0) {
           return createSuccessResponse([]);
         }
 
-        const allAttendance = await attendanceService.findByStudentIds(tenantId, childIds, 5).catch(() => []);
+        const allAttendance = await attendanceService.findByStudentIds(tenantId, childIds, 5);
 
         const attendanceByStudent: Record<string, string> = {};
         for (const rec of allAttendance) {

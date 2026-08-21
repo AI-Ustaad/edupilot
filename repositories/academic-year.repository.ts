@@ -25,6 +25,23 @@ export class AcademicYearRepository extends BaseRepository<AcademicYear> impleme
     return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as AcademicYear & { id: string }));
   }
 
+  async createIfAbsentByName(
+    name: string,
+    data: { startDate: string; endDate: string; isCurrent: boolean; tenantId: string; createdBy?: string },
+    tenantId: string
+  ): Promise<string> {
+    const existing = await this.findAllByTenant(tenantId);
+    const found = existing.find((ay) => ay.name === name);
+    if (found) {
+      return found.id;
+    }
+
+    return this.create(
+      { name, ...data },
+      tenantId
+    );
+  }
+
   async setCurrent(id: string, tenantId: string): Promise<void> {
     // Unset all current flags for this tenant
     const all = await this.db

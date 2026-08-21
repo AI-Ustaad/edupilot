@@ -135,28 +135,33 @@ export class ConfigurationDashboardService
       grading,
       departments,
     ] = await Promise.all([
-      this.academicYearRepo.findAllByTenant(tenantId).catch(() => []),
-      this.classRepo.getAll(tenantId).catch(() => []),
-      this.sectionRepo.findAllActive(tenantId).catch(() => []),
-      this.studentRepo.count(tenantId).catch(() => 0),
-      this.staffRepo.findAll(tenantId).catch(() => []),
-      this.parentRepo.findAll(tenantId).catch(() => []),
-      this.roomRepo.getAll(tenantId).catch(() => []),
-      this.buildingRepo.getAll(tenantId).catch(() => []),
-      this.facilityRepo.getAll(tenantId).catch(() => []),
-      this.libraryRepo.getAll(tenantId).catch(() => []),
-      this.transportRepo.getAll(tenantId).catch(() => []),
-      this.hostelRepo.getAll(tenantId).catch(() => []),
-      this.feeStructureRepo.getFeeStructures(tenantId).catch(() => []),
-      this.houseRepo.getAll(tenantId).catch(() => []),
-      this.shiftRepo.getAll(tenantId).catch(() => []),
-      this.gradingRepo.getAll(tenantId).catch(() => []),
-      this.departmentRepo.getAll(tenantId).catch(() => []),
+      this.academicYearRepo.findAllByTenant(tenantId),
+      this.classRepo.getAll(tenantId),
+      this.sectionRepo.findAllActive(tenantId),
+      this.studentRepo.count(tenantId),
+      this.staffRepo.findAll(tenantId),
+      this.parentRepo.findAll(tenantId),
+      this.roomRepo.getAll(tenantId),
+      this.buildingRepo.getAll(tenantId),
+      this.facilityRepo.getAll(tenantId),
+      this.libraryRepo.getAll(tenantId),
+      this.transportRepo.getAll(tenantId),
+      this.hostelRepo.getAll(tenantId),
+      this.feeStructureRepo.getFeeStructures(tenantId),
+      this.houseRepo.getAll(tenantId),
+      this.shiftRepo.getAll(tenantId),
+      this.gradingRepo.getAll(tenantId),
+      this.departmentRepo.getAll(tenantId),
     ]);
 
     return {
       academicYear: academicYear.length,
-      classes: Array.isArray(classes) ? classes.length : 0,
+      // The current operational model stores class/section pairs in the
+      // canonical `sections` collection. A class is therefore a distinct
+      // classGrade, while a section is a document in that collection.
+      classes: Array.isArray(classes)
+        ? new Set(classes.map((record) => record.classGrade.trim().toLocaleLowerCase())).size
+        : 0,
       sections: Array.isArray(sections) ? sections.length : 0,
       students,
       staff: Array.isArray(staffList) ? staffList.length : 0,

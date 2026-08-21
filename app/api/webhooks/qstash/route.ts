@@ -11,10 +11,10 @@ export const maxDuration = 300; // 5 minutes
 export async function POST(req: Request) {
   try {
     // 1. Security Check: صرف اور صرف Upstash (QStash) اس API کو ہٹ کر سکتا ہے!
-    await verifyQStashSignature(req);
+    const rawBody = await verifyQStashSignature(req);
     
     // 2. Parse the payload
-    const body = await req.json();
+    const body = JSON.parse(rawBody);
     logger.info(`Webhook received job type: ${body.type}`);
     
     // 3. Route to the specific worker

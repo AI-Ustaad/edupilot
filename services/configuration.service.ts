@@ -14,12 +14,15 @@ import type { IConfigurationService } from "@/interfaces/IConfigurationService";
 import type { WizardInput } from "@/types/configuration/wizard";
 import { createVersion, buildDefaultConfiguration } from "@/types/configuration/wizard";
 import { nowISO } from "@/lib/date";
+import { configurationProvisioningService } from "@/services/configuration-provisioning.service";
+import type { IConfigurationProvisioningService } from "@/interfaces/IConfigurationProvisioningService";
 
 export class ConfigurationService implements IConfigurationService {
   constructor(
     private readonly repo = new ConfigurationRepository(),
     private readonly cache = new ConfigurationCacheService(),
-    private readonly healthService = new ConfigurationHealthService()
+    private readonly healthService = new ConfigurationHealthService(),
+    private readonly provisioningService: IConfigurationProvisioningService = configurationProvisioningService
   ) {}
 
   async getConfigurationViewModel(tenantId: string): Promise<SchoolConfigurationViewModel | null> {
@@ -167,6 +170,7 @@ async saveAndPublishConfiguration(input: WizardInput, tenantId: string, userId: 
           subjects: academicStructure.allSubjects.map((s: any) => s.name),
           requiredLabs: academicStructure.requiredLabs || [],
           requiredTeachers: academicStructure.requiredTeachers || {},
+          departments: academicStructure.departments || [],
         },
         features: existing?.features || {
           ai: { enabled: true, version: "1.0", permissions: ["admin", "teacher"], beta: false, providers: ["gemini"], activeProvider: "gemini", quota: 1000 },
@@ -179,6 +183,16 @@ async saveAndPublishConfiguration(input: WizardInput, tenantId: string, userId: 
       };
 
       await this.repo.publishConfiguration(tenantId, newConfig, userId);
+
+      const provisioning = await this.provisioningService.provisionFromConfiguration(tenantId, newConfig, userId);
+      if (!provisioning.academicYearId) {
+        throw new ConfigurationInvalidError("Configuration provisioning did not produce a current academic year");
+      }
+
+      // The generated current academic year is an authoritative part of the
+      // configuration graph, not an ephemeral provisioning detail.
+      newConfig.metadata.academicYearId = provisioning.academicYearId;
+      await this.repo.saveConfiguration(tenantId, newConfig);
       await this.cache.invalidateConfiguration(tenantId);
       await this.cache.setConfiguration(tenantId, newConfig);
 

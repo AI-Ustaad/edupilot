@@ -186,4 +186,55 @@ describe('AcademicYearRepository', () => {
     expect(mockBatch.update).toHaveBeenCalled();
     expect(mockDocRef.update).toHaveBeenCalledWith({ isCurrent: true });
   });
+
+  test('should create if absent by name when AY does not exist', async () => {
+    const { adminDb } = require('@/lib/firebase-admin');
+    const ayCollection = adminDb.collection('academicYears');
+    ayCollection.where.mockReturnValue({
+      orderBy: jest.fn().mockReturnThis(),
+      get: jest.fn().mockResolvedValue({ docs: [] }),
+    });
+    ayCollection.add.mockResolvedValue({ id: 'ay-new' });
+
+    const id = await repo.createIfAbsentByName('2024-2025', {
+      startDate: '2024-04-01',
+      endDate: '2025-03-31',
+      isCurrent: true,
+      tenantId,
+    }, tenantId);
+
+    expect(id).toBe('ay-new');
+    expect(ayCollection.add).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: '2024-2025',
+        startDate: '2024-04-01',
+        endDate: '2025-03-31',
+        isCurrent: true,
+        tenantId,
+      })
+    );
+  });
+
+  test('should return existing id when AY with same name exists', async () => {
+    const { adminDb } = require('@/lib/firebase-admin');
+    const ayCollection = adminDb.collection('academicYears');
+    ayCollection.where.mockReturnValue({
+      orderBy: jest.fn().mockReturnThis(),
+      get: jest.fn().mockResolvedValue({
+        docs: [
+          { id: 'ay-existing', data: () => ({ name: '2024-2025', tenantId }) },
+        ],
+      }),
+    });
+
+    const id = await repo.createIfAbsentByName('2024-2025', {
+      startDate: '2024-04-01',
+      endDate: '2025-03-31',
+      isCurrent: true,
+      tenantId,
+    }, tenantId);
+
+    expect(id).toBe('ay-existing');
+    expect(ayCollection.add).not.toHaveBeenCalled();
+  });
 });

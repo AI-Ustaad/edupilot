@@ -183,4 +183,192 @@ describe('SectionRepository', () => {
     expect(result.total).toBe(8);
     expect(result.totalPages).toBe(4);
   });
+
+  test('should create missing sections with deterministic ids', async () => {
+    const { mockQuery, mockBatch, mockCollection } = require('@/lib/firebase-admin');
+    mockQuery.get.mockResolvedValue({
+      docs: [
+        { id: 's1', data: () => ({ classGrade: '10', sectionName: 'A', tenantId, deleted: false }) },
+      ],
+    });
+
+    const mockDocRef = { id: 'det-id', set: jest.fn().mockResolvedValue(undefined) };
+    mockCollection.doc.mockReturnValue(mockDocRef as any);
+
+    const structure = [
+      { classGrade: '10', sectionName: 'A', subjects: { core: ['Math'], electives: [] } },
+      { classGrade: '10', sectionName: 'B', subjects: { core: ['Math'], electives: [] } },
+    ];
+    const created = await repo.createMissingSections(tenantId, structure, 'user-1');
+    expect(created).toBe(1);
+    expect(mockBatch.set).toHaveBeenCalledTimes(1);
+    expect(mockBatch.commit).toHaveBeenCalled();
+    expect(mockCollection.doc).toHaveBeenCalledWith(`${tenantId}__10__b`);
+  });
+
+  test('should return 0 when all sections already exist', async () => {
+    const { mockQuery, mockBatch } = require('@/lib/firebase-admin');
+    mockQuery.get.mockResolvedValue({
+      docs: [
+        { id: 's1', data: () => ({ classGrade: '10', sectionName: 'A', tenantId, deleted: false }) },
+        { id: 's2', data: () => ({ classGrade: '10', sectionName: 'B', tenantId, deleted: false }) },
+      ],
+    });
+
+    const structure = [
+      { classGrade: '10', sectionName: 'A', subjects: { core: ['Math'], electives: [] } },
+      { classGrade: '10', sectionName: 'B', subjects: { core: ['Math'], electives: [] } },
+    ];
+    const created = await repo.createMissingSections(tenantId, structure, 'user-1');
+    expect(created).toBe(0);
+    expect(mockBatch.set).not.toHaveBeenCalled();
+  });
+
+  test('new section is created with deleted:false', async () => {
+    const { mockQuery, mockBatch, mockCollection } = require('@/lib/firebase-admin');
+    mockQuery.get.mockResolvedValue({ docs: [] });
+    mockCollection.doc.mockReturnValue({ id: 'det', set: jest.fn().mockResolvedValue(undefined) });
+
+    const structure = [{ classGrade: '10', sectionName: 'A', subjects: { core: ['Math'], electives: [] } }];
+    await repo.createMissingSections(tenantId, structure, 'user-1');
+
+    expect(mockBatch.commit).toHaveBeenCalledTimes(1);
+    expect(mockBatch.set).toHaveBeenCalledTimes(1);
+    expect(mockBatch.set).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ classGrade: '10', sectionName: 'A', tenantId, deleted: false, createdBy: 'user-1' }),
+      { merge: true }
+    );
+  });
+
+  test('existing active section remains active (is not rewritten)', async () => {
+    const { mockQuery, mockBatch } = require('@/lib/firebase-admin');
+    mockQuery.get.mockResolvedValue({
+      docs: [{ id: 's1', data: () => ({ classGrade: '10', sectionName: 'A', tenantId, deleted: false }) }],
+    });
+
+    const structure = [{ classGrade: '10', sectionName: 'A' }];
+    const created = await repo.createMissingSections(tenantId, structure, 'user-1');
+    expect(created).toBe(0);
+    expect(mockBatch.set).not.toHaveBeenCalled();
+  });
+
+  test('existing soft-deleted section is NOT resurrected (deleted stays true)', async () => {
+    const { mockQuery, mockBatch } = require('@/lib/firebase-admin');
+    mockQuery.get.mockResolvedValue({
+      docs: [{ id: 's1', data: () => ({ classGrade: '10', sectionName: 'A', tenantId, deleted: true, deletedAt: '2024-01-01', deletedBy: 'admin' }) }],
+    });
+
+    const structure = [{ classGrade: '10', sectionName: 'A' }];
+    const created = await repo.createMissingSections(tenantId, structure, 'user-1');
+    expect(created).toBe(0);
+    expect(mockBatch.set).not.toHaveBeenCalled();
+    expect(mockBatch.commit).not.toHaveBeenCalled();
+  });
+
+  test('re-running provisioning does NOT resurrect a deleted section', async () => {
+    const { mockQuery, mockBatch } = require('@/lib/firebase-admin');
+    mockQuery.get.mockResolvedValue({
+      docs: [{ id: 's1', data: () => ({ classGrade: '10', sectionName: 'A', tenantId, deleted: true }) }],
+    });
+
+    const structure = [{ classGrade: '10', sectionName: 'A' }];
+    await repo.createMissingSections(tenantId, structure, 'user-1');
+    await repo.createMissingSections(tenantId, structure, 'user-1');
+    expect(mockBatch.set).not.toHaveBeenCalled();
+  });
+
+  test('soft-deleted section is preserved even when its deterministic id would collide', async () => {
+    const { mockQuery, mockBatch } = require('@/lib/firebase-admin');
+    mockQuery.get.mockResolvedValue({
+      docs: [{ id: `${tenantId}__10__a`, data: () => ({ classGrade: '10', sectionName: 'A', tenantId, deleted: true }) }],
+    });
+
+    const structure = [{ classGrade: '10', sectionName: 'A' }];
+    const created = await repo.createMissingSections(tenantId, structure, 'user-1');
+    expect(created).toBe(0);
+    expect(mockBatch.set).not.toHaveBeenCalled();
+  });
+
+  test('existing auto-ID section is detected independently of doc id', async () => {
+    const { mockQuery, mockBatch } = require('@/lib/firebase-admin');
+    mockQuery.get.mockResolvedValue({
+      docs: [{ id: 'auto-generated-id-xyz', data: () => ({ classGrade: '10', sectionName: 'A', tenantId, deleted: false }) }],
+    });
+
+    const structure = [{ classGrade: '10', sectionName: 'A' }];
+    const created = await repo.createMissingSections(tenantId, structure, 'user-1');
+    expect(created).toBe(0);
+    expect(mockBatch.set).not.toHaveBeenCalled();
+  });
+
+  test('section with whitespace/case variants resolve to the same record', async () => {
+    const { mockQuery, mockBatch } = require('@/lib/firebase-admin');
+    mockQuery.get.mockResolvedValue({
+      docs: [{ id: 's1', data: () => ({ classGrade: ' 10 ', sectionName: 'A ', tenantId, deleted: false }) }],
+    });
+
+    const structure = [{ classGrade: '10', sectionName: 'a', subjects: { core: ['Math'], electives: [] } }];
+    const created = await repo.createMissingSections(tenantId, structure, 'user-1');
+    expect(created).toBe(0);
+    expect(mockBatch.set).not.toHaveBeenCalled();
+  });
+
+  test('operational fields (incharge) on existing active section are preserved', async () => {
+    const { mockQuery, mockBatch } = require('@/lib/firebase-admin');
+    mockQuery.get.mockResolvedValue({
+      docs: [{ id: 's1', data: () => ({ classGrade: '10', sectionName: 'A', tenantId, deleted: false, incharge: 'teacher-1', customField: 'op' }) }],
+    });
+
+    const structure = [{ classGrade: '10', sectionName: 'A', subjects: { core: ['History'], electives: [] } }];
+    const created = await repo.createMissingSections(tenantId, structure, 'user-1');
+    expect(created).toBe(0);
+    expect(mockBatch.set).not.toHaveBeenCalled();
+  });
+
+  test('existing subjects are preserved on re-provisioning (no overwrite)', async () => {
+    const { mockQuery, mockBatch } = require('@/lib/firebase-admin');
+    mockQuery.get.mockResolvedValue({
+      docs: [{ id: 's1', data: () => ({ classGrade: '10', sectionName: 'A', tenantId, deleted: false, subjects: { core: ['Physics'], electives: ['Art'] } }) }],
+    });
+
+    const structure = [{ classGrade: '10', sectionName: 'A', subjects: { core: ['Math'], electives: [] } }];
+    const created = await repo.createMissingSections(tenantId, structure, 'user-1');
+    expect(created).toBe(0);
+    expect(mockBatch.set).not.toHaveBeenCalled();
+  });
+
+  test('new section is created with normalized deterministic doc id', async () => {
+    const { mockQuery, mockBatch, mockCollection } = require('@/lib/firebase-admin');
+    mockQuery.get.mockResolvedValue({ docs: [] });
+    mockCollection.doc.mockReturnValue({ id: 'det', set: jest.fn().mockResolvedValue(undefined) });
+
+    const structure = [{ classGrade: ' 10 ', sectionName: 'A ', subjects: { core: ['Math'], electives: [] } }];
+    await repo.createMissingSections(tenantId, structure, 'user-1');
+    expect(mockCollection.doc).toHaveBeenCalledWith(`${tenantId}__10__a`);
+  });
+
+  test('tenant isolation: query is scoped to the supplied tenantId', async () => {
+    const { mockQuery, mockCollection } = require('@/lib/firebase-admin');
+    mockQuery.get.mockResolvedValue({ docs: [] });
+
+    await repo.createMissingSections('tenant-A', [{ classGrade: '10', sectionName: 'A' }], 'user-1');
+    expect(mockCollection.where).toHaveBeenCalledWith('tenantId', '==', 'tenant-A');
+  });
+
+  test('findAllIncludingDeleted returns deleted sections while findAllActive excludes them', async () => {
+    const { mockQuery } = require('@/lib/firebase-admin');
+    mockQuery.get.mockResolvedValue({
+      docs: [
+        { id: 's1', data: () => ({ classGrade: '10', sectionName: 'A', tenantId, deleted: false }) },
+        { id: 's2', data: () => ({ classGrade: '10', sectionName: 'B', tenantId, deleted: true }) },
+      ],
+    });
+
+    const all = await repo.findAllIncludingDeleted(tenantId);
+    const active = await repo.findAllActive(tenantId);
+    expect(all).toHaveLength(2);
+    expect(active).toHaveLength(1);
+    expect(active[0].sectionName).toBe('A');
+  });
 });

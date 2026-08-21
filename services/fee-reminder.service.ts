@@ -22,15 +22,16 @@ export class FeeReminderService {
         const feeData = fee as any;
         if (!feeData.studentId) continue;
 
-        const student = await this.studentRepo.findById(feeData.studentId, tenantId);
+        const student = feeData.email ? null : await this.studentRepo.findById(feeData.studentId, tenantId);
         const studentData = student as any;
+        const recipient = feeData.email || studentData?.parentEmail;
 
-        if (studentData?.parentEmail) {
+        if (recipient) {
           await sendEmail(
-            studentData.parentEmail,
+            recipient,
             "Fee Due Reminder",
             `<p>Dear Parent,</p>
-             <p>This is a reminder that <strong>Rs. ${feeData.amount}</strong> for <strong>${feeData.feeMonth}</strong> was due on <strong>${feeData.dueDate}</strong>.</p>
+             <p>This is a reminder that <strong>Rs. ${feeData.amountPaid}</strong> for <strong>${feeData.feeMonth}</strong> was due on <strong>${feeData.dueDate}</strong>.</p>
              <p>Please log in to the portal to make the payment.</p>
              <a href="${process.env.NEXT_PUBLIC_BASE_URL}/parent/dashboard">Pay Now</a>`
           );

@@ -5,9 +5,10 @@ const receiver = new Receiver({
   nextSigningKey: process.env.QSTASH_NEXT_SIGNING_KEY!,
 });
 
-export async function verifyQStashSignature(req: Request) {
+export async function verifyQStashSignature(req: Request): Promise<string> {
   const signature = req.headers.get("Upstash-Signature") || "";
   const body = await req.text();
   const valid = await receiver.verify({ signature, body });
   if (!valid) throw new Error("Invalid QStash signature");
+  return body;
 }

@@ -135,6 +135,7 @@ describe('QuizRepository', () => {
     expect(subCollection.add).toHaveBeenCalledWith(
       expect.objectContaining({
         quizId: 'quiz-1',
+        tenantId,
         createdAt: expect.any(String),
       })
     );
