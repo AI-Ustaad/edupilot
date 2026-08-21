@@ -209,9 +209,19 @@ describe('ConfigurationService', () => {
       await expect(service.saveAndPublishConfiguration(input, tenantId, 'user1')).rejects.toThrow();
     });
 
-    test('should save and publish configuration successfully', async () => {
+    test('should build config in memory, provision, then publish on success', async () => {
       const repoMock = new ConfigurationRepository() as jest.Mocked<ConfigurationRepository>;
-      repoMock.publishConfiguration = jest.fn().mockResolvedValue({ ...mockConfigData(tenantId), state: 'Published' } as any);
+      repoMock.publishConfiguration = jest.fn().mockImplementation((_tenantId: string, config: any) => {
+        config.state = 'Published';
+        config.metadata.isConfigured = true;
+        config.metadata.configuredAt = new Date().toISOString();
+        config.metadata.configuredBy = 'user1';
+        config.metadata.publishedAt = new Date().toISOString();
+        config.version.publishedBy = 'user1';
+        config.version.publishedAt = new Date().toISOString();
+        config.metadata.lastModified = new Date().toISOString();
+        return config;
+      });
       repoMock.getConfiguration = jest.fn().mockResolvedValue(null);
       repoMock.saveConfiguration = jest.fn().mockResolvedValue(undefined);
       const provisioning = {
@@ -238,18 +248,27 @@ describe('ConfigurationService', () => {
       const result = await svc.saveAndPublishConfiguration(input, tenantId, 'user1');
 
       expect(result.state).toBe('Published');
-      expect(repoMock.publishConfiguration).toHaveBeenCalled();
-      expect(provisioning.provisionFromConfiguration).toHaveBeenCalledWith(tenantId, result, 'user1');
-      expect(repoMock.saveConfiguration).toHaveBeenCalledWith(
-        tenantId,
-        expect.objectContaining({ metadata: expect.objectContaining({ academicYearId: 'academic-year-1' }) })
-      );
+      expect(result.metadata.academicYearId).toBe('academic-year-1');
+      expect(provisioning.provisionFromConfiguration).toHaveBeenCalledTimes(1);
+      expect(repoMock.publishConfiguration).toHaveBeenCalledTimes(1);
+
+      const publishOrder = (repoMock.publishConfiguration as jest.MockedFunction<any>).mock.invocationCallOrder[0];
+      const provisionOrder = (provisioning.provisionFromConfiguration as jest.MockedFunction<any>).mock.invocationCallOrder[0];
+      expect(provisionOrder).toBeLessThan(publishOrder);
+
+      expect(repoMock.saveConfiguration).not.toHaveBeenCalled();
+      expect(mockCache.invalidateConfiguration).toHaveBeenCalledWith(tenantId);
+      expect(mockCache.setConfiguration).toHaveBeenCalledWith(tenantId, expect.objectContaining({
+        state: 'Published',
+        metadata: expect.objectContaining({ academicYearId: 'academic-year-1' }),
+      }));
     });
 
-    test('does not report a configuration as published when provisioning fails', async () => {
+    test('does not persist configuration when provisioning fails', async () => {
       const repoMock = new ConfigurationRepository() as jest.Mocked<ConfigurationRepository>;
       repoMock.publishConfiguration = jest.fn().mockResolvedValue(undefined as any);
       repoMock.getConfiguration = jest.fn().mockResolvedValue(null);
+      repoMock.saveConfiguration = jest.fn().mockResolvedValue(undefined);
       const provisioning = {
         provisionFromConfiguration: jest.fn().mockRejectedValue(new Error('section write failed')),
       };
@@ -264,7 +283,54 @@ describe('ConfigurationService', () => {
       };
 
       await expect(svc.saveAndPublishConfiguration(input, tenantId, 'user1')).rejects.toThrow('section write failed');
+      expect(repoMock.saveConfiguration).not.toHaveBeenCalled();
+      expect(repoMock.publishConfiguration).not.toHaveBeenCalled();
+      expect(mockCache.invalidateConfiguration).not.toHaveBeenCalled();
       expect(mockCache.setConfiguration).not.toHaveBeenCalled();
+    });
+
+    test('provisions before publishing (ordering)', async () => {
+      const repoMock = new ConfigurationRepository() as jest.Mocked<ConfigurationRepository>;
+      repoMock.publishConfiguration = jest.fn().mockImplementation((_tenantId: string, config: any) => {
+        config.state = 'Published';
+        config.metadata.isConfigured = true;
+        config.metadata.configuredAt = new Date().toISOString();
+        config.metadata.configuredBy = 'user1';
+        config.metadata.publishedAt = new Date().toISOString();
+        config.version.publishedBy = 'user1';
+        config.version.publishedAt = new Date().toISOString();
+        config.metadata.lastModified = new Date().toISOString();
+        return config;
+      });
+      repoMock.getConfiguration = jest.fn().mockResolvedValue(null);
+      repoMock.saveConfiguration = jest.fn().mockResolvedValue(undefined);
+      const provisioning = {
+        provisionFromConfiguration: jest.fn().mockResolvedValue({
+          academicYearId: 'ay-ordering',
+          sectionsCreated: 0,
+          departmentsCreated: 0,
+          warnings: [],
+        }),
+      };
+      const svc = new ConfigurationService(repoMock, mockCache, mockHealthService, provisioning);
+
+      const input = {
+        schoolProfile: { name: 'Test School', type: 'Private', curriculumId: 'federal', sections: ['A'] },
+        academicStructure: {
+          levels: [] as any[],
+          grades: [{ id: 'g1', name: 'Grade 1', levelId: 'Primary', schemeOfStudy: { subjects: [{ name: 'Math' }] } }],
+          allSubjects: [{ name: 'Math' }],
+          requiredLabs: [] as any[],
+          requiredTeachers: {} as Record<string, number>,
+        },
+      };
+
+      await svc.saveAndPublishConfiguration(input, tenantId, 'user1');
+
+      const publishOrder = (repoMock.publishConfiguration as jest.MockedFunction<any>).mock.invocationCallOrder[0];
+      const provisionOrder = (provisioning.provisionFromConfiguration as jest.MockedFunction<any>).mock.invocationCallOrder[0];
+
+      expect(provisionOrder).toBeLessThan(publishOrder);
     });
   });
 
