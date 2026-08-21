@@ -40,7 +40,7 @@ export class ConfigurationHealthService implements IConfigurationHealthService {
       diagnostics.metadataExists = this.hasMetadata(data);
       diagnostics.schoolProfileExists = this.hasSchoolProfile(data);
       diagnostics.academicStructureExists = this.hasAcademicStructure(data);
-      diagnostics.isPublished = data.state === "Published" || data.metadata?.isConfigured === true;
+      diagnostics.isPublished = data.state === "Published" && data.metadata?.isConfigured === true;
       diagnostics.versionValid = this.isVersionValid(data);
       diagnostics.schemaValid = this.isSchemaValid(data);
 

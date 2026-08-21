@@ -44,6 +44,7 @@ describe('ConfigurationHealthService', () => {
             environment: 'development',
             region: 'default',
             timezone: 'UTC',
+            isConfigured: true,
           },
           version: { number: 1, createdAt: new Date().toISOString(), reason: 'Initial' },
           school: { name: 'Test School', type: 'Private', curriculumId: 'federal', boardName: 'FBISE', country: 'PK' },
@@ -97,6 +98,72 @@ describe('ConfigurationHealthService', () => {
 
       expect(result.status).toBe('PARTIALLY_CONFIGURED');
       expect(result.healthy).toBe(false);
+    });
+
+    test('should not mark Draft config as published even if isConfigured is true', async () => {
+      mockDocRef.get.mockResolvedValue({ exists: true, data: () => ({}) });
+
+      const settingsCollection = mockDocRef.collection('settings');
+      const configDocRef = settingsCollection.doc('config');
+      configDocRef.get.mockResolvedValue({
+        exists: true,
+        data: () => ({
+          state: 'Draft',
+          metadata: {
+            tenantId: 'tenant_1',
+            configurationVersion: 1,
+            schemaVersion: 2,
+            isConfigured: true,
+            configuredAt: new Date().toISOString(),
+            configuredBy: 'user1',
+            environment: 'development',
+            region: 'default',
+            timezone: 'UTC',
+          },
+          version: { number: 1, createdAt: new Date().toISOString(), reason: 'Initial' },
+          school: { name: 'Test School', type: 'Private', curriculumId: 'federal', boardName: 'FBISE', country: 'PK' },
+          academic: { levels: ['Primary'], classes: [], sectionNames: ['A'], subjects: ['Math'], requiredLabs: [], requiredTeachers: {} },
+        }),
+      });
+
+      const result = await service.checkHealth('tenant_1');
+
+      expect(result.diagnostics.isPublished).toBe(false);
+      expect(result.status).toBe('PARTIALLY_CONFIGURED');
+      expect(result.healthy).toBe(false);
+    });
+
+    test('should mark Published config as published only when both state and isConfigured are true', async () => {
+      mockDocRef.get.mockResolvedValue({ exists: true, data: () => ({}) });
+
+      const settingsCollection = mockDocRef.collection('settings');
+      const configDocRef = settingsCollection.doc('config');
+      configDocRef.get.mockResolvedValue({
+        exists: true,
+        data: () => ({
+          state: 'Published',
+          metadata: {
+            tenantId: 'tenant_1',
+            configurationVersion: 1,
+            schemaVersion: 2,
+            isConfigured: true,
+            configuredAt: new Date().toISOString(),
+            configuredBy: 'user1',
+            environment: 'development',
+            region: 'default',
+            timezone: 'UTC',
+          },
+          version: { number: 1, createdAt: new Date().toISOString(), reason: 'Initial' },
+          school: { name: 'Test School', type: 'Private', curriculumId: 'federal', boardName: 'FBISE', country: 'PK' },
+          academic: { levels: ['Primary'], classes: [], sectionNames: ['A'], subjects: ['Math'], requiredLabs: [], requiredTeachers: {} },
+        }),
+      });
+
+      const result = await service.checkHealth('tenant_1');
+
+      expect(result.diagnostics.isPublished).toBe(true);
+      expect(result.status).toBe('CONFIGURED');
+      expect(result.healthy).toBe(true);
     });
   });
 });

@@ -110,6 +110,11 @@ export class ConfigurationService implements IConfigurationService {
 
   async saveAndPublishConfiguration(input: WizardInput, tenantId: string, userId: string): Promise<MasterSchoolConfiguration> {
     try {
+      const health = await this.healthService.checkHealth(tenantId);
+      if (!health.diagnostics.tenantValid) {
+        throw new ConfigurationValidationError(`Tenant ${tenantId} does not exist or is invalid. Configuration cannot be published.`);
+      }
+
       const existing = await this.repo.getConfiguration(tenantId);
       const previousVersion = existing?.version.number || 0;
       const { schoolProfile, academicStructure } = input;

@@ -111,6 +111,17 @@ async function getDoc(tenantId: string, collection: string, docId?: string): Pro
   return snap.docs.map((d: any) => ({ id: d.id, ...d.data() }));
 }
 
+async function ensureTenant(tenantId: string): Promise<void> {
+  const db = getDb();
+  await db.collection("tenants").doc(tenantId).set({
+    id: tenantId,
+    name: `Test Tenant ${tenantId}`,
+    status: "active",
+    createdAt: "2024-01-01T00:00:00.000Z",
+    updatedAt: "2024-01-01T00:00:00.000Z",
+  });
+}
+
 describe("Configuration Provisioning — End-to-End Integration", () => {
   beforeEach(() => {
     getDb().clear();
@@ -121,6 +132,8 @@ describe("Configuration Provisioning — End-to-End Integration", () => {
     const dashboardService = buildDashboardService();
     const tenantId = "tenant-e2e-1";
     const userId = "user-e2e-1";
+
+    await ensureTenant(tenantId);
 
     // 1. Create and publish configuration
     const input = buildWizardInput();
@@ -201,6 +214,8 @@ describe("Configuration Provisioning — End-to-End Integration", () => {
     const tenantId = "tenant-idempotent-1";
     const userId = "user-idempotent-1";
 
+    await ensureTenant(tenantId);
+
     const input = buildWizardInput();
 
     // First publish
@@ -247,6 +262,9 @@ describe("Configuration Provisioning — End-to-End Integration", () => {
     const service = buildConfigurationService();
     const dashboardService = buildDashboardService();
 
+    await ensureTenant("tenant-iso-a");
+    await ensureTenant("tenant-iso-b");
+
     const inputA = buildWizardInput({ schoolProfile: { ...buildWizardInput().schoolProfile!, name: "School A" } });
     const inputB = buildWizardInput({ schoolProfile: { ...buildWizardInput().schoolProfile!, name: "School B" } });
 
@@ -275,10 +293,42 @@ describe("Configuration Provisioning — End-to-End Integration", () => {
     expect(sectionsB.every((s: any) => s.tenantId === "tenant-iso-b")).toBe(true);
   });
 
+  test("STEP 5: GET after successful save returns the same published configuration", async () => {
+    const service = buildConfigurationService();
+    const tenantId = "tenant-readback-1";
+    const userId = "user-readback-1";
+
+    await ensureTenant(tenantId);
+
+    const input = buildWizardInput();
+    const published = await service.saveAndPublishConfiguration(input, tenantId, userId);
+
+    expect(published.state).toBe("Published");
+    expect(published.metadata.isConfigured).toBe(true);
+    expect(published.metadata.academicYearId).toBeTruthy();
+
+    // Read back via getConfiguration (bypasses viewModel mapping)
+    const config = await service.getConfiguration(tenantId);
+    expect(config).toBeDefined();
+    expect(config!.state).toBe("Published");
+    expect(config!.metadata.isConfigured).toBe(true);
+    expect(config!.metadata.academicYearId).toBe(published.metadata.academicYearId);
+    expect(config!.school.name).toBe("Integration Test School");
+
+    // Read back via loadConfiguration (health + cache path)
+    const loadResult = await service.loadConfiguration(tenantId);
+    expect(loadResult.status).toBe("CONFIGURED");
+    expect(loadResult.configuration).toBeDefined();
+    expect(loadResult.configuration!.state).toBe("Published");
+    expect(loadResult.configuration!.metadata.academicYearId).toBe(published.metadata.academicYearId);
+  });
+
   test("STEP 5: API response contract — hook consumes exact API response shape", async () => {
     const service = buildConfigurationService();
     const tenantId = "tenant-contract-1";
     const userId = "user-contract-1";
+
+    await ensureTenant(tenantId);
 
     await service.saveAndPublishConfiguration(buildWizardInput(), tenantId, userId);
 

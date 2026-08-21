@@ -224,6 +224,20 @@ describe('ConfigurationService', () => {
       });
       repoMock.getConfiguration = jest.fn().mockResolvedValue(null);
       repoMock.saveConfiguration = jest.fn().mockResolvedValue(undefined);
+      mockHealthService.checkHealth.mockResolvedValue({
+        healthy: true,
+        status: 'NOT_CONFIGURED',
+        diagnostics: {
+          configExists: false,
+          metadataExists: false,
+          schoolProfileExists: false,
+          academicStructureExists: false,
+          isPublished: false,
+          versionValid: false,
+          tenantValid: true,
+          schemaValid: false,
+        },
+      });
       const provisioning = {
         provisionFromConfiguration: jest.fn().mockResolvedValue({
           academicYearId: 'academic-year-1',
@@ -269,6 +283,20 @@ describe('ConfigurationService', () => {
       repoMock.publishConfiguration = jest.fn().mockResolvedValue(undefined as any);
       repoMock.getConfiguration = jest.fn().mockResolvedValue(null);
       repoMock.saveConfiguration = jest.fn().mockResolvedValue(undefined);
+      mockHealthService.checkHealth.mockResolvedValue({
+        healthy: true,
+        status: 'NOT_CONFIGURED',
+        diagnostics: {
+          configExists: false,
+          metadataExists: false,
+          schoolProfileExists: false,
+          academicStructureExists: false,
+          isPublished: false,
+          versionValid: false,
+          tenantValid: true,
+          schemaValid: false,
+        },
+      });
       const provisioning = {
         provisionFromConfiguration: jest.fn().mockRejectedValue(new Error('section write failed')),
       };
@@ -304,6 +332,20 @@ describe('ConfigurationService', () => {
       });
       repoMock.getConfiguration = jest.fn().mockResolvedValue(null);
       repoMock.saveConfiguration = jest.fn().mockResolvedValue(undefined);
+      mockHealthService.checkHealth.mockResolvedValue({
+        healthy: true,
+        status: 'NOT_CONFIGURED',
+        diagnostics: {
+          configExists: false,
+          metadataExists: false,
+          schoolProfileExists: false,
+          academicStructureExists: false,
+          isPublished: false,
+          versionValid: false,
+          tenantValid: true,
+          schemaValid: false,
+        },
+      });
       const provisioning = {
         provisionFromConfiguration: jest.fn().mockResolvedValue({
           academicYearId: 'ay-ordering',
@@ -331,6 +373,53 @@ describe('ConfigurationService', () => {
       const provisionOrder = (provisioning.provisionFromConfiguration as jest.MockedFunction<any>).mock.invocationCallOrder[0];
 
       expect(provisionOrder).toBeLessThan(publishOrder);
+    });
+
+    test('should not publish when tenant does not exist', async () => {
+      const repoMock = new ConfigurationRepository() as jest.Mocked<ConfigurationRepository>;
+      repoMock.publishConfiguration = jest.fn().mockResolvedValue(undefined as any);
+      repoMock.getConfiguration = jest.fn().mockResolvedValue(null);
+      repoMock.saveConfiguration = jest.fn().mockResolvedValue(undefined);
+      const provisioning = {
+        provisionFromConfiguration: jest.fn().mockResolvedValue({
+          academicYearId: 'ay-1',
+          sectionsCreated: 0,
+          departmentsCreated: 0,
+          warnings: [],
+        }),
+      };
+      mockHealthService.checkHealth.mockResolvedValue({
+        healthy: false,
+        status: 'INVALID',
+        diagnostics: {
+          configExists: false,
+          metadataExists: false,
+          schoolProfileExists: false,
+          academicStructureExists: false,
+          isPublished: false,
+          versionValid: false,
+          tenantValid: false,
+          schemaValid: false,
+        },
+      });
+      const svc = new ConfigurationService(repoMock, mockCache, mockHealthService, provisioning);
+
+      const input = {
+        schoolProfile: { name: 'Test School', type: 'Private', curriculumId: 'federal', sections: ['A'] },
+        academicStructure: {
+          levels: [] as any[],
+          grades: [{ id: 'g1', name: 'Grade 1', levelId: 'Primary', schemeOfStudy: { subjects: [{ name: 'Math' }] } }],
+          allSubjects: [{ name: 'Math' }],
+          requiredLabs: [] as any[],
+          requiredTeachers: {} as Record<string, number>,
+        },
+      };
+
+      await expect(svc.saveAndPublishConfiguration(input, tenantId, 'user1')).rejects.toThrow('Tenant');
+      expect(provisioning.provisionFromConfiguration).not.toHaveBeenCalled();
+      expect(repoMock.publishConfiguration).not.toHaveBeenCalled();
+      expect(mockCache.invalidateConfiguration).not.toHaveBeenCalled();
+      expect(mockCache.setConfiguration).not.toHaveBeenCalled();
     });
   });
 

@@ -157,8 +157,9 @@ describe('AcademicYearRepository', () => {
 
   test('should findAllByTenant', async () => {
     const { adminDb, mockCollection } = require('@/lib/firebase-admin');
+    const mockOrderBy = jest.fn().mockReturnThis();
     mockCollection.where.mockReturnValue({
-      orderBy: jest.fn().mockReturnThis(),
+      orderBy: mockOrderBy,
       get: jest.fn().mockResolvedValue({
         docs: [
           { id: 'ay1', data: () => ({ name: '2024-2025', startDate: '2024-06-01', endDate: '2025-05-31', isCurrent: true, tenantId }) },
@@ -169,6 +170,7 @@ describe('AcademicYearRepository', () => {
     const years = await repo.findAllByTenant(tenantId);
     expect(years).toHaveLength(1);
     expect(years[0].name).toBe('2024-2025');
+    expect(mockOrderBy).toHaveBeenCalledWith('startDate', 'desc');
   });
 
   test('should set current academic year', async () => {
