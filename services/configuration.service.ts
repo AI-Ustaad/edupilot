@@ -4,6 +4,8 @@ import { EVENTS } from "@/lib/events/event-types";
 import { ConfigurationRepository } from "@/repositories/configuration.repository";
 import { ConfigurationCacheService } from "@/services/configuration-cache.service";
 import { ConfigurationHealthService } from "@/services/configuration-health.service";
+import { TenantService } from "@/services/tenant.service";
+import type { ITenantService } from "@/interfaces/ITenantService";
 import { versionEngine, type UpgradeCheckResult } from "@/education/engines/version.engine";
 import { mapConfigurationToViewModel, mapHistory } from "@/lib/mappers";
 import { ConfigurationInvalidError, ConfigurationValidationError, ConfigurationNotFoundError } from "@/lib/errors/configuration.errors";
@@ -22,7 +24,8 @@ export class ConfigurationService implements IConfigurationService {
     private readonly repo = new ConfigurationRepository(),
     private readonly cache = new ConfigurationCacheService(),
     private readonly healthService = new ConfigurationHealthService(),
-    private readonly provisioningService: IConfigurationProvisioningService = configurationProvisioningService
+    private readonly provisioningService: IConfigurationProvisioningService = configurationProvisioningService,
+    private readonly tenantService: ITenantService = new TenantService()
   ) {}
 
   async getConfigurationViewModel(tenantId: string): Promise<SchoolConfigurationViewModel | null> {
@@ -112,7 +115,15 @@ export class ConfigurationService implements IConfigurationService {
     try {
       const health = await this.healthService.checkHealth(tenantId);
       if (!health.diagnostics.tenantValid) {
-        throw new ConfigurationValidationError(`Tenant ${tenantId} does not exist or is invalid. Configuration cannot be published.`);
+        const repairResult = await this.tenantService.provisionOrRepairTenant(tenantId, userId);
+        if (repairResult.repaired) {
+          const recheck = await this.healthService.checkHealth(tenantId);
+          if (!recheck.diagnostics.tenantValid) {
+            throw new ConfigurationValidationError(`Tenant ${tenantId} does not exist or is invalid. Configuration cannot be published.`);
+          }
+        } else {
+          throw new ConfigurationValidationError(`Tenant ${tenantId} does not exist or is invalid. Configuration cannot be published.`);
+        }
       }
 
       const existing = await this.repo.getConfiguration(tenantId);
