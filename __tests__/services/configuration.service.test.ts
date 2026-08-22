@@ -148,6 +148,7 @@ const mockConfigData = (tenantId: string): MockConfig => ({
 jest.mock('@/services/configuration-cache.service');
 jest.mock('@/services/configuration-health.service');
 jest.mock('@/repositories/configuration.repository');
+jest.mock('@/services/tenant.service');
 
 describe('ConfigurationService', () => {
   let service: ConfigurationService;
@@ -388,6 +389,10 @@ describe('ConfigurationService', () => {
           warnings: [],
         }),
       };
+      const mockTenantService = {
+        provisionOrRepairTenant: jest.fn().mockResolvedValue({ repaired: false, reason: 'user_not_associated' }),
+        setupSchool: jest.fn(),
+      };
       mockHealthService.checkHealth.mockResolvedValue({
         healthy: false,
         status: 'INVALID',
@@ -402,7 +407,7 @@ describe('ConfigurationService', () => {
           schemaValid: false,
         },
       });
-      const svc = new ConfigurationService(repoMock, mockCache, mockHealthService, provisioning);
+      const svc = new ConfigurationService(repoMock, mockCache, mockHealthService, provisioning, mockTenantService);
 
       const input = {
         schoolProfile: { name: 'Test School', type: 'Private', curriculumId: 'federal', sections: ['A'] },
@@ -416,10 +421,207 @@ describe('ConfigurationService', () => {
       };
 
       await expect(svc.saveAndPublishConfiguration(input, tenantId, 'user1')).rejects.toThrow('Tenant');
+      expect(mockTenantService.provisionOrRepairTenant).toHaveBeenCalledWith(tenantId, 'user1');
       expect(provisioning.provisionFromConfiguration).not.toHaveBeenCalled();
       expect(repoMock.publishConfiguration).not.toHaveBeenCalled();
       expect(mockCache.invalidateConfiguration).not.toHaveBeenCalled();
       expect(mockCache.setConfiguration).not.toHaveBeenCalled();
+    });
+
+    test('should repair tenant and continue when tenant document is missing but user owns it', async () => {
+      const repoMock = new ConfigurationRepository() as jest.Mocked<ConfigurationRepository>;
+      repoMock.publishConfiguration = jest.fn().mockImplementation((_tenantId: string, config: any) => {
+        config.state = 'Published';
+        config.metadata.isConfigured = true;
+        config.metadata.configuredAt = new Date().toISOString();
+        config.metadata.configuredBy = 'user1';
+        config.metadata.publishedAt = new Date().toISOString();
+        config.version.publishedBy = 'user1';
+        config.version.publishedAt = new Date().toISOString();
+        config.metadata.lastModified = new Date().toISOString();
+        return config;
+      });
+      repoMock.getConfiguration = jest.fn().mockResolvedValue(mockConfigData(tenantId));
+      repoMock.saveConfiguration = jest.fn().mockResolvedValue(undefined);
+      const provisioning = {
+        provisionFromConfiguration: jest.fn().mockResolvedValue({
+          academicYearId: 'ay-repaired-1',
+          sectionsCreated: 2,
+          departmentsCreated: 1,
+          warnings: [],
+        }),
+      };
+      const mockTenantService = {
+        provisionOrRepairTenant: jest.fn().mockResolvedValue({ repaired: true, reason: 'tenant_restored_from_configuration' }),
+        setupSchool: jest.fn(),
+      };
+      mockHealthService.checkHealth
+        .mockResolvedValueOnce({
+          healthy: false,
+          status: 'INVALID',
+          diagnostics: {
+            configExists: false,
+            metadataExists: false,
+            schoolProfileExists: false,
+            academicStructureExists: false,
+            isPublished: false,
+            versionValid: false,
+            tenantValid: false,
+            schemaValid: false,
+          },
+        })
+        .mockResolvedValue({
+          healthy: true,
+          status: 'CONFIGURED',
+          diagnostics: {
+            configExists: true,
+            metadataExists: true,
+            schoolProfileExists: true,
+            academicStructureExists: true,
+            isPublished: true,
+            versionValid: true,
+            tenantValid: true,
+            schemaValid: true,
+          },
+        });
+      const svc = new ConfigurationService(repoMock, mockCache, mockHealthService, provisioning, mockTenantService);
+
+      const input = {
+        schoolProfile: { name: 'Test School', type: 'Private', curriculumId: 'federal', sections: ['A'] },
+        academicStructure: {
+          levels: [] as any[],
+          grades: [{ id: 'g1', name: 'Grade 1', levelId: 'Primary', schemeOfStudy: { subjects: [{ name: 'Math' }] } }],
+          allSubjects: [{ name: 'Math' }],
+          requiredLabs: [] as any[],
+          requiredTeachers: {} as Record<string, number>,
+          departments: ['CS'],
+        },
+      };
+
+      const result = await svc.saveAndPublishConfiguration(input, tenantId, 'user1');
+
+      expect(mockTenantService.provisionOrRepairTenant).toHaveBeenCalledWith(tenantId, 'user1');
+      expect(mockHealthService.checkHealth).toHaveBeenCalledTimes(2);
+      expect(provisioning.provisionFromConfiguration).toHaveBeenCalledTimes(1);
+      expect(repoMock.publishConfiguration).toHaveBeenCalledTimes(1);
+      expect(result.state).toBe('Published');
+      expect(result.metadata.academicYearId).toBe('ay-repaired-1');
+    });
+
+    test('should not invent academic year when metadata.academicYearId is null', async () => {
+      const repoMock = new ConfigurationRepository() as jest.Mocked<ConfigurationRepository>;
+      repoMock.publishConfiguration = jest.fn().mockImplementation((_tenantId: string, config: any) => {
+        config.state = 'Published';
+        config.metadata.isConfigured = true;
+        config.metadata.configuredAt = new Date().toISOString();
+        config.metadata.configuredBy = 'user1';
+        config.metadata.publishedAt = new Date().toISOString();
+        config.version.publishedBy = 'user1';
+        config.version.publishedAt = new Date().toISOString();
+        config.metadata.lastModified = new Date().toISOString();
+        return config;
+      });
+      const existingNullAy = {
+        ...mockConfigData(tenantId),
+        metadata: { ...mockConfigData(tenantId).metadata, academicYearId: null },
+      };
+      repoMock.getConfiguration = jest.fn().mockResolvedValue(existingNullAy);
+      repoMock.saveConfiguration = jest.fn().mockResolvedValue(undefined);
+      const provisioning = {
+        provisionFromConfiguration: jest.fn().mockResolvedValue({
+          academicYearId: 'ay-newly-created',
+          sectionsCreated: 0,
+          departmentsCreated: 0,
+          warnings: [],
+        }),
+      };
+      const mockTenantService = {
+        provisionOrRepairTenant: jest.fn().mockResolvedValue({ repaired: true }),
+        setupSchool: jest.fn(),
+      };
+      mockHealthService.checkHealth
+        .mockResolvedValueOnce({
+          healthy: false,
+          status: 'INVALID',
+          diagnostics: { configExists: true, metadataExists: true, schoolProfileExists: true, academicStructureExists: true, isPublished: true, versionValid: true, tenantValid: false, schemaValid: true },
+        })
+        .mockResolvedValue({
+          healthy: true,
+          status: 'CONFIGURED',
+          diagnostics: { configExists: true, metadataExists: true, schoolProfileExists: true, academicStructureExists: true, isPublished: true, versionValid: true, tenantValid: true, schemaValid: true },
+        });
+      const svc = new ConfigurationService(repoMock, mockCache, mockHealthService, provisioning, mockTenantService);
+
+      const input = {
+        schoolProfile: { name: 'Test School', type: 'Private', curriculumId: 'federal', sections: ['A'] },
+        academicStructure: {
+          levels: [] as any[],
+          grades: [{ id: 'g1', name: 'Grade 1', levelId: 'Primary', schemeOfStudy: { subjects: [{ name: 'Math' }] } }],
+          allSubjects: [{ name: 'Math' }],
+          requiredLabs: [] as any[],
+          requiredTeachers: {} as Record<string, number>,
+        },
+      };
+
+      const result = await svc.saveAndPublishConfiguration(input, tenantId, 'user1');
+
+      expect(mockTenantService.provisionOrRepairTenant).toHaveBeenCalledWith(tenantId, 'user1');
+      expect(provisioning.provisionFromConfiguration).toHaveBeenCalledTimes(1);
+      expect(result.metadata.academicYearId).toBe('ay-newly-created');
+      expect(mockTenantService.provisionOrRepairTenant).not.toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ createAcademicYear: true })
+      );
+    });
+
+    test('should throw when tenant repair fails and tenant remains invalid', async () => {
+      const repoMock = new ConfigurationRepository() as jest.Mocked<ConfigurationRepository>;
+      repoMock.publishConfiguration = jest.fn().mockResolvedValue(undefined as any);
+      repoMock.getConfiguration = jest.fn().mockResolvedValue(null);
+      repoMock.saveConfiguration = jest.fn().mockResolvedValue(undefined);
+      const provisioning = {
+        provisionFromConfiguration: jest.fn().mockResolvedValue({
+          academicYearId: 'ay-1',
+          sectionsCreated: 0,
+          departmentsCreated: 0,
+          warnings: [],
+        }),
+      };
+      const mockTenantService = {
+        provisionOrRepairTenant: jest.fn().mockResolvedValue({ repaired: false, reason: 'config_missing' }),
+        setupSchool: jest.fn(),
+      };
+      mockHealthService.checkHealth.mockResolvedValue({
+        healthy: false,
+        status: 'INVALID',
+        diagnostics: {
+          configExists: false,
+          metadataExists: false,
+          schoolProfileExists: false,
+          academicStructureExists: false,
+          isPublished: false,
+          versionValid: false,
+          tenantValid: false,
+          schemaValid: false,
+        },
+      });
+      const svc = new ConfigurationService(repoMock, mockCache, mockHealthService, provisioning, mockTenantService);
+
+      const input = {
+        schoolProfile: { name: 'Test School', type: 'Private', curriculumId: 'federal', sections: ['A'] },
+        academicStructure: {
+          levels: [] as any[],
+          grades: [{ id: 'g1', name: 'Grade 1', levelId: 'Primary', schemeOfStudy: { subjects: [{ name: 'Math' }] } }],
+          allSubjects: [{ name: 'Math' }],
+          requiredLabs: [] as any[],
+          requiredTeachers: {} as Record<string, number>,
+        },
+      };
+
+      await expect(svc.saveAndPublishConfiguration(input, tenantId, 'user1')).rejects.toThrow('Tenant');
+      expect(mockTenantService.provisionOrRepairTenant).toHaveBeenCalledWith(tenantId, 'user1');
+      expect(provisioning.provisionFromConfiguration).not.toHaveBeenCalled();
+      expect(repoMock.publishConfiguration).not.toHaveBeenCalled();
     });
   });
 

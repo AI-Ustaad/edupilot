@@ -14,4 +14,6 @@ export interface ITenantRepository {
   softDelete(...args: any[]): Promise<any>;
   update(...args: any[]): Promise<any>;
   verifyTenantExists(tenantId: string): Promise<boolean>;
+  restoreTenant(tenantId: string, data: Record<string, any>): Promise<void>;
+  verifyUserTenantAssociation(userId: string, tenantId: string): Promise<boolean>;
 }

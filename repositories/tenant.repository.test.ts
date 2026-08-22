@@ -163,4 +163,55 @@ describe('TenantRepository', () => {
     const exists = await repo.exists(tenantId, tenantId);
     expect(exists).toBe(true);
   });
+
+  test('should restore a missing tenant document', async () => {
+    const { mockDocRef } = require('@/lib/firebase-admin');
+    mockDocRef.get.mockResolvedValue({ exists: false });
+
+    const data = { name: 'Restored School', type: 'Private', ownerId: 'user-1', status: 'active' };
+    await repo.restoreTenant(tenantId, data);
+
+    expect(mockDocRef.set).toHaveBeenCalledWith(data);
+  });
+
+  test('should not restore an existing tenant document', async () => {
+    const { mockDocRef } = require('@/lib/firebase-admin');
+    mockDocRef.get.mockResolvedValue({ exists: true, data: () => ({ name: 'Existing' }) });
+
+    await expect(
+      repo.restoreTenant(tenantId, { name: 'Should Not Overwrite' })
+    ).rejects.toThrow('already exists');
+
+    expect(mockDocRef.set).not.toHaveBeenCalled();
+  });
+
+  test('should verify user-tenant association when matching', async () => {
+    const { mockDocRef } = require('@/lib/firebase-admin');
+    mockDocRef.get.mockResolvedValue({
+      exists: true,
+      data: () => ({ tenantId: 'tenant_abc', role: 'admin' }),
+    });
+
+    const result = await repo.verifyUserTenantAssociation('user-abc', 'tenant_abc');
+    expect(result).toBe(true);
+  });
+
+  test('should reject user-tenant association when mismatched', async () => {
+    const { mockDocRef } = require('@/lib/firebase-admin');
+    mockDocRef.get.mockResolvedValue({
+      exists: true,
+      data: () => ({ tenantId: 'tenant_other', role: 'admin' }),
+    });
+
+    const result = await repo.verifyUserTenantAssociation('user-abc', 'tenant_abc');
+    expect(result).toBe(false);
+  });
+
+  test('should reject user-tenant association when user does not exist', async () => {
+    const { mockDocRef } = require('@/lib/firebase-admin');
+    mockDocRef.get.mockResolvedValue({ exists: false, data: () => null });
+
+    const result = await repo.verifyUserTenantAssociation('nonexistent-user', 'tenant_abc');
+    expect(result).toBe(false);
+  });
 });
