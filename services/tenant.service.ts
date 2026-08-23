@@ -1,3 +1,4 @@
+// services/tenant.service.ts
 import { TenantRepository } from "@/repositories/tenant.repository";
 import { TenantSetupRepository } from "@/repositories/tenant-setup.repository";
 import { SectionRepository } from "@/repositories/section.repository";
@@ -57,29 +58,39 @@ export class TenantService implements ITenantService {
     return { tenantId };
   }
 
+  /**
+   * 🔁 Tenant Repair / Provisioning
+   * - اگر ماسٹر ٹیننٹ موجود ہو تو کچھ نہیں کرتا
+   * - اگر نہ ہو لیکن یوزر منسلک ہو اور کنفیگریشن موجود ہو تو بحال کرتا ہے
+   */
   async provisionOrRepairTenant(tenantId: string, userId: string): Promise<TenantRepairResult> {
+    // 1. کیا ٹیننٹ پہلے سے موجود ہے؟
     const exists = await this.tenantRepo.verifyTenantExists(tenantId);
     if (exists) {
       return { repaired: false, reason: "tenant_already_exists" };
     }
 
+    // 2. کیا یوزر واقعی اسی ٹیننٹ سے منسلک ہے؟
     const userAssociated = await this.tenantRepo.verifyUserTenantAssociation(userId, tenantId);
     if (!userAssociated) {
       logger.warn("TENANT_REPAIR_REJECTED_USER_NOT_ASSOCIATED", { tenantId, userId });
       return { repaired: false, reason: "user_not_associated" };
     }
 
+    // 3. کیا کنفیگریشن موجود ہے؟
     const config = await this.configRepo.getConfiguration(tenantId);
     if (!config) {
       logger.warn("TENANT_REPAIR_REJECTED_CONFIG_MISSING", { tenantId, userId });
       return { repaired: false, reason: "config_missing" };
     }
 
+    // 4. کیا کنفیگریشن درست ہے؟
     if (!config.school?.name || !config.school?.curriculumId || !config.school?.type) {
       logger.warn("TENANT_REPAIR_REJECTED_CONFIG_MALFORMED", { tenantId, userId });
       return { repaired: false, reason: "config_malformed" };
     }
 
+    // 5. بہترین ممکنہ تاریخ اور مالک نکالیں
     const bestCreatedAt =
       config.version?.createdAt ||
       config.metadata?.configuredAt ||
@@ -90,6 +101,7 @@ export class TenantService implements ITenantService {
       config.metadata?.configuredBy ||
       config.version?.createdBy;
 
+    // 6. ٹیننٹ ماسٹر ڈاکیومنٹ بحال کریں
     await this.tenantRepo.restoreTenant(tenantId, {
       name: config.school.name,
       type: config.school.type,
