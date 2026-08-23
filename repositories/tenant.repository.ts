@@ -42,8 +42,7 @@ export class TenantRepository extends BaseRepository<Tenant> implements ITenantR
   }
 
   /**
-   * 🔧 FIXED: Tenant document may be missing while configuration exists.
-   * This method now auto-heals by deriving tenant data from configuration.
+   * ✅ خودکار مرمت کے ساتھ ٹیننٹ کی موجودگی چیک کریں
    */
   async verifyTenantExists(tenantId: string): Promise<boolean> {
     const doc = await this.db.collection(this.collectionName).doc(tenantId).get();
@@ -51,7 +50,7 @@ export class TenantRepository extends BaseRepository<Tenant> implements ITenantR
       return true;
     }
 
-    // 🔥 Self-healing path: configuration subcollection may hold the data
+    // 🔁 اگر ماسٹر ڈاکیومنٹ نہیں ملا تو کانفیگریشن سے بحال کرنے کی کوشش
     try {
       const configDoc = await this.db
         .collection("tenants")
