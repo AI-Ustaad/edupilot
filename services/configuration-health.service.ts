@@ -22,7 +22,13 @@ export class ConfigurationHealthService implements IConfigurationHealthService {
     };
 
     try {
-      diagnostics.tenantValid = await this.tenantRepo.verifyTenantExists(tenantId);
+      // 🔧 مضبوط ٹیننٹ چیک
+      try {
+        diagnostics.tenantValid = await this.tenantRepo.verifyTenantExists(tenantId);
+      } catch (err) {
+        logger.error("TENANT_VERIFY_ERROR", { tenantId, error: err });
+        diagnostics.tenantValid = false;
+      }
 
       if (!diagnostics.tenantValid) {
         return this.buildResult(false, diagnostics, "INVALID");
