@@ -1,6 +1,7 @@
 import { ConfigurationRepository } from "@/repositories/configuration.repository";
 import { TenantRepository } from "@/repositories/tenant.repository";
 import { logger } from "@/lib/logger/logger";
+import { ConfigurationInvalidError } from "@/lib/errors/configuration.errors";
 import type { ConfigurationHealthResult } from "@/types/configuration/status";
 import type { IConfigurationHealthService } from "@/interfaces/IConfigurationHealthService";
 
@@ -21,13 +22,7 @@ export class ConfigurationHealthService implements IConfigurationHealthService {
     };
 
     try {
-      // 🔥 FIX: verifyTenantExists may throw — treat as false
-      try {
-        diagnostics.tenantValid = await this.tenantRepo.verifyTenantExists(tenantId);
-      } catch (err) {
-        logger.error("TENANT_VERIFY_ERROR", { tenantId, error: err });
-        diagnostics.tenantValid = false;
-      }
+      diagnostics.tenantValid = await this.tenantRepo.verifyTenantExists(tenantId);
 
       if (!diagnostics.tenantValid) {
         return this.buildResult(false, diagnostics, "INVALID");
