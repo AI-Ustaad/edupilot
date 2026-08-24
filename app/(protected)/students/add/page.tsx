@@ -1,33 +1,58 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { Loader2, UserPlus, Upload, Camera } from "lucide-react";
 import Image from "next/image";
-
-// 🚀 Layered Architecture Hooks
-import { useConfiguration } from "@/app/(protected)/providers/ConfigurationProvider";
 import apiClient from "@/lib/api/client";
 import toast from "react-hot-toast";
 
 export default function AddStudentPage() {
   const router = useRouter();
   const { user } = useAuth();
-  
+
   const [error, setError] = useState("");
   const [isCreating, setIsCreating] = useState(false);
-  
-  // 🟢 Fetch School Configuration for Dynamic Classes & Sections
-  const { config, isLoading: configLoading } = useConfiguration();
+
+  // 🟢 اسکول کنفیگریشن براہِ راست API سے لوڈ کریں
+  const [config, setConfig] = useState<any>(null);
+  const [configLoading, setConfigLoading] = useState(true);
+
+  useEffect(() => {
+    fetch("/api/v1/settings/school-configuration")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && data.data?.configuration?.academic) {
+          setConfig(data.data.configuration.academic);
+        }
+      })
+      .catch(console.error)
+      .finally(() => setConfigLoading(false));
+  }, []);
 
   const [form, setForm] = useState({
-    fullName: "", fatherName: "", cnic: "", dob: "",
-    gender: "Male", bloodGroup: "", religion: "", nationality: "",
-    phone: "", email: "", address: "",
-    classGrade: "", section: "", rollNumber: "", admissionNumber: "",
-    guardianName: "", guardianRelation: "", guardianPhone: "",
-    previousSchool: "", medicalConditions: "", photoBase64: "",
+    fullName: "",
+    fatherName: "",
+    cnic: "",
+    dob: "",
+    gender: "Male",
+    bloodGroup: "",
+    religion: "",
+    nationality: "",
+    phone: "",
+    email: "",
+    address: "",
+    classGrade: "",
+    section: "",
+    rollNumber: "",
+    admissionNumber: "",
+    guardianName: "",
+    guardianRelation: "",
+    guardianPhone: "",
+    previousSchool: "",
+    medicalConditions: "",
+    photoBase64: "",
   });
 
   const handleChange = (field: string, value: any) => {
@@ -55,19 +80,18 @@ export default function AddStudentPage() {
     try {
       const nameParts = form.fullName.trim().split(" ");
       const firstName = nameParts[0];
-      const lastName = nameParts.slice(1).join(" ");
+      const lastName = nameParts.slice(1).join(" ") || undefined;
 
       // 🚀 ENTERPRISE DOMAIN AGGREGATE PAYLOAD
-      // No more metadata.extendedData. Explicit Domain Objects only.
       const payload = {
         identity: {
           admissionNumber: form.admissionNumber || `ADM-${Date.now().toString().slice(-6)}`,
-          rollNumber: form.rollNumber ? Number(form.rollNumber) : undefined,
+          rollNumber: form.rollNumber ? String(form.rollNumber) : undefined,
           cnicOrBForm: form.cnic || undefined,
         },
         personal: {
-          firstName: firstName,
-          lastName: lastName || undefined,
+          firstName,
+          lastName,
           dateOfBirth: form.dob || undefined,
           gender: form.gender || "Male",
           avatarUrl: form.photoBase64 || undefined,
@@ -79,7 +103,7 @@ export default function AddStudentPage() {
           admissionDate: new Date().toISOString(),
         },
         parentReferences: {
-          primaryParentId: null, // Will be linked properly via Parent Module later
+          primaryParentId: null,
           emergencyContactPhone: form.guardianPhone || form.phone || undefined,
         },
         contacts: {
@@ -104,25 +128,31 @@ export default function AddStudentPage() {
         status: "Active",
         metadata: {
           version: 1,
-          source: "web"
-        }
+          source: "web",
+        },
       };
 
-      // 🚀 API Call
       await apiClient.post("/students", payload);
-      
+
       toast.success("Student successfully onboarded!");
       router.push("/students");
-
     } catch (err: any) {
-      const errorMsg = err.response?.data?.message || err.response?.data?.errors?.[0]?.message || "Failed to admit student to the Enterprise Domain.";
+      const errorMsg =
+        err.response?.data?.message ||
+        err.response?.data?.errors?.[0]?.message ||
+        "Failed to admit student to the Enterprise Domain.";
       setError(errorMsg);
     } finally {
       setIsCreating(false);
     }
   };
 
-  if (configLoading) return <div className="p-8 flex justify-center"><Loader2 className="animate-spin text-blue-600" size={32} /></div>;
+  if (configLoading)
+    return (
+      <div className="p-8 flex justify-center">
+        <Loader2 className="animate-spin text-blue-600" size={32} />
+      </div>
+    );
 
   return (
     <div className="max-w-4xl mx-auto p-6 space-y-6">
@@ -130,19 +160,26 @@ export default function AddStudentPage() {
         <UserPlus className="text-blue-600" /> Admit New Student
       </h1>
 
-      {error && <div className="bg-red-50 text-red-700 p-3 rounded-xl font-bold border border-red-200">{error}</div>}
+      {error && (
+        <div className="bg-red-50 text-red-700 p-3 rounded-xl font-bold border border-red-200">
+          {error}
+        </div>
+      )}
 
-      <form onSubmit={handleSubmit} className="bg-white border border-gray-200 rounded-2xl p-6 space-y-6 shadow-sm">
+      <form
+        onSubmit={handleSubmit}
+        className="bg-white border border-gray-200 rounded-2xl p-6 space-y-6 shadow-sm"
+      >
         {/* Photo Upload */}
         <div className="flex items-center gap-4">
           <div className="relative">
             {form.photoBase64 ? (
-              <Image 
-                src={form.photoBase64} 
-                alt="Student Photo" 
-                width={96} 
-                height={96} 
-                className="w-24 h-24 rounded-full object-cover border-4 border-blue-50" 
+              <Image
+                src={form.photoBase64}
+                alt="Student Photo"
+                width={96}
+                height={96}
+                className="w-24 h-24 rounded-full object-cover border-4 border-blue-50"
               />
             ) : (
               <div className="w-24 h-24 rounded-full bg-gray-50 flex items-center justify-center border-4 border-gray-100">
@@ -172,13 +209,13 @@ export default function AddStudentPage() {
           <Input label="Phone" value={form.phone} onChange={e => handleChange("phone", e.target.value)} placeholder="0300-0000000" />
           <Input label="Email" value={form.email} onChange={e => handleChange("email", e.target.value)} placeholder="student@example.com" />
           <Input label="Address" value={form.address} onChange={e => handleChange("address", e.target.value)} placeholder="123 Main Street" />
-          
+
           {/* 🚀 DYNAMIC CLASSES DROPDOWN */}
           <div>
             <label className="text-sm font-bold text-gray-700 mb-1.5 block">Class / Grade *</label>
-            <select 
-              value={form.classGrade} 
-              onChange={e => handleChange("classGrade", e.target.value)} 
+            <select
+              value={form.classGrade}
+              onChange={e => handleChange("classGrade", e.target.value)}
               required
               className="w-full border border-gray-200 bg-gray-50 rounded-xl p-2.5 text-gray-900 focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition"
             >
@@ -188,13 +225,13 @@ export default function AddStudentPage() {
               ))}
             </select>
           </div>
-          
+
           {/* 🚀 DYNAMIC SECTIONS DROPDOWN */}
           <div>
             <label className="text-sm font-bold text-gray-700 mb-1.5 block">Section</label>
-            <select 
-              value={form.section} 
-              onChange={e => handleChange("section", e.target.value)} 
+            <select
+              value={form.section}
+              onChange={e => handleChange("section", e.target.value)}
               className="w-full border border-gray-200 bg-gray-50 rounded-xl p-2.5 text-gray-900 focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition"
             >
               <option value="">-- Select Section --</option>
@@ -203,7 +240,7 @@ export default function AddStudentPage() {
               ))}
             </select>
           </div>
-          
+
           <Input label="Roll Number" value={form.rollNumber} onChange={e => handleChange("rollNumber", e.target.value)} placeholder="101" />
           <Input label="Admission Number" value={form.admissionNumber} onChange={e => handleChange("admissionNumber", e.target.value)} placeholder="Leave blank to auto-generate" />
           <Input label="Guardian Name" value={form.guardianName} onChange={e => handleChange("guardianName", e.target.value)} />
