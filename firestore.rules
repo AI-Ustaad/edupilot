@@ -36,10 +36,96 @@ service cloud.firestore {
       return isAuthenticated() && (getUserRole() == 'admin' || getUserRole() == 'teacher' || getUserRole() == 'staff');
     }
 
-    // Users collection - users can read their own data, admins can read tenant users
+    // Users collection - users can read their own data, admins can read tenant users.
+    //
+    // SECURITY (P0-04): A non-admin authenticated user MUST NOT be able to modify
+    // authorization-sensitive fields on their own document. The previous
+    // implementation allowed `allow write` whenever `request.auth.uid == userId`,
+    // which let a client SDK caller flip `role`, `tenantId`, `isSuperAdmin`, or
+    // `onboardingRequired` and immediately gain cross-tenant privileges
+    // (because `isSuperAdmin()` / `isAdmin()` / `isTenantMember()` re-read
+    // `getUserData()` from the same mutable document on every evaluation).
+    //
+    // The Firestore document is the authoritative authorization source
+    // (consumed by `getSessionUser()` and by every `withPermission` gate), so
+    // the rules layer is the primary defense.
+    //
+    // Legitimate self-writes (preserved):
+    //   - First-time bootstrap (create):  email, name, photoURL, role:"guest",
+    //     tenantId:null, onboardingRequired:true, createdAt, lastLoginAt,
+    //     updatedAt.
+    //   - Login touch (merge update):     lastLoginAt, updatedAt.
+    //   - Migration bookkeeping (merge):  migratedFrom, migrationVersion,
+    //     migrationCompletedAt, updatedAt, lastLoginAt.
+    //
+    // All privileged writes (`role`, `tenantId`, `isSuperAdmin`,
+    // `onboardingRequired`, `email`) MUST go through the trusted server
+    // (Firebase Admin SDK), which bypasses these rules by design.
     match /users/{userId} {
       allow read: if isAuthenticated() && (request.auth.uid == userId || isTenantMember(getUserData().tenantId));
-      allow write: if isAuthenticated() && (request.auth.uid == userId || isAdmin() || isSuperAdmin());
+
+      // ----- CREATE (bootstrap / new-user doc) -----
+      // A self-create is only allowed for the user's own doc and only with a
+      // closed allow-list of fields. role/tenantId/onboardingRequired MUST
+      // match the server-defined defaults — a client may never pre-seed
+      // itself as anything other than "guest" without a tenant.
+      allow create: if isAuthenticated()
+                    && request.auth.uid == userId
+                    && request.resource.data.role == 'guest'
+                    && request.resource.data.tenantId == null
+                    && request.resource.data.onboardingRequired == true
+                    && !request.resource.data.keys().hasAny([
+                         'isSuperAdmin',
+                         'customClaims',
+                         'permissions'
+                       ])
+                    && request.resource.data.diff({
+                         email: request.resource.data.email,
+                         name: request.resource.data.name,
+                         photoURL: request.resource.data.photoURL,
+                         role: 'guest',
+                         tenantId: null,
+                         onboardingRequired: true,
+                         createdAt: request.resource.data.createdAt,
+                         lastLoginAt: request.resource.data.lastLoginAt,
+                         updatedAt: request.resource.data.updatedAt
+                       }).affectedKeys().hasOnly([
+                         'email',
+                         'name',
+                         'photoURL',
+                         'role',
+                         'tenantId',
+                         'onboardingRequired',
+                         'createdAt',
+                         'lastLoginAt',
+                         'updatedAt'
+                       ]);
+
+      // ----- UPDATE -----
+      // Self-update: allowed only when authorization-sensitive fields are
+      // unchanged AND the new write touches ONLY fields in the allow-list
+      // (plus the existing migration bookkeeping fields).
+      allow update: if (request.auth.uid == userId
+                       && request.resource.data.role == resource.data.role
+                       && request.resource.data.tenantId == resource.data.tenantId
+                       && request.resource.data.isSuperAdmin == resource.data.isSuperAdmin
+                       && request.resource.data.onboardingRequired == resource.data.onboardingRequired
+                       && request.resource.data.email == resource.data.email
+                       && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+                            'name',
+                            'photoURL',
+                            'lastLoginAt',
+                            'updatedAt',
+                            'migratedFrom',
+                            'migrationVersion',
+                            'migrationCompletedAt'
+                          ]))
+                    || (isSuperAdmin());
+
+      // ----- DELETE -----
+      // User self-deletion is forbidden; only a super_admin can remove a
+      // user document (which should be a rare, audited operation).
+      allow delete: if isSuperAdmin();
     }
 
     // Tenants collection - only admins and super admins
