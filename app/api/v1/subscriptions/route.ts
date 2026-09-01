@@ -8,6 +8,8 @@ import { createSuccessResponse, createErrorResponse } from "@/lib/api/response";
 import { SubscriptionService } from "@/services/subscription.service";
 import type { TenantContext } from "@/types/api";
 
+const FREE_PLAN_ID = "free";
+
 export const GET = withErrorHandler(
   withAuth(
     withTenant(
@@ -26,9 +28,15 @@ export const POST = withErrorHandler(
     withTenant(
       withPermission(PERMISSIONS.subscriptions.update)(async (req: Request, { tenantId, user }: TenantContext) => {
         const { planId } = await req.json();
+
         if (!PLANS[planId as keyof typeof PLANS]) {
           return createErrorResponse(400, "Invalid plan");
         }
+
+        if (planId !== FREE_PLAN_ID) {
+          return createErrorResponse(403, "Paid plans must be activated through the billing checkout flow");
+        }
+
         const service = new SubscriptionService();
         await service.activateSubscription(tenantId, planId, user.uid);
         return createSuccessResponse(null, { message: "Subscription updated" });
