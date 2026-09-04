@@ -65,6 +65,30 @@ describe('StudentService.student360', () => {
     await expect(service.student360('tenant-b', 'student-1')).resolves.toBeNull();
     expect(sources.attendance.findByStudentId).not.toHaveBeenCalled();
   });
+
+  test('propagates FAILED_PRECONDITION (missing index) from behavior source without swallowing it', async () => {
+    const studentRepository = {
+      findById: jest.fn().mockResolvedValue({
+        id: 'student-1',
+        tenantId: 'tenant-a',
+        fullName: 'Ada Lovelace',
+        classGrade: '10',
+        section: 'A',
+        metadata: {},
+      }),
+    };
+    const firestoreError = new Error('FAILED_PRECONDITION: The query requires an index. You can create it via the Firebase Console or the Firebase CLI');
+    Object.assign(firestoreError, { code: 'FAILED_PRECONDITION' });
+    const sources = {
+      attendance: { findByStudentId: jest.fn().mockResolvedValue([]) },
+      fees: { findByStudent: jest.fn().mockResolvedValue([]) },
+      marks: { findByStudent: jest.fn().mockResolvedValue([]) },
+      behavior: { findByStudent: jest.fn().mockRejectedValue(firestoreError) },
+    };
+    const service = new StudentService(studentRepository, sources as any);
+
+    await expect(service.student360('tenant-a', 'student-1')).rejects.toThrow('FAILED_PRECONDITION');
+  });
 });
 
 describe('StudentService.update', () => {
