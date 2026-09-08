@@ -12,21 +12,48 @@ import { logger } from "@/lib/logger/logger";
 import type { IMarksRepository } from "@/interfaces/IMarksRepository";
 import type { Mark } from "@/types/marks";
 import type { IMarksService } from "@/interfaces/IMarksService";
+import { NotFoundException, BusinessError } from "@/errors/AppError";
 
 export class MarksService implements IMarksService {
   private audit: AuditService;
   private validation: ValidationService;
+  private studentRepo: StudentRepository;
 
   constructor(private repo: IMarksRepository = new MarksRepository()) {
     this.audit = new AuditService();
     this.validation = new ValidationService();
+    this.studentRepo = new StudentRepository();
   }
 
   async saveMark(data: unknown, tenantId: string, userId: string): Promise<{ id: string; message: string }> {
     const parsed = this.validation.validateOrThrow(SaveMarkSchema, data);
+
+    const student = await this.studentRepo.findById(parsed.studentId, tenantId);
+    if (!student) {
+      throw new NotFoundException("Student not found");
+    }
+    if (!student.classGrade) {
+      throw new BusinessError("Student has no class assignment");
+    }
+
     const markDocId = `${parsed.studentId}_${parsed.term.replace(/\s+/g, "")}_${parsed.subject.replace(/\s+/g, "")}`;
 
-    await this.repo.upsert(markDocId, { ...parsed, deleted: false, createdBy: userId, updatedBy: userId }, tenantId);
+    await this.repo.upsert(markDocId, {
+      studentId: parsed.studentId,
+      studentName: parsed.studentName || student.fullName,
+      classGrade: student.classGrade,
+      section: student.section || "A",
+      term: parsed.term,
+      subject: parsed.subject,
+      marksObtained: parsed.marksObtained,
+      totalMarks: parsed.totalMarks,
+      percentage: parsed.percentage,
+      grade: parsed.grade,
+      skills: parsed.skills,
+      deleted: false,
+      createdBy: userId,
+      updatedBy: userId,
+    }, tenantId);
     await invalidateCache(`dashboard:${tenantId}`);
     await invalidateCache(`results:${tenantId}`);
 
@@ -55,10 +82,34 @@ export class MarksService implements IMarksService {
 
   async saveSkills(data: unknown, tenantId: string, userId: string): Promise<void> {
     const parsed = this.validation.validateOrThrow(SkillsSchema, data);
+
+    const student = await this.studentRepo.findById(parsed.studentId, tenantId);
+    if (!student) {
+      throw new NotFoundException("Student not found");
+    }
+    if (!student.classGrade) {
+      throw new BusinessError("Student has no class assignment");
+    }
+
     const existingMarks = await this.repo.findWithFilters(tenantId, { studentId: parsed.studentId, term: parsed.term, subject: parsed.subject });
 
     if (existingMarks.length === 0) {
-      await this.repo.create({ studentId: parsed.studentId, term: parsed.term, subject: parsed.subject, skills: parsed.skills, classGrade: "", section: "", marksObtained: 0, totalMarks: 0, percentage: 0, grade: "", tenantId, createdBy: userId, updatedBy: userId, deleted: false }, tenantId);
+      await this.repo.create({
+        studentId: parsed.studentId,
+        term: parsed.term,
+        subject: parsed.subject,
+        skills: parsed.skills,
+        classGrade: student.classGrade,
+        section: student.section || "A",
+        marksObtained: 0,
+        totalMarks: 0,
+        percentage: 0,
+        grade: "",
+        tenantId,
+        createdBy: userId,
+        updatedBy: userId,
+        deleted: false
+      }, tenantId);
     } else {
       await this.repo.upsert(existingMarks[0].id, { skills: parsed.skills, updatedBy: userId }, tenantId);
     }

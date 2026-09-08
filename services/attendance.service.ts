@@ -1,5 +1,6 @@
 // services/attendance.service.ts
 import { AttendanceRepository } from "@/repositories/attendance.repository";
+import { StudentRepository } from "@/repositories/student.repository";
 import { AuditService } from "./AuditService";
 import { ValidationService } from "./ValidationService";
 import { MarkAttendanceSchema, BulkAttendanceSchema } from "@/validators/attendance";
@@ -12,16 +13,18 @@ import type { AttendanceEntity } from "@/entities/attendance.entity";
 import type { AttendanceDocument } from "@/documents/AttendanceDocument";
 import type { CreateAttendanceDTO, UpdateAttendanceDTO } from "@/dto";
 import type { PaginatedResult } from "@/types/api";
-import { NotFoundException } from "@/errors/AppError";
+import { NotFoundException, BusinessError } from "@/errors/AppError";
 import { AttendancePersistenceMapper } from "@/lib/mappers/AttendancePersistenceMapper";
 
 export class AttendanceService implements IAttendanceService {
   private audit: AuditService;
   private validation: ValidationService;
   private repository: IAttendanceRepository;
+  private studentRepo: StudentRepository;
 
   constructor(repository?: IAttendanceRepository) {
     this.repository = repository ?? new AttendanceRepository();
+    this.studentRepo = new StudentRepository();
     this.audit = new AuditService();
     this.validation = new ValidationService();
   }
@@ -33,8 +36,20 @@ export class AttendanceService implements IAttendanceService {
     }
     const parsed = validation.data;
 
+    const student = await this.studentRepo.findById(parsed.studentId, tenantId);
+    if (!student) {
+      throw new NotFoundException("Student not found");
+    }
+    if (!student.classGrade) {
+      throw new BusinessError("Student has no class assignment");
+    }
+
     const docId = `${parsed.studentId}_${parsed.date}`;
-    const entity = AttendancePersistenceMapper.fromDTO(parsed);
+    const entity = AttendancePersistenceMapper.fromDTO({
+      ...parsed,
+      classGrade: student.classGrade,
+      section: student.section || "A",
+    });
     const document = AttendancePersistenceMapper.toFirestore(entity, userId);
     document.id = docId;
     document.tenantId = tenantId;
@@ -66,9 +81,36 @@ export class AttendanceService implements IAttendanceService {
   }
 
   async createBulk(data: CreateAttendanceDTO[], tenantId: string, userId: string): Promise<{ success: boolean; message: string }> {
-    const records: AttendanceDocument[] = data.map(rec => {
+    const validRecords = data.map(rec => {
+      const validation = this.validation.validate(MarkAttendanceSchema, rec);
+      if (!validation.success) {
+        throw new Error(`Validation failed for student ${rec.studentId}: ${validation.errors?.map(e => e.message).join(", ")}`);
+      }
+      return validation.data;
+    });
+
+    const uniqueStudentIds = [...new Set(validRecords.map(r => r.studentId))];
+    const students = await this.studentRepo.batchFindByIds(tenantId, uniqueStudentIds);
+    const studentMap = new Map(students.map(s => [s.id, s]));
+
+    for (const studentId of uniqueStudentIds) {
+      const student = studentMap.get(studentId);
+      if (!student) {
+        throw new NotFoundException(`Student ${studentId} not found`);
+      }
+      if (!student.classGrade) {
+        throw new BusinessError(`Student ${studentId} has no class assignment`);
+      }
+    }
+
+    const records: AttendanceDocument[] = validRecords.map(rec => {
+      const student = studentMap.get(rec.studentId)!;
       const docId = `${rec.studentId}_${rec.date}`;
-      const entity = AttendancePersistenceMapper.fromDTO(rec);
+      const entity = AttendancePersistenceMapper.fromDTO({
+        ...rec,
+        classGrade: student.classGrade,
+        section: student.section || "A",
+      });
       const document = AttendancePersistenceMapper.toFirestore(entity, userId);
       document.id = docId;
       document.tenantId = tenantId;
