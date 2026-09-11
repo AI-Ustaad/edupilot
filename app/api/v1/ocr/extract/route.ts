@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic';
 import { createWorker } from "tesseract.js";
 import { withAuth, withTenant, withErrorHandler } from "@/route-helpers";
-import { createSuccessResponse, createErrorResponse, createApiResponse } from "@/lib/api/response";
+import { createSuccessResponse, createErrorResponse } from "@/lib/api/response";
 import { AuditService } from "@/services/AuditService";
 import { logger } from "@/lib/logger/logger";
 import type { TenantContext } from "@/types/api";
@@ -42,29 +42,7 @@ export const POST = withErrorHandler(
 
       const isPdf = buffer.slice(0, 4).toString() === "%PDF";
       if (isPdf) {
-        await audit.log({
-          action: "ocr.extracted",
-          userId: user.uid,
-          tenantId,
-          entityId: user.uid,
-          entityType: "ocr",
-          metadata: { documentType, provider: "fallback", processingTimeMs: Date.now() - startTime },
-        });
-
-        return createApiResponse(200, {
-          fullName: "Ahmed Raza",
-          fatherName: "Muhammad Raza",
-          cnic: "12345-1234567-1",
-          phone: "03001234567",
-          personnelNo: "EMP001",
-          designation: "Teacher",
-          bps: "16",
-          doj: "2020-01-01",
-          bankName: "UBL",
-          accountNo: "123456789",
-          allowances: [],
-          deductions: [],
-        });
+        return createErrorResponse(422, "PDF OCR extraction is not supported");
       }
 
       const worker = await createWorker("eng");
