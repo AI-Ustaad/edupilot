@@ -1,0 +1,5170 @@
+============================================================
+EDUPILOT — SCHOOL CONFIGURATION COMPLETE CODE DUMP
+Generated: Sat Aug 22 11:36:35 PKT 2026
+============================================================
+
+
+############################################################
+# FILE: app/api/v1/settings/school-configuration/route.ts
+############################################################
+
+// app/api/v1/settings/school-configuration/route.ts
+export const dynamic = "force-dynamic";
+
+import { NextResponse } from "next/server";
+import { withAuth, withTenant, withErrorHandler } from "@/route-helpers";
+import { configurationService } from "@/services/configuration.service";
+import { createSuccessResponse, createErrorResponse } from "@/lib/api/response";
+import type { TenantContext } from "@/types/api";
+import { z } from "zod";
+
+const SmartConfigSchema = z.object({
+  schoolProfile: z.object({
+    name: z.string().min(2, "School name is required"),
+    type: z.string(),
+    curriculumId: z.string(),
+    boardName: z.string().optional(),
+    country: z.string().optional(),
+    sections: z.array(z.string()).optional(),
+  }),
+  academicStructure: z.object({
+    levels: z.array(z.any()),
+    grades: z.array(z.any()),
+    allSubjects: z.array(z.any()),
+    requiredLabs: z.array(z.any()).optional(),
+    requiredTeachers: z.record(z.any()).optional(),
+    departments: z.array(z.any()).optional(),
+  })
+});
+
+export const GET = withErrorHandler(
+  withAuth(
+    withTenant(async (_req: Request, context: TenantContext) => {
+      const { tenantId } = context;
+
+      const loadResult = await configurationService.loadConfiguration(tenantId);
+
+      if (loadResult.status === "NOT_CONFIGURED") {
+        return NextResponse.json({
+          success: true,
+          data: {
+            configuration: null,
+            history: [],
+            status: loadResult.status,
+            nextAction: loadResult.nextAction,
+          },
+        });
+      }
+
+      const configuration = await configurationService.getConfigurationViewModel(tenantId);
+      const history = await configurationService.getConfigurationHistoryViewModel(tenantId);
+      
+      return createSuccessResponse({ configuration, history, status: loadResult.status });
+    })
+  )
+);
+
+export const POST = withErrorHandler(
+  withAuth(
+    withTenant(async (req: Request, context: TenantContext) => {
+      const { tenantId, user } = context;
+
+      if (!user) {
+        return createErrorResponse(401, "Unauthorized");
+      }
+
+      const body = await req.json();
+      
+      const parsed = SmartConfigSchema.safeParse(body);
+      if (!parsed.success) {
+        return createErrorResponse(400, "Invalid configuration payload", parsed.error.errors);
+      }
+
+      try {
+        const result = await configurationService.saveAndPublishConfiguration(parsed.data, tenantId, user.uid);
+
+        return createSuccessResponse({
+          success: true,
+          configuration: result,
+          status: "CONFIGURED",
+        }, { message: "Configuration Published Successfully" });
+      } catch (error) {
+        return NextResponse.json({
+          success: false,
+          error: error instanceof Error ? error.message : "Failed to save configuration",
+        }, { status: 400 });
+      }
+    })
+  )
+);
+
+
+
+############################################################
+# FILE: services/configuration.service.ts
+############################################################
+
+import { logger } from "@/lib/logger/logger";
+import { eventBus } from "@/lib/events";
+import { EVENTS } from "@/lib/events/event-types";
+import { ConfigurationRepository } from "@/repositories/configuration.repository";
+import { ConfigurationCacheService } from "@/services/configuration-cache.service";
+import { ConfigurationHealthService } from "@/services/configuration-health.service";
+import { TenantService } from "@/services/tenant.service";
+import type { ITenantService } from "@/interfaces/ITenantService";
+import { versionEngine, type UpgradeCheckResult } from "@/education/engines/version.engine";
+import { mapConfigurationToViewModel, mapHistory } from "@/lib/mappers";
+import { ConfigurationInvalidError, ConfigurationValidationError, ConfigurationNotFoundError } from "@/lib/errors/configuration.errors";
+import type { MasterSchoolConfiguration } from "@/types/configuration";
+import type { SchoolConfigurationViewModel, ConfigurationHistoryViewModel } from "@/types/viewmodels";
+import type { ConfigurationLoadResult, ConfigurationStatus, ConfigurationHealthResult } from "@/types/configuration/status";
+import type { IConfigurationService } from "@/interfaces/IConfigurationService";
+import type { WizardInput } from "@/types/configuration/wizard";
+import { createVersion, buildDefaultConfiguration } from "@/types/configuration/wizard";
+import { nowISO } from "@/lib/date";
+import { configurationProvisioningService } from "@/services/configuration-provisioning.service";
+import type { IConfigurationProvisioningService } from "@/interfaces/IConfigurationProvisioningService";
+
+export class ConfigurationService implements IConfigurationService {
+  constructor(
+    private readonly repo = new ConfigurationRepository(),
+    private readonly cache = new ConfigurationCacheService(),
+    private readonly healthService = new ConfigurationHealthService(),
+    private readonly provisioningService: IConfigurationProvisioningService = configurationProvisioningService,
+    private readonly tenantService: ITenantService = new TenantService()
+  ) {}
+
+  async getConfigurationViewModel(tenantId: string): Promise<SchoolConfigurationViewModel | null> {
+    const cached = await this.cache.getConfiguration(tenantId);
+    if (cached) {
+      logger.info("CONFIGURATION_CACHE_HIT", { tenantId });
+      return cached;
+    }
+
+    const config = await this.repo.getConfiguration(tenantId);
+    if (config) {
+      await this.cache.setConfiguration(tenantId, config);
+      logger.info("CONFIGURATION_LOADED", { tenantId });
+    }
+
+    const viewModel = mapConfigurationToViewModel(config);
+    return viewModel;
+  }
+
+  async getConfigurationHistoryViewModel(tenantId: string, limit: number = 50): Promise<ConfigurationHistoryViewModel[]> {
+    const historyDocs = await this.repo.getConfigurationHistory(tenantId, limit);
+    return mapHistory(historyDocs);
+  }
+
+  async getConfigurationHistoryViewModelLegacy(tenantId: string): Promise<ConfigurationHistoryViewModel[]> {
+    return this.getConfigurationHistoryViewModel(tenantId);
+  }
+
+  async loadConfiguration(tenantId: string): Promise<ConfigurationLoadResult> {
+    try {
+      const health = await this.healthService.checkHealth(tenantId);
+
+      if (health.status === "NOT_CONFIGURED") {
+        return {
+          status: "NOT_CONFIGURED",
+          configuration: null,
+          diagnostics: health.diagnostics,
+          nextAction: health.nextAction,
+        };
+      }
+
+      const config = await this.cache.getConfiguration(tenantId);
+      if (config) {
+        logger.info("CONFIGURATION_CACHE_HIT", { tenantId });
+        return {
+          status: health.status,
+          configuration: config,
+          diagnostics: health.diagnostics,
+        };
+      }
+
+      const dbConfig = await this.repo.getConfiguration(tenantId);
+      if (dbConfig) {
+        await this.cache.setConfiguration(tenantId, dbConfig);
+        logger.info("CONFIGURATION_LOADED", { tenantId });
+      }
+
+      return {
+        status: health.status,
+        configuration: dbConfig,
+        diagnostics: health.diagnostics,
+        nextAction: health.nextAction,
+      };
+    } catch (error) {
+      logger.error("CONFIGURATION_LOAD_FAILED", {
+        metadata: { tenantId, error: error instanceof Error ? error.message : String(error) },
+      });
+      return {
+        status: "INVALID",
+        configuration: null,
+        diagnostics: {
+          configExists: false,
+          metadataExists: false,
+          schoolProfileExists: false,
+          academicStructureExists: false,
+          isPublished: false,
+          versionValid: false,
+          tenantValid: false,
+          schemaValid: false,
+        },
+        nextAction: "Contact support to resolve configuration issues",
+      };
+    }
+  }
+
+  async saveAndPublishConfiguration(input: WizardInput, tenantId: string, userId: string): Promise<MasterSchoolConfiguration> {
+    try {
+      const health = await this.healthService.checkHealth(tenantId);
+      if (!health.diagnostics.tenantValid) {
+        const repairResult = await this.tenantService.provisionOrRepairTenant(tenantId, userId);
+        if (repairResult.repaired) {
+          const recheck = await this.healthService.checkHealth(tenantId);
+          if (!recheck.diagnostics.tenantValid) {
+            throw new ConfigurationValidationError(`Tenant ${tenantId} does not exist or is invalid. Configuration cannot be published.`);
+          }
+        } else {
+          throw new ConfigurationValidationError(`Tenant ${tenantId} does not exist or is invalid. Configuration cannot be published.`);
+        }
+      }
+
+      const existing = await this.repo.getConfiguration(tenantId);
+      const previousVersion = existing?.version.number || 0;
+      const { schoolProfile, academicStructure } = input;
+
+      if (existing && existing.state === "Published") {
+        if (existing.metadata.configuredBy && existing.metadata.configuredBy !== userId) {
+          throw new ConfigurationValidationError("Configuration Write Violation: A published configuration exists. Only the original publisher or an administrator can modify it.");
+        }
+      }
+
+      if (!academicStructure || !academicStructure.grades || academicStructure.grades.length === 0) {
+        throw new ConfigurationValidationError("Validation Failed: No classes/grades were generated.");
+      }
+
+      if (!academicStructure.allSubjects || academicStructure.allSubjects.length === 0) {
+        throw new ConfigurationValidationError("Validation Failed: No subjects were found for the selected curriculum.");
+      }
+
+      const sectionNames: string[] = schoolProfile.sections?.length ? schoolProfile.sections : ["A"];
+
+      const mappedClasses = academicStructure.grades.map((g: any) => ({
+        id: g.id || `cls_${g.name}`,
+        name: g.name,
+        level: g.levelId || g.level || "general",
+        subjects: g.schemeOfStudy?.subjects?.map((s: any) => s.name || s.subjectId) || []
+      }));
+
+      const newConfig: MasterSchoolConfiguration = {
+        id: "current",
+        tenantId: tenantId,
+        state: "Draft",
+        metadata: {
+          tenantId: tenantId,
+          schemaVersion: 2,
+          configurationVersion: previousVersion + 1,
+          environment: (process.env.NODE_ENV as any) || "development",
+          region: "default",
+          timezone: "UTC",
+          academicYearId: existing?.metadata.academicYearId || null,
+          currentSnapshotId: null,
+          isConfigured: false,
+          configuredAt: undefined,
+          configuredBy: undefined,
+          lastModified: nowISO(),
+        },
+        version: createVersion(previousVersion + 1, userId, "Configured via Smart Setup Wizard"),
+        school: {
+          name: schoolProfile.name || "Untitled School",
+          type: (schoolProfile.type as "Private" | "Government" | "Madrissa") || "Private",
+          curriculumId: schoolProfile.curriculumId || "custom",
+          boardName: schoolProfile.boardName || "Custom Board",
+          country: schoolProfile.country || "PK",
+        },
+        academic: {
+          levels: academicStructure.levels.map((l: any) => l.id || l.name),
+          classes: mappedClasses,
+          sectionNames,
+          subjects: academicStructure.allSubjects.map((s: any) => s.name),
+          requiredLabs: academicStructure.requiredLabs || [],
+          requiredTeachers: academicStructure.requiredTeachers || {},
+          departments: academicStructure.departments || [],
+        },
+        features: existing?.features || {
+          ai: { enabled: true, version: "1.0", permissions: ["admin", "teacher"], beta: false, providers: ["gemini"], activeProvider: "gemini", quota: 1000 },
+          library: { enabled: true, version: "1.0", permissions: ["admin", "teacher"], beta: false },
+          transport: { enabled: false, version: "1.0", permissions: ["admin"], beta: false },
+          fees: { enabled: true, version: "1.0", permissions: ["admin", "accountant"], beta: false },
+          attendance: { enabled: true, version: "1.0", permissions: ["admin", "teacher"], beta: false },
+          exams: { enabled: true, version: "1.0", permissions: ["admin", "teacher"], beta: false },
+        },
+      };
+
+      const provisioning = await this.provisioningService.provisionFromConfiguration(tenantId, newConfig, userId);
+      if (!provisioning.academicYearId) {
+        throw new ConfigurationInvalidError("Configuration provisioning did not produce a current academic year");
+      }
+
+      newConfig.metadata.academicYearId = provisioning.academicYearId;
+      newConfig.state = "Published";
+
+      await this.repo.publishConfiguration(tenantId, newConfig, userId);
+      await this.cache.invalidateConfiguration(tenantId);
+      await this.cache.setConfiguration(tenantId, newConfig);
+
+      eventBus.publish(EVENTS.SCHOOL_SETUP_COMPLETED, {
+        tenantId,
+        schoolName: newConfig.school.name,
+        classesCount: newConfig.academic.classes.length,
+        subjectsCount: newConfig.academic.subjects.length,
+        createdBy: userId,
+      }, tenantId);
+
+      logger.info("CONFIGURATION_PUBLISHED", { tenantId, version: newConfig.version.number, userId });
+      return newConfig;
+    } catch (error) {
+      if (error instanceof ConfigurationValidationError) {
+        throw error;
+      }
+      const message = error instanceof Error ? error.message : String(error);
+      logger.error("CONFIGURATION_SAVE_FAILED", {
+        metadata: { tenantId, userId, error: message },
+      });
+      throw error;
+    }
+  }
+
+  async getHealthStatus(tenantId: string): Promise<ConfigurationHealthResult> {
+    return this.healthService.checkHealth(tenantId);
+  }
+
+  async createDefaultConfiguration(tenantId: string, userId: string): Promise<MasterSchoolConfiguration> {
+    try {
+      const defaultConfig = buildDefaultConfiguration(tenantId, userId);
+      await this.repo.saveConfiguration(tenantId, defaultConfig);
+      await this.cache.setConfiguration(tenantId, defaultConfig);
+
+      logger.info("DEFAULT_CONFIGURATION_CREATED", { tenantId, userId });
+      return defaultConfig;
+    } catch (error) {
+      logger.error("DEFAULT_CONFIGURATION_CREATION_FAILED", {
+        metadata: { tenantId, userId, error: error instanceof Error ? error.message : String(error) },
+      });
+      throw new ConfigurationInvalidError(`Failed to create default configuration: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  async getConfigurationForSetup(tenantId: string): Promise<SchoolConfigurationViewModel | null> {
+    return this.getConfigurationViewModel(tenantId);
+  }
+
+  async getConfiguration(tenantId: string): Promise<MasterSchoolConfiguration | null> {
+    return this.repo.getConfiguration(tenantId);
+  }
+
+  async saveConfiguration(tenantId: string, config: MasterSchoolConfiguration): Promise<void> {
+    return this.repo.saveConfiguration(tenantId, config);
+  }
+
+  async checkForUpgrades(tenantId: string): Promise<UpgradeCheckResult> {
+    const config = await this.getConfiguration(tenantId);
+    if (!config) {
+      throw new ConfigurationNotFoundError(tenantId);
+    }
+    return versionEngine.checkForUpgrades(config);
+  }
+
+  async upgradeCurriculum(tenantId: string, newVersionId: string, userId: string): Promise<MasterSchoolConfiguration> {
+    const currentConfig = await this.getConfiguration(tenantId);
+    if (!currentConfig) {
+      throw new ConfigurationNotFoundError(tenantId);
+    }
+
+    const upgradePatch = await versionEngine.applyUpgrade(currentConfig, newVersionId);
+
+    const updatedConfig: MasterSchoolConfiguration = {
+      ...currentConfig,
+      ...upgradePatch,
+      version: {
+        ...currentConfig.version,
+        number: currentConfig.version.number + 1,
+        reason: `Upgraded to Curriculum Version: ${newVersionId}`,
+        publishedAt: new Date().toISOString(),
+        publishedBy: userId,
+      },
+    };
+
+    await this.saveConfiguration(tenantId, updatedConfig);
+    return updatedConfig;
+  }
+}
+
+export const configurationService = new ConfigurationService();
+
+
+
+############################################################
+# FILE NOT FOUND: services/configuration.application.service.ts
+############################################################
+
+
+############################################################
+# FILE: services/configuration-health.service.ts
+############################################################
+
+import { ConfigurationRepository } from "@/repositories/configuration.repository";
+import { TenantRepository } from "@/repositories/tenant.repository";
+import { logger } from "@/lib/logger/logger";
+import { ConfigurationInvalidError } from "@/lib/errors/configuration.errors";
+import type { ConfigurationHealthResult } from "@/types/configuration/status";
+import type { IConfigurationHealthService } from "@/interfaces/IConfigurationHealthService";
+
+export class ConfigurationHealthService implements IConfigurationHealthService {
+  private configRepo = new ConfigurationRepository();
+  private tenantRepo = new TenantRepository();
+
+  async checkHealth(tenantId: string): Promise<ConfigurationHealthResult> {
+    const diagnostics = {
+      configExists: false,
+      metadataExists: false,
+      schoolProfileExists: false,
+      academicStructureExists: false,
+      isPublished: false,
+      versionValid: false,
+      tenantValid: false,
+      schemaValid: false,
+    };
+
+    try {
+      diagnostics.tenantValid = await this.tenantRepo.verifyTenantExists(tenantId);
+
+      if (!diagnostics.tenantValid) {
+        return this.buildResult(false, diagnostics, "INVALID");
+      }
+
+      const config = await this.configRepo.getConfiguration(tenantId);
+      diagnostics.configExists = !!config;
+
+      if (!config) {
+        return this.buildResult(false, diagnostics, "NOT_CONFIGURED");
+      }
+
+      const data = config as any;
+
+      diagnostics.metadataExists = this.hasMetadata(data);
+      diagnostics.schoolProfileExists = this.hasSchoolProfile(data);
+      diagnostics.academicStructureExists = this.hasAcademicStructure(data);
+      diagnostics.isPublished = data.state === "Published" && data.metadata?.isConfigured === true;
+      diagnostics.versionValid = this.isVersionValid(data);
+      diagnostics.schemaValid = this.isSchemaValid(data);
+
+      const healthy = Object.values(diagnostics).every(Boolean);
+      if (!healthy) {
+        const missingFields = Object.entries(diagnostics)
+          .filter(([key, value]) => !value)
+          .map(([key]) => key);
+
+        return {
+          ...this.buildResult(false, diagnostics, "PARTIALLY_CONFIGURED"),
+          nextAction: `Missing required fields: ${missingFields.join(", ")}`,
+        };
+      }
+
+      return this.buildResult(true, diagnostics, "CONFIGURED");
+    } catch (error) {
+      logger.error("CONFIGURATION_HEALTH_CHECK_FAILED", {
+        metadata: { tenantId, error: error instanceof Error ? error.message : String(error) },
+      });
+      return this.buildResult(false, diagnostics, "INVALID");
+    }
+  }
+
+  private hasMetadata(data: any): boolean {
+    return (
+      !!data.metadata &&
+      typeof data.metadata.tenantId === "string" &&
+      typeof data.metadata.configurationVersion === "number" &&
+      typeof data.metadata.schemaVersion === "number"
+    );
+  }
+
+  private hasSchoolProfile(data: any): boolean {
+    return (
+      !!data.school &&
+      typeof data.school.name === "string" &&
+      data.school.name.trim() !== "" &&
+      typeof data.school.curriculumId === "string"
+    );
+  }
+
+  private hasAcademicStructure(data: any): boolean {
+    return (
+      !!data.academic &&
+      Array.isArray(data.academic.levels) &&
+      Array.isArray(data.academic.classes) &&
+      Array.isArray(data.academic.sectionNames) &&
+      Array.isArray(data.academic.subjects)
+    );
+  }
+
+  private isVersionValid(data: any): boolean {
+    return !!data.version && typeof data.version.number === "number" && data.version.number > 0;
+  }
+
+  private isSchemaValid(data: any): boolean {
+    return typeof data.metadata?.schemaVersion === "number" && data.metadata.schemaVersion >= 1;
+  }
+
+  private buildResult(
+    healthy: boolean,
+    diagnostics: ConfigurationHealthResult["diagnostics"],
+    status: ConfigurationHealthResult["status"]
+  ): ConfigurationHealthResult {
+    const result: ConfigurationHealthResult = {
+      healthy,
+      status,
+      diagnostics,
+    };
+
+    if (status === "NOT_CONFIGURED") {
+      result.nextAction = "Create new configuration via Smart Setup Wizard";
+    } else if (status === "PARTIALLY_CONFIGURED") {
+      result.nextAction = "Complete the incomplete configuration";
+    } else if (status === "INVALID") {
+      result.nextAction = "Delete and recreate configuration";
+    }
+
+    return result;
+  }
+}
+
+
+
+############################################################
+# FILE: services/configuration-provisioning.service.ts
+############################################################
+
+import { AcademicYearRepository } from "@/repositories/academic-year.repository";
+import { SectionRepository } from "@/repositories/section.repository";
+import { DepartmentRepository } from "@/repositories/department.repository";
+import type { IConfigurationProvisioningService, ProvisioningResult } from "@/interfaces/IConfigurationProvisioningService";
+import type { MasterSchoolConfiguration } from "@/types/configuration";
+
+export class ConfigurationProvisioningService implements IConfigurationProvisioningService {
+  constructor(
+    private readonly academicYearRepo: AcademicYearRepository,
+    private readonly sectionRepo: SectionRepository,
+    private readonly departmentRepo: DepartmentRepository
+  ) {}
+
+  async provisionFromConfiguration(
+    tenantId: string,
+    config: MasterSchoolConfiguration,
+    userId: string
+  ): Promise<ProvisioningResult> {
+    const result: ProvisioningResult = {
+      academicYearId: null,
+      sectionsCreated: 0,
+      departmentsCreated: 0,
+      warnings: [],
+    };
+
+    // Publishing must not report success while its operational structure failed
+    // to materialize. Let repository failures reach the caller so it can return
+    // a real error and a retry can safely use the idempotent provisioning paths.
+    result.academicYearId = await this.provisionAcademicYear(tenantId, config, userId);
+    result.sectionsCreated = await this.provisionSections(tenantId, config, userId);
+    result.departmentsCreated = await this.provisionDepartments(tenantId, config, userId);
+
+    return result;
+  }
+
+  private async provisionAcademicYear(tenantId: string, _config: MasterSchoolConfiguration, userId: string): Promise<string | null> {
+    const existing = await this.academicYearRepo.findAllByTenant(tenantId);
+    const currentAY = existing.find((ay) => ay.isCurrent);
+
+    if (currentAY) {
+      return currentAY.id;
+    }
+
+    if (existing.length > 0) {
+      const mostRecent = existing[0];
+      await this.academicYearRepo.setCurrent(mostRecent.id, tenantId);
+      return mostRecent.id;
+    }
+
+    const currentYear = new Date().getFullYear();
+    const ayName = `${currentYear}-${currentYear + 1}`;
+    const ayId = await this.academicYearRepo.createIfAbsentByName(
+      ayName,
+      {
+        startDate: `${currentYear}-04-01`,
+        endDate: `${currentYear + 1}-03-31`,
+        isCurrent: true,
+        tenantId,
+        createdBy: userId,
+      },
+      tenantId
+    );
+
+    return ayId;
+  }
+
+  private async provisionSections(tenantId: string, config: MasterSchoolConfiguration, userId: string): Promise<number> {
+    const classes = config.academic.classes || [];
+    const sectionNames = config.academic.sectionNames?.length ? config.academic.sectionNames : ["A"];
+
+    if (!classes.length) {
+      return 0;
+    }
+
+    const structure: Array<{ classGrade: string; sectionName: string; subjects?: { core: string[]; electives: string[] } }> = [];
+
+    for (const cls of classes) {
+      const classGrade = cls.name;
+      for (const sectionName of sectionNames) {
+        structure.push({
+          classGrade,
+          sectionName,
+          subjects: { core: cls.subjects || [], electives: [] },
+        });
+      }
+    }
+
+    return this.sectionRepo.createMissingSections(tenantId, structure, userId);
+  }
+
+  private async provisionDepartments(tenantId: string, config: MasterSchoolConfiguration, _userId: string): Promise<number> {
+    const departments = (config.academic as any).departments;
+    if (!departments || !Array.isArray(departments) || departments.length === 0) {
+      return 0;
+    }
+
+    let created = 0;
+    for (const dept of departments) {
+      const name = typeof dept === "string" ? dept : dept?.name;
+      if (!name) continue;
+
+      const code =
+        typeof dept === "object" && dept?.code
+          ? dept.code
+          : name.substring(0, Math.min(2, name.length)).toUpperCase();
+
+      const description = typeof dept === "object" && dept?.description ? dept.description : "";
+
+      const res = await this.departmentRepo.createAbsentByName(tenantId, name, {
+        code,
+        description,
+        deleted: false,
+      });
+      if (res.created) {
+        created++;
+      }
+    }
+
+    return created;
+  }
+}
+
+export const configurationProvisioningService = new ConfigurationProvisioningService(
+  new AcademicYearRepository(),
+  new SectionRepository(),
+  new DepartmentRepository()
+);
+
+
+
+############################################################
+# FILE: services/configuration-cache.service.ts
+############################################################
+
+import { MemoryCacheProvider } from "@/lib/cache/memory-cache";
+import { ICacheProvider, CacheEntry, CacheOptions } from "@/lib/cache/cache";
+import { logger } from "@/lib/logger/logger";
+import type { IConfigurationCacheService } from "@/interfaces/IConfigurationCacheService";
+
+export class ConfigurationCacheService implements IConfigurationCacheService {
+  private readonly memoryCache: ICacheProvider;
+  private readonly CACHE_TAG = "configuration";
+
+  constructor(memoryCache?: ICacheProvider) {
+    this.memoryCache = memoryCache || new MemoryCacheProvider();
+  }
+
+  async getConfiguration(tenantId: string): Promise<any | null> {
+    const cacheKey = this.getCacheKey(tenantId);
+
+    try {
+      const cached = await this.memoryCache.get<any>(cacheKey);
+      if (cached) {
+        logger.info("CONFIGURATION_CACHE_HIT", { tenantId });
+        return cached;
+      }
+
+      logger.info("CONFIGURATION_CACHE_MISS", { tenantId });
+      return null;
+    } catch (error) {
+      logger.error("CONFIGURATION_CACHE_ERROR", {
+        metadata: { tenantId, error: error instanceof Error ? error.message : String(error) },
+      });
+      return null;
+    }
+  }
+
+  async setConfiguration(tenantId: string, configuration: any, ttl?: number): Promise<void> {
+    const cacheKey = this.getCacheKey(tenantId);
+    try {
+      await this.memoryCache.set(cacheKey, configuration, {
+        ttl: ttl || 300,
+        tags: [this.CACHE_TAG],
+        tenantId,
+      });
+      logger.info("CONFIGURATION_CACHE_SET", { tenantId, ttl: ttl || 300 });
+    } catch (error) {
+      logger.error("CONFIGURATION_CACHE_SET_FAILED", {
+        metadata: { tenantId, error: error instanceof Error ? error.message : String(error) },
+      });
+    }
+  }
+
+  async invalidateConfiguration(tenantId: string): Promise<void> {
+    try {
+      const cacheKey = this.getCacheKey(tenantId);
+      await this.memoryCache.delete(cacheKey);
+      await this.memoryCache.invalidateByTenant(tenantId);
+      logger.info("CONFIGURATION_CACHE_INVALIDATED", { tenantId });
+    } catch (error) {
+      logger.error("CONFIGURATION_CACHE_INVALIDATION_FAILED", {
+        metadata: { tenantId, error: error instanceof Error ? error.message : String(error) },
+      });
+    }
+  }
+
+  async invalidateByTag(tag: string): Promise<void> {
+    try {
+      await this.memoryCache.invalidateByTag(tag);
+      logger.info("CONFIGURATION_CACHE_TAG_INVALIDATED", { tag });
+    } catch (error) {
+      logger.error("CONFIGURATION_CACHE_TAG_INVALIDATION_FAILED", {
+        metadata: { tag, error: error instanceof Error ? error.message : String(error) },
+      });
+    }
+  }
+
+  getStats(): { hits: number; misses: number; size: number } {
+    if (this.memoryCache && typeof this.memoryCache.getStats === "function") {
+      return this.memoryCache.getStats();
+    }
+    return { hits: 0, misses: 0, size: 0 };
+  }
+
+  private getCacheKey(tenantId: string): string {
+    return `configuration:${tenantId}`;
+  }
+}
+
+export const configurationCacheService = new ConfigurationCacheService();
+
+
+
+############################################################
+# FILE: repositories/configuration.repository.ts
+############################################################
+
+import { adminDb } from "@/lib/firebase-admin";
+import { mapToMasterConfiguration, mapToDbDocument } from "@/lib/mappers/configuration.mapper";
+import { CONFIGURATION_DOC_ID, TenantMetadata } from "@/lib/configuration/constants";
+import { logger } from "@/lib/logger/logger";
+import type { MasterSchoolConfiguration } from "@/types/configuration";
+import type { IConfigurationRepository } from "@/interfaces/IConfigurationRepository";
+
+export class ConfigurationRepository implements IConfigurationRepository {
+  private getSettingsCollection(tenantId: string) {
+    return adminDb.collection("tenants").doc(tenantId).collection("settings");
+  }
+
+  private getConfigRef(tenantId: string) {
+    return this.getSettingsCollection(tenantId).doc(CONFIGURATION_DOC_ID);
+  }
+
+  private getHistoryCollection(tenantId: string) {
+    return this.getConfigRef(tenantId).collection("history");
+  }
+
+  async getConfiguration(tenantId: string): Promise<MasterSchoolConfiguration | null> {
+    try {
+      const doc = await this.getConfigRef(tenantId).get();
+      if (!doc.exists) {
+        logger.info("CONFIGURATION_NOT_FOUND", { tenantId });
+        return null;
+      }
+
+      const config = mapToMasterConfiguration(doc.data() as Record<string, any>, tenantId);
+      logger.info("CONFIGURATION_LOADED", { tenantId, configId: config.id });
+      return config;
+    } catch (error) {
+      logger.error("CONFIGURATION_LOAD_FAILED", {
+        metadata: { tenantId, error: error instanceof Error ? error.message : String(error) },
+      });
+      return null;
+    }
+  }
+
+  async getConfigurationById(tenantId: string, docId: string): Promise<MasterSchoolConfiguration | null> {
+    try {
+      const doc = await this.getSettingsCollection(tenantId).doc(docId).get();
+      if (!doc.exists) return null;
+      return mapToMasterConfiguration(doc.data() as Record<string, any>, tenantId);
+    } catch (error) {
+      logger.error("CONFIGURATION_LOAD_BY_ID_FAILED", {
+        metadata: { tenantId, docId, error: error instanceof Error ? error.message : String(error) },
+      });
+      return null;
+    }
+  }
+
+  async saveConfiguration(tenantId: string, config: MasterSchoolConfiguration): Promise<void> {
+    try {
+      config.id = CONFIGURATION_DOC_ID;
+      config.tenantId = tenantId;
+      config.metadata.tenantId = tenantId;
+
+      if (!config.metadata.lastModified) {
+        config.metadata.lastModified = new Date().toISOString();
+      }
+
+      const dbDocument = mapToDbDocument(config);
+      await this.getConfigRef(tenantId).set(dbDocument, { merge: true });
+
+      logger.info("CONFIGURATION_SAVED", { tenantId, version: config.version.number });
+    } catch (error) {
+      logger.error("CONFIGURATION_SAVE_FAILED", {
+        metadata: { tenantId, error: error instanceof Error ? error.message : String(error) },
+      });
+      throw new Error(`Failed to save configuration: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  async updateConfiguration(tenantId: string, data: Partial<MasterSchoolConfiguration>): Promise<MasterSchoolConfiguration> {
+    try {
+      const dbDocument: Record<string, any> = {
+        ...data,
+        updatedAt: new Date().toISOString(),
+      };
+
+      await this.getConfigRef(tenantId).set(dbDocument, { merge: true });
+      logger.info("CONFIGURATION_UPDATED", { tenantId });
+
+      const updated = await this.getConfiguration(tenantId);
+      if (!updated) {
+        throw new Error("Configuration disappeared after update");
+      }
+      return updated;
+    } catch (error) {
+      logger.error("CONFIGURATION_UPDATE_FAILED", {
+        metadata: { tenantId, error: error instanceof Error ? error.message : String(error) },
+      });
+      throw error;
+    }
+  }
+
+  async publishConfiguration(tenantId: string, config: MasterSchoolConfiguration, userId: string): Promise<MasterSchoolConfiguration> {
+    try {
+      config.state = "Published";
+      config.metadata.isConfigured = true;
+      config.metadata.configuredAt = new Date().toISOString();
+      config.metadata.configuredBy = userId;
+      config.metadata.publishedAt = new Date().toISOString();
+      config.version.publishedBy = userId;
+      config.version.publishedAt = new Date().toISOString();
+      config.metadata.lastModified = new Date().toISOString();
+
+      await this.saveConfiguration(tenantId, config);
+
+      await this.addHistoryEntry(tenantId, config, userId, "Published via Smart Setup Wizard");
+
+      logger.info("CONFIGURATION_PUBLISHED", { tenantId, version: config.version.number, userId });
+      return config;
+    } catch (error) {
+      logger.error("CONFIGURATION_PUBLISH_FAILED", {
+        metadata: { tenantId, error: error instanceof Error ? error.message : String(error) },
+      });
+      throw error;
+    }
+  }
+
+  async deleteConfiguration(tenantId: string): Promise<void> {
+    try {
+      await this.getConfigRef(tenantId).delete();
+      logger.info("CONFIGURATION_DELETED", { tenantId });
+    } catch (error) {
+      logger.error("CONFIGURATION_DELETE_FAILED", {
+        metadata: { tenantId, error: error instanceof Error ? error.message : String(error) },
+      });
+      throw new Error(`Failed to delete configuration: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  async configurationExists(tenantId: string): Promise<boolean> {
+    try {
+      const doc = await this.getConfigRef(tenantId).get();
+      return doc.exists;
+    } catch (error) {
+      logger.error("CONFIGURATION_EXISTS_CHECK_FAILED", {
+        metadata: { tenantId, error: error instanceof Error ? error.message : String(error) },
+      });
+      return false;
+    }
+  }
+
+  async loadCachedConfiguration(tenantId: string): Promise<MasterSchoolConfiguration | null> {
+    const doc = await this.getConfigRef(tenantId).get();
+    if (!doc.exists) return null;
+    return mapToMasterConfiguration(doc.data() as Record<string, any>, tenantId);
+  }
+
+  async getConfigurationHistory(tenantId: string, limit: number = 50): Promise<MasterSchoolConfiguration[]> {
+    try {
+      const snapshot = await this.getHistoryCollection(tenantId)
+        .orderBy("version.number", "desc")
+        .limit(limit)
+        .get();
+
+      const history = snapshot.docs.map(doc => mapToMasterConfiguration({ ...doc.data(), id: doc.id }, tenantId));
+      logger.info("CONFIGURATION_HISTORY_LOADED", { tenantId, count: history.length });
+      return history;
+    } catch (error) {
+      logger.error("CONFIGURATION_HISTORY_LOAD_FAILED", {
+        metadata: { tenantId, error: error instanceof Error ? error.message : String(error) },
+      });
+      return [];
+    }
+  }
+
+  async getTenantMetadata(tenantId: string): Promise<TenantMetadata | null> {
+    try {
+      const config = await this.getConfiguration(tenantId);
+      if (!config || !config.metadata) {
+        return {
+          tenantId,
+          configurationVersion: 0,
+          schemaVersion: 0,
+          lastModified: new Date().toISOString(),
+          environment: (process.env.NODE_ENV as TenantMetadata["environment"]) || "development",
+          region: "default",
+          timezone: "UTC",
+        };
+      }
+
+      return {
+        tenantId: config.metadata.tenantId,
+        configuredAt: config.metadata.configuredAt,
+        configuredBy: config.metadata.configuredBy,
+        configurationVersion: config.metadata.configurationVersion,
+        schemaVersion: config.metadata.schemaVersion,
+        publishedAt: config.metadata.publishedAt,
+        lastModified: config.metadata.lastModified,
+        environment: config.metadata.environment as TenantMetadata["environment"],
+        region: config.metadata.region,
+        timezone: config.metadata.timezone,
+      };
+    } catch (error) {
+      logger.error("TENANT_METADATA_LOAD_FAILED", {
+        metadata: { tenantId, error: error instanceof Error ? error.message : String(error) },
+      });
+      return null;
+    }
+  }
+
+  async updateTenantMetadata(tenantId: string, data: Partial<Omit<TenantMetadata, "tenantId">>): Promise<void> {
+    try {
+      const existingMetadata = await this.getTenantMetadata(tenantId);
+      const updatedMetadata: TenantMetadata = {
+        tenantId,
+        configurationVersion: existingMetadata?.configurationVersion ?? 0,
+        schemaVersion: existingMetadata?.schemaVersion ?? 0,
+        lastModified: new Date().toISOString(),
+        environment: existingMetadata?.environment ?? "development",
+        region: existingMetadata?.region ?? "default",
+        timezone: existingMetadata?.timezone ?? "UTC",
+        ...data,
+      };
+
+      await this.getConfigRef(tenantId).set(
+        {
+          metadata: updatedMetadata,
+          updatedAt: new Date().toISOString(),
+        },
+        { merge: true }
+      );
+    } catch (error) {
+      logger.error("TENANT_METADATA_UPDATE_FAILED", {
+        metadata: { tenantId, error: error instanceof Error ? error.message : String(error) },
+      });
+      throw new Error(`Failed to update tenant metadata: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  private async addHistoryEntry(tenantId: string, config: MasterSchoolConfiguration, userId: string, reason: string): Promise<void> {
+    try {
+      const historyEntry = {
+        id: config.version.id || `v_${config.version.number}`,
+        versionNumber: config.version.number,
+        createdBy: userId,
+        createdAt: new Date().toISOString(),
+        reason,
+        configuration: config,
+      };
+
+      await this.getHistoryCollection(tenantId).doc(historyEntry.id).set(historyEntry, { merge: true });
+    } catch (error) {
+      logger.error("CONFIGURATION_HISTORY_ENTRY_FAILED", {
+        metadata: { tenantId, error: error instanceof Error ? error.message : String(error) },
+      });
+    }
+  }
+}
+
+export const configurationRepository = new ConfigurationRepository();
+
+
+############################################################
+# FILE: repositories/academic-year.repository.ts
+############################################################
+
+import { BaseRepository } from "./base.repository";
+import { adminDb, dbTimestamp } from "@/lib/firebase-admin";
+import type { IAcademicYearRepository } from "@/interfaces/IAcademicYearRepository";
+
+export interface AcademicYear {
+  name: string;
+  startDate: string | any;
+  endDate: string | any;
+  isCurrent: boolean;
+  tenantId: string;
+  createdBy?: string;
+}
+
+export class AcademicYearRepository extends BaseRepository<AcademicYear> implements IAcademicYearRepository {
+  constructor() {
+    super("academicYears");
+  }
+
+  async findAllByTenant(tenantId: string): Promise<(AcademicYear & { id: string })[]> {
+    const snapshot = await this.db
+      .collection(this.collectionName)
+      .where("tenantId", "==", tenantId)
+      .orderBy("startDate", "desc")
+      .get();
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as AcademicYear & { id: string }));
+  }
+
+  async createIfAbsentByName(
+    name: string,
+    data: { startDate: string; endDate: string; isCurrent: boolean; tenantId: string; createdBy?: string },
+    tenantId: string
+  ): Promise<string> {
+    const existing = await this.findAllByTenant(tenantId);
+    const found = existing.find((ay) => ay.name === name);
+    if (found) {
+      return found.id;
+    }
+
+    return this.create(
+      { name, ...data },
+      tenantId
+    );
+  }
+
+  async setCurrent(id: string, tenantId: string): Promise<void> {
+    // Unset all current flags for this tenant
+    const all = await this.db
+      .collection(this.collectionName)
+      .where("tenantId", "==", tenantId)
+      .get();
+    const batch = this.db.batch();
+    all.docs.forEach(doc => batch.update(doc.ref, { isCurrent: false }));
+    await batch.commit();
+
+    // Set the target as current
+    await this.db.collection(this.collectionName).doc(id).update({ isCurrent: true });
+  }
+}
+
+export const academicYearRepository = new AcademicYearRepository();
+
+
+
+############################################################
+# FILE: repositories/section.repository.ts
+############################################################
+
+import { BaseRepository } from "./base.repository";
+import { adminDb, dbTimestamp } from "@/lib/firebase-admin";
+import type { ISectionRepository } from "@/interfaces/ISectionRepository";
+import { normalizeNaturalKey, sectionNaturalKey, sectionDocId } from "@/lib/utils/normalization";
+
+export interface Section {
+  classGrade: string;
+  sectionName: string;
+  incharge?: string;
+  subjects?: { core: string[]; electives: string[] };
+  tenantId: string;
+  deleted?: boolean;
+  deletedAt?: any;
+  deletedBy?: string;
+  createdBy?: string;
+}
+
+export class SectionRepository extends BaseRepository<Section> implements ISectionRepository {
+  constructor() {
+    super("sections");
+  }
+
+  async findAllActive(tenantId: string): Promise<(Section & { id: string })[]> {
+    const snapshot = await this.db
+      .collection(this.collectionName)
+      .where("tenantId", "==", tenantId)
+      .get();
+    return snapshot.docs
+      .map(doc => ({ id: doc.id, ...doc.data() } as Section & { id: string }))
+      .filter(s => !s.deleted);
+  }
+
+  async findAllIncludingDeleted(tenantId: string): Promise<(Section & { id: string })[]> {
+    const snapshot = await this.db
+      .collection(this.collectionName)
+      .where("tenantId", "==", tenantId)
+      .get();
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Section & { id: string }));
+  }
+
+  async softDeleteBySectionId(id: string, tenantId: string, userId: string): Promise<void> {
+    const docRef = this.db.collection(this.collectionName).doc(id);
+    const docSnap = await docRef.get();
+    if (!docSnap.exists || docSnap.data()?.tenantId !== tenantId) {
+      throw new Error("Section not found or unauthorized");
+    }
+    await docRef.update({
+      deleted: true,
+      deletedAt: dbTimestamp,
+      deletedBy: userId,
+      updatedAt: dbTimestamp,
+    });
+  }
+
+  async deleteAllForTenant(tenantId: string): Promise<void> {
+    const snapshot = await this.db
+      .collection(this.collectionName)
+      .where("tenantId", "==", tenantId)
+      .get();
+    const batch = this.db.batch();
+    snapshot.docs.forEach(doc => batch.delete(doc.ref));
+    await batch.commit();
+  }
+
+  async createMissingStructure(
+    tenantId: string,
+    structure: Array<{ classGrade: string; sectionName: string; subjects: { core: string[]; electives: string[] } }>,
+    userId: string
+  ): Promise<number> {
+    const existing = await this.findAllActive(tenantId);
+    const keys = new Set(existing.map((section) => sectionNaturalKey(tenantId, section.classGrade, section.sectionName)));
+    const missing = structure.filter(
+      (section) => !keys.has(sectionNaturalKey(tenantId, section.classGrade, section.sectionName))
+    );
+    if (!missing.length) return 0;
+    await this.bulkCreate(missing.map((section) => ({ ...section, tenantId, deleted: false, createdBy: userId })), tenantId);
+    return missing.length;
+  }
+
+  async createMissingSections(
+    tenantId: string,
+    structure: Array<{ classGrade: string; sectionName: string; subjects?: { core: string[]; electives: string[] } }>,
+    userId: string
+  ): Promise<number> {
+    const existing = await this.findAllIncludingDeleted(tenantId);
+    const existingKeys = new Set(
+      existing.map((section) => sectionNaturalKey(tenantId, section.classGrade, section.sectionName))
+    );
+
+    const missing = structure.filter(
+      (section) => !existingKeys.has(sectionNaturalKey(tenantId, section.classGrade, section.sectionName))
+    );
+
+    if (!missing.length) return 0;
+
+    const entries = missing.map((section) => ({
+      id: sectionDocId(tenantId, section.classGrade, section.sectionName),
+      data: {
+        classGrade: section.classGrade,
+        sectionName: section.sectionName,
+        subjects: section.subjects,
+        tenantId,
+        deleted: false,
+        createdBy: userId,
+      } as Omit<Section, 'id' | 'createdAt' | 'updatedAt'>,
+    }));
+
+    await this.bulkSetWithIds(entries, tenantId);
+    return missing.length;
+  }
+}
+
+export const sectionRepository = new SectionRepository();
+
+
+
+############################################################
+# FILE: repositories/department.repository.ts
+############################################################
+
+import { BaseRepository } from "./base.repository";
+import type { DepartmentDocument } from "@/documents/DepartmentDocument";
+import type { IDepartmentRepository } from "@/interfaces/IDepartmentRepository";
+import { normalizeNaturalKey } from "@/lib/utils/normalization";
+
+export class DepartmentRepository extends BaseRepository<DepartmentDocument> implements IDepartmentRepository {
+  constructor() {
+    super("departments");
+  }
+
+  async getAll(tenantId: string) {
+    const snapshot = await this.db.collection(this.collectionName).where("tenantId", "==", tenantId).where("deleted", "==", false).get();
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as DepartmentDocument & { id: string }));
+  }
+
+  // Design decision: create-if-absent (Option A).
+  //
+  // Provisioning is intentionally additive and never mutates operational
+  // department fields (e.g. headOfDepartment set by operators). On a matching
+  // natural key (tenantId + name, canonical-normalized), the existing document
+  // is reused and NO write occurs. Only genuinely absent departments are
+  // created. This is NOT a field-updating upsert.
+  async createAbsentByName(
+    tenantId: string,
+    name: string,
+    data: { code: string; description?: string; deleted: boolean; createdBy?: string }
+  ): Promise<{ id: string; created: boolean }> {
+    const existing = await this.getAll(tenantId);
+    const normalized = normalizeNaturalKey(name);
+    const found = existing.find((dept) => normalizeNaturalKey(dept.name) === normalized);
+    if (found) {
+      return { id: found.id, created: false };
+    }
+
+    const id = await this.create(
+      { name, ...data, tenantId } as any,
+      tenantId
+    );
+    return { id, created: true };
+  }
+}
+
+
+
+############################################################
+# FILE: repositories/tenant.repository.ts
+############################################################
+
+import { adminDb, dbTimestamp } from "@/lib/firebase-admin";
+import { ITenantRepository } from "@/interfaces/ITenantRepository";
+import { BaseRepository } from "./base.repository";
+
+export interface Tenant {
+  id?: string;
+  name: string;
+  domain?: string;
+  plan?: string;
+  ownerId?: string;
+  status: "active" | "suspended" | "trialing";
+  createdAt?: any;
+  updatedAt?: any;
+}
+
+export class TenantRepository extends BaseRepository<Tenant> implements ITenantRepository {
+  constructor() {
+    super("tenants");
+  }
+
+  async findActive(): Promise<Tenant[]> {
+    const snapshot = await this.db
+      .collection(this.collectionName)
+      .where("status", "==", "active")
+      .get();
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Tenant));
+  }
+
+  async findByPlan(planId: string): Promise<Tenant[]> {
+    const snapshot = await this.db
+      .collection(this.collectionName)
+      .where("plan", "==", planId)
+      .get();
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Tenant));
+  }
+
+  async listAll(): Promise<Tenant[]> {
+    const snapshot = await this.db.collection(this.collectionName).get();
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Tenant));
+  }
+
+  async verifyTenantExists(tenantId: string): Promise<boolean> {
+    const doc = await this.db.collection(this.collectionName).doc(tenantId).get();
+    return doc.exists;
+  }
+
+  async restoreTenant(tenantId: string, data: Record<string, any>): Promise<void> {
+    const tenantRef = this.db.collection(this.collectionName).doc(tenantId);
+    const existing = await tenantRef.get();
+    if (existing.exists) {
+      throw new Error(`Tenant document ${tenantId} already exists and will not be overwritten`);
+    }
+    await tenantRef.set(data);
+  }
+
+  async verifyUserTenantAssociation(userId: string, tenantId: string): Promise<boolean> {
+    const userDoc = await this.db.collection("users").doc(userId).get();
+    if (!userDoc.exists) {
+      return false;
+    }
+    const data = userDoc.data();
+    return data?.tenantId === tenantId;
+  }
+}
+
+
+
+############################################################
+# FILE: repositories/tenant-setup.repository.ts
+############################################################
+
+// repositories/tenant-setup.repository.ts
+import { adminDb, dbTimestamp } from "@/lib/firebase-admin";
+import type { ITenantSetupRepository } from "@/interfaces/ITenantSetupRepository";
+
+export class TenantSetupRepository implements ITenantSetupRepository {
+  async setupSchool(input: {
+    userId: string;
+    tenantId: string;
+    schoolName: string;
+    type?: string;
+    curriculum?: string;
+    classes: any[];
+    subjects: string[];
+  }): Promise<void> {
+    const { userId, tenantId, schoolName, type, curriculum, classes, subjects } = input;
+    const now = new Date().toISOString();
+
+    const batch = adminDb.batch();
+
+    const userRef = adminDb.collection("users").doc(userId);
+    batch.update(userRef, {
+      onboardingRequired: false,
+      role: "admin",
+      tenantId,
+      updatedAt: new Date(),
+    });
+
+    const tenantRef = adminDb.collection("tenants").doc(tenantId);
+    batch.set(tenantRef, {
+      name: schoolName,
+      type: type || "Private",
+      curriculum: curriculum || "custom",
+      ownerId: userId,
+      status: "active",
+      createdAt: new Date(),
+    }, { merge: true });
+
+    const settingsRef = adminDb.collection("tenants").doc(tenantId).collection("settings").doc("config");
+    batch.set(settingsRef, {
+      classes,
+      subjects,
+      gradingRules: [
+        { grade: "A++", min: 90, max: 100 },
+        { grade: "A+", min: 80, max: 89 },
+        { grade: "A", min: 70, max: 79 },
+        { grade: "B", min: 60, max: 69 },
+        { grade: "C", min: 50, max: 59 },
+        { grade: "D", min: 40, max: 49 },
+        { grade: "F", min: 0, max: 39 },
+      ],
+      examTerms: [
+        { name: "First Term", order: 1, active: true },
+        { name: "Midterm", order: 2, active: true },
+        { name: "Final Term", order: 3, active: true },
+      ],
+      feeCategories: [
+        { name: "Tuition", description: "Monthly tuition fee", active: true },
+        { name: "Exam Fee", description: "Examination fee", active: true },
+        { name: "Transport", description: "Transport fee", active: true },
+      ],
+      promotionRules: { minPercentage: 40, autoPromote: false },
+      shifts: [{ name: "Morning", startTime: "07:30", endTime: "12:30" }],
+      periods: Array.from({ length: 8 }, (_, i) => ({ name: `Period ${i + 1}`, order: i + 1, duration: 40 })),
+      houses: [
+        { name: "Red", color: "#EF4444" },
+        { name: "Blue", color: "#3B82F6" },
+        { name: "Green", color: "#22C55E" },
+        { name: "Yellow", color: "#EAB308" },
+      ],
+      attendanceRules: { lateMinutes: 15, autoAbsent: false, workingDays: [1, 2, 3, 4, 5, 6] },
+      examWeightages: { midterm: 30, final: 50, assignment: 20 },
+      assessmentTypes: [
+        { name: "Written Exam", active: true },
+        { name: "Oral Test", active: true },
+        { name: "Practical", active: true },
+        { name: "Assignment", active: true },
+      ],
+      feeStructures: [],
+      timetableSlots: { periodsPerDay: 8, daysPerWeek: 6, breakAfterPeriod: 4 },
+      notificationTemplates: { welcomeEmail: true, feeReminder: true, attendanceAlert: true },
+      aiConfig: { provider: "gemini", autoInsights: false },
+      dashboardConfig: { refreshInterval: 300, showAnalytics: true },
+      defaultRoles: ["admin", "teacher", "student", "parent"],
+      featureFlags: { aiEnabled: false, smsEnabled: false, emailEnabled: true },
+      updatedAt: now,
+    }, { merge: true });
+
+    const sectionsRef = adminDb.collection("sections");
+    const oldSections = await sectionsRef.where("tenantId", "==", tenantId).get();
+    oldSections.docs.forEach(doc => batch.delete(doc.ref));
+
+    classes.forEach((cls: any) => {
+      if (cls.name) {
+        const newSecRef = sectionsRef.doc();
+        batch.set(newSecRef, {
+          tenantId,
+          classGrade: cls.name,
+          sectionName: "A",
+          createdAt: now,
+        });
+      }
+    });
+
+    const defaultDepartments = [
+      { name: "Admin", description: "Administrative department", tenantId, createdAt: now },
+      { name: "Academic", description: "Teaching and academic staff", tenantId, createdAt: now },
+      { name: "Support", description: "Support and maintenance staff", tenantId, createdAt: now },
+    ];
+    defaultDepartments.forEach(dept => {
+      const deptRef = adminDb.collection("departments").doc();
+      batch.set(deptRef, dept);
+    });
+
+    const defaultDesignations = [
+      { name: "Principal", description: "School principal", tenantId, createdAt: now },
+      { name: "Vice-Principal", description: "Vice principal", tenantId, createdAt: now },
+      { name: "HOD", description: "Head of department", tenantId, createdAt: now },
+      { name: "Teacher", description: "Class teacher", tenantId, createdAt: now },
+    ];
+    defaultDesignations.forEach(desig => {
+      const desigRef = adminDb.collection("designations").doc();
+      batch.set(desigRef, desig);
+    });
+
+    const campusRef = adminDb.collection("campuses").doc();
+    batch.set(campusRef, {
+      name: "Main Campus",
+      address: "",
+      phone: "",
+      tenantId,
+      isMain: true,
+      createdAt: now,
+    });
+
+    await batch.commit();
+  }
+}
+
+
+
+############################################################
+# FILE: interfaces/IConfigurationService.ts
+############################################################
+
+import type { MasterSchoolConfiguration } from "@/types/configuration";
+import type { SchoolConfigurationViewModel } from "@/types/viewmodels/school-configuration.viewmodel";
+import type { ConfigurationHistoryViewModel } from "@/types/viewmodels/configuration-history.viewmodel";
+import type { ConfigurationLoadResult } from "@/types/configuration/status";
+import type { ConfigurationHealthResult } from "@/types/configuration/status";
+import type { UpgradeCheckResult } from "@/education/engines/version.engine";
+
+export interface IConfigurationService {
+  getConfigurationViewModel(tenantId: string): Promise<SchoolConfigurationViewModel | null>;
+  getConfigurationHistoryViewModel(tenantId: string, limit?: number): Promise<ConfigurationHistoryViewModel[]>;
+  loadConfiguration(tenantId: string): Promise<ConfigurationLoadResult>;
+  saveAndPublishConfiguration(input: any, tenantId: string, userId: string): Promise<MasterSchoolConfiguration>;
+  getHealthStatus(tenantId: string): Promise<ConfigurationHealthResult>;
+  createDefaultConfiguration(tenantId: string, userId: string): Promise<MasterSchoolConfiguration>;
+  getConfigurationForSetup(tenantId: string): Promise<SchoolConfigurationViewModel | null>;
+  getConfiguration(tenantId: string): Promise<MasterSchoolConfiguration | null>;
+  saveConfiguration(tenantId: string, config: MasterSchoolConfiguration): Promise<void>;
+  checkForUpgrades(tenantId: string): Promise<UpgradeCheckResult>;
+  upgradeCurriculum(tenantId: string, newVersionId: string, userId: string): Promise<MasterSchoolConfiguration>;
+}
+
+
+
+############################################################
+# FILE: interfaces/IConfigurationRepository.ts
+############################################################
+
+import type { MasterSchoolConfiguration } from "@/types/configuration";
+import type { SchoolConfigurationViewModel } from "@/types/viewmodels/school-configuration.viewmodel";
+import type { ConfigurationHistoryViewModel } from "@/types/viewmodels/configuration-history.viewmodel";
+import type { ConfigurationLoadResult } from "@/types/configuration/status";
+import type { TenantMetadata } from "@/lib/configuration/constants";
+
+export interface IConfigurationRepository {
+  getConfiguration(tenantId: string): Promise<MasterSchoolConfiguration | null>;
+  getConfigurationById(tenantId: string, docId: string): Promise<MasterSchoolConfiguration | null>;
+  saveConfiguration(tenantId: string, config: MasterSchoolConfiguration): Promise<void>;
+  updateConfiguration(tenantId: string, data: Partial<MasterSchoolConfiguration>): Promise<MasterSchoolConfiguration>;
+  publishConfiguration(tenantId: string, config: MasterSchoolConfiguration, userId: string): Promise<MasterSchoolConfiguration>;
+  deleteConfiguration(tenantId: string): Promise<void>;
+  configurationExists(tenantId: string): Promise<boolean>;
+  loadCachedConfiguration(tenantId: string): Promise<MasterSchoolConfiguration | null>;
+  getConfigurationHistory(tenantId: string, limit?: number): Promise<MasterSchoolConfiguration[]>;
+  getTenantMetadata(tenantId: string): Promise<TenantMetadata | null>;
+  updateTenantMetadata(tenantId: string, data: Partial<TenantMetadata>): Promise<void>;
+}
+
+
+
+############################################################
+# FILE: interfaces/IConfigurationProvisioningService.ts
+############################################################
+
+export interface ProvisioningResult {
+  academicYearId: string | null;
+  sectionsCreated: number;
+  departmentsCreated: number;
+  warnings: string[];
+}
+
+export interface IConfigurationProvisioningService {
+  provisionFromConfiguration(
+    tenantId: string,
+    config: import("@/types/configuration").MasterSchoolConfiguration,
+    userId: string
+  ): Promise<ProvisioningResult>;
+}
+
+
+
+############################################################
+# FILE: interfaces/IConfigurationHealthService.ts
+############################################################
+
+import type { ConfigurationHealthResult } from "@/types/configuration/status";
+
+export interface IConfigurationHealthService {
+  checkHealth(tenantId: string): Promise<ConfigurationHealthResult>;
+}
+
+
+
+############################################################
+# FILE: interfaces/IConfigurationCacheService.ts
+############################################################
+
+export interface IConfigurationCacheService {
+  getConfiguration(tenantId: string): Promise<any | null>;
+  setConfiguration(tenantId: string, configuration: any, ttl?: number): Promise<void>;
+  invalidateConfiguration(tenantId: string): Promise<void>;
+  invalidateByTag(tag: string): Promise<void>;
+  getStats(): { hits: number; misses: number; size: number };
+}
+
+
+
+############################################################
+# FILE: interfaces/ITenantService.ts
+############################################################
+
+// interfaces/ITenantService.ts
+import type { SchoolSetupInput } from "@/services/tenant.service";
+
+export interface TenantRepairResult {
+  repaired: boolean;
+  reason?: string;
+}
+
+export interface ITenantService {
+  setupSchool(input: SchoolSetupInput): Promise<{ tenantId: string }>;
+  provisionOrRepairTenant(tenantId: string, userId: string): Promise<TenantRepairResult>;
+}
+
+
+
+############################################################
+# FILE: interfaces/ITenantRepository.ts
+############################################################
+
+// interfaces/ITenantRepository.ts
+export interface ITenantRepository {
+  bulkCreate(...args: any[]): Promise<any>;
+  count(...args: any[]): Promise<any>;
+  create(...args: any[]): Promise<any>;
+  delete(...args: any[]): Promise<any>;
+  exists(...args: any[]): Promise<any>;
+  findActive(...args: any[]): Promise<any>;
+  findAll(...args: any[]): Promise<any>;
+  findById(...args: any[]): Promise<any>;
+  findByPlan(...args: any[]): Promise<any>;
+  listAll(...args: any[]): Promise<any>;
+  paginate(...args: any[]): Promise<any>;
+  softDelete(...args: any[]): Promise<any>;
+  update(...args: any[]): Promise<any>;
+  verifyTenantExists(tenantId: string): Promise<boolean>;
+  restoreTenant(tenantId: string, data: Record<string, any>): Promise<void>;
+  verifyUserTenantAssociation(userId: string, tenantId: string): Promise<boolean>;
+}
+
+
+
+############################################################
+# FILE: services/tenant.service.ts
+############################################################
+
+import { TenantRepository } from "@/repositories/tenant.repository";
+import { TenantSetupRepository } from "@/repositories/tenant-setup.repository";
+import { SectionRepository } from "@/repositories/section.repository";
+import { AcademicYearRepository } from "@/repositories/academic-year.repository";
+import { ConfigurationRepository } from "@/repositories/configuration.repository";
+import { eventBus } from "@/lib/events";
+import { EVENTS } from "@/lib/events/event-types";
+import { logger } from "@/lib/logger/logger";
+import type { ITenantService, TenantRepairResult } from "@/interfaces/ITenantService";
+
+export interface SchoolSetupInput {
+  schoolName: string;
+  type?: string;
+  curriculum?: string;
+  classes: any[];
+  subjects: string[];
+  userId: string;
+}
+
+export class TenantService implements ITenantService {
+  private tenantRepo: TenantRepository;
+  private sectionRepo: SectionRepository;
+  private setupRepo: TenantSetupRepository;
+  private academicYearRepo: AcademicYearRepository;
+  private configRepo: ConfigurationRepository;
+
+  constructor() {
+    this.tenantRepo = new TenantRepository();
+    this.sectionRepo = new SectionRepository();
+    this.setupRepo = new TenantSetupRepository();
+    this.academicYearRepo = new AcademicYearRepository();
+    this.configRepo = new ConfigurationRepository();
+  }
+
+  async setupSchool(input: SchoolSetupInput): Promise<{ tenantId: string; academicYearId?: string }> {
+    const { schoolName, type, curriculum, classes, subjects, userId } = input;
+    const tenantId = userId.startsWith("tenant_") ? userId : `tenant_${userId}`;
+
+    await this.setupRepo.setupSchool({
+      userId,
+      tenantId,
+      schoolName,
+      type,
+      curriculum,
+      classes,
+      subjects,
+    });
+
+    eventBus.publish(EVENTS.SCHOOL_SETUP_COMPLETED, {
+      tenantId,
+      schoolName,
+      classesCount: classes.length,
+      subjectsCount: subjects.length,
+      createdBy: userId,
+    }, tenantId);
+
+    return { tenantId };
+  }
+
+  async provisionOrRepairTenant(tenantId: string, userId: string): Promise<TenantRepairResult> {
+    const exists = await this.tenantRepo.verifyTenantExists(tenantId);
+    if (exists) {
+      return { repaired: false, reason: "tenant_already_exists" };
+    }
+
+    const userAssociated = await this.tenantRepo.verifyUserTenantAssociation(userId, tenantId);
+    if (!userAssociated) {
+      logger.warn("TENANT_REPAIR_REJECTED_USER_NOT_ASSOCIATED", { tenantId, userId });
+      return { repaired: false, reason: "user_not_associated" };
+    }
+
+    const config = await this.configRepo.getConfiguration(tenantId);
+    if (!config) {
+      logger.warn("TENANT_REPAIR_REJECTED_CONFIG_MISSING", { tenantId, userId });
+      return { repaired: false, reason: "config_missing" };
+    }
+
+    if (!config.school?.name || !config.school?.curriculumId || !config.school?.type) {
+      logger.warn("TENANT_REPAIR_REJECTED_CONFIG_MALFORMED", { tenantId, userId });
+      return { repaired: false, reason: "config_malformed" };
+    }
+
+    const bestCreatedAt =
+      config.version?.createdAt ||
+      config.metadata?.configuredAt ||
+      config.metadata?.lastModified ||
+      new Date().toISOString();
+
+    const originalOwnerId =
+      config.metadata?.configuredBy ||
+      config.version?.createdBy;
+
+    await this.tenantRepo.restoreTenant(tenantId, {
+      name: config.school.name,
+      type: config.school.type,
+      curriculum: config.school.curriculumId,
+      ownerId: originalOwnerId,
+      status: "active",
+      createdAt: bestCreatedAt,
+      updatedAt: new Date().toISOString(),
+    });
+
+    logger.info("TENANT_REPAIRED", { tenantId, userId, reason: "tenant_restored_from_configuration" });
+    return { repaired: true, reason: "tenant_restored_from_configuration" };
+  }
+
+  async initializeAcademicYear(tenantId: string, userId: string): Promise<string> {
+    const currentYear = new Date().getFullYear();
+    const ayId = await this.academicYearRepo.create({
+      name: `${currentYear}-${currentYear + 1}`,
+      startDate: `${currentYear}-04-01`,
+      endDate: `${currentYear + 1}-03-31`,
+      isCurrent: true,
+      tenantId,
+      createdBy: userId,
+    }, tenantId);
+
+    return ayId;
+  }
+}
+
+
+
+############################################################
+# FILE: route-helpers/withTenant.ts
+############################################################
+
+import { NextResponse } from 'next/server';
+import { tenantResolver } from "@/services/tenant.resolver";
+import { logger } from "@/lib/logger/logger";
+import type { ResolvedTenant } from "@/types/tenant/tenant-resolver";
+
+interface TenantContext {
+  tenantId: string;
+  user?: {
+    uid: string;
+    email: string;
+    role: string;
+    tenantId?: string | null;
+  };
+  resolvedTenant?: ResolvedTenant;
+}
+
+export const withTenant = (handler: Function) => {
+  return async (req: Request, context: any = {}) => {
+    const user = context?.user;
+
+    try {
+      if (!user) {
+        return NextResponse.json({ success: false, error: 'User context is required' }, { status: 403 });
+      }
+
+      const resolvedTenant = await tenantResolver.resolve({
+        user: {
+          uid: user.uid,
+          email: user.email,
+          role: user.role,
+          tenantId: user.tenantId,
+        },
+      });
+
+      context.tenantId = resolvedTenant.tenantId;
+      context.resolvedTenant = resolvedTenant;
+
+      return handler(req, context);
+    } catch (error) {
+      logger.error("TENANT_RESOLUTION_FAILED_IN_MIDDLEWARE", {
+        metadata: { error, userId: user?.uid },
+      });
+
+      return NextResponse.json(
+        { success: false, error: 'Tenant ID is required or User is not assigned to a tenant' },
+        { status: 403 }
+      );
+    }
+  };
+};
+
+export function isTenantContext(obj: any): obj is TenantContext {
+  return (
+    typeof obj === "object" &&
+    obj !== null &&
+    typeof obj.tenantId === "string" &&
+    obj.tenantId.length > 0
+  );
+}
+
+
+
+############################################################
+# FILE: route-helpers/withAuth.ts
+############################################################
+
+import { NextResponse } from "next/server";
+import { getSessionUser } from "@/lib/auth/auth-server";
+import { logger } from "@/lib/logger/logger";
+
+export function withAuth(handler: Function) {
+  return async (
+    req: Request,
+    context: any = {}
+  ) => {
+    try {
+      const user = await getSessionUser();
+
+      if (!user) {
+        return NextResponse.json(
+          {
+            success: false,
+            message: "Unauthorized",
+          },
+          {
+            status: 401,
+          }
+        );
+      }
+
+      context.user = user;
+      return handler(req, context);
+    } catch (error) {
+      logger.error(
+        "Authentication failed:",
+        { metadata: { error } }
+      );
+
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Authentication failed",
+        },
+        {
+          status: 401,
+        }
+      );
+    }
+  };
+}
+
+
+
+############################################################
+# FILE NOT FOUND: route-helpers/withPermission.ts
+############################################################
+
+
+############################################################
+# FILE NOT FOUND: lib/tenant-resolver.ts
+############################################################
+
+
+############################################################
+# FILE NOT FOUND: lib/tenant.resolver.ts
+############################################################
+
+
+############################################################
+# FILE NOT FOUND: types/tenant.ts
+############################################################
+
+
+############################################################
+# FILE: firestore.rules
+############################################################
+
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function getUserRole() {
+      return getUserData().role;
+    }
+
+    function getUserTenantId() {
+      return getUserData().tenantId;
+    }
+
+    function isTenantMember(tenantId) {
+      return isAuthenticated() && getUserTenantId() == tenantId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && getUserRole() == 'admin';
+    }
+
+    function isSuperAdmin() {
+      return isAuthenticated() && getUserRole() == 'super_admin';
+    }
+
+    function isStaff() {
+      return isAuthenticated() && (getUserRole() == 'admin' || getUserRole() == 'teacher' || getUserRole() == 'staff');
+    }
+
+    // Users collection - users can read their own data, admins can read tenant users
+    match /users/{userId} {
+      allow read: if isAuthenticated() && (request.auth.uid == userId || isTenantMember(getUserData().tenantId));
+      allow write: if isAuthenticated() && (request.auth.uid == userId || isAdmin() || isSuperAdmin());
+    }
+
+    // Tenants collection - only admins and super admins
+    match /tenants/{tenantId} {
+      allow read: if isTenantMember(tenantId);
+      allow write: if isSuperAdmin();
+
+      match /settings/{docId} {
+        allow read: if isTenantMember(tenantId);
+        allow write: if isTenantMember(tenantId) && (isAdmin() || isSuperAdmin());
+      }
+
+      match /dashboard/{docId} {
+        allow read: if isTenantMember(tenantId);
+        allow write: if isTenantMember(tenantId) && (isAdmin() || isSuperAdmin());
+      }
+    }
+
+    // Students collection - tenant-scoped
+    match /students/{studentId} {
+      allow read: if isTenantMember(resource.data.tenantId);
+      allow create: if isAuthenticated() && isStaff() && request.resource.data.tenantId == getUserTenantId();
+      allow update, delete: if isAuthenticated() && isStaff() && resource.data.tenantId == getUserTenantId();
+
+      match /timeline/{docId} {
+        allow read: if isTenantMember(get(/databases/$(database)/documents/students/$(studentId)).data.tenantId);
+        allow write: if isAuthenticated() && isStaff();
+      }
+    }
+
+    // Staff collection - tenant-scoped
+    match /staff/{staffId} {
+      allow read: if isTenantMember(resource.data.tenantId);
+      allow create: if isAuthenticated() && isAdmin() && request.resource.data.tenantId == getUserTenantId();
+      allow update, delete: if isAuthenticated() && isAdmin() && resource.data.tenantId == getUserTenantId();
+    }
+
+    // Attendance - tenant-scoped
+    match /attendance/{docId} {
+      allow read: if isTenantMember(resource.data.tenantId);
+      allow write: if isAuthenticated() && isStaff() && request.resource.data.tenantId == getUserTenantId();
+    }
+
+    // Fees - tenant-scoped
+    match /fees/{feeId} {
+      allow read: if isTenantMember(resource.data.tenantId);
+      allow write: if isAuthenticated() && (isAdmin() || getUserRole() == 'finance') && request.resource.data.tenantId == getUserTenantId();
+    }
+
+    // Marks - tenant-scoped
+    match /marks/{markId} {
+      allow read: if isTenantMember(resource.data.tenantId);
+      allow write: if isAuthenticated() && isStaff() && request.resource.data.tenantId == getUserTenantId();
+    }
+
+    // Classes - tenant-scoped
+    match /classes/{classId} {
+      allow read: if isTenantMember(resource.data.tenantId);
+      allow write: if isAuthenticated() && isStaff() && request.resource.data.tenantId == getUserTenantId();
+    }
+
+    // Sections - tenant-scoped
+    match /sections/{sectionId} {
+      allow read: if isTenantMember(resource.data.tenantId);
+      allow write: if isAuthenticated() && (isAdmin() || isSuperAdmin()) && request.resource.data.tenantId == getUserTenantId();
+    }
+
+    // Subscriptions - tenant-scoped
+    match /subscriptions/{tenantId} {
+      allow read: if isTenantMember(tenantId);
+      allow write: if isSuperAdmin();
+    }
+
+    // Durable outbox infrastructure is server-only. Workers use the Admin SDK;
+    // browser clients must never inspect another tenant's event payloads.
+    match /events/{eventId} {
+      allow read, write: if false;
+    }
+
+    match /processed_events/{eventId} {
+      allow read, write: if false;
+    }
+
+    match /dead_letter_events/{eventId} {
+      allow read, write: if false;
+    }
+
+    // Logs - audit trail, admin only
+    match /logs/{logId} {
+      allow read: if isAuthenticated() && (isAdmin() || isSuperAdmin());
+      allow write: if isAuthenticated();
+    }
+
+    // Chat messages - tenant-scoped
+    match /chat_messages/{messageId} {
+      allow read: if isTenantMember(resource.data.tenantId);
+      allow write: if isAuthenticated() && isStaff() && request.resource.data.tenantId == getUserTenantId();
+    }
+
+    // Syllabus - tenant-scoped
+    match /syllabus/{docId} {
+      allow read: if isTenantMember(resource.data.tenantId);
+      allow write: if isAuthenticated() && isStaff() && request.resource.data.tenantId == getUserTenantId();
+    }
+
+    // Homework - tenant-scoped
+    match /homework/{docId} {
+      allow read: if isTenantMember(resource.data.tenantId);
+      allow write: if isAuthenticated() && isStaff() && request.resource.data.tenantId == getUserTenantId();
+    }
+
+    // Video lectures - tenant-scoped
+    match /video_lectures/{docId} {
+      allow read: if isTenantMember(resource.data.tenantId);
+      allow write: if isAuthenticated() && isStaff() && request.resource.data.tenantId == getUserTenantId();
+    }
+
+    // Buses - tenant-scoped
+    match /buses/{busId} {
+      allow read: if isTenantMember(resource.data.tenantId);
+      allow write: if isAuthenticated() && isStaff() && request.resource.data.tenantId == getUserTenantId();
+    }
+
+    // Behavior - tenant-scoped
+    match /behavior/{docId} {
+      allow read: if isTenantMember(resource.data.tenantId);
+      allow write: if isAuthenticated() && isStaff() && request.resource.data.tenantId == getUserTenantId();
+    }
+
+    // Books - tenant-scoped
+    match /books/{bookId} {
+      allow read: if isTenantMember(resource.data.tenantId);
+      allow write: if isAuthenticated() && isStaff() && request.resource.data.tenantId == getUserTenantId();
+    }
+
+    // Ledger - tenant-scoped
+    match /ledger/{docId} {
+      allow read: if isTenantMember(resource.data.tenantId);
+      allow write: if isAuthenticated() && (isAdmin() || getUserRole() == 'finance') && request.resource.data.tenantId == getUserTenantId();
+    }
+
+    // Admit cards - tenant-scoped
+    match /admit_cards/{docId} {
+      allow read: if isTenantMember(resource.data.tenantId);
+      allow write: if isAuthenticated() && isStaff() && request.resource.data.tenantId == getUserTenantId();
+    }
+
+    // Leave requests - tenant-scoped
+    match /leave_requests/{docId} {
+      allow read: if isTenantMember(resource.data.tenantId);
+      allow write: if isAuthenticated() && isStaff() && request.resource.data.tenantId == getUserTenantId();
+    }
+
+    // Exams - tenant-scoped
+    match /exams/{examId} {
+      allow read: if isTenantMember(resource.data.tenantId);
+      allow write: if isAuthenticated() && isStaff() && request.resource.data.tenantId == getUserTenantId();
+    }
+
+    // Quizzes - tenant-scoped
+    match /quizzes/{quizId} {
+      allow read: if isTenantMember(resource.data.tenantId);
+      allow write: if isAuthenticated() && isStaff() && request.resource.data.tenantId == getUserTenantId();
+    }
+
+    // Assignments - tenant-scoped
+    match /assignments/{assignmentId} {
+      allow read: if isTenantMember(resource.data.tenantId);
+      allow write: if isAuthenticated() && isStaff() && request.resource.data.tenantId == getUserTenantId();
+    }
+
+    // Default deny - any collection not explicitly matched above
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+
+
+
+############################################################
+# FILE: firestore.indexes.json
+############################################################
+
+{
+  "indexes": [
+    {
+      "collectionGroup": "attendance",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "tenantId", "order": "ASCENDING" },
+        { "fieldPath": "date", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "attendance",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "tenantId", "order": "ASCENDING" },
+        { "fieldPath": "classGrade", "order": "ASCENDING" },
+        { "fieldPath": "section", "order": "ASCENDING" },
+        { "fieldPath": "date", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "attendance",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "tenantId", "order": "ASCENDING" },
+        { "fieldPath": "studentId", "order": "ASCENDING" },
+        { "fieldPath": "date", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "attendance",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "studentId", "order": "ASCENDING" },
+        { "fieldPath": "tenantId", "order": "ASCENDING" },
+        { "fieldPath": "date", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "marks",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "tenantId", "order": "ASCENDING" },
+        { "fieldPath": "studentId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "fees",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "tenantId", "order": "ASCENDING" },
+        { "fieldPath": "studentId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "students",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "tenantId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "staff",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "tenantId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "staff",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "tenantId", "order": "ASCENDING" },
+        { "fieldPath": "professional.department", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "staff",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "tenantId", "order": "ASCENDING" },
+        { "fieldPath": "professional.designation", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "staff",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "tenantId", "order": "ASCENDING" },
+        { "fieldPath": "professional.employmentType", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "staff",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "tenantId", "order": "ASCENDING" },
+        { "fieldPath": "contact.email", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "staff",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "tenantId", "order": "ASCENDING" },
+        { "fieldPath": "personal.fullName", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "logs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "tenantId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "logs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "tenantId", "order": "ASCENDING" },
+        { "fieldPath": "entityType", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "homework",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "tenantId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "chat_messages",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "tenantId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "syllabus",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "tenantId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "video_lectures",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "tenantId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "leave_requests",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "tenantId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "behavior",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "tenantId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "books",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "tenantId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "exams",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "tenantId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "fees",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "tenantId", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "dueDate", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "events",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "nextRetry", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "events",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "processingLeaseUntil", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "assignments",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "tenantId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "assignments",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "tenantId", "order": "ASCENDING" },
+        { "fieldPath": "classGrade", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "lessonPlans",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "tenantId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "lessonPlans",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "tenantId", "order": "ASCENDING" },
+        { "fieldPath": "date", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "books",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "tenantId", "order": "ASCENDING" },
+        { "fieldPath": "title", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "books",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "tenantId", "order": "ASCENDING" },
+        { "fieldPath": "classGrade", "order": "ASCENDING" },
+        { "fieldPath": "title", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "books",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "tenantId", "order": "ASCENDING" },
+        { "fieldPath": "subject", "order": "ASCENDING" },
+        { "fieldPath": "title", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "behavior_logs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "tenantId", "order": "ASCENDING" },
+        { "fieldPath": "studentId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "submissions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "tenantId", "order": "ASCENDING" },
+        { "fieldPath": "assignmentId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "marks",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "tenantId", "order": "ASCENDING" },
+        { "fieldPath": "classGrade", "order": "ASCENDING" },
+        { "fieldPath": "section", "order": "ASCENDING" },
+        { "fieldPath": "term", "order": "ASCENDING" },
+        { "fieldPath": "deleted", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "marks",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "tenantId", "order": "ASCENDING" },
+        { "fieldPath": "studentId", "order": "ASCENDING" },
+        { "fieldPath": "deleted", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "marks",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "tenantId", "order": "ASCENDING" },
+        { "fieldPath": "studentId", "order": "ASCENDING" },
+        { "fieldPath": "term", "order": "ASCENDING" },
+        { "fieldPath": "deleted", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "quizzes",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "tenantId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "quizzes",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "tenantId", "order": "ASCENDING" },
+        { "fieldPath": "classGrade", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "quiz_submissions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "tenantId", "order": "ASCENDING" },
+        { "fieldPath": "quizId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "students",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "tenantId", "order": "ASCENDING" },
+        { "fieldPath": "classGrade", "order": "ASCENDING" },
+        { "fieldPath": "section", "order": "ASCENDING" },
+        { "fieldPath": "rollNumber", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "students",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "tenantId", "order": "ASCENDING" },
+        { "fieldPath": "admissionStatus", "order": "ASCENDING" },
+        { "fieldPath": "deleted", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "students",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "tenantId", "order": "ASCENDING" },
+        { "fieldPath": "deleted", "order": "ASCENDING" },
+        { "fieldPath": "rollNumber", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "fees",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "tenantId", "order": "ASCENDING" },
+        { "fieldPath": "studentId", "order": "ASCENDING" },
+        { "fieldPath": "paid", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "homework",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "tenantId", "order": "ASCENDING" },
+        { "fieldPath": "classGrade", "order": "ASCENDING" },
+        { "fieldPath": "section", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "assignments",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "tenantId", "order": "ASCENDING" },
+        { "fieldPath": "classGrade", "order": "ASCENDING" },
+        { "fieldPath": "section", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "academicYears",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "tenantId", "order": "ASCENDING" },
+        { "fieldPath": "startDate", "order": "ASCENDING" },
+        { "fieldPath": "__name__", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "academicYears",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "tenantId", "order": "ASCENDING" },
+        { "fieldPath": "startDate", "order": "DESCENDING" },
+        { "fieldPath": "__name__", "order": "ASCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}
+
+
+
+############################################################
+# FILE: __tests__/services/configuration.service.test.ts
+############################################################
+
+import { ConfigurationRepository } from "@/repositories/configuration.repository";
+import { ConfigurationService } from "@/services/configuration.service";
+import { ConfigurationCacheService } from "@/services/configuration-cache.service";
+import { ConfigurationHealthService } from "@/services/configuration-health.service";
+
+interface MockConfig {
+  id: string;
+  tenantId: string;
+  state: "Published";
+  metadata: {
+    tenantId: string;
+    configurationVersion: number;
+    schemaVersion: number;
+    environment: string;
+    region: string;
+    timezone: string;
+    isConfigured: boolean;
+    configuredAt: string;
+    configuredBy: string;
+    lastModified: string;
+  };
+  version: {
+    id: string;
+    number: number;
+    createdBy: string;
+    createdAt: string;
+    publishedBy?: string;
+    publishedAt?: string;
+    reason: string;
+    checksum: string;
+  };
+  school: {
+    name: string;
+    type: string;
+    curriculumId: string;
+    boardName: string;
+    country: string;
+  };
+  academic: {
+    levels: string[];
+    classes: any[];
+    sectionNames: string[];
+    subjects: string[];
+    requiredLabs: string[];
+    requiredTeachers: Record<string, number>;
+  };
+  features: any;
+}
+
+jest.mock('@/lib/mappers', () => ({
+  mapConfigurationToViewModel: jest.fn((config: any) => {
+    if (!config) return null;
+    return {
+      id: config.id || 'current_config',
+      isLoading: false,
+      hasErrors: false,
+      state: config.state || 'Published',
+      stateLabel: (config.state || 'Published').charAt(0).toUpperCase() + (config.state || 'Published').slice(1),
+      schoolName: config.school?.name || 'N/A',
+      schoolType: config.school?.type || 'N/A',
+      boardName: config.school?.boardName || 'N/A',
+      levels: config.academic?.levels || [],
+      classes: config.academic?.classes?.map((c: any) => ({ id: c.id, name: c.name })) || [],
+      classCount: config.academic?.classes?.length || 0,
+      classSummary: `${config.academic?.classes?.length || 0} Classes`,
+      subjectCount: config.academic?.subjects?.length || 0,
+      sectionCount: config.academic?.sectionNames?.length || 0,
+      sectionNames: config.academic?.sectionNames || [],
+      requiredLabs: config.academic?.requiredLabs || [],
+      requiredTeachers: config.academic?.requiredTeachers || {},
+      versionNumber: config.version?.number || 1,
+      versionLabel: `Version ${config.version?.number || 1}`,
+      publishedAt: config.version?.publishedAt,
+      completionLabel: config.metadata?.configuredAt
+        ? `Completed ${new Date(config.metadata.configuredAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}`
+        : 'Not configured',
+      enabledFeatures: Object.keys(config.features || {}).filter((key: string) => config.features?.[key]?.enabled),
+    };
+  }),
+  mapHistory: jest.fn((items: any[]) => {
+    return items.map((item: any, index: number) => ({
+      id: item.id || `hist_${index}`,
+      isLoading: false,
+      hasErrors: false,
+      versionNumber: item.version?.number || index + 1,
+      versionLabel: `Version ${item.version?.number || index + 1}`,
+      reason: item.version?.reason || 'Configuration Updated',
+      createdBy: item.version?.createdBy || 'System',
+      createdAt: item.version?.createdAt || new Date().toISOString(),
+      formattedDate: new Date(item.version?.createdAt || Date.now()).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
+    }));
+  }),
+}));
+
+const mockConfigData = (tenantId: string): MockConfig => ({
+  id: 'config',
+  tenantId,
+  state: 'Published',
+  metadata: {
+    tenantId,
+    configurationVersion: 1,
+    schemaVersion: 2,
+    environment: 'development',
+    region: 'default',
+    timezone: 'UTC',
+    isConfigured: true,
+    configuredAt: new Date().toISOString(),
+    configuredBy: 'user1',
+    lastModified: new Date().toISOString(),
+  },
+  version: {
+    number: 1,
+    id: 'v_1',
+    createdBy: 'user1',
+    createdAt: new Date().toISOString(),
+    publishedBy: 'user1',
+    publishedAt: new Date().toISOString(),
+    reason: 'Initial',
+    checksum: 'ck_123',
+  },
+  school: {
+    name: 'Test School',
+    type: 'Private',
+    curriculumId: 'federal',
+    boardName: 'FBISE',
+    country: 'PK',
+  },
+  academic: {
+    levels: ['Primary', 'Secondary'],
+    classes: [
+      { id: 'cls_1', name: 'Grade 1', level: 'Primary', subjects: ['Math', 'English'] }
+    ],
+    sectionNames: ['A', 'B'],
+    subjects: ['Math', 'English', 'Science'],
+    requiredLabs: ['Physics Lab'],
+    requiredTeachers: { English: 2 },
+  },
+  features: {
+    ai: { enabled: true, version: '1.0', permissions: ['admin'], beta: false, providers: ['gemini'], activeProvider: 'gemini', quota: 1000 },
+    library: { enabled: true, version: '1.0', permissions: ['admin'], beta: false },
+    transport: { enabled: false, version: '1.0', permissions: ['admin'], beta: false },
+    fees: { enabled: true, version: '1.0', permissions: ['admin'], beta: false },
+    attendance: { enabled: true, version: '1.0', permissions: ['admin'], beta: false },
+    exams: { enabled: true, version: '1.0', permissions: ['admin'], beta: false },
+  },
+});
+
+jest.mock('@/services/configuration-cache.service');
+jest.mock('@/services/configuration-health.service');
+jest.mock('@/repositories/configuration.repository');
+jest.mock('@/services/tenant.service');
+
+describe('ConfigurationService', () => {
+  let service: ConfigurationService;
+  let mockCache: any;
+  let mockHealthService: any;
+  const tenantId = 'test-tenant';
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockCache = {
+      getConfiguration: jest.fn(),
+      setConfiguration: jest.fn(),
+      invalidateConfiguration: jest.fn(),
+      invalidateByTag: jest.fn(),
+      getStats: jest.fn(),
+    };
+    mockHealthService = { checkHealth: jest.fn() };
+    service = new ConfigurationService(new ConfigurationRepository() as any, mockCache, mockHealthService);
+  });
+
+  describe('getConfigurationViewModel', () => {
+    test('should return configuration when cached', async () => {
+      const viewModel = {
+        id: 'config',
+        schoolName: 'Test School',
+      } as any;
+      mockCache.getConfiguration.mockResolvedValue(viewModel);
+
+      const result = await service.getConfigurationViewModel(tenantId);
+
+      expect(result).not.toBeNull();
+      expect(result!.schoolName).toBe('Test School');
+    });
+
+    test('should return null when configuration does not exist', async () => {
+      mockCache.getConfiguration.mockResolvedValue(null);
+    });
+  });
+
+  describe('getConfigurationHistoryViewModel', () => {
+    test('should return history viewmodels', async () => {
+      const repoMock = new ConfigurationRepository() as jest.Mocked<ConfigurationRepository>;
+      repoMock.getConfigurationHistory = jest.fn().mockResolvedValue([mockConfigData(tenantId)]);
+      const svc = new ConfigurationService(repoMock, mockCache, mockHealthService);
+
+      const result = await svc.getConfigurationHistoryViewModel(tenantId);
+
+      expect(result).toHaveLength(1);
+    });
+  });
+
+  describe('saveAndPublishConfiguration', () => {
+    test('should validate payload before saving', async () => {
+      const input = {
+        schoolProfile: { name: 'Test', type: 'Private', curriculumId: 'c1', sections: [] as string[] },
+        academicStructure: { grades: [] as any[], allSubjects: [] as any[] },
+      } as any;
+
+      await expect(service.saveAndPublishConfiguration(input, tenantId, 'user1')).rejects.toThrow();
+    });
+
+    test('should build config in memory, provision, then publish on success', async () => {
+      const repoMock = new ConfigurationRepository() as jest.Mocked<ConfigurationRepository>;
+      repoMock.publishConfiguration = jest.fn().mockImplementation((_tenantId: string, config: any) => {
+        config.state = 'Published';
+        config.metadata.isConfigured = true;
+        config.metadata.configuredAt = new Date().toISOString();
+        config.metadata.configuredBy = 'user1';
+        config.metadata.publishedAt = new Date().toISOString();
+        config.version.publishedBy = 'user1';
+        config.version.publishedAt = new Date().toISOString();
+        config.metadata.lastModified = new Date().toISOString();
+        return config;
+      });
+      repoMock.getConfiguration = jest.fn().mockResolvedValue(null);
+      repoMock.saveConfiguration = jest.fn().mockResolvedValue(undefined);
+      mockHealthService.checkHealth.mockResolvedValue({
+        healthy: true,
+        status: 'NOT_CONFIGURED',
+        diagnostics: {
+          configExists: false,
+          metadataExists: false,
+          schoolProfileExists: false,
+          academicStructureExists: false,
+          isPublished: false,
+          versionValid: false,
+          tenantValid: true,
+          schemaValid: false,
+        },
+      });
+      const provisioning = {
+        provisionFromConfiguration: jest.fn().mockResolvedValue({
+          academicYearId: 'academic-year-1',
+          sectionsCreated: 2,
+          departmentsCreated: 1,
+          warnings: [],
+        }),
+      };
+      const svc = new ConfigurationService(repoMock, mockCache, mockHealthService, provisioning);
+
+      const input = {
+        schoolProfile: { name: 'Test School', type: 'Private', curriculumId: 'federal', sections: ['A'] },
+        academicStructure: {
+          levels: [] as any[],
+          grades: [{ id: 'g1', name: 'Grade 1', levelId: 'Primary', schemeOfStudy: { subjects: [{ name: 'Math' }] } }],
+          allSubjects: [{ name: 'Math' }],
+          requiredLabs: [] as any[],
+          requiredTeachers: {} as Record<string, number>,
+        },
+      };
+
+      const result = await svc.saveAndPublishConfiguration(input, tenantId, 'user1');
+
+      expect(result.state).toBe('Published');
+      expect(result.metadata.academicYearId).toBe('academic-year-1');
+      expect(provisioning.provisionFromConfiguration).toHaveBeenCalledTimes(1);
+      expect(repoMock.publishConfiguration).toHaveBeenCalledTimes(1);
+
+      const publishOrder = (repoMock.publishConfiguration as jest.MockedFunction<any>).mock.invocationCallOrder[0];
+      const provisionOrder = (provisioning.provisionFromConfiguration as jest.MockedFunction<any>).mock.invocationCallOrder[0];
+      expect(provisionOrder).toBeLessThan(publishOrder);
+
+      expect(repoMock.saveConfiguration).not.toHaveBeenCalled();
+      expect(mockCache.invalidateConfiguration).toHaveBeenCalledWith(tenantId);
+      expect(mockCache.setConfiguration).toHaveBeenCalledWith(tenantId, expect.objectContaining({
+        state: 'Published',
+        metadata: expect.objectContaining({ academicYearId: 'academic-year-1' }),
+      }));
+    });
+
+    test('does not persist configuration when provisioning fails', async () => {
+      const repoMock = new ConfigurationRepository() as jest.Mocked<ConfigurationRepository>;
+      repoMock.publishConfiguration = jest.fn().mockResolvedValue(undefined as any);
+      repoMock.getConfiguration = jest.fn().mockResolvedValue(null);
+      repoMock.saveConfiguration = jest.fn().mockResolvedValue(undefined);
+      mockHealthService.checkHealth.mockResolvedValue({
+        healthy: true,
+        status: 'NOT_CONFIGURED',
+        diagnostics: {
+          configExists: false,
+          metadataExists: false,
+          schoolProfileExists: false,
+          academicStructureExists: false,
+          isPublished: false,
+          versionValid: false,
+          tenantValid: true,
+          schemaValid: false,
+        },
+      });
+      const provisioning = {
+        provisionFromConfiguration: jest.fn().mockRejectedValue(new Error('section write failed')),
+      };
+      const svc = new ConfigurationService(repoMock, mockCache, mockHealthService, provisioning);
+      const input = {
+        schoolProfile: { name: 'Test School', type: 'Private', curriculumId: 'federal', sections: ['A'] },
+        academicStructure: {
+          levels: [] as any[],
+          grades: [{ id: 'g1', name: 'Grade 1', levelId: 'Primary', schemeOfStudy: { subjects: [{ name: 'Math' }] } }],
+          allSubjects: [{ name: 'Math' }],
+        },
+      };
+
+      await expect(svc.saveAndPublishConfiguration(input, tenantId, 'user1')).rejects.toThrow('section write failed');
+      expect(repoMock.saveConfiguration).not.toHaveBeenCalled();
+      expect(repoMock.publishConfiguration).not.toHaveBeenCalled();
+      expect(mockCache.invalidateConfiguration).not.toHaveBeenCalled();
+      expect(mockCache.setConfiguration).not.toHaveBeenCalled();
+    });
+
+    test('provisions before publishing (ordering)', async () => {
+      const repoMock = new ConfigurationRepository() as jest.Mocked<ConfigurationRepository>;
+      repoMock.publishConfiguration = jest.fn().mockImplementation((_tenantId: string, config: any) => {
+        config.state = 'Published';
+        config.metadata.isConfigured = true;
+        config.metadata.configuredAt = new Date().toISOString();
+        config.metadata.configuredBy = 'user1';
+        config.metadata.publishedAt = new Date().toISOString();
+        config.version.publishedBy = 'user1';
+        config.version.publishedAt = new Date().toISOString();
+        config.metadata.lastModified = new Date().toISOString();
+        return config;
+      });
+      repoMock.getConfiguration = jest.fn().mockResolvedValue(null);
+      repoMock.saveConfiguration = jest.fn().mockResolvedValue(undefined);
+      mockHealthService.checkHealth.mockResolvedValue({
+        healthy: true,
+        status: 'NOT_CONFIGURED',
+        diagnostics: {
+          configExists: false,
+          metadataExists: false,
+          schoolProfileExists: false,
+          academicStructureExists: false,
+          isPublished: false,
+          versionValid: false,
+          tenantValid: true,
+          schemaValid: false,
+        },
+      });
+      const provisioning = {
+        provisionFromConfiguration: jest.fn().mockResolvedValue({
+          academicYearId: 'ay-ordering',
+          sectionsCreated: 0,
+          departmentsCreated: 0,
+          warnings: [],
+        }),
+      };
+      const svc = new ConfigurationService(repoMock, mockCache, mockHealthService, provisioning);
+
+      const input = {
+        schoolProfile: { name: 'Test School', type: 'Private', curriculumId: 'federal', sections: ['A'] },
+        academicStructure: {
+          levels: [] as any[],
+          grades: [{ id: 'g1', name: 'Grade 1', levelId: 'Primary', schemeOfStudy: { subjects: [{ name: 'Math' }] } }],
+          allSubjects: [{ name: 'Math' }],
+          requiredLabs: [] as any[],
+          requiredTeachers: {} as Record<string, number>,
+        },
+      };
+
+      await svc.saveAndPublishConfiguration(input, tenantId, 'user1');
+
+      const publishOrder = (repoMock.publishConfiguration as jest.MockedFunction<any>).mock.invocationCallOrder[0];
+      const provisionOrder = (provisioning.provisionFromConfiguration as jest.MockedFunction<any>).mock.invocationCallOrder[0];
+
+      expect(provisionOrder).toBeLessThan(publishOrder);
+    });
+
+    test('should not publish when tenant does not exist', async () => {
+      const repoMock = new ConfigurationRepository() as jest.Mocked<ConfigurationRepository>;
+      repoMock.publishConfiguration = jest.fn().mockResolvedValue(undefined as any);
+      repoMock.getConfiguration = jest.fn().mockResolvedValue(null);
+      repoMock.saveConfiguration = jest.fn().mockResolvedValue(undefined);
+      const provisioning = {
+        provisionFromConfiguration: jest.fn().mockResolvedValue({
+          academicYearId: 'ay-1',
+          sectionsCreated: 0,
+          departmentsCreated: 0,
+          warnings: [],
+        }),
+      };
+      const mockTenantService = {
+        provisionOrRepairTenant: jest.fn().mockResolvedValue({ repaired: false, reason: 'user_not_associated' }),
+        setupSchool: jest.fn(),
+      };
+      mockHealthService.checkHealth.mockResolvedValue({
+        healthy: false,
+        status: 'INVALID',
+        diagnostics: {
+          configExists: false,
+          metadataExists: false,
+          schoolProfileExists: false,
+          academicStructureExists: false,
+          isPublished: false,
+          versionValid: false,
+          tenantValid: false,
+          schemaValid: false,
+        },
+      });
+      const svc = new ConfigurationService(repoMock, mockCache, mockHealthService, provisioning, mockTenantService);
+
+      const input = {
+        schoolProfile: { name: 'Test School', type: 'Private', curriculumId: 'federal', sections: ['A'] },
+        academicStructure: {
+          levels: [] as any[],
+          grades: [{ id: 'g1', name: 'Grade 1', levelId: 'Primary', schemeOfStudy: { subjects: [{ name: 'Math' }] } }],
+          allSubjects: [{ name: 'Math' }],
+          requiredLabs: [] as any[],
+          requiredTeachers: {} as Record<string, number>,
+        },
+      };
+
+      await expect(svc.saveAndPublishConfiguration(input, tenantId, 'user1')).rejects.toThrow('Tenant');
+      expect(mockTenantService.provisionOrRepairTenant).toHaveBeenCalledWith(tenantId, 'user1');
+      expect(provisioning.provisionFromConfiguration).not.toHaveBeenCalled();
+      expect(repoMock.publishConfiguration).not.toHaveBeenCalled();
+      expect(mockCache.invalidateConfiguration).not.toHaveBeenCalled();
+      expect(mockCache.setConfiguration).not.toHaveBeenCalled();
+    });
+
+    test('should repair tenant and continue when tenant document is missing but user owns it', async () => {
+      const repoMock = new ConfigurationRepository() as jest.Mocked<ConfigurationRepository>;
+      repoMock.publishConfiguration = jest.fn().mockImplementation((_tenantId: string, config: any) => {
+        config.state = 'Published';
+        config.metadata.isConfigured = true;
+        config.metadata.configuredAt = new Date().toISOString();
+        config.metadata.configuredBy = 'user1';
+        config.metadata.publishedAt = new Date().toISOString();
+        config.version.publishedBy = 'user1';
+        config.version.publishedAt = new Date().toISOString();
+        config.metadata.lastModified = new Date().toISOString();
+        return config;
+      });
+      repoMock.getConfiguration = jest.fn().mockResolvedValue(mockConfigData(tenantId));
+      repoMock.saveConfiguration = jest.fn().mockResolvedValue(undefined);
+      const provisioning = {
+        provisionFromConfiguration: jest.fn().mockResolvedValue({
+          academicYearId: 'ay-repaired-1',
+          sectionsCreated: 2,
+          departmentsCreated: 1,
+          warnings: [],
+        }),
+      };
+      const mockTenantService = {
+        provisionOrRepairTenant: jest.fn().mockResolvedValue({ repaired: true, reason: 'tenant_restored_from_configuration' }),
+        setupSchool: jest.fn(),
+      };
+      mockHealthService.checkHealth
+        .mockResolvedValueOnce({
+          healthy: false,
+          status: 'INVALID',
+          diagnostics: {
+            configExists: false,
+            metadataExists: false,
+            schoolProfileExists: false,
+            academicStructureExists: false,
+            isPublished: false,
+            versionValid: false,
+            tenantValid: false,
+            schemaValid: false,
+          },
+        })
+        .mockResolvedValue({
+          healthy: true,
+          status: 'CONFIGURED',
+          diagnostics: {
+            configExists: true,
+            metadataExists: true,
+            schoolProfileExists: true,
+            academicStructureExists: true,
+            isPublished: true,
+            versionValid: true,
+            tenantValid: true,
+            schemaValid: true,
+          },
+        });
+      const svc = new ConfigurationService(repoMock, mockCache, mockHealthService, provisioning, mockTenantService);
+
+      const input = {
+        schoolProfile: { name: 'Test School', type: 'Private', curriculumId: 'federal', sections: ['A'] },
+        academicStructure: {
+          levels: [] as any[],
+          grades: [{ id: 'g1', name: 'Grade 1', levelId: 'Primary', schemeOfStudy: { subjects: [{ name: 'Math' }] } }],
+          allSubjects: [{ name: 'Math' }],
+          requiredLabs: [] as any[],
+          requiredTeachers: {} as Record<string, number>,
+          departments: ['CS'],
+        },
+      };
+
+      const result = await svc.saveAndPublishConfiguration(input, tenantId, 'user1');
+
+      expect(mockTenantService.provisionOrRepairTenant).toHaveBeenCalledWith(tenantId, 'user1');
+      expect(mockHealthService.checkHealth).toHaveBeenCalledTimes(2);
+      expect(provisioning.provisionFromConfiguration).toHaveBeenCalledTimes(1);
+      expect(repoMock.publishConfiguration).toHaveBeenCalledTimes(1);
+      expect(result.state).toBe('Published');
+      expect(result.metadata.academicYearId).toBe('ay-repaired-1');
+    });
+
+    test('should not invent academic year when metadata.academicYearId is null', async () => {
+      const repoMock = new ConfigurationRepository() as jest.Mocked<ConfigurationRepository>;
+      repoMock.publishConfiguration = jest.fn().mockImplementation((_tenantId: string, config: any) => {
+        config.state = 'Published';
+        config.metadata.isConfigured = true;
+        config.metadata.configuredAt = new Date().toISOString();
+        config.metadata.configuredBy = 'user1';
+        config.metadata.publishedAt = new Date().toISOString();
+        config.version.publishedBy = 'user1';
+        config.version.publishedAt = new Date().toISOString();
+        config.metadata.lastModified = new Date().toISOString();
+        return config;
+      });
+      const existingNullAy = {
+        ...mockConfigData(tenantId),
+        metadata: { ...mockConfigData(tenantId).metadata, academicYearId: null },
+      };
+      repoMock.getConfiguration = jest.fn().mockResolvedValue(existingNullAy);
+      repoMock.saveConfiguration = jest.fn().mockResolvedValue(undefined);
+      const provisioning = {
+        provisionFromConfiguration: jest.fn().mockResolvedValue({
+          academicYearId: 'ay-newly-created',
+          sectionsCreated: 0,
+          departmentsCreated: 0,
+          warnings: [],
+        }),
+      };
+      const mockTenantService = {
+        provisionOrRepairTenant: jest.fn().mockResolvedValue({ repaired: true }),
+        setupSchool: jest.fn(),
+      };
+      mockHealthService.checkHealth
+        .mockResolvedValueOnce({
+          healthy: false,
+          status: 'INVALID',
+          diagnostics: { configExists: true, metadataExists: true, schoolProfileExists: true, academicStructureExists: true, isPublished: true, versionValid: true, tenantValid: false, schemaValid: true },
+        })
+        .mockResolvedValue({
+          healthy: true,
+          status: 'CONFIGURED',
+          diagnostics: { configExists: true, metadataExists: true, schoolProfileExists: true, academicStructureExists: true, isPublished: true, versionValid: true, tenantValid: true, schemaValid: true },
+        });
+      const svc = new ConfigurationService(repoMock, mockCache, mockHealthService, provisioning, mockTenantService);
+
+      const input = {
+        schoolProfile: { name: 'Test School', type: 'Private', curriculumId: 'federal', sections: ['A'] },
+        academicStructure: {
+          levels: [] as any[],
+          grades: [{ id: 'g1', name: 'Grade 1', levelId: 'Primary', schemeOfStudy: { subjects: [{ name: 'Math' }] } }],
+          allSubjects: [{ name: 'Math' }],
+          requiredLabs: [] as any[],
+          requiredTeachers: {} as Record<string, number>,
+        },
+      };
+
+      const result = await svc.saveAndPublishConfiguration(input, tenantId, 'user1');
+
+      expect(mockTenantService.provisionOrRepairTenant).toHaveBeenCalledWith(tenantId, 'user1');
+      expect(provisioning.provisionFromConfiguration).toHaveBeenCalledTimes(1);
+      expect(result.metadata.academicYearId).toBe('ay-newly-created');
+      expect(mockTenantService.provisionOrRepairTenant).not.toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ createAcademicYear: true })
+      );
+    });
+
+    test('should throw when tenant repair fails and tenant remains invalid', async () => {
+      const repoMock = new ConfigurationRepository() as jest.Mocked<ConfigurationRepository>;
+      repoMock.publishConfiguration = jest.fn().mockResolvedValue(undefined as any);
+      repoMock.getConfiguration = jest.fn().mockResolvedValue(null);
+      repoMock.saveConfiguration = jest.fn().mockResolvedValue(undefined);
+      const provisioning = {
+        provisionFromConfiguration: jest.fn().mockResolvedValue({
+          academicYearId: 'ay-1',
+          sectionsCreated: 0,
+          departmentsCreated: 0,
+          warnings: [],
+        }),
+      };
+      const mockTenantService = {
+        provisionOrRepairTenant: jest.fn().mockResolvedValue({ repaired: false, reason: 'config_missing' }),
+        setupSchool: jest.fn(),
+      };
+      mockHealthService.checkHealth.mockResolvedValue({
+        healthy: false,
+        status: 'INVALID',
+        diagnostics: {
+          configExists: false,
+          metadataExists: false,
+          schoolProfileExists: false,
+          academicStructureExists: false,
+          isPublished: false,
+          versionValid: false,
+          tenantValid: false,
+          schemaValid: false,
+        },
+      });
+      const svc = new ConfigurationService(repoMock, mockCache, mockHealthService, provisioning, mockTenantService);
+
+      const input = {
+        schoolProfile: { name: 'Test School', type: 'Private', curriculumId: 'federal', sections: ['A'] },
+        academicStructure: {
+          levels: [] as any[],
+          grades: [{ id: 'g1', name: 'Grade 1', levelId: 'Primary', schemeOfStudy: { subjects: [{ name: 'Math' }] } }],
+          allSubjects: [{ name: 'Math' }],
+          requiredLabs: [] as any[],
+          requiredTeachers: {} as Record<string, number>,
+        },
+      };
+
+      await expect(svc.saveAndPublishConfiguration(input, tenantId, 'user1')).rejects.toThrow('Tenant');
+      expect(mockTenantService.provisionOrRepairTenant).toHaveBeenCalledWith(tenantId, 'user1');
+      expect(provisioning.provisionFromConfiguration).not.toHaveBeenCalled();
+      expect(repoMock.publishConfiguration).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('getHealthStatus', () => {
+    test('should delegate to health service', async () => {
+      const healthResult = { healthy: true, status: 'CONFIGURED' as const, diagnostics: { configExists: true, metadataExists: true, schoolProfileExists: true, academicStructureExists: true, isPublished: true, versionValid: true, tenantValid: true, schemaValid: true } };
+
+      mockHealthService.checkHealth.mockResolvedValue(healthResult);
+
+      const result = await service.getHealthStatus(tenantId);
+
+      expect(result.healthy).toBe(true);
+      expect(result.status).toBe('CONFIGURED');
+    });
+  });
+});
+
+
+
+############################################################
+# FILE: __tests__/services/configuration-provisioning.service.test.ts
+############################################################
+
+import { ConfigurationProvisioningService } from "@/services/configuration-provisioning.service";
+import { AcademicYearRepository } from "@/repositories/academic-year.repository";
+import { SectionRepository } from "@/repositories/section.repository";
+import { DepartmentRepository } from "@/repositories/department.repository";
+
+jest.mock("@/repositories/academic-year.repository");
+jest.mock("@/repositories/section.repository");
+jest.mock("@/repositories/department.repository");
+
+describe("ConfigurationProvisioningService", () => {
+  let service: ConfigurationProvisioningService;
+  let mockAcademicYearRepo: jest.Mocked<AcademicYearRepository>;
+  let mockSectionRepo: jest.Mocked<SectionRepository>;
+  let mockDepartmentRepo: jest.Mocked<DepartmentRepository>;
+  const tenantId = "test-tenant";
+  const userId = "user-1";
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockAcademicYearRepo = new AcademicYearRepository() as jest.Mocked<AcademicYearRepository>;
+    mockSectionRepo = new SectionRepository() as jest.Mocked<SectionRepository>;
+    mockDepartmentRepo = new DepartmentRepository() as jest.Mocked<DepartmentRepository>;
+    service = new ConfigurationProvisioningService(mockAcademicYearRepo, mockSectionRepo, mockDepartmentRepo);
+  });
+
+  const baseConfig = (overrides?: Partial<import("@/types/configuration").MasterSchoolConfiguration>): import("@/types/configuration").MasterSchoolConfiguration => ({
+    id: "current",
+    tenantId,
+    state: "Published",
+    metadata: {
+      tenantId,
+      schemaVersion: 2,
+      configurationVersion: 1,
+      environment: "development",
+      region: "default",
+      timezone: "UTC",
+      academicYearId: null,
+      currentSnapshotId: null,
+      isConfigured: true,
+      configuredAt: new Date().toISOString(),
+      configuredBy: userId,
+      lastModified: new Date().toISOString(),
+    },
+    version: {
+      id: "v_1",
+      number: 1,
+      createdBy: userId,
+      createdAt: new Date().toISOString(),
+      publishedBy: userId,
+      publishedAt: new Date().toISOString(),
+      reason: "Initial",
+      checksum: "ck_123",
+    },
+    school: {
+      name: "Test School",
+      type: "Private",
+      curriculumId: "federal",
+      boardName: "FBISE",
+      country: "PK",
+    },
+    academic: {
+      levels: ["Primary"],
+      classes: [
+        { id: "cls_1", name: "Grade 1", level: "Primary", subjects: ["Math", "English"] },
+        { id: "cls_2", name: "Grade 2", level: "Primary", subjects: ["Math", "English"] },
+      ],
+      sectionNames: ["A", "B"],
+      subjects: ["Math", "English"],
+      requiredLabs: [],
+      requiredTeachers: {},
+      departments: ["Computer Science", "Mathematics"],
+    },
+    features: {
+      ai: { enabled: true, version: "1.0", permissions: ["admin"], beta: false, providers: ["gemini"], activeProvider: "gemini", quota: 1000 },
+      library: { enabled: true, version: "1.0", permissions: ["admin"], beta: false },
+      transport: { enabled: false, version: "1.0", permissions: ["admin"], beta: false },
+      fees: { enabled: true, version: "1.0", permissions: ["admin"], beta: false },
+      attendance: { enabled: true, version: "1.0", permissions: ["admin"], beta: false },
+      exams: { enabled: true, version: "1.0", permissions: ["admin"], beta: false },
+    },
+    ...overrides,
+  });
+
+  describe("provisionFromConfiguration", () => {
+    test("should provision academic year, sections, and departments", async () => {
+      mockAcademicYearRepo.findAllByTenant.mockResolvedValue([]);
+      mockAcademicYearRepo.createIfAbsentByName.mockResolvedValue("ay-new-1");
+      mockSectionRepo.findAllActive.mockResolvedValue([]);
+      mockSectionRepo.createMissingSections.mockResolvedValue(4);
+      mockDepartmentRepo.getAll.mockResolvedValue([]);
+      mockDepartmentRepo.createAbsentByName.mockResolvedValue({ id: "dept-1", created: true });
+
+      const result = await service.provisionFromConfiguration(tenantId, baseConfig(), userId);
+
+      expect(result.academicYearId).toBe("ay-new-1");
+      expect(result.sectionsCreated).toBe(4);
+      expect(result.departmentsCreated).toBe(2);
+      expect(result.warnings).toHaveLength(0);
+    });
+
+    test("should reuse existing current academic year", async () => {
+      mockAcademicYearRepo.findAllByTenant.mockResolvedValue([
+        { id: "ay-existing", name: "2024-2025", isCurrent: true, tenantId } as any,
+      ]);
+      mockSectionRepo.findAllActive.mockResolvedValue([]);
+      mockSectionRepo.createMissingSections.mockResolvedValue(0);
+      mockDepartmentRepo.getAll.mockResolvedValue([]);
+      mockDepartmentRepo.createAbsentByName.mockResolvedValue({ id: "dept-1", created: true });
+
+      const result = await service.provisionFromConfiguration(tenantId, baseConfig(), userId);
+
+      expect(result.academicYearId).toBe("ay-existing");
+      expect(mockAcademicYearRepo.createIfAbsentByName).not.toHaveBeenCalled();
+    });
+
+    test("should set most recent AY as current if none is current", async () => {
+      mockAcademicYearRepo.findAllByTenant.mockResolvedValue([
+        { id: "ay-old", name: "2023-2024", isCurrent: false, tenantId, startDate: "2023-04-01" } as any,
+      ]);
+      mockAcademicYearRepo.setCurrent.mockResolvedValue(undefined);
+      mockSectionRepo.findAllActive.mockResolvedValue([]);
+      mockSectionRepo.createMissingSections.mockResolvedValue(0);
+      mockDepartmentRepo.getAll.mockResolvedValue([]);
+      mockDepartmentRepo.createAbsentByName.mockResolvedValue({ id: "dept-1", created: true });
+
+      const result = await service.provisionFromConfiguration(tenantId, baseConfig(), userId);
+
+      expect(result.academicYearId).toBe("ay-old");
+      expect(mockAcademicYearRepo.setCurrent).toHaveBeenCalledWith("ay-old", tenantId);
+    });
+
+    test("should skip sections when no classes exist", async () => {
+      mockAcademicYearRepo.findAllByTenant.mockResolvedValue([]);
+      mockAcademicYearRepo.createIfAbsentByName.mockResolvedValue("ay-1");
+      mockSectionRepo.findAllActive.mockResolvedValue([]);
+      mockSectionRepo.createMissingSections.mockResolvedValue(0);
+      mockDepartmentRepo.getAll.mockResolvedValue([]);
+      mockDepartmentRepo.createAbsentByName.mockResolvedValue({ id: "dept-1", created: true });
+
+      const config = baseConfig();
+      config.academic.classes = [];
+      const result = await service.provisionFromConfiguration(tenantId, config, userId);
+
+      expect(result.sectionsCreated).toBe(0);
+      expect(mockSectionRepo.createMissingSections).not.toHaveBeenCalled();
+    });
+
+    test("should skip departments when none configured", async () => {
+      mockAcademicYearRepo.findAllByTenant.mockResolvedValue([]);
+      mockAcademicYearRepo.createIfAbsentByName.mockResolvedValue("ay-1");
+      mockSectionRepo.findAllActive.mockResolvedValue([]);
+      mockSectionRepo.createMissingSections.mockResolvedValue(4);
+      mockDepartmentRepo.getAll.mockResolvedValue([]);
+
+      const config = baseConfig();
+      config.academic.departments = [];
+      const result = await service.provisionFromConfiguration(tenantId, config, userId);
+
+      expect(result.departmentsCreated).toBe(0);
+      expect(mockDepartmentRepo.createAbsentByName).not.toHaveBeenCalled();
+    });
+
+    test("should skip departments when config has no departments field", async () => {
+      mockAcademicYearRepo.findAllByTenant.mockResolvedValue([]);
+      mockAcademicYearRepo.createIfAbsentByName.mockResolvedValue("ay-1");
+      mockSectionRepo.findAllActive.mockResolvedValue([]);
+      mockSectionRepo.createMissingSections.mockResolvedValue(4);
+      mockDepartmentRepo.getAll.mockResolvedValue([]);
+
+      const config = baseConfig();
+      delete (config.academic as any).departments;
+      const result = await service.provisionFromConfiguration(tenantId, config, userId);
+
+      expect(result.departmentsCreated).toBe(0);
+      expect(mockDepartmentRepo.createAbsentByName).not.toHaveBeenCalled();
+    });
+
+    test("fails provisioning rather than returning a false successful configuration", async () => {
+      mockAcademicYearRepo.findAllByTenant.mockResolvedValue([]);
+      mockAcademicYearRepo.createIfAbsentByName.mockRejectedValue(new Error("AY failed"));
+      mockSectionRepo.findAllActive.mockResolvedValue([]);
+      mockSectionRepo.createMissingSections.mockResolvedValue(4);
+      mockDepartmentRepo.getAll.mockResolvedValue([]);
+      mockDepartmentRepo.createAbsentByName.mockResolvedValue({ id: "dept-1", created: true });
+
+      await expect(service.provisionFromConfiguration(tenantId, baseConfig(), userId)).rejects.toThrow("AY failed");
+      expect(mockSectionRepo.createMissingSections).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("academicYearId handoff contract", () => {
+    test("provisioning returns academicYearId as the sole handoff seam for Phase 3", async () => {
+      mockAcademicYearRepo.findAllByTenant.mockResolvedValue([
+        { id: "ay-current", name: "2024-2025", isCurrent: true, tenantId } as any,
+      ]);
+      mockSectionRepo.findAllActive.mockResolvedValue([]);
+      mockSectionRepo.createMissingSections.mockResolvedValue(0);
+      mockDepartmentRepo.getAll.mockResolvedValue([]);
+      mockDepartmentRepo.createAbsentByName.mockResolvedValue({ id: "dept-1", created: true });
+
+      const config = baseConfig();
+      const result = await service.provisionFromConfiguration(tenantId, config, userId);
+
+      expect(result.academicYearId).toBe("ay-current");
+      expect(result.academicYearId).not.toBeNull();
+    });
+
+    test("service does NOT persist academicYearId into config.metadata (Phase 3 responsibility)", async () => {
+      mockAcademicYearRepo.findAllByTenant.mockResolvedValue([]);
+      mockAcademicYearRepo.createIfAbsentByName.mockResolvedValue("ay-new-1");
+      mockSectionRepo.findAllActive.mockResolvedValue([]);
+      mockSectionRepo.createMissingSections.mockResolvedValue(0);
+      mockDepartmentRepo.getAll.mockResolvedValue([]);
+      mockDepartmentRepo.createAbsentByName.mockResolvedValue({ id: "dept-1", created: true });
+
+      const config = baseConfig();
+      const result = await service.provisionFromConfiguration(tenantId, config, userId);
+
+      expect(result.academicYearId).toBe("ay-new-1");
+      expect(config.metadata.academicYearId).toBeNull();
+    });
+  });
+});
+
+
+
+############################################################
+# FILE: __tests__/services/tenant.service.test.ts
+############################################################
+
+import { TenantService } from "@/services/tenant.service";
+import { TenantRepository } from "@/repositories/tenant.repository";
+import { ConfigurationRepository } from "@/repositories/configuration.repository";
+
+jest.mock("@/repositories/tenant.repository");
+jest.mock("@/repositories/configuration.repository");
+jest.mock("@/lib/logger/logger", () => ({
+  logger: { info: jest.fn(), error: jest.fn(), warn: jest.fn(), debug: jest.fn() },
+}));
+
+describe("TenantService.provisionOrRepairTenant", () => {
+  let service: TenantService;
+  let mockTenantRepo: jest.Mocked<TenantRepository>;
+  let mockConfigRepo: jest.Mocked<ConfigurationRepository>;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockTenantRepo = new TenantRepository() as jest.Mocked<TenantRepository>;
+    mockConfigRepo = new ConfigurationRepository() as jest.Mocked<ConfigurationRepository>;
+    service = new TenantService();
+    (service as any).tenantRepo = mockTenantRepo;
+    (service as any).configRepo = mockConfigRepo;
+  });
+
+  test("should return no-op when tenant document already exists", async () => {
+    mockTenantRepo.verifyTenantExists.mockResolvedValue(true);
+
+    const result = await service.provisionOrRepairTenant("tenant_123", "user_abc");
+
+    expect(result.repaired).toBe(false);
+    expect(result.reason).toBe("tenant_already_exists");
+    expect(mockTenantRepo.restoreTenant).not.toHaveBeenCalled();
+  });
+
+  test("should repair tenant when user owns it and config is valid", async () => {
+    mockTenantRepo.verifyTenantExists.mockResolvedValue(false);
+    mockTenantRepo.verifyUserTenantAssociation.mockResolvedValue(true);
+    mockConfigRepo.getConfiguration.mockResolvedValue({
+      id: "config",
+      tenantId: "tenant_123",
+      state: "Published",
+      school: { name: "Legacy School", type: "Private", curriculumId: "federal", boardName: "FBISE", country: "PK" },
+      metadata: { tenantId: "tenant_123", schemaVersion: 2, configurationVersion: 1, academicYearId: null, lastModified: "2026-01-01T00:00:00Z", configuredBy: "original_owner" },
+      version: { number: 1, createdAt: "2026-01-01T00:00:00Z", createdBy: "original_owner" },
+      academic: { levels: [], classes: [], sectionNames: ["A"], subjects: [] },
+      features: {},
+    } as any);
+
+    const result = await service.provisionOrRepairTenant("tenant_123", "user_abc");
+
+    expect(result.repaired).toBe(true);
+    expect(result.reason).toBe("tenant_restored_from_configuration");
+    expect(mockTenantRepo.restoreTenant).toHaveBeenCalledWith("tenant_123", expect.objectContaining({
+      name: "Legacy School",
+      type: "Private",
+      curriculum: "federal",
+      ownerId: "original_owner",
+      status: "active",
+    }));
+  });
+
+  test("should preserve original ownership from configuration, not the requesting user", async () => {
+    mockTenantRepo.verifyTenantExists.mockResolvedValue(false);
+    mockTenantRepo.verifyUserTenantAssociation.mockResolvedValue(true);
+    mockConfigRepo.getConfiguration.mockResolvedValue({
+      id: "config",
+      tenantId: "tenant_123",
+      state: "Published",
+      school: { name: "Legacy School", type: "Private", curriculumId: "federal", boardName: "FBISE", country: "PK" },
+      metadata: { tenantId: "tenant_123", schemaVersion: 2, configurationVersion: 1, academicYearId: null, lastModified: "2026-01-01T00:00:00Z", configuredBy: "configuring_user" },
+      version: { number: 1, createdAt: "2026-01-01T00:00:00Z", createdBy: "version_creator" },
+      academic: { levels: [], classes: [], sectionNames: ["A"], subjects: [] },
+      features: {},
+    } as any);
+
+    const result = await service.provisionOrRepairTenant("tenant_123", "requesting_user");
+
+    expect(result.repaired).toBe(true);
+    expect(mockTenantRepo.restoreTenant).toHaveBeenCalledWith("tenant_123", expect.objectContaining({
+      ownerId: "configuring_user",
+    }));
+    expect(mockTenantRepo.restoreTenant).not.toHaveBeenCalledWith("tenant_123", expect.objectContaining({
+      ownerId: "requesting_user",
+    }));
+  });
+
+  test("should fall back to version.createdBy when metadata.configuredBy is absent", async () => {
+    mockTenantRepo.verifyTenantExists.mockResolvedValue(false);
+    mockTenantRepo.verifyUserTenantAssociation.mockResolvedValue(true);
+    mockConfigRepo.getConfiguration.mockResolvedValue({
+      id: "config",
+      tenantId: "tenant_123",
+      state: "Published",
+      school: { name: "Legacy School", type: "Private", curriculumId: "federal", boardName: "FBISE", country: "PK" },
+      metadata: { tenantId: "tenant_123", schemaVersion: 2, configurationVersion: 1, academicYearId: null, lastModified: "2026-01-01T00:00:00Z" },
+      version: { number: 1, createdAt: "2026-01-01T00:00:00Z", createdBy: "version_creator" },
+      academic: { levels: [], classes: [], sectionNames: ["A"], subjects: [] },
+      features: {},
+    } as any);
+
+    const result = await service.provisionOrRepairTenant("tenant_123", "requesting_user");
+
+    expect(result.repaired).toBe(true);
+    expect(mockTenantRepo.restoreTenant).toHaveBeenCalledWith("tenant_123", expect.objectContaining({
+      ownerId: "version_creator",
+    }));
+  });
+
+  test("should reject repair when user is not associated with tenantId", async () => {
+    mockTenantRepo.verifyTenantExists.mockResolvedValue(false);
+    mockTenantRepo.verifyUserTenantAssociation.mockResolvedValue(false);
+
+    const result = await service.provisionOrRepairTenant("tenant_123", "user_abc");
+
+    expect(result.repaired).toBe(false);
+    expect(result.reason).toBe("user_not_associated");
+    expect(mockTenantRepo.restoreTenant).not.toHaveBeenCalled();
+  });
+
+  test("should reject repair when settings/config does not exist", async () => {
+    mockTenantRepo.verifyTenantExists.mockResolvedValue(false);
+    mockTenantRepo.verifyUserTenantAssociation.mockResolvedValue(true);
+    mockConfigRepo.getConfiguration.mockResolvedValue(null);
+
+    const result = await service.provisionOrRepairTenant("tenant_123", "user_abc");
+
+    expect(result.repaired).toBe(false);
+    expect(result.reason).toBe("config_missing");
+    expect(mockTenantRepo.restoreTenant).not.toHaveBeenCalled();
+  });
+
+  test("should reject repair when config is malformed (missing school name)", async () => {
+    mockTenantRepo.verifyTenantExists.mockResolvedValue(false);
+    mockTenantRepo.verifyUserTenantAssociation.mockResolvedValue(true);
+    mockConfigRepo.getConfiguration.mockResolvedValue({
+      id: "config",
+      tenantId: "tenant_123",
+      state: "Published",
+      school: { name: "", type: "Private", curriculumId: "" },
+      metadata: { tenantId: "tenant_123", schemaVersion: 2, configurationVersion: 1 },
+      version: { number: 1, createdAt: "2026-01-01T00:00:00Z" },
+      academic: { levels: [], classes: [], sectionNames: [], subjects: [] },
+      features: {},
+    } as any);
+
+    const result = await service.provisionOrRepairTenant("tenant_123", "user_abc");
+
+    expect(result.repaired).toBe(false);
+    expect(result.reason).toBe("config_malformed");
+    expect(mockTenantRepo.restoreTenant).not.toHaveBeenCalled();
+  });
+
+  test("should not manufacture an academic year during repair", async () => {
+    mockTenantRepo.verifyTenantExists.mockResolvedValue(false);
+    mockTenantRepo.verifyUserTenantAssociation.mockResolvedValue(true);
+    mockConfigRepo.getConfiguration.mockResolvedValue({
+      id: "config",
+      tenantId: "tenant_123",
+      state: "Published",
+      school: { name: "Test School", type: "Private", curriculumId: "federal" },
+      metadata: { tenantId: "tenant_123", schemaVersion: 2, configurationVersion: 1, academicYearId: null, configuredBy: "original_owner" },
+      version: { number: 1, createdAt: "2026-01-01T00:00:00Z", createdBy: "original_owner" },
+      academic: { levels: [], classes: [], sectionNames: ["A"], subjects: [] },
+      features: {},
+    } as any);
+
+    await service.provisionOrRepairTenant("tenant_123", "user_abc");
+
+    expect(mockTenantRepo.restoreTenant).toHaveBeenCalledWith(
+      "tenant_123",
+      expect.objectContaining({ name: "Test School", status: "active", ownerId: "original_owner" })
+    );
+  });
+});
+
+
+
+############################################################
+# FILE: __tests__/api/settings/school-configuration.test.ts
+############################################################
+
+import { NextRequest } from "next/server";
+import { withAuth, withTenant, withErrorHandler } from "@/route-helpers";
+import type { TenantContext } from "@/types/api";
+
+jest.mock('@/services/configuration.service', () => ({
+  configurationService: {
+    loadConfiguration: jest.fn(),
+    getConfigurationViewModel: jest.fn(),
+    getConfigurationHistoryViewModel: jest.fn(),
+    saveAndPublishConfiguration: jest.fn(),
+  },
+}));
+
+jest.mock('@/services/configuration-cache.service', () => ({
+  configurationCacheService: {
+    getConfiguration: jest.fn(),
+    setConfiguration: jest.fn(),
+    invalidateConfiguration: jest.fn(),
+  },
+}));
+
+jest.mock('@/lib/auth/auth-server', () => ({
+  getSessionUser: jest.fn(),
+}));
+
+jest.mock('@/lib/api/response', () => ({
+  createSuccessResponse: jest.fn((data) => new Response(JSON.stringify(data), { status: 200, headers: { 'Content-Type': 'application/json' } })),
+  createErrorResponse: jest.fn((status: number, message: string, errors?: any) => new Response(JSON.stringify({ success: false, error: message, errors }), { status, headers: { 'Content-Type': 'application/json' } })),
+}));
+
+const mockConfigurationService = require("@/services/configuration.service").configurationService;
+const mockCacheService = require("@/services/configuration-cache.service").configurationCacheService;
+const { getSessionUser } = require("@/lib/auth/auth-server");
+
+describe('School Configuration Route', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  describe('GET /api/v1/settings/school-configuration', () => {
+    const user = { uid: 'uid1', email: 'admin@test.com', role: 'admin', tenantId: 'tenant_1' };
+    const tenantId = 'tenant_1';
+
+    test('should return NOT_CONFIGURED status when config does not exist', async () => {
+      mockConfigurationService.loadConfiguration.mockResolvedValue({
+        status: 'NOT_CONFIGURED',
+        configuration: null,
+        diagnostics: {
+          configExists: false,
+          metadataExists: false,
+          schoolProfileExists: false,
+          academicStructureExists: false,
+          isPublished: false,
+          versionValid: false,
+          tenantValid: true,
+          schemaValid: false,
+        },
+        nextAction: 'Create configuration via Smart Setup Wizard',
+      });
+
+      const handler = () => Promise.resolve({ ok: true });
+      const wrapped = withErrorHandler(withAuth(withTenant(handler)));
+
+      const req = new NextRequest('http://localhost/api/v1/settings/school-configuration', { method: 'GET' });
+
+      const result = await wrapped(req as any, { user });
+      expect(true).toBe(true);
+    });
+
+    test('should return configuration when it exists', async () => {
+      mockConfigurationService.loadConfiguration.mockResolvedValue({
+        status: 'CONFIGURED',
+        configuration: {
+          id: 'config',
+          tenantId,
+          state: 'Published',
+          school: { name: 'Test School' },
+        },
+        diagnostics: {
+          configExists: true,
+          metadataExists: true,
+          schoolProfileExists: true,
+          academicStructureExists: true,
+          isPublished: true,
+          versionValid: true,
+          tenantValid: true,
+          schemaValid: true,
+        },
+      });
+
+      mockConfigurationService.getConfigurationViewModel.mockResolvedValue({
+        id: 'config',
+        schoolName: 'Test School',
+      } as any);
+      mockConfigurationService.getConfigurationHistoryViewModel.mockResolvedValue([]);
+
+      const handler = () => Promise.resolve({ ok: true });
+      const wrapped = withErrorHandler(withAuth(withTenant(handler)));
+
+      const req = new NextRequest('http://localhost/api/v1/settings/school-configuration', { method: 'GET' });
+      const result = await wrapped(req as any, { user });
+      expect(true).toBe(true);
+    });
+  });
+
+  describe('POST /api/v1/settings/school-configuration', () => {
+    beforeEach(() => {
+      jest.clearAllMocks();
+    });
+
+    test('should publish configuration on valid input', async () => {
+      const user = { uid: 'uid1', email: 'admin@test.com', role: 'admin', tenantId: 'tenant_1' };
+      const publishedConfig = { id: 'current', tenantId: 'tenant_1', state: 'Published' };
+
+      getSessionUser.mockResolvedValue(user);
+      mockConfigurationService.saveAndPublishConfiguration.mockResolvedValue(publishedConfig as any);
+
+      const handler = async (_req: Request, context: any) => {
+        expect(context.tenantId).toBe('tenant_1');
+        const result = await mockConfigurationService.saveAndPublishConfiguration(
+          { schoolProfile: { name: 'Test', type: 'Private', curriculumId: 'c1' }, academicStructure: { grades: [{ name: 'G1', schemeOfStudy: { subjects: [] } }], allSubjects: ['Math'] } },
+          context.tenantId,
+          context.user.uid
+        );
+        return result;
+      };
+
+      const wrapped = withErrorHandler(withAuth(withTenant(handler)));
+      const req = new NextRequest('http://localhost/api/v1/settings/school-configuration', { method: 'POST' });
+      const result = await wrapped(req as any, { user });
+      expect(result).toBeDefined();
+    });
+
+    test('should publish successfully after tenant repair (orphan tenant)', async () => {
+      const user = { uid: 'uid-school', email: 'admin@school.com', role: 'admin', tenantId: 'school_zaqbuimg5' };
+      const publishedConfig = { id: 'current', tenantId: 'school_zaqbuimg5', state: 'Published' };
+
+      getSessionUser.mockResolvedValue(user);
+      mockConfigurationService.saveAndPublishConfiguration.mockResolvedValue(publishedConfig as any);
+
+      const handler = async (_req: Request, context: any) => {
+        expect(context.tenantId).toBe('school_zaqbuimg5');
+        const result = await mockConfigurationService.saveAndPublishConfiguration(
+          { schoolProfile: { name: 'Legacy School', type: 'Private', curriculumId: 'federal', sections: ['A'] }, academicStructure: { grades: [{ name: 'G1', schemeOfStudy: { subjects: [] } }], allSubjects: [{ name: 'Math' }] } },
+          context.tenantId,
+          context.user.uid
+        );
+        return result;
+      };
+
+      const wrapped = withErrorHandler(withAuth(withTenant(handler)));
+      const req = new NextRequest('http://localhost:3000/api/v1/settings/school-configuration', { method: 'POST' });
+      const result = await wrapped(req as any, { user });
+
+      expect(mockConfigurationService.saveAndPublishConfiguration).toHaveBeenCalledWith(
+        expect.anything(),
+        'school_zaqbuimg5',
+        'uid-school'
+      );
+      expect(result).toBeDefined();
+    });
+
+    test('should reject publish for unrelated tenant', async () => {
+      const user = { uid: 'uid-other', email: 'admin@other.com', role: 'admin', tenantId: 'school_other' };
+
+      getSessionUser.mockResolvedValue(user);
+      mockConfigurationService.saveAndPublishConfiguration.mockRejectedValue(
+        new Error('Tenant school_zaqbuimg5 does not exist or is invalid. Configuration cannot be published.')
+      );
+
+      const handler = async (_req: Request, context: any) => {
+        const result = await mockConfigurationService.saveAndPublishConfiguration(
+          { schoolProfile: { name: 'Test', type: 'Private', curriculumId: 'c1', sections: ['A'] }, academicStructure: { grades: [{ name: 'G1', schemeOfStudy: { subjects: [] } }], allSubjects: [{ name: 'Math' }] } },
+          'school_zaqbuimg5',
+          context.user.uid
+        );
+        return result;
+      };
+
+      const wrapped = withErrorHandler(withAuth(withTenant(handler)));
+      const req = new NextRequest('http://localhost:3000/api/v1/settings/school-configuration', { method: 'POST' });
+
+      const result = await wrapped(req as any, { user });
+      expect(mockConfigurationService.saveAndPublishConfiguration).toHaveBeenCalledWith(
+        expect.anything(),
+        'school_zaqbuimg5',
+        'uid-other'
+      );
+    });
+  });
+});
+
+
+
+############################################################
+# FILE: repositories/configuration.repository.test.ts
+############################################################
+
+import { ConfigurationRepository } from '@/repositories/configuration.repository';
+import { createFirestoreTestFactory } from '@/__tests__/utils/firestore-mock';
+
+jest.mock('@/lib/firebase-admin', () => {
+  const { createFirestoreTestFactory } = require('@/__tests__/utils/firestore-mock');
+  return createFirestoreTestFactory();
+});
+
+jest.mock('@/lib/mappers/configuration.mapper', () => ({
+  mapToMasterConfiguration: jest.fn((data, tenantId) => ({ ...data, tenantId })),
+  mapToDbDocument: jest.fn((config) => config),
+}));
+
+jest.mock('@/lib/logger/logger', () => ({
+  logger: {
+    info: jest.fn(),
+    error: jest.fn(),
+    warn: jest.fn(),
+  },
+}));
+
+describe('ConfigurationRepository', () => {
+  let repo: ConfigurationRepository;
+  const tenantId = 'test-tenant';
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    repo = new ConfigurationRepository();
+  });
+
+  describe('Configuration CRUD', () => {
+    test('should get configuration by tenant ID', async () => {
+      const { adminDb } = require('@/lib/firebase-admin');
+      adminDb.collection.mockReturnValue({
+        doc: jest.fn().mockReturnValue({
+          collection: jest.fn().mockReturnValue({
+            doc: jest.fn().mockReturnValue({
+              get: jest.fn().mockResolvedValue({
+                exists: true,
+                id: 'config',
+                data: () => ({
+                  id: 'config',
+                  tenantId,
+                  state: 'Published',
+                  metadata: { tenantId, configurationVersion: 1, schemaVersion: 2, lastModified: new Date().toISOString() },
+                  version: { number: 1, createdBy: 'user1', createdAt: new Date().toISOString(), reason: 'Initial' },
+                  school: { name: 'Test School', type: 'Private', curriculumId: 'c1', boardName: 'FBISE', country: 'PK' },
+                  academic: { levels: [], classes: [], sectionNames: [], subjects: [], requiredLabs: [], requiredTeachers: {} },
+                  features: { ai: { enabled: true }, library: { enabled: true } },
+                }),
+              }),
+            }),
+          }),
+        }),
+      });
+
+      const config = await repo.getConfiguration(tenantId);
+      expect(config).not.toBeNull();
+      expect(config!.school.name).toBe('Test School');
+    });
+
+    test('should return null for non-existent configuration', async () => {
+      const { adminDb } = require('@/lib/firebase-admin');
+      adminDb.collection.mockReturnValue({
+        doc: jest.fn().mockReturnValue({
+          collection: jest.fn().mockReturnValue({
+            doc: jest.fn().mockReturnValue({
+              get: jest.fn().mockResolvedValue({ exists: false, data: () => null }),
+            }),
+          }),
+        }),
+      });
+
+      const config = await repo.getConfiguration(tenantId);
+      expect(config).toBeNull();
+    });
+
+    test('should save configuration', async () => {
+      const { adminDb } = require('@/lib/firebase-admin');
+      const mockDocRef = {
+        set: jest.fn().mockResolvedValue(undefined),
+      };
+      adminDb.collection.mockReturnValue({
+        doc: jest.fn().mockReturnValue({
+          collection: jest.fn().mockReturnValue({
+            doc: jest.fn().mockReturnValue(mockDocRef),
+          }),
+        }),
+      });
+
+      const mockConfig = {
+        id: 'current',
+        tenantId,
+        state: 'Published',
+        metadata: { tenantId, configurationVersion: 1, schemaVersion: 2, lastModified: new Date().toISOString() },
+        version: { number: 1, createdBy: 'user1', createdAt: new Date().toISOString(), reason: 'Initial' },
+        school: { name: 'Test', type: 'Private', curriculumId: 'c1', boardName: 'B', country: 'PK' },
+        academic: { levels: [''], classes: [], sectionNames: [''], subjects: [''], requiredLabs: [], requiredTeachers: {} },
+        features: { ai: { enabled: true } },
+      };
+
+      await repo.saveConfiguration(tenantId, mockConfig as any);
+      expect(mockDocRef.set).toHaveBeenCalled();
+    });
+
+    test('should update configuration', async () => {
+      const { adminDb } = require('@/lib/firebase-admin');
+      const mockDocRef = {
+        get: jest.fn().mockResolvedValue({
+          exists: true,
+          id: 'config',
+          data: () => ({
+            id: 'config',
+            tenantId,
+            state: 'Published',
+            metadata: { tenantId, configurationVersion: 1 },
+            version: { number: 1 },
+            school: { name: 'Test' },
+            academic: { levels: [], classes: [], sectionNames: [], subjects: [], requiredLabs: [], requiredTeachers: {} },
+            features: {},
+          }),
+        }),
+        set: jest.fn().mockResolvedValue(undefined),
+      };
+      adminDb.collection.mockReturnValue({
+        doc: jest.fn().mockReturnValue({
+          collection: jest.fn().mockReturnValue({
+            doc: jest.fn().mockReturnValue(mockDocRef),
+          }),
+        }),
+      });
+
+      const result = await repo.updateConfiguration(tenantId, { state: 'Locked' } as any);
+      expect(result.tenantId).toBe(tenantId);
+    });
+
+    test('should publish configuration', async () => {
+      const { adminDb } = require('@/lib/firebase-admin');
+      const mockConfigDocRef = {
+        set: jest.fn().mockResolvedValue(undefined),
+      };
+      const mockHistoryDocRef = {
+        set: jest.fn().mockResolvedValue(undefined),
+      };
+
+      adminDb.collection.mockReturnValue({
+        doc: jest.fn().mockReturnValue({
+          collection: jest.fn((collectionName: string) => {
+            if (collectionName === 'settings') {
+              return {
+                doc: jest.fn().mockReturnValue({
+                  ...mockConfigDocRef,
+                  collection: jest.fn().mockReturnValue({
+                    doc: jest.fn().mockReturnValue(mockHistoryDocRef),
+                  }),
+                }),
+              };
+            }
+            return {
+              doc: jest.fn().mockReturnValue(mockHistoryDocRef),
+            };
+          }),
+        }),
+      });
+
+      const mockConfig = {
+        id: 'current',
+        tenantId,
+        state: 'Draft',
+        metadata: { tenantId, configurationVersion: 0, schemaVersion: 2, lastModified: new Date().toISOString() },
+        version: { number: 0, createdBy: 'user1', createdAt: new Date().toISOString(), reason: 'Initial' },
+        school: { name: 'Test', type: 'Private', curriculumId: 'c1', boardName: 'B', country: 'PK' },
+        academic: { levels: [], classes: [], sectionNames: [], subjects: [], requiredLabs: [], requiredTeachers: {} },
+        features: { ai: { enabled: true } },
+      };
+
+      const result = await repo.publishConfiguration(tenantId, mockConfig as any, 'user1');
+      expect(result.state).toBe('Published');
+      expect(result.metadata.isConfigured).toBe(true);
+      expect(result.metadata.configuredBy).toBe('user1');
+    });
+
+    test('should delete configuration', async () => {
+      const { adminDb } = require('@/lib/firebase-admin');
+      const mockDocRef = {
+        delete: jest.fn().mockResolvedValue(undefined),
+      };
+      adminDb.collection.mockReturnValue({
+        doc: jest.fn().mockReturnValue({
+          collection: jest.fn().mockReturnValue({
+            doc: jest.fn().mockReturnValue(mockDocRef),
+          }),
+        }),
+      });
+
+      await repo.deleteConfiguration(tenantId);
+      expect(mockDocRef.delete).toHaveBeenCalled();
+    });
+
+    test('should check configuration exists', async () => {
+      const { adminDb } = require('@/lib/firebase-admin');
+      adminDb.collection.mockReturnValue({
+        doc: jest.fn().mockReturnValue({
+          collection: jest.fn().mockReturnValue({
+            doc: jest.fn().mockReturnValue({
+              get: jest.fn().mockResolvedValue({ exists: true, data: () => ({}) }),
+            }),
+          }),
+        }),
+      });
+
+      const exists = await repo.configurationExists(tenantId);
+      expect(exists).toBe(true);
+    });
+  });
+
+  describe('Configuration History', () => {
+    test('should get configuration history', async () => {
+      const { adminDb } = require('@/lib/firebase-admin');
+      adminDb.collection.mockReturnValue({
+        doc: jest.fn().mockReturnValue({
+          collection: jest.fn((collectionName: string) => {
+            if (collectionName === 'settings') {
+              return {
+                doc: jest.fn().mockReturnValue({
+                  collection: jest.fn().mockReturnValue({
+                    orderBy: jest.fn().mockReturnThis(),
+                    limit: jest.fn().mockReturnThis(),
+                    get: jest.fn().mockResolvedValue({
+                      docs: [
+                        { id: 'h1', data: () => ({ version: { number: 2 } }) },
+                        { id: 'h2', data: () => ({ version: { number: 1 } }) },
+                      ],
+                    }),
+                  }),
+                }),
+              };
+            }
+            return {
+              orderBy: jest.fn().mockReturnThis(),
+              limit: jest.fn().mockReturnThis(),
+              get: jest.fn().mockResolvedValue({
+                docs: [
+                  { id: 'h1', data: () => ({ version: { number: 2 } }) },
+                  { id: 'h2', data: () => ({ version: { number: 1 } }) },
+                ],
+              }),
+            };
+          }),
+        }),
+      });
+
+      const history = await repo.getConfigurationHistory(tenantId, 50);
+      expect(history).toHaveLength(2);
+    });
+
+    test('should return empty history on error', async () => {
+      const { adminDb } = require('@/lib/firebase-admin');
+      adminDb.collection.mockReturnValue({
+        doc: jest.fn().mockReturnValue({
+          collection: jest.fn((collectionName: string) => {
+            if (collectionName === 'settings') {
+              return {
+                doc: jest.fn().mockReturnValue({
+                  collection: jest.fn().mockReturnValue({
+                    orderBy: jest.fn().mockReturnThis(),
+                    limit: jest.fn().mockReturnThis(),
+                    get: jest.fn().mockRejectedValue(new Error('Firestore error')),
+                  }),
+                }),
+              };
+            }
+            return {
+              orderBy: jest.fn().mockReturnThis(),
+              limit: jest.fn().mockReturnThis(),
+              get: jest.fn().mockRejectedValue(new Error('Firestore error')),
+            };
+          }),
+        }),
+      });
+
+      const history = await repo.getConfigurationHistory(tenantId);
+      expect(history).toEqual([]);
+    });
+  });
+
+  describe('Tenant Metadata', () => {
+    test('should get tenant metadata', async () => {
+      const { adminDb } = require('@/lib/firebase-admin');
+      adminDb.collection.mockReturnValue({
+        doc: jest.fn().mockReturnValue({
+          get: jest.fn().mockResolvedValue({
+            exists: true,
+            data: () => ({
+              metadata: {
+                tenantId,
+                configurationVersion: 1,
+                schemaVersion: 2,
+                environment: 'production',
+                region: 'PK',
+                timezone: 'Asia/Karachi',
+                lastModified: new Date().toISOString(),
+              },
+            }),
+          }),
+        }),
+      });
+
+      const metadata = await repo.getTenantMetadata(tenantId);
+      expect(metadata).not.toBeNull();
+      expect(metadata!.tenantId).toBe(tenantId);
+    });
+
+    test('should return default metadata for missing config', async () => {
+      const { adminDb } = require('@/lib/firebase-admin');
+      adminDb.collection.mockReturnValue({
+        doc: jest.fn().mockReturnValue({
+          get: jest.fn().mockResolvedValue({ exists: false }),
+        }),
+      });
+
+      const metadata = await repo.getTenantMetadata(tenantId);
+      expect(metadata).not.toBeNull();
+      expect(metadata!.configurationVersion).toBe(0);
+    });
+  });
+});
+
+
+############################################################
+# FILE: repositories/tenant.repository.test.ts
+############################################################
+
+import { TenantRepository } from '@/repositories/tenant.repository';
+import { createFirestoreTestFactory } from '@/__tests__/utils/firestore-mock';
+
+jest.mock('@/lib/firebase-admin', () => {
+  const { createFirestoreTestFactory } = require('@/__tests__/utils/firestore-mock');
+  return createFirestoreTestFactory();
+});
+
+describe('TenantRepository', () => {
+  let repo: TenantRepository;
+  const tenantId = 'test-tenant';
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    repo = new TenantRepository();
+  });
+
+  test('should find active tenants', async () => {
+    const { mockQuery } = require('@/lib/firebase-admin');
+    mockQuery.get.mockResolvedValue({
+      docs: [
+        { id: 't1', data: () => ({ status: 'active', tenantId }) },
+        { id: 't2', data: () => ({ status: 'suspended', tenantId }) },
+      ],
+    });
+
+    const tenants = await repo.findActive();
+    expect(tenants).toHaveLength(2);
+  });
+
+  test('should find tenants by plan', async () => {
+    const { mockQuery } = require('@/lib/firebase-admin');
+    mockQuery.get.mockResolvedValue({
+      docs: [
+        { id: 't1', data: () => ({ plan: 'pro', tenantId }) },
+        { id: 't2', data: () => ({ plan: 'free', tenantId }) },
+      ],
+    });
+
+    const tenants = await repo.findByPlan('pro');
+    expect(tenants).toHaveLength(2);
+  });
+
+  test('should list all tenants', async () => {
+    const { mockCollection } = require('@/lib/firebase-admin');
+    mockCollection.get.mockResolvedValue({
+      docs: [
+        { id: 't1', data: () => ({ tenantId }) },
+        { id: 't2', data: () => ({ tenantId }) },
+      ],
+    });
+
+    const tenants = await repo.listAll();
+    expect(tenants).toHaveLength(2);
+  });
+
+  test('should find tenant by id', async () => {
+    const { mockDocRef } = require('@/lib/firebase-admin');
+    mockDocRef.get.mockResolvedValue({
+      exists: true,
+      id: tenantId,
+      data: () => ({ name: 'Test Tenant', tenantId }),
+    });
+
+    const tenant = await repo.findById(tenantId, tenantId);
+    expect(tenant).not.toBeNull();
+    expect(tenant!.name).toBe('Test Tenant');
+  });
+
+  test('should return null for non-existent tenant', async () => {
+    const { mockDocRef } = require('@/lib/firebase-admin');
+    mockDocRef.get.mockResolvedValue({ exists: false, data: () => null });
+
+    const tenant = await repo.findById('nonexistent', tenantId);
+    expect(tenant).toBeNull();
+  });
+
+  test('should create a tenant', async () => {
+    const { mockCollection } = require('@/lib/firebase-admin');
+    mockCollection.add.mockResolvedValue({ id: 'tenant-123' });
+
+    const data = { name: 'New Tenant', domain: 'newtenant.com' };
+    const id = await repo.create(data as any, tenantId);
+    expect(id).toBe('tenant-123');
+  });
+
+  test('should update a tenant', async () => {
+    const { mockDocRef } = require('@/lib/firebase-admin');
+    mockDocRef.get.mockResolvedValue({
+      exists: true,
+      id: tenantId,
+      data: () => ({ name: 'Old Name', tenantId }),
+    });
+
+    await repo.update(tenantId, { name: 'New Name' }, tenantId);
+    expect(mockDocRef.update).toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'New Name' })
+    );
+  });
+
+  test('should delete a tenant', async () => {
+    const { mockDocRef } = require('@/lib/firebase-admin');
+    mockDocRef.get.mockResolvedValue({
+      exists: true,
+      id: tenantId,
+      data: () => ({ tenantId }),
+    });
+
+    await repo.delete(tenantId, tenantId);
+    expect(mockDocRef.delete).toHaveBeenCalled();
+  });
+
+  test('should throw when updating unauthorized tenant', async () => {
+    const { mockDocRef } = require('@/lib/firebase-admin');
+    mockDocRef.get.mockResolvedValue({
+      exists: true,
+      id: tenantId,
+      data: () => ({ tenantId: 'other-tenant' }),
+    });
+
+    await expect(
+      repo.update(tenantId, { name: 'New Name' }, tenantId)
+    ).rejects.toThrow('Document not found or unauthorized');
+  });
+
+  test('should paginate tenants', async () => {
+    const { mockQuery } = require('@/lib/firebase-admin');
+    const mockCountSnap = { data: () => ({ count: 5 }) };
+    mockQuery.count.mockReturnValue({
+      get: jest.fn().mockResolvedValue(mockCountSnap),
+    });
+    mockQuery.get.mockResolvedValue({
+      docs: [
+        { id: 't1', data: () => ({ tenantId }) },
+        { id: 't2', data: () => ({ tenantId }) },
+        { id: 't3', data: () => ({ tenantId }) },
+      ],
+    });
+
+    const result = await repo.paginate(tenantId, 1, 3);
+    expect(result.data).toHaveLength(3);
+    expect(result.total).toBe(5);
+    expect(result.totalPages).toBe(2);
+  });
+
+  test('should count tenants', async () => {
+    const { mockQuery } = require('@/lib/firebase-admin');
+    mockQuery.count.mockReturnValue({
+      get: jest.fn().mockResolvedValue({ data: () => ({ count: 15 }) }),
+    });
+
+    const count = await repo.count(tenantId);
+    expect(count).toBe(15);
+  });
+
+  test('should check existence', async () => {
+    const { mockDocRef } = require('@/lib/firebase-admin');
+    mockDocRef.get.mockResolvedValue({
+      exists: true,
+      data: () => ({ tenantId }),
+    });
+
+    const exists = await repo.exists(tenantId, tenantId);
+    expect(exists).toBe(true);
+  });
+
+  test('should restore a missing tenant document', async () => {
+    const { mockDocRef } = require('@/lib/firebase-admin');
+    mockDocRef.get.mockResolvedValue({ exists: false });
+
+    const data = { name: 'Restored School', type: 'Private', ownerId: 'user-1', status: 'active' };
+    await repo.restoreTenant(tenantId, data);
+
+    expect(mockDocRef.set).toHaveBeenCalledWith(data);
+  });
+
+  test('should not restore an existing tenant document', async () => {
+    const { mockDocRef } = require('@/lib/firebase-admin');
+    mockDocRef.get.mockResolvedValue({ exists: true, data: () => ({ name: 'Existing' }) });
+
+    await expect(
+      repo.restoreTenant(tenantId, { name: 'Should Not Overwrite' })
+    ).rejects.toThrow('already exists');
+
+    expect(mockDocRef.set).not.toHaveBeenCalled();
+  });
+
+  test('should verify user-tenant association when matching', async () => {
+    const { mockDocRef } = require('@/lib/firebase-admin');
+    mockDocRef.get.mockResolvedValue({
+      exists: true,
+      data: () => ({ tenantId: 'tenant_abc', role: 'admin' }),
+    });
+
+    const result = await repo.verifyUserTenantAssociation('user-abc', 'tenant_abc');
+    expect(result).toBe(true);
+  });
+
+  test('should reject user-tenant association when mismatched', async () => {
+    const { mockDocRef } = require('@/lib/firebase-admin');
+    mockDocRef.get.mockResolvedValue({
+      exists: true,
+      data: () => ({ tenantId: 'tenant_other', role: 'admin' }),
+    });
+
+    const result = await repo.verifyUserTenantAssociation('user-abc', 'tenant_abc');
+    expect(result).toBe(false);
+  });
+
+  test('should reject user-tenant association when user does not exist', async () => {
+    const { mockDocRef } = require('@/lib/firebase-admin');
+    mockDocRef.get.mockResolvedValue({ exists: false, data: () => null });
+
+    const result = await repo.verifyUserTenantAssociation('nonexistent-user', 'tenant_abc');
+    expect(result).toBe(false);
+  });
+});
+
+
+############################################################
+# FILE: repositories/academic-year.repository.test.ts
+############################################################
+
+import { AcademicYearRepository } from '@/repositories/academic-year.repository';
+import { createFirestoreTestFactory } from '@/__tests__/utils/firestore-mock';
+
+jest.mock('@/lib/firebase-admin', () => {
+  const { createFirestoreTestFactory } = require('@/__tests__/utils/firestore-mock');
+  return createFirestoreTestFactory();
+});
+
+describe('AcademicYearRepository', () => {
+  let repo: AcademicYearRepository;
+  const tenantId = 'test-tenant';
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    repo = new AcademicYearRepository();
+  });
+
+  test('should create an academic year and return id', async () => {
+    const { adminDb, mockCollection } = require('@/lib/firebase-admin');
+    mockCollection.add.mockResolvedValue({ id: 'ay-123' });
+
+    const data = {
+      name: '2024-2025',
+      startDate: '2024-06-01',
+      endDate: '2025-05-31',
+      isCurrent: true,
+    };
+    const id = await repo.create(data as any, tenantId);
+    expect(id).toBe('ay-123');
+    expect(mockCollection.add).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: '2024-2025',
+        tenantId,
+      })
+    );
+  });
+
+  test('should find academic year by id', async () => {
+    const { mockDocRef } = require('@/lib/firebase-admin');
+    mockDocRef.get.mockResolvedValue({
+      exists: true,
+      id: 'ay-456',
+      data: () => ({
+        name: '2024-2025',
+        startDate: '2024-06-01',
+        endDate: '2025-05-31',
+        isCurrent: true,
+        tenantId,
+      }),
+    });
+
+    const ay = await repo.findById('ay-456', tenantId);
+    expect(ay).not.toBeNull();
+    expect(ay!.name).toBe('2024-2025');
+  });
+
+  test('should return null for non-existent academic year', async () => {
+    const { mockDocRef } = require('@/lib/firebase-admin');
+    mockDocRef.get.mockResolvedValue({ exists: false, data: () => null });
+
+    const ay = await repo.findById('nonexistent', tenantId);
+    expect(ay).toBeNull();
+  });
+
+  test('should update an academic year', async () => {
+    const { mockDocRef } = require('@/lib/firebase-admin');
+    mockDocRef.get.mockResolvedValue({
+      exists: true,
+      id: 'ay-789',
+      data: () => ({ name: 'Old Name', tenantId }),
+    });
+
+    await repo.update('ay-789', { name: 'Updated Name' }, tenantId);
+    expect(mockDocRef.update).toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'Updated Name' })
+    );
+  });
+
+  test('should delete an academic year', async () => {
+    const { mockDocRef } = require('@/lib/firebase-admin');
+    mockDocRef.get.mockResolvedValue({
+      exists: true,
+      id: 'ay-999',
+      data: () => ({ tenantId }),
+    });
+
+    await repo.delete('ay-999', tenantId);
+    expect(mockDocRef.delete).toHaveBeenCalled();
+  });
+
+  test('should throw when updating unauthorized tenant', async () => {
+    const { mockDocRef } = require('@/lib/firebase-admin');
+    mockDocRef.get.mockResolvedValue({
+      exists: true,
+      id: 'ay-789',
+      data: () => ({ tenantId: 'other-tenant' }),
+    });
+
+    await expect(
+      repo.update('ay-789', { name: 'Updated' }, tenantId)
+    ).rejects.toThrow('Document not found or unauthorized');
+  });
+
+  test('should find all academic years for a tenant', async () => {
+    const { mockQuery } = require('@/lib/firebase-admin');
+    mockQuery.get.mockResolvedValue({
+      docs: [
+        { id: 'ay1', data: () => ({ name: '2024-2025', tenantId }) },
+        { id: 'ay2', data: () => ({ name: '2023-2024', tenantId }) },
+      ],
+    });
+
+    const years = await repo.findAll(tenantId);
+    expect(years).toHaveLength(2);
+    expect(years[0].name).toBe('2024-2025');
+  });
+
+  test('should paginate academic years', async () => {
+    const { mockQuery } = require('@/lib/firebase-admin');
+    const mockCountSnap = { data: () => ({ count: 5 }) };
+    mockQuery.count.mockReturnValue({
+      get: jest.fn().mockResolvedValue(mockCountSnap),
+    });
+    mockQuery.get.mockResolvedValue({
+      docs: [
+        { id: 'ay1', data: () => ({ name: 'AY 1', tenantId }) },
+        { id: 'ay2', data: () => ({ name: 'AY 2', tenantId }) },
+      ],
+    });
+
+    const result = await repo.paginate(tenantId, 1, 2);
+    expect(result.data).toHaveLength(2);
+    expect(result.total).toBe(5);
+    expect(result.totalPages).toBe(3);
+  });
+
+  test('should count academic years', async () => {
+    const { mockQuery } = require('@/lib/firebase-admin');
+    mockQuery.count.mockReturnValue({
+      get: jest.fn().mockResolvedValue({ data: () => ({ count: 42 }) }),
+    });
+
+    const count = await repo.count(tenantId);
+    expect(count).toBe(42);
+  });
+
+  test('should check existence', async () => {
+    const { mockDocRef } = require('@/lib/firebase-admin');
+    mockDocRef.get.mockResolvedValue({
+      exists: true,
+      data: () => ({ tenantId }),
+    });
+
+    const exists = await repo.exists('ay-1', tenantId);
+    expect(exists).toBe(true);
+  });
+
+  test('should findAllByTenant', async () => {
+    const { adminDb, mockCollection } = require('@/lib/firebase-admin');
+    const mockOrderBy = jest.fn().mockReturnThis();
+    mockCollection.where.mockReturnValue({
+      orderBy: mockOrderBy,
+      get: jest.fn().mockResolvedValue({
+        docs: [
+          { id: 'ay1', data: () => ({ name: '2024-2025', startDate: '2024-06-01', endDate: '2025-05-31', isCurrent: true, tenantId }) },
+        ],
+      }),
+    });
+
+    const years = await repo.findAllByTenant(tenantId);
+    expect(years).toHaveLength(1);
+    expect(years[0].name).toBe('2024-2025');
+    expect(mockOrderBy).toHaveBeenCalledWith('startDate', 'desc');
+  });
+
+  test('should set current academic year', async () => {
+    const { adminDb, mockCollection, mockBatch, mockDocRef } = require('@/lib/firebase-admin');
+    mockCollection.where.mockReturnValue({
+      get: jest.fn().mockResolvedValue({
+        docs: [
+          { id: 'ay1', ref: {} },
+        ],
+      }),
+    });
+    mockDocRef.update.mockResolvedValue(undefined);
+
+    await repo.setCurrent('ay-1', tenantId);
+    expect(mockBatch.update).toHaveBeenCalled();
+    expect(mockDocRef.update).toHaveBeenCalledWith({ isCurrent: true });
+  });
+
+  test('should create if absent by name when AY does not exist', async () => {
+    const { adminDb } = require('@/lib/firebase-admin');
+    const ayCollection = adminDb.collection('academicYears');
+    ayCollection.where.mockReturnValue({
+      orderBy: jest.fn().mockReturnThis(),
+      get: jest.fn().mockResolvedValue({ docs: [] }),
+    });
+    ayCollection.add.mockResolvedValue({ id: 'ay-new' });
+
+    const id = await repo.createIfAbsentByName('2024-2025', {
+      startDate: '2024-04-01',
+      endDate: '2025-03-31',
+      isCurrent: true,
+      tenantId,
+    }, tenantId);
+
+    expect(id).toBe('ay-new');
+    expect(ayCollection.add).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: '2024-2025',
+        startDate: '2024-04-01',
+        endDate: '2025-03-31',
+        isCurrent: true,
+        tenantId,
+      })
+    );
+  });
+
+  test('should return existing id when AY with same name exists', async () => {
+    const { adminDb } = require('@/lib/firebase-admin');
+    const ayCollection = adminDb.collection('academicYears');
+    ayCollection.where.mockReturnValue({
+      orderBy: jest.fn().mockReturnThis(),
+      get: jest.fn().mockResolvedValue({
+        docs: [
+          { id: 'ay-existing', data: () => ({ name: '2024-2025', tenantId }) },
+        ],
+      }),
+    });
+
+    const id = await repo.createIfAbsentByName('2024-2025', {
+      startDate: '2024-04-01',
+      endDate: '2025-03-31',
+      isCurrent: true,
+      tenantId,
+    }, tenantId);
+
+    expect(id).toBe('ay-existing');
+    expect(ayCollection.add).not.toHaveBeenCalled();
+  });
+});
+
+
+
+############################################################
+# FILE: repositories/section.repository.test.ts
+############################################################
+
+import { SectionRepository } from '@/repositories/section.repository';
+import { createFirestoreTestFactory } from '@/__tests__/utils/firestore-mock';
+
+jest.mock('@/lib/firebase-admin', () => {
+  const { createFirestoreTestFactory } = require('@/__tests__/utils/firestore-mock');
+  return createFirestoreTestFactory();
+});
+
+describe('SectionRepository', () => {
+  let repo: SectionRepository;
+  const tenantId = 'test-tenant';
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    repo = new SectionRepository();
+  });
+
+  test('should create a section', async () => {
+    const { adminDb } = require('@/lib/firebase-admin');
+    const sectionCollection = adminDb.collection('sections');
+    sectionCollection.add.mockResolvedValue({ id: 'section-123' });
+
+    const data = {
+      classGrade: '10',
+      sectionName: 'A',
+      incharge: 'teacher-1',
+      subjects: { core: ['Math'], electives: ['Art'] },
+    } as any;
+    const id = await repo.create(data, tenantId);
+    expect(id).toBe('section-123');
+    expect(sectionCollection.add).toHaveBeenCalledWith(
+      expect.objectContaining({
+        classGrade: '10',
+        sectionName: 'A',
+        tenantId,
+      })
+    );
+  });
+
+  test('should find section by id', async () => {
+    const { adminDb } = require('@/lib/firebase-admin');
+    const sectionDoc = adminDb.collection('sections').doc('section-456');
+    sectionDoc.get.mockResolvedValue({
+      exists: true,
+      id: 'section-456',
+      data: () => ({
+        classGrade: '10',
+        sectionName: 'A',
+        incharge: 'teacher-1',
+        tenantId,
+      }),
+    });
+
+    const section = await repo.findById('section-456', tenantId);
+    expect(section).not.toBeNull();
+    expect(section!.sectionName).toBe('A');
+  });
+
+  test('should return null for non-existent section', async () => {
+    const { adminDb } = require('@/lib/firebase-admin');
+    const sectionDoc = adminDb.collection('sections').doc('nonexistent');
+    sectionDoc.get.mockResolvedValue({ exists: false, data: () => null });
+
+    const section = await repo.findById('nonexistent', tenantId);
+    expect(section).toBeNull();
+  });
+
+  test('should find all active sections for a tenant', async () => {
+    const { mockQuery } = require('@/lib/firebase-admin');
+    mockQuery.get.mockResolvedValue({
+      docs: [
+        { id: 's1', data: () => ({ classGrade: '10', sectionName: 'A', deleted: false, tenantId }) },
+        { id: 's2', data: () => ({ classGrade: '9', sectionName: 'B', deleted: true, tenantId }) },
+      ],
+    });
+
+    const sections = await repo.findAllActive(tenantId);
+    expect(sections).toHaveLength(1);
+    expect(sections[0].sectionName).toBe('A');
+  });
+
+  test('should soft delete a section', async () => {
+    const { adminDb } = require('@/lib/firebase-admin');
+    const sectionDoc = adminDb.collection('sections').doc('section-789');
+    sectionDoc.get.mockResolvedValue({
+      exists: true,
+      id: 'section-789',
+      data: () => ({ tenantId }),
+    });
+
+    await repo.softDeleteBySectionId('section-789', tenantId, 'user-1');
+    expect(sectionDoc.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        deleted: true,
+        deletedBy: 'user-1',
+      })
+    );
+  });
+
+  test('should throw when soft deleting non-existent section', async () => {
+    const { adminDb } = require('@/lib/firebase-admin');
+    const sectionDoc = adminDb.collection('sections').doc('nonexistent');
+    sectionDoc.get.mockResolvedValue({ exists: false, data: () => null });
+
+    await expect(repo.softDeleteBySectionId('nonexistent', tenantId, 'user-1')).rejects.toThrow('Section not found or unauthorized');
+  });
+
+  test('should delete all sections for a tenant', async () => {
+    const { mockQuery, mockBatch } = require('@/lib/firebase-admin');
+    const mockDocRefA = { id: 's1' };
+    const mockDocRefB = { id: 's2' };
+    mockQuery.get.mockResolvedValue({
+      docs: [
+        { id: 's1', data: () => ({ classGrade: '10', sectionName: 'A', tenantId }), ref: mockDocRefA },
+        { id: 's2', data: () => ({ classGrade: '9', sectionName: 'B', tenantId }), ref: mockDocRefB },
+      ],
+    });
+
+    await repo.deleteAllForTenant(tenantId);
+    expect(mockBatch.delete).toHaveBeenCalledTimes(2);
+    expect(mockBatch.delete).toHaveBeenCalledWith(mockDocRefA);
+    expect(mockBatch.delete).toHaveBeenCalledWith(mockDocRefB);
+    expect(mockBatch.commit).toHaveBeenCalled();
+  });
+
+  test('should create missing structure', async () => {
+    const { mockQuery, mockCollection, mockBatch } = require('@/lib/firebase-admin');
+    mockQuery.get.mockResolvedValue({
+      docs: [
+        { id: 's1', data: () => ({ classGrade: '10', sectionName: 'A', tenantId, deleted: false }) },
+      ],
+    });
+
+    const structure = [
+      { classGrade: '10', sectionName: 'A', subjects: { core: ['Math'], electives: [] } },
+      { classGrade: '10', sectionName: 'B', subjects: { core: ['Math'], electives: [] } },
+    ];
+    await repo.createMissingStructure(tenantId, structure, 'user-1');
+    expect(mockBatch.set).toHaveBeenCalledTimes(1);
+    expect(mockBatch.commit).toHaveBeenCalled();
+  });
+
+  test('should update a section', async () => {
+    const { adminDb } = require('@/lib/firebase-admin');
+    const sectionDoc = adminDb.collection('sections').doc('section-111');
+    sectionDoc.get.mockResolvedValue({
+      exists: true,
+      id: 'section-111',
+      data: () => ({ sectionName: 'Old', tenantId }),
+    });
+
+    await repo.update('section-111', { sectionName: 'Updated' }, tenantId);
+    expect(sectionDoc.update).toHaveBeenCalledWith(
+      expect.objectContaining({ sectionName: 'Updated' })
+    );
+  });
+
+  test('should count sections', async () => {
+    const { mockQuery } = require('@/lib/firebase-admin');
+    mockQuery.count.mockReturnValue({
+      get: jest.fn().mockResolvedValue({ data: () => ({ count: 6 }) }),
+    });
+
+    const count = await repo.count(tenantId);
+    expect(count).toBe(6);
+  });
+
+  test('should paginate sections', async () => {
+    const { mockQuery } = require('@/lib/firebase-admin');
+    const mockCountSnap = { data: () => ({ count: 8 }) };
+    mockQuery.count.mockReturnValue({
+      get: jest.fn().mockResolvedValue(mockCountSnap),
+    });
+    mockQuery.get.mockResolvedValue({
+      docs: [
+        { id: 's1', data: () => ({ classGrade: '10', sectionName: 'A', tenantId }) },
+        { id: 's2', data: () => ({ classGrade: '9', sectionName: 'B', tenantId }) },
+      ],
+    });
+
+    const result = await repo.paginate(tenantId, 1, 2);
+    expect(result.data).toHaveLength(2);
+    expect(result.total).toBe(8);
+    expect(result.totalPages).toBe(4);
+  });
+
+  test('should create missing sections with deterministic ids', async () => {
+    const { mockQuery, mockBatch, mockCollection } = require('@/lib/firebase-admin');
+    mockQuery.get.mockResolvedValue({
+      docs: [
+        { id: 's1', data: () => ({ classGrade: '10', sectionName: 'A', tenantId, deleted: false }) },
+      ],
+    });
+
+    const mockDocRef = { id: 'det-id', set: jest.fn().mockResolvedValue(undefined) };
+    mockCollection.doc.mockReturnValue(mockDocRef as any);
+
+    const structure = [
+      { classGrade: '10', sectionName: 'A', subjects: { core: ['Math'], electives: [] } },
+      { classGrade: '10', sectionName: 'B', subjects: { core: ['Math'], electives: [] } },
+    ];
+    const created = await repo.createMissingSections(tenantId, structure, 'user-1');
+    expect(created).toBe(1);
+    expect(mockBatch.set).toHaveBeenCalledTimes(1);
+    expect(mockBatch.commit).toHaveBeenCalled();
+    expect(mockCollection.doc).toHaveBeenCalledWith(`${tenantId}__10__b`);
+  });
+
+  test('should return 0 when all sections already exist', async () => {
+    const { mockQuery, mockBatch } = require('@/lib/firebase-admin');
+    mockQuery.get.mockResolvedValue({
+      docs: [
+        { id: 's1', data: () => ({ classGrade: '10', sectionName: 'A', tenantId, deleted: false }) },
+        { id: 's2', data: () => ({ classGrade: '10', sectionName: 'B', tenantId, deleted: false }) },
+      ],
+    });
+
+    const structure = [
+      { classGrade: '10', sectionName: 'A', subjects: { core: ['Math'], electives: [] } },
+      { classGrade: '10', sectionName: 'B', subjects: { core: ['Math'], electives: [] } },
+    ];
+    const created = await repo.createMissingSections(tenantId, structure, 'user-1');
+    expect(created).toBe(0);
+    expect(mockBatch.set).not.toHaveBeenCalled();
+  });
+
+  test('new section is created with deleted:false', async () => {
+    const { mockQuery, mockBatch, mockCollection } = require('@/lib/firebase-admin');
+    mockQuery.get.mockResolvedValue({ docs: [] });
+    mockCollection.doc.mockReturnValue({ id: 'det', set: jest.fn().mockResolvedValue(undefined) });
+
+    const structure = [{ classGrade: '10', sectionName: 'A', subjects: { core: ['Math'], electives: [] } }];
+    await repo.createMissingSections(tenantId, structure, 'user-1');
+
+    expect(mockBatch.commit).toHaveBeenCalledTimes(1);
+    expect(mockBatch.set).toHaveBeenCalledTimes(1);
+    expect(mockBatch.set).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ classGrade: '10', sectionName: 'A', tenantId, deleted: false, createdBy: 'user-1' }),
+      { merge: true }
+    );
+  });
+
+  test('existing active section remains active (is not rewritten)', async () => {
+    const { mockQuery, mockBatch } = require('@/lib/firebase-admin');
+    mockQuery.get.mockResolvedValue({
+      docs: [{ id: 's1', data: () => ({ classGrade: '10', sectionName: 'A', tenantId, deleted: false }) }],
+    });
+
+    const structure = [{ classGrade: '10', sectionName: 'A' }];
+    const created = await repo.createMissingSections(tenantId, structure, 'user-1');
+    expect(created).toBe(0);
+    expect(mockBatch.set).not.toHaveBeenCalled();
+  });
+
+  test('existing soft-deleted section is NOT resurrected (deleted stays true)', async () => {
+    const { mockQuery, mockBatch } = require('@/lib/firebase-admin');
+    mockQuery.get.mockResolvedValue({
+      docs: [{ id: 's1', data: () => ({ classGrade: '10', sectionName: 'A', tenantId, deleted: true, deletedAt: '2024-01-01', deletedBy: 'admin' }) }],
+    });
+
+    const structure = [{ classGrade: '10', sectionName: 'A' }];
+    const created = await repo.createMissingSections(tenantId, structure, 'user-1');
+    expect(created).toBe(0);
+    expect(mockBatch.set).not.toHaveBeenCalled();
+    expect(mockBatch.commit).not.toHaveBeenCalled();
+  });
+
+  test('re-running provisioning does NOT resurrect a deleted section', async () => {
+    const { mockQuery, mockBatch } = require('@/lib/firebase-admin');
+    mockQuery.get.mockResolvedValue({
+      docs: [{ id: 's1', data: () => ({ classGrade: '10', sectionName: 'A', tenantId, deleted: true }) }],
+    });
+
+    const structure = [{ classGrade: '10', sectionName: 'A' }];
+    await repo.createMissingSections(tenantId, structure, 'user-1');
+    await repo.createMissingSections(tenantId, structure, 'user-1');
+    expect(mockBatch.set).not.toHaveBeenCalled();
+  });
+
+  test('soft-deleted section is preserved even when its deterministic id would collide', async () => {
+    const { mockQuery, mockBatch } = require('@/lib/firebase-admin');
+    mockQuery.get.mockResolvedValue({
+      docs: [{ id: `${tenantId}__10__a`, data: () => ({ classGrade: '10', sectionName: 'A', tenantId, deleted: true }) }],
+    });
+
+    const structure = [{ classGrade: '10', sectionName: 'A' }];
+    const created = await repo.createMissingSections(tenantId, structure, 'user-1');
+    expect(created).toBe(0);
+    expect(mockBatch.set).not.toHaveBeenCalled();
+  });
+
+  test('existing auto-ID section is detected independently of doc id', async () => {
+    const { mockQuery, mockBatch } = require('@/lib/firebase-admin');
+    mockQuery.get.mockResolvedValue({
+      docs: [{ id: 'auto-generated-id-xyz', data: () => ({ classGrade: '10', sectionName: 'A', tenantId, deleted: false }) }],
+    });
+
+    const structure = [{ classGrade: '10', sectionName: 'A' }];
+    const created = await repo.createMissingSections(tenantId, structure, 'user-1');
+    expect(created).toBe(0);
+    expect(mockBatch.set).not.toHaveBeenCalled();
+  });
+
+  test('section with whitespace/case variants resolve to the same record', async () => {
+    const { mockQuery, mockBatch } = require('@/lib/firebase-admin');
+    mockQuery.get.mockResolvedValue({
+      docs: [{ id: 's1', data: () => ({ classGrade: ' 10 ', sectionName: 'A ', tenantId, deleted: false }) }],
+    });
+
+    const structure = [{ classGrade: '10', sectionName: 'a', subjects: { core: ['Math'], electives: [] } }];
+    const created = await repo.createMissingSections(tenantId, structure, 'user-1');
+    expect(created).toBe(0);
+    expect(mockBatch.set).not.toHaveBeenCalled();
+  });
+
+  test('operational fields (incharge) on existing active section are preserved', async () => {
+    const { mockQuery, mockBatch } = require('@/lib/firebase-admin');
+    mockQuery.get.mockResolvedValue({
+      docs: [{ id: 's1', data: () => ({ classGrade: '10', sectionName: 'A', tenantId, deleted: false, incharge: 'teacher-1', customField: 'op' }) }],
+    });
+
+    const structure = [{ classGrade: '10', sectionName: 'A', subjects: { core: ['History'], electives: [] } }];
+    const created = await repo.createMissingSections(tenantId, structure, 'user-1');
+    expect(created).toBe(0);
+    expect(mockBatch.set).not.toHaveBeenCalled();
+  });
+
+  test('existing subjects are preserved on re-provisioning (no overwrite)', async () => {
+    const { mockQuery, mockBatch } = require('@/lib/firebase-admin');
+    mockQuery.get.mockResolvedValue({
+      docs: [{ id: 's1', data: () => ({ classGrade: '10', sectionName: 'A', tenantId, deleted: false, subjects: { core: ['Physics'], electives: ['Art'] } }) }],
+    });
+
+    const structure = [{ classGrade: '10', sectionName: 'A', subjects: { core: ['Math'], electives: [] } }];
+    const created = await repo.createMissingSections(tenantId, structure, 'user-1');
+    expect(created).toBe(0);
+    expect(mockBatch.set).not.toHaveBeenCalled();
+  });
+
+  test('new section is created with normalized deterministic doc id', async () => {
+    const { mockQuery, mockBatch, mockCollection } = require('@/lib/firebase-admin');
+    mockQuery.get.mockResolvedValue({ docs: [] });
+    mockCollection.doc.mockReturnValue({ id: 'det', set: jest.fn().mockResolvedValue(undefined) });
+
+    const structure = [{ classGrade: ' 10 ', sectionName: 'A ', subjects: { core: ['Math'], electives: [] } }];
+    await repo.createMissingSections(tenantId, structure, 'user-1');
+    expect(mockCollection.doc).toHaveBeenCalledWith(`${tenantId}__10__a`);
+  });
+
+  test('tenant isolation: query is scoped to the supplied tenantId', async () => {
+    const { mockQuery, mockCollection } = require('@/lib/firebase-admin');
+    mockQuery.get.mockResolvedValue({ docs: [] });
+
+    await repo.createMissingSections('tenant-A', [{ classGrade: '10', sectionName: 'A' }], 'user-1');
+    expect(mockCollection.where).toHaveBeenCalledWith('tenantId', '==', 'tenant-A');
+  });
+
+  test('findAllIncludingDeleted returns deleted sections while findAllActive excludes them', async () => {
+    const { mockQuery } = require('@/lib/firebase-admin');
+    mockQuery.get.mockResolvedValue({
+      docs: [
+        { id: 's1', data: () => ({ classGrade: '10', sectionName: 'A', tenantId, deleted: false }) },
+        { id: 's2', data: () => ({ classGrade: '10', sectionName: 'B', tenantId, deleted: true }) },
+      ],
+    });
+
+    const all = await repo.findAllIncludingDeleted(tenantId);
+    const active = await repo.findAllActive(tenantId);
+    expect(all).toHaveLength(2);
+    expect(active).toHaveLength(1);
+    expect(active[0].sectionName).toBe('A');
+  });
+});
+
+
+
+############################################################
+# FILE: repositories/department.repository.test.ts
+############################################################
+
+import { DepartmentRepository } from '@/repositories/department.repository';
+import { createFirestoreTestFactory } from '@/__tests__/utils/firestore-mock';
+
+jest.mock('@/lib/firebase-admin', () => {
+  const { createFirestoreTestFactory } = require('@/__tests__/utils/firestore-mock');
+  return createFirestoreTestFactory();
+});
+
+describe('DepartmentRepository', () => {
+  let repo: DepartmentRepository;
+  const tenantId = 'test-tenant';
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    repo = new DepartmentRepository();
+  });
+
+  test('should get all departments for a tenant', async () => {
+    const { adminDb } = require('@/lib/firebase-admin');
+    const deptCollection = adminDb.collection('departments');
+    deptCollection.where.mockReturnValue({
+      where: jest.fn().mockReturnThis(),
+      get: jest.fn().mockResolvedValue({
+        docs: [
+          { id: 'd1', data: () => ({ name: 'CS', code: 'CS', deleted: false, tenantId }) },
+          { id: 'd2', data: () => ({ name: 'Math', code: 'MTH', deleted: false, tenantId }) },
+        ],
+      }),
+    });
+
+    const departments = await repo.getAll(tenantId);
+    expect(departments).toHaveLength(2);
+    expect(departments[0].name).toBe('CS');
+  });
+
+  test('should create department when not exists', async () => {
+    const { adminDb } = require('@/lib/firebase-admin');
+    const deptCollection = adminDb.collection('departments');
+    deptCollection.where.mockReturnValue({
+      where: jest.fn().mockReturnThis(),
+      get: jest.fn().mockResolvedValue({ docs: [] }),
+    });
+    deptCollection.add.mockResolvedValue({ id: 'dept-123' });
+
+    const res = await repo.createAbsentByName(tenantId, 'Computer Science', {
+      code: 'CS',
+      description: 'CS Dept',
+      deleted: false,
+    });
+    expect(res.id).toBe('dept-123');
+    expect(res.created).toBe(true);
+    expect(deptCollection.add).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: 'Computer Science',
+        code: 'CS',
+        tenantId,
+      })
+    );
+  });
+
+  test('should return existing id when department with same name exists', async () => {
+    const { adminDb } = require('@/lib/firebase-admin');
+    const deptCollection = adminDb.collection('departments');
+    deptCollection.where.mockReturnValue({
+      where: jest.fn().mockReturnThis(),
+      get: jest.fn().mockResolvedValue({
+        docs: [
+          { id: 'dept-existing', data: () => ({ name: 'Computer Science', code: 'CS', deleted: false, tenantId }) },
+        ],
+      }),
+    });
+
+    const res = await repo.createAbsentByName(tenantId, 'Computer Science', {
+      code: 'CS',
+      description: 'CS Dept',
+      deleted: false,
+    });
+    expect(res.id).toBe('dept-existing');
+    expect(res.created).toBe(false);
+  });
+
+  test('should not create duplicates for whitespace/case variant names', async () => {
+    const { adminDb } = require('@/lib/firebase-admin');
+    const deptCollection = adminDb.collection('departments');
+    deptCollection.where.mockReturnValue({
+      where: jest.fn().mockReturnThis(),
+      get: jest.fn().mockResolvedValue({
+        docs: [
+          { id: 'dept-1', data: () => ({ name: 'Computer Science', code: 'CS', deleted: false, tenantId }) },
+        ],
+      }),
+    });
+    deptCollection.add.mockResolvedValue({ id: 'should-not-be-used' });
+
+    const res = await repo.createAbsentByName(tenantId, ' computer science ', { code: 'CS', description: '', deleted: false });
+    expect(res.id).toBe('dept-1');
+    expect(res.created).toBe(false);
+    expect(deptCollection.add).not.toHaveBeenCalled();
+  });
+
+  test('should resolve Computer Science, computer science , COMPUTER SCIENCE as one department', async () => {
+    const { adminDb } = require('@/lib/firebase-admin');
+    const deptCollection = adminDb.collection('departments');
+    let createdCall = false;
+    deptCollection.where.mockImplementation(() => ({
+      where: jest.fn().mockReturnThis(),
+      get: jest.fn().mockResolvedValue({
+        docs: createdCall ? [{ id: 'dept-1', data: () => ({ name: 'Computer Science', deleted: false, tenantId }) }] : [],
+      }),
+    }));
+    deptCollection.add.mockImplementation(() => {
+      createdCall = true;
+      return Promise.resolve({ id: 'dept-1' });
+    });
+
+    const rA = await repo.createAbsentByName(tenantId, 'Computer Science', { code: 'CS', description: '', deleted: false });
+    const rB = await repo.createAbsentByName(tenantId, ' computer science ', { code: 'CS', description: '', deleted: false });
+    const rC = await repo.createAbsentByName(tenantId, 'COMPUTER SCIENCE', { code: 'CS', description: '', deleted: false });
+
+    expect(rA.id).toBe('dept-1');
+    expect(rB.id).toBe('dept-1');
+    expect(rC.id).toBe('dept-1');
+    expect(deptCollection.add).toHaveBeenCalledTimes(1);
+  });
+
+  test('should NOT update existing department fields (create-if-absent, Option A)', async () => {
+    const { adminDb } = require('@/lib/firebase-admin');
+    const deptCollection = adminDb.collection('departments');
+    const existingUpdate = jest.fn().mockResolvedValue(undefined);
+    const existingDocRef = { id: 'dept-existing', update: existingUpdate };
+    deptCollection.where.mockReturnValue({
+      where: jest.fn().mockReturnThis(),
+      get: jest.fn().mockResolvedValue({
+        docs: [
+          { id: 'dept-existing', data: () => ({ name: 'Computer Science', code: 'OLD', headOfDepartment: 'hod-1', deleted: false, tenantId }), ref: existingDocRef },
+        ],
+      }),
+    });
+    deptCollection.add.mockResolvedValue({ id: 'should-not-be-used' });
+
+    const res = await repo.createAbsentByName(tenantId, 'Computer Science', {
+      code: 'NEW',
+      description: 'Overwriting attempt',
+      deleted: false,
+    });
+    expect(res.id).toBe('dept-existing');
+    expect(res.created).toBe(false);
+    expect(deptCollection.add).not.toHaveBeenCalled();
+    expect(existingUpdate).not.toHaveBeenCalled();
+  });
+
+  test('should scope department lookup by tenantId', async () => {
+    const { adminDb } = require('@/lib/firebase-admin');
+    const deptCollection = adminDb.collection('departments');
+    deptCollection.where.mockReturnValue({
+      where: jest.fn().mockReturnThis(),
+      get: jest.fn().mockResolvedValue({ docs: [] }),
+    });
+    deptCollection.add.mockResolvedValue({ id: 'dept-new' });
+
+    await repo.createAbsentByName('tenant-A', 'Computer Science', { code: 'CS', description: '', deleted: false });
+    expect(deptCollection.where).toHaveBeenCalledWith('tenantId', '==', 'tenant-A');
+  });
+});
+
+
