@@ -405,6 +405,14 @@ export class StudentRepository extends BaseRepository<StudentDocument> implement
   ): Promise<void> {
     if (ids.length === 0) return;
     try {
+      const existing = await this.batchFindByIds(tenantId, ids);
+      if (existing.length !== ids.length) {
+        throw new RepositoryException("Failed to bulk update students: unauthorized or missing students", {
+          tenantId,
+          requested: ids.length,
+          found: existing.length,
+        });
+      }
       const batch = this.db.batch();
       for (const id of ids) {
         const docRef = this.db.collection(this.collectionName).doc(id);
@@ -412,6 +420,7 @@ export class StudentRepository extends BaseRepository<StudentDocument> implement
       }
       await batch.commit();
     } catch (error) {
+      if (error instanceof RepositoryException) throw error;
       throw new RepositoryException("Failed to bulk update students", { tenantId, count: ids.length });
     }
   }
@@ -419,6 +428,14 @@ export class StudentRepository extends BaseRepository<StudentDocument> implement
   async bulkDelete(tenantId: string, ids: string[]): Promise<void> {
     if (ids.length === 0) return;
     try {
+      const existing = await this.batchFindByIds(tenantId, ids);
+      if (existing.length !== ids.length) {
+        throw new RepositoryException("Failed to bulk delete students: unauthorized or missing students", {
+          tenantId,
+          requested: ids.length,
+          found: existing.length,
+        });
+      }
       const batch = this.db.batch();
       for (const id of ids) {
         const docRef = this.db.collection(this.collectionName).doc(id);
@@ -426,6 +443,7 @@ export class StudentRepository extends BaseRepository<StudentDocument> implement
       }
       await batch.commit();
     } catch (error) {
+      if (error instanceof RepositoryException) throw error;
       throw new RepositoryException("Failed to bulk delete students", { tenantId, count: ids.length });
     }
   }

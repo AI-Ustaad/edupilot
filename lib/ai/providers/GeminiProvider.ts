@@ -41,7 +41,7 @@ export class GeminiProvider implements AIProvider {
       throw new ProviderException("GEMINI_API_KEY is not configured");
     }
 
-    const url = `${this.config.baseUrl}/models/${this.config.model}:generateContent?key=${this.config.apiKey}`;
+    const url = `${this.config.baseUrl}/models/${this.config.model}:generateContent`;
 
     const parts: any[] = [];
 
@@ -77,7 +77,10 @@ export class GeminiProvider implements AIProvider {
       try {
         const res = await fetch(url, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            "x-goog-api-key": this.config.apiKey,
+          },
           body: JSON.stringify(requestBody),
           signal: controller.signal,
         });

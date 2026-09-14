@@ -85,7 +85,7 @@ describe('StudentService.student360', () => {
       marks: { findByStudent: jest.fn().mockResolvedValue([]) },
       behavior: { findByStudent: jest.fn().mockRejectedValue(firestoreError) },
     };
-    const service = new StudentService(studentRepository, sources as any);
+    const service = new StudentService(studentRepository as any, sources as any);
 
     await expect(service.student360('tenant-a', 'student-1')).rejects.toThrow('FAILED_PRECONDITION');
   });
@@ -138,5 +138,27 @@ describe('StudentService.update', () => {
       phone: '999',
       metadata: expect.objectContaining({ createdAt: 'created-at' }),
     }), 'tenant-a');
+  });
+});
+
+describe('StudentService.promote', () => {
+  test('rejects cross-tenant students and only promotes valid tenant students', async () => {
+    const repository = {
+      batchFindByIds: jest.fn().mockResolvedValue([
+        { id: 's1', tenantId: 'tenant-a', classGrade: '9', section: 'A' },
+      ]),
+      bulkUpdate: jest.fn().mockResolvedValue(undefined),
+    } as any;
+    const service = new StudentService(repository);
+
+    const result = await service.promote('tenant-a', ['s1', 's2-foreign'], '10', 'B', '2026-2027', 'user-1');
+
+    expect(result.success).toBe(false);
+    expect(result.promoted).toBe(1);
+    expect(result.errors).toContain('Student s2-foreign not found or unauthorized for tenant');
+    expect(repository.bulkUpdate).toHaveBeenCalledWith('tenant-a', ['s1'], expect.objectContaining({
+      classGrade: '10',
+      section: 'B',
+    }));
   });
 });

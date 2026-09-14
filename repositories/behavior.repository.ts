@@ -8,10 +8,12 @@ export class BehaviorRepository extends BaseRepository<BehaviorLog> implements I
     super("behavior_logs");
   }
 
-  async create(data: Omit<BehaviorLog, "id" | "createdAt">, _tenantId: string): Promise<string> {
+  async create(data: Omit<BehaviorLog, "id" | "createdAt">, tenantId: string): Promise<string> {
     const docRef = await this.db.collection(this.collectionName).add({
       ...data,
+      tenantId: tenantId || (data as any).tenantId,
       createdAt: dbTimestamp,
+      updatedAt: dbTimestamp,
     });
     return docRef.id;
   }

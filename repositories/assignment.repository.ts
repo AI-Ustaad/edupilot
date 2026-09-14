@@ -19,10 +19,12 @@ export class AssignmentRepository extends BaseRepository<Assignment> implements 
     return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as AssignmentSubmission & { id: string }));
   }
 
-  async createSubmission(data: Omit<AssignmentSubmission, "id" | "createdAt">, _tenantId: string): Promise<string> {
+  async createSubmission(data: Omit<AssignmentSubmission, "id" | "createdAt">, tenantId: string): Promise<string> {
     const docRef = await this.db.collection("submissions").add({
       ...data,
+      tenantId: tenantId || (data as any).tenantId,
       createdAt: dbTimestamp,
+      updatedAt: dbTimestamp,
     });
     return docRef.id;
   }

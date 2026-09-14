@@ -154,4 +154,54 @@ describe('StudentRepository', () => {
     const exists = await repo.exists('student-1', tenantId);
     expect(exists).toBe(true);
   });
+
+  test('bulkUpdate rejects when student does not belong to tenant', async () => {
+    const { mockQuery } = require('@/lib/firebase-admin');
+    mockQuery.get.mockResolvedValue({
+      docs: [
+        { id: 's1', data: () => ({ id: 's1', tenantId }) },
+      ],
+    });
+
+    await expect(repo.bulkUpdate(tenantId, ['s1', 'foreign-s2'], { classGrade: '11' }))
+      .rejects.toThrow('Failed to bulk update students');
+  });
+
+  test('bulkUpdate succeeds when all students belong to tenant', async () => {
+    const { mockQuery } = require('@/lib/firebase-admin');
+    mockQuery.get.mockResolvedValue({
+      docs: [
+        { id: 's1', data: () => ({ id: 's1', tenantId }) },
+        { id: 's2', data: () => ({ id: 's2', tenantId }) },
+      ],
+    });
+
+    await expect(repo.bulkUpdate(tenantId, ['s1', 's2'], { classGrade: '11' }))
+      .resolves.toBeUndefined();
+  });
+
+  test('bulkDelete rejects when student does not belong to tenant', async () => {
+    const { mockQuery } = require('@/lib/firebase-admin');
+    mockQuery.get.mockResolvedValue({
+      docs: [
+        { id: 's1', data: () => ({ id: 's1', tenantId }) },
+      ],
+    });
+
+    await expect(repo.bulkDelete(tenantId, ['s1', 'foreign-s2']))
+      .rejects.toThrow('Failed to bulk delete students');
+  });
+
+  test('bulkDelete succeeds when all students belong to tenant', async () => {
+    const { mockQuery } = require('@/lib/firebase-admin');
+    mockQuery.get.mockResolvedValue({
+      docs: [
+        { id: 's1', data: () => ({ id: 's1', tenantId }) },
+        { id: 's2', data: () => ({ id: 's2', tenantId }) },
+      ],
+    });
+
+    await expect(repo.bulkDelete(tenantId, ['s1', 's2']))
+      .resolves.toBeUndefined();
+  });
 });

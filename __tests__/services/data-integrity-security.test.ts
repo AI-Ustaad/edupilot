@@ -8,6 +8,7 @@ import { MarksService } from '@/services/marks.service';
 import { AttendanceRepository } from '@/repositories/attendance.repository';
 import { MarksRepository } from '@/repositories/marks.repository';
 import { StudentRepository } from '@/repositories/student.repository';
+import { FirestoreSearchProvider } from '@/lib/search/providers/firestore-search.provider';
 import { NotFoundException, BusinessError } from '@/errors/AppError';
 
 jest.mock('@/lib/firebase-admin', () => {
@@ -658,6 +659,55 @@ describe('Sprint 11 — Data Integrity Security Regression Tests', () => {
 
       const attendanceService = new AttendanceService();
       expect((attendanceService as any).studentRepo).toBeInstanceOf(StudentRepository);
+    });
+  });
+
+  describe('TEST GROUP 9 — SEARCH INDEX TENANT ISOLATION (P0-04)', () => {
+    let searchProvider: FirestoreSearchProvider;
+
+    beforeEach(() => {
+      searchProvider = new FirestoreSearchProvider();
+    });
+
+    test('PROHIBITED: clear() without tenantId throws error', async () => {
+      await expect(searchProvider.clear()).rejects.toThrow(
+        'Tenant ID is required to clear search index. Cross-tenant clear is prohibited.'
+      );
+    });
+
+    test('SECURE: clear(tenantId) executes deleteByTenant', async () => {
+      const { mockQuery, mockBatch } = require('@/lib/firebase-admin');
+      mockQuery.get.mockResolvedValue({
+        docs: [
+          { ref: { id: 'search-doc-1' } },
+        ],
+      });
+
+      await expect(searchProvider.clear('test-tenant')).resolves.toBeUndefined();
+      expect(mockBatch.delete).toHaveBeenCalled();
+      expect(mockBatch.commit).toHaveBeenCalled();
+    });
+
+    test('SECURE: delete(id, tenantId) does not delete document belonging to different tenant', async () => {
+      const { mockDocRef } = require('@/lib/firebase-admin');
+      mockDocRef.get.mockResolvedValue({
+        exists: true,
+        data: () => ({ tenantId: 'foreign-tenant' }),
+      });
+
+      await searchProvider.delete('search-doc-1', 'test-tenant');
+      expect(mockDocRef.delete).not.toHaveBeenCalled();
+    });
+
+    test('SECURE: delete(id, tenantId) deletes document when tenant matches', async () => {
+      const { mockDocRef } = require('@/lib/firebase-admin');
+      mockDocRef.get.mockResolvedValue({
+        exists: true,
+        data: () => ({ tenantId: 'test-tenant' }),
+      });
+
+      await searchProvider.delete('search-doc-1', 'test-tenant');
+      expect(mockDocRef.delete).toHaveBeenCalled();
     });
   });
 });

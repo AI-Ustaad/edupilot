@@ -61,6 +61,12 @@ export const ROLE_PERMISSIONS: Record<string, string[]> = {
   parent: [
     "parents.view", "parents.manage",
   ],
+  student: [
+    "students.view",
+    "ai.view",
+    "chat.send",
+    "chat.view",
+  ],
 };
 
 // These are canonical role names produced by the auth/tenant layer. They are
@@ -68,5 +74,6 @@ export const ROLE_PERMISSIONS: Record<string, string[]> = {
 // the permission table used its legacy `admin` key.
 ROLE_PERMISSIONS.schoolAdmin = [...ROLE_PERMISSIONS.admin];
 ROLE_PERMISSIONS.superAdmin = [...ROLE_PERMISSIONS.admin];
+ROLE_PERMISSIONS.super_admin = [...ROLE_PERMISSIONS.admin];
 
 export type Role = keyof typeof ROLE_PERMISSIONS;

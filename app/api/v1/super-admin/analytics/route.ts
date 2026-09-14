@@ -1,19 +1,17 @@
 export const dynamic = 'force-dynamic';
-import { withAuth, withTenant, withErrorHandler } from "@/route-helpers";
-import { withPermission } from "@/lib/auth/rbac";
-import { PERMISSIONS } from "@/lib/auth/permissions";
-import { createSuccessResponse } from "@/lib/api/response";
+import { withAuth, withErrorHandler } from "@/route-helpers";
+import { createSuccessResponse, createErrorResponse } from "@/lib/api/response";
 import { AnalyticsService } from "@/services/analytics.service";
-import type { TenantContext } from "@/types/api";
 
 export const GET = withErrorHandler(
-  withAuth(
-    withTenant(
-      withPermission(PERMISSIONS.analytics.view)(async (req: Request, { tenantId }: TenantContext) => {
-        const service = new AnalyticsService();
-        const data = await service.getAllTenantsAnalytics();
-        return createSuccessResponse({ tenants: data });
-      })
-    )
-  )
+  withAuth(async (_req: Request, context: any) => {
+    const user = context?.user;
+    if (!user || (user.role !== "super_admin" && user.role !== "superAdmin")) {
+      return createErrorResponse(403, "Forbidden: Super Admin access required");
+    }
+
+    const service = new AnalyticsService();
+    const data = await service.getAllTenantsAnalytics();
+    return createSuccessResponse({ tenants: data });
+  })
 );

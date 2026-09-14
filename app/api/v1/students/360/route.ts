@@ -14,9 +14,10 @@ export const GET = withErrorHandler(
   withAuth(
     withTenant(
       withPermission(PERMISSIONS.students.view)(async (req: Request, { tenantId }: TenantContext) => {
+        let studentId: string | null = null;
         try {
           const { searchParams } = new URL(req.url);
-          const studentId = searchParams.get("id");
+          studentId = searchParams.get("id");
 
           if (!studentId) {
             return createErrorResponse(400, "Student ID required");
@@ -27,8 +28,18 @@ export const GET = withErrorHandler(
 
           return createSuccessResponse(data);
         } catch (error: any) {
-          logger.error("Student 360 Error:", { metadata: { error } });
-          if (error.message === "Student not found") {
+          logger.error("Student 360 Error:", {
+            tenantId,
+            studentId,
+            metadata: {
+              errorName: error?.name,
+              errorMessage: error?.message,
+              errorCode: error?.code,
+              errorStack: error?.stack,
+              error,
+            },
+          });
+          if (error?.message === "Student not found") {
             return createErrorResponse(404, "Student not found");
           }
           return createErrorResponse(500, "Internal Server Error");

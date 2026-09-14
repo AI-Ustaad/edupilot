@@ -56,7 +56,11 @@ export class EventOutboxRepository implements IEventOutboxRepository {
       retryHistory: [],
     };
 
-    await this.events.doc(eventId).set({ ...event, createdAt: FieldValue.serverTimestamp() });
+    await this.events.doc(eventId).set({
+      ...event,
+      createdAt: FieldValue.serverTimestamp(),
+      occurredAt: FieldValue.serverTimestamp(),
+    });
     return eventId;
   }
 

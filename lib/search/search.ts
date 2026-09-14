@@ -35,7 +35,7 @@ export interface ISearchProvider {
   search(query: SearchQuery): Promise<SearchResult[]>;
   delete(id: string, tenantId: string): Promise<void>;
   deleteByTenant(tenantId: string): Promise<void>;
-  clear(): Promise<void>;
+  clear(tenantId?: string): Promise<void>;
 }
 
 export class SearchService {
@@ -80,8 +80,8 @@ export class SearchService {
     return this.provider.deleteByTenant(tenantId);
   }
 
-  async clear(): Promise<void> {
-    return this.provider.clear();
+  async clear(tenantId?: string): Promise<void> {
+    return this.provider.clear(tenantId);
   }
 }
 

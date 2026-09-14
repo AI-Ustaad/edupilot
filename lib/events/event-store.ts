@@ -1,6 +1,6 @@
-// lib/events/event-store.ts
 import { DomainEvent, DomainEventMetadata, DomainEventEnvelope } from "./domain-events";
 import { adminDb, dbTimestamp } from "@/lib/firebase-admin";
+import { EVENT_STATUS } from "@/types/event";
 
 export interface EventStore {
   append(event: DomainEvent, metadata: DomainEventMetadata): Promise<string>;
@@ -14,12 +14,24 @@ export class FirestoreEventStore implements EventStore {
   private processedCollection = "processed_events";
 
   async append(event: DomainEvent, metadata: DomainEventMetadata): Promise<string> {
-    const docRef = await adminDb.collection(this.eventsCollection).add({
+    const eventId = event.eventId || crypto.randomUUID();
+    const docRef = adminDb.collection(this.eventsCollection).doc(eventId);
+    const eventData = {
       ...event,
+      eventId,
+      eventName: `${event.eventType}.v1`,
+      eventVersion: event.version || 1,
+      eventSchemaVersion: 1,
+      status: EVENT_STATUS.PENDING,
+      attempts: 0,
+      nextRetry: new Date(),
+      retryHistory: [],
       occurredAt: dbTimestamp,
-      metadata,
-    });
-    return docRef.id;
+      createdAt: dbTimestamp,
+      metadata: metadata || {},
+    };
+    await docRef.set(eventData);
+    return eventId;
   }
 
   async replay(tenantId: string, from?: Date, to?: Date): Promise<DomainEventEnvelope[]> {
@@ -32,13 +44,18 @@ export class FirestoreEventStore implements EventStore {
     if (to) query = query.where("occurredAt", "<=", to);
 
     const snapshot = await query.get();
-    return snapshot.docs.map(doc => ({
-      event: doc.data() as DomainEvent,
-      metadata: doc.data().metadata || {},
-      headers: {},
-      timestamp: doc.data().occurredAt?.toDate() || new Date(),
-      attempts: 0,
-    } as DomainEventEnvelope));
+    return snapshot.docs.map(doc => {
+      const data = doc.data();
+      const rawDate = data.occurredAt || data.createdAt;
+      const timestamp = rawDate?.toDate ? rawDate.toDate() : rawDate ? new Date(rawDate) : new Date();
+      return {
+        event: data as DomainEvent,
+        metadata: data.metadata || {},
+        headers: {},
+        timestamp,
+        attempts: data.attempts ?? 0,
+      } as DomainEventEnvelope;
+    });
   }
 
   async getByIdempotencyKey(key: string): Promise<boolean> {

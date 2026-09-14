@@ -15,17 +15,43 @@ interface LogEntry {
   metadata?: Record<string, any>;
 }
 
+function serializeValue(val: any, depth = 0): any {
+  if (depth > 5) return "[MaxDepth]";
+  if (val instanceof Error) {
+    return {
+      name: val.name,
+      message: val.message,
+      stack: val.stack,
+      code: (val as any).code,
+      details: (val as any).details,
+      ...(val as any),
+    };
+  }
+  if (val && typeof val === "object" && !Array.isArray(val)) {
+    const res: Record<string, any> = {};
+    for (const key of Object.keys(val)) {
+      res[key] = serializeValue(val[key], depth + 1);
+    }
+    return res;
+  }
+  if (Array.isArray(val)) {
+    return val.map((item) => serializeValue(item, depth + 1));
+  }
+  return val;
+}
+
 class Logger {
   private formatLog(entry: LogEntry): string {
     return JSON.stringify(entry);
   }
 
   private log(level: LogLevel, message: string, context?: Partial<Omit<LogEntry, "level" | "message" | "timestamp">>) {
+    const serializedContext = context ? serializeValue(context) : {};
     const entry: LogEntry = {
       level,
       message,
       timestamp: new Date().toISOString(),
-      ...context,
+      ...serializedContext,
     };
     if (level === "error") console.error(this.formatLog(entry));
     else console.log(this.formatLog(entry));

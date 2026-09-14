@@ -25,6 +25,12 @@ export class BehaviorService implements IBehaviorService {
   async recordBehavior(data: unknown, tenantId: string, userId: string): Promise<{ success: boolean }> {
     const parsed = this.validation.validateOrThrow(RecordBehaviorSchema, data);
 
+    // Verify student exists and belongs to tenantId
+    const student = await this.studentRepo.findById(parsed.studentId, tenantId);
+    if (!student) {
+      throw new Error(`Student ${parsed.studentId} not found or unauthorized for tenant`);
+    }
+
     await this.repo.create({
       studentId: parsed.studentId,
       points: parsed.points,
@@ -35,11 +41,8 @@ export class BehaviorService implements IBehaviorService {
     await invalidateCache(`behavior:${tenantId}:${parsed.studentId}`);
 
     // Update student's total behavior points via repository
-    const student = await this.studentRepo.findById(parsed.studentId, tenantId);
-    if (student) {
-      const currentPoints = (student as any).behaviorPoints || 0;
-      await this.studentRepo.update(parsed.studentId, { behaviorPoints: currentPoints + parsed.points } as any, tenantId);
-    }
+    const currentPoints = (student as any).behaviorPoints || 0;
+    await this.studentRepo.update(parsed.studentId, { behaviorPoints: currentPoints + parsed.points } as any, tenantId);
 
     await this.audit.log({
       action: "behavior.recorded",

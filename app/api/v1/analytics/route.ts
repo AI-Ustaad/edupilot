@@ -11,8 +11,8 @@ export const GET = withErrorHandler(
     withTenant(
       withPermission(PERMISSIONS.analytics.view)(async (req: Request, { tenantId }: TenantContext) => {
         const service = new AnalyticsService();
-        const data = await service.getAllTenantsAnalytics();
-        return createSuccessResponse({ tenants: data });
+        const data = await service.getTenantAnalytics(tenantId);
+        return createSuccessResponse(data);
       })
     )
   )

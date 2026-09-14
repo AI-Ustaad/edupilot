@@ -247,7 +247,32 @@ export class StudentService implements IStudentService {
   }
 
   async promote(tenantId: string, studentIds: string[], newClass: string, newSection: string, academicYear: string, userId: string) {
-    return { success: true, promoted: studentIds.length, errors: [] as string[] };
+    if (!studentIds || studentIds.length === 0) {
+      return { success: true, promoted: 0, errors: [] as string[] };
+    }
+    const errors: string[] = [];
+    const existing = await this.repository.batchFindByIds(tenantId, studentIds);
+    const existingMap = new Map<string, any>(existing.map((s: any) => [s.id, s]));
+
+    const validIds: string[] = [];
+    for (const id of studentIds) {
+      const student = existingMap.get(id);
+      if (!student || (student as any).tenantId !== tenantId) {
+        errors.push(`Student ${id} not found or unauthorized for tenant`);
+      } else {
+        validIds.push(id);
+      }
+    }
+
+    if (validIds.length > 0) {
+      await this.repository.bulkUpdate(tenantId, validIds, {
+        classGrade: newClass,
+        section: newSection,
+        updatedAt: new Date().toISOString() as any,
+      });
+    }
+
+    return { success: errors.length === 0, promoted: validIds.length, errors };
   }
 
   async archive(tenantId: string, studentId: string, userId: string): Promise<void> {

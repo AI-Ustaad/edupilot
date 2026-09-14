@@ -57,7 +57,12 @@ export class FirestoreSearchProvider implements ISearchProvider {
   }
 
   async delete(id: string, tenantId: string): Promise<void> {
-    await adminDb.collection(this.collection).doc(id).delete();
+    const docRef = adminDb.collection(this.collection).doc(id);
+    const docSnap = await docRef.get();
+    if (!docSnap.exists || docSnap.data()?.tenantId !== tenantId) {
+      return;
+    }
+    await docRef.delete();
   }
 
   async deleteByTenant(tenantId: string): Promise<void> {
@@ -67,10 +72,10 @@ export class FirestoreSearchProvider implements ISearchProvider {
     await batch.commit();
   }
 
-  async clear(): Promise<void> {
-    const snapshot = await adminDb.collection(this.collection).get();
-    const batch = adminDb.batch();
-    snapshot.docs.forEach(doc => batch.delete(doc.ref));
-    await batch.commit();
+  async clear(tenantId?: string): Promise<void> {
+    if (!tenantId) {
+      throw new Error("Tenant ID is required to clear search index. Cross-tenant clear is prohibited.");
+    }
+    await this.deleteByTenant(tenantId);
   }
 }

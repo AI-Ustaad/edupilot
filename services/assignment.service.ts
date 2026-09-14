@@ -1,6 +1,6 @@
-// services/assignment.service.ts
 import { AssignmentRepository } from "@/repositories/assignment.repository";
 import { StorageRepository } from "@/repositories/storage.repository";
+import { StudentRepository } from "@/repositories/student.repository";
 import { AuditService } from "./AuditService";
 import { ValidationService } from "./ValidationService";
 import { CreateAssignmentSchema, UpdateAssignmentSchema } from "@/validators/teacher";
@@ -15,11 +15,13 @@ export class AssignmentService implements IAssignmentService {
   private audit: AuditService;
   private validation: ValidationService;
   private storageRepo: StorageRepository;
+  private studentRepo: StudentRepository;
 
   constructor(private repo: IAssignmentRepository = new AssignmentRepository()) {
     this.audit = new AuditService();
     this.validation = new ValidationService();
     this.storageRepo = new StorageRepository();
+    this.studentRepo = new StudentRepository();
   }
 
   async createAssignment(data: unknown, tenantId: string, userId: string): Promise<Assignment> {
@@ -114,6 +116,16 @@ export class AssignmentService implements IAssignmentService {
     tenantId: string,
     userId: string
   ): Promise<string> {
+    const assignment = await this.repo.findById(assignmentId, tenantId);
+    if (!assignment) {
+      throw new Error(`Assignment ${assignmentId} not found or unauthorized for tenant`);
+    }
+
+    const student = await this.studentRepo.findById(studentId, tenantId);
+    if (!student) {
+      throw new Error(`Student ${studentId} not found or unauthorized for tenant`);
+    }
+
     const id = await this.repo.createSubmission({
       assignmentId,
       studentId,
