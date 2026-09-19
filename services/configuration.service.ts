@@ -108,27 +108,27 @@ export class ConfigurationService implements IConfigurationService {
     }
   }
 
-async saveAndPublishConfiguration(input: WizardInput, tenantId: string, userId: string): Promise<MasterSchoolConfiguration> {
-     try {
-       const existing = await this.repo.getConfiguration(tenantId);
-       const previousVersion = existing?.version.number || 0;
-       const { schoolProfile, academicStructure } = input;
+  async saveAndPublishConfiguration(input: WizardInput, tenantId: string, userId: string): Promise<MasterSchoolConfiguration> {
+    try {
+      const existing = await this.repo.getConfiguration(tenantId);
+      const previousVersion = existing?.version.number || 0;
+      const { schoolProfile, academicStructure } = input;
 
-       if (existing && existing.state === "Published") {
-         if (existing.metadata.configuredBy && existing.metadata.configuredBy !== userId) {
-           throw new ConfigurationValidationError("Configuration Write Violation: A published configuration exists. Only the original publisher or an administrator can modify it.");
-         }
-       }
+      if (existing && existing.state === "Published") {
+        if (existing.metadata.configuredBy && existing.metadata.configuredBy !== userId) {
+          throw new ConfigurationValidationError("Configuration Write Violation: A published configuration exists. Only the original publisher or an administrator can modify it.");
+        }
+      }
 
-       if (!academicStructure || !academicStructure.grades || academicStructure.grades.length === 0) {
-         throw new ConfigurationValidationError("Validation Failed: No classes/grades were generated.");
-       }
+      if (!academicStructure || !academicStructure.grades || academicStructure.grades.length === 0) {
+        throw new ConfigurationValidationError("Validation Failed: No classes/grades were generated.");
+      }
 
-       if (!academicStructure.allSubjects || academicStructure.allSubjects.length === 0) {
-         throw new ConfigurationValidationError("Validation Failed: No subjects were found for the selected curriculum.");
-       }
+      if (!academicStructure.allSubjects || academicStructure.allSubjects.length === 0) {
+        throw new ConfigurationValidationError("Validation Failed: No subjects were found for the selected curriculum.");
+      }
 
-       const sectionNames: string[] = schoolProfile.sections?.length ? schoolProfile.sections : ["A"];
+      const sectionNames: string[] = schoolProfile.sections?.length ? schoolProfile.sections : ["A"];
 
       const mappedClasses = academicStructure.grades.map((g: any) => ({
         id: g.id || `cls_${g.name}`,
@@ -140,7 +140,7 @@ async saveAndPublishConfiguration(input: WizardInput, tenantId: string, userId: 
       const newConfig: MasterSchoolConfiguration = {
         id: "current",
         tenantId: tenantId,
-        state: "Published",
+        state: "Draft",
         metadata: {
           tenantId: tenantId,
           schemaVersion: 2,
@@ -150,10 +150,10 @@ async saveAndPublishConfiguration(input: WizardInput, tenantId: string, userId: 
           timezone: "UTC",
           academicYearId: existing?.metadata.academicYearId || null,
           currentSnapshotId: null,
-           isConfigured: true,
-           configuredAt: nowISO(),
-           configuredBy: userId,
-           lastModified: nowISO(),
+          isConfigured: false,
+          configuredAt: undefined,
+          configuredBy: undefined,
+          lastModified: nowISO(),
         },
         version: createVersion(previousVersion + 1, userId, "Configured via Smart Setup Wizard"),
         school: {
@@ -182,17 +182,15 @@ async saveAndPublishConfiguration(input: WizardInput, tenantId: string, userId: 
         },
       };
 
-      await this.repo.publishConfiguration(tenantId, newConfig, userId);
-
       const provisioning = await this.provisioningService.provisionFromConfiguration(tenantId, newConfig, userId);
       if (!provisioning.academicYearId) {
         throw new ConfigurationInvalidError("Configuration provisioning did not produce a current academic year");
       }
 
-      // The generated current academic year is an authoritative part of the
-      // configuration graph, not an ephemeral provisioning detail.
       newConfig.metadata.academicYearId = provisioning.academicYearId;
-      await this.repo.saveConfiguration(tenantId, newConfig);
+      newConfig.state = "Published";
+
+      await this.repo.publishConfiguration(tenantId, newConfig, userId);
       await this.cache.invalidateConfiguration(tenantId);
       await this.cache.setConfiguration(tenantId, newConfig);
 
@@ -214,7 +212,7 @@ async saveAndPublishConfiguration(input: WizardInput, tenantId: string, userId: 
       logger.error("CONFIGURATION_SAVE_FAILED", {
         metadata: { tenantId, userId, error: message },
       });
-      throw new ConfigurationInvalidError(`Failed to save configuration: ${message}`);
+      throw error;
     }
   }
 
