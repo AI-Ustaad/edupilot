@@ -1,0 +1,36 @@
+app/api/v1/classes/route.ts:6:import { SectionRepository } from "@/repositories/section.repository";
+app/api/v1/classes/route.ts:20:        const sectionRepo = new SectionRepository();
+app/api/v1/classes/route.ts:74:        const sectionRepo = new SectionRepository();
+services/configuration-dashboard.service.ts:7:import { ClassRepository } from "@/repositories/class.repository";
+services/configuration-dashboard.service.ts:8:import { SectionRepository } from "@/repositories/section.repository";
+services/configuration-dashboard.service.ts:35:    private readonly classRepo: ClassRepository,
+services/configuration-dashboard.service.ts:36:    private readonly sectionRepo: SectionRepository,
+services/configuration-dashboard.service.ts:319:  new ClassRepository(),
+services/configuration-dashboard.service.ts:320:  new SectionRepository(),
+services/tenant.service.ts:3:import { SectionRepository } from "@/repositories/section.repository";
+services/tenant.service.ts:21:  private sectionRepo: SectionRepository;
+services/tenant.service.ts:27:    this.sectionRepo = new SectionRepository();
+services/class.service.ts:2:import { ClassRepository } from "@/repositories/class.repository";
+services/class.service.ts:7:  private repo: ClassRepository;
+services/class.service.ts:9:  constructor(repo?: ClassRepository) {
+services/class.service.ts:10:    this.repo = repo ?? new ClassRepository();
+repositories/section.repository.test.ts:1:import { SectionRepository } from '@/repositories/section.repository';
+repositories/section.repository.test.ts:9:describe('SectionRepository', () => {
+repositories/section.repository.test.ts:10:  let repo: SectionRepository;
+repositories/section.repository.test.ts:15:    repo = new SectionRepository();
+repositories/section.repository.ts:3:import type { ISectionRepository } from "@/interfaces/ISectionRepository";
+repositories/section.repository.ts:17:export class SectionRepository extends BaseRepository<Section> implements ISectionRepository {
+repositories/section.repository.ts:70:export const sectionRepository = new SectionRepository();
+repositories/class.repository.test.ts:1:import { ClassRepository } from '@/repositories/class.repository';
+repositories/class.repository.test.ts:9:describe('ClassRepository', () => {
+repositories/class.repository.test.ts:10:  let repo: ClassRepository;
+repositories/class.repository.test.ts:15:    repo = new ClassRepository();
+repositories/class.repository.ts:4:import type { IClassRepository } from "@/interfaces/IClassRepository";
+repositories/class.repository.ts:18:export class ClassRepository extends BaseRepository<ClassRecord> implements IClassRepository {
+repositories/class.repository.ts:46:export const classRepository = new ClassRepository();
+interfaces/IClassRepository.ts:1:// interfaces/IClassRepository.ts
+interfaces/IClassRepository.ts:2:export interface IClassRepository {
+interfaces/ISectionRepository.ts:1:// interfaces/ISectionRepository.ts
+interfaces/ISectionRepository.ts:2:export interface ISectionRepository {
+interfaces/index.ts:24:export * from "./IClassRepository";
+interfaces/index.ts:61:export * from "./ISectionRepository";

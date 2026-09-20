@@ -1,0 +1,220 @@
+repositories/class.repository.ts:23:  async getAll(tenantId: string): Promise<(ClassRecord & { id: string })[]> {
+repositories/class.repository.ts:34:    const id = await this.create(
+repositories/class.repository.ts:42:    await this.update(id, { deleted: true, deletedAt: dbTimestamp } as any, tenantId);
+repositories/section.repository.ts:38:    await docRef.update({
+repositories/section.repository.ts:52:    snapshot.docs.forEach(doc => batch.delete(doc.ref));
+services/homework.service.ts:31:    const id = await this.repo.create(createData, tenantId);
+services/homework.service.ts:32:    const record = await this.repo.findById(id, tenantId);
+services/homework.service.ts:61:  async getById(id: string, tenantId: string): Promise<Homework | null> {
+services/homework.service.ts:62:    return this.repo.findById(id, tenantId);
+services/homework.service.ts:67:    await this.repo.update(id, parsed, tenantId);
+services/homework.service.ts:69:    const updated = await this.repo.findById(id, tenantId);
+services/homework.service.ts:93:    await this.repo.delete(id, tenantId);
+services/configuration-dashboard.service.ts:139:      this.classRepo.getAll(tenantId).catch(() => []),
+services/configuration-dashboard.service.ts:144:      this.roomRepo.getAll(tenantId).catch(() => []),
+services/configuration-dashboard.service.ts:145:      this.buildingRepo.getAll(tenantId).catch(() => []),
+services/configuration-dashboard.service.ts:146:      this.facilityRepo.getAll(tenantId).catch(() => []),
+services/configuration-dashboard.service.ts:147:      this.libraryRepo.getAll(tenantId).catch(() => []),
+services/configuration-dashboard.service.ts:148:      this.transportRepo.getAll(tenantId).catch(() => []),
+services/configuration-dashboard.service.ts:149:      this.hostelRepo.getAll(tenantId).catch(() => []),
+services/configuration-dashboard.service.ts:151:      this.houseRepo.getAll(tenantId).catch(() => []),
+services/configuration-dashboard.service.ts:152:      this.shiftRepo.getAll(tenantId).catch(() => []),
+services/configuration-dashboard.service.ts:153:      this.gradingRepo.getAll(tenantId).catch(() => []),
+services/configuration-dashboard.service.ts:154:      this.departmentRepo.getAll(tenantId).catch(() => []),
+services/fee-reminder.service.ts:25:        const student = await this.studentRepo.findById(feeData.studentId, tenantId);
+services/behavior.service.ts:28:    await this.repo.create({
+services/behavior.service.ts:38:    const student = await this.studentRepo.findById(parsed.studentId, tenantId);
+services/behavior.service.ts:41:      await this.studentRepo.update(parsed.studentId, { behaviorPoints: currentPoints + parsed.points } as any, tenantId);
+services/behavior.service.ts:65:    return this.repo.findByStudent(studentId, tenantId, 20);
+services/chat.service.ts:13:  async findByTenant(tenantId: string, teacherId?: string, parentId?: string): Promise<ChatMessage[]> {
+services/chat.service.ts:14:    return this.repository.findByTenant(tenantId, teacherId, parentId);
+services/lesson-plan.service.ts:31:    const id = await this.repo.create(createData, tenantId);
+services/lesson-plan.service.ts:32:    const plan = await this.repo.findById(id, tenantId);
+services/lesson-plan.service.ts:61:    return this.repo.findById(id, tenantId);
+services/lesson-plan.service.ts:66:    await this.repo.update(id, parsed, tenantId);
+services/lesson-plan.service.ts:88:    await this.repo.delete(id, tenantId);
+services/subscription.service.ts:14:    const subscription = await this.subscriptionRepo.findByTenant(tenantId);
+services/subscription.service.ts:30:    const subscription = await this.subscriptionRepo.findByTenant(tenantId);
+services/subscription.service.ts:71:    await this.subscriptionRepo.update(tenantId, data, tenantId);
+services/marks.service.ts:43:  async findByStudent(tenantId: string, studentId: string): Promise<(Mark & { id: string })[]> {
+services/marks.service.ts:44:    return this.repo.findByStudent(tenantId, studentId);
+services/marks.service.ts:48:    const mark = await this.repo.findById(id, tenantId);
+services/marks.service.ts:61:      await this.repo.create({ studentId: parsed.studentId, term: parsed.term, subject: parsed.subject, skills: parsed.skills, classGrade: "", section: "", marksObtained: 0, totalMarks: 0, percentage: 0, grade: "", tenantId, createdBy: userId, updatedBy: userId, deleted: false }, tenantId);
+services/auth.service.ts:41:    return this.userRepo.findByUidWithFallback(uid, email, context);
+services/auth.service.ts:46:    await this.userRepo.create({
+services/auth.service.ts:67:      await this.userRepo.create({
+services/auth.service.ts:87:    const sessionUser = await this.userRepo.findByUidWithFallback(decodedToken.uid, decodedToken.email, context);
+services/ledger.service.ts:13:  async findByTenant(tenantId: string): Promise<(LedgerEntry & { id: string })[]> {
+services/ledger.service.ts:14:    return this.repository.findByTenant(tenantId);
+services/bus.service.ts:32:  async create(data: unknown, tenantId: string, userId?: string): Promise<Bus> {
+services/bus.service.ts:36:    const id = await this.repo.create(createData, tenantId);
+services/bus.service.ts:37:    const bus = await this.repo.findById(id, tenantId);
+services/bus.service.ts:64:  async getAll(tenantId: string): Promise<Bus[]> {
+services/bus.service.ts:68:  async getById(id: string, tenantId: string): Promise<Bus | null> {
+services/bus.service.ts:69:    return this.repo.findById(id, tenantId);
+services/bus.service.ts:72:  async update(id: string, data: unknown, tenantId: string, userId?: string): Promise<Bus> {
+services/bus.service.ts:75:    await this.repo.update(id, parsed, tenantId);
+services/bus.service.ts:76:    const updated = await this.repo.findById(id, tenantId);
+services/bus.service.ts:102:  async delete(id: string, tenantId: string, userId?: string): Promise<void> {
+services/bus.service.ts:103:    const bus = await this.repo.findById(id, tenantId);
+services/bus.service.ts:104:    await this.repo.delete(id, tenantId);
+services/certificate.service.ts:14:    const studentData = await this.studentRepo.findById(studentId, tenantId);
+services/fees.service.ts:61:    const created = await this.repository.findById(id, tenantId);
+services/fees.service.ts:67:    const doc = await this.repository.findById(id, tenantId);
+services/fees.service.ts:76:      fees = await (this.repository as FeesRepository).findByStudent(tenantId, studentId, page * limit);
+services/fees.service.ts:99:  async findByStudent(tenantId: string, studentId: string, limit = 100): Promise<FeeEntity[]> {
+services/fees.service.ts:100:    const docs = await this.repository.findByStudent(tenantId, studentId, limit);
+services/fees.service.ts:105:    const existing = await this.repository.findById(id, tenantId);
+services/fees.service.ts:117:    await this.repository.update(id, updatePayload, tenantId);
+services/fees.service.ts:118:    const updated = await this.repository.findById(id, tenantId);
+services/fees.service.ts:146:    const fee = await this.repository.findById(id, tenantId);
+services/fees.service.ts:147:    await this.repository.delete(id, tenantId);
+services/tenant-branding.service.ts:14:      return this.repo.findById(tenantId, tenantId); // document id = tenantId
+services/tenant-branding.service.ts:20:    const existing = await this.repo.findById(tenantId, tenantId);
+services/tenant-branding.service.ts:22:      await this.repo.update(tenantId, data, tenantId);
+services/tenant-branding.service.ts:24:      await this.repo.create({ ...data, tenantId } as any, tenantId);
+services/book.service.ts:24:      return this.repo.findByFilter(tenantId, filters);
+services/book.service.ts:37:    const id = await this.repo.create(createData, tenantId);
+services/book.service.ts:38:    const book = await this.repo.findById(id, tenantId);
+services/book.service.ts:62:    return this.repo.findById(id, tenantId);
+services/book.service.ts:67:    await this.repo.update(id, parsed, tenantId);
+services/book.service.ts:88:    await this.repo.delete(id, tenantId);
+services/video-lecture.service.ts:16:  async create(data: unknown, tenantId: string, userId: string): Promise<VideoLecture> {
+services/video-lecture.service.ts:33:    const id = await this.repo.create(createData, tenantId);
+services/video-lecture.service.ts:34:    const record = await this.repo.findById(id, tenantId);
+services/video-lecture.service.ts:48:  async getById(id: string, tenantId: string): Promise<VideoLecture | null> {
+services/video-lecture.service.ts:49:    return this.repo.findById(id, tenantId);
+services/video-lecture.service.ts:52:  async update(id: string, data: unknown, tenantId: string, userId?: string): Promise<VideoLecture> {
+services/video-lecture.service.ts:62:    await this.repo.update(id, validated, tenantId);
+services/video-lecture.service.ts:63:    const updated = await this.repo.findById(id, tenantId);
+services/video-lecture.service.ts:73:  async delete(id: string, tenantId: string, userId?: string): Promise<void> {
+services/video-lecture.service.ts:74:    await this.repo.delete(id, tenantId);
+services/billing.service.ts:47:    const session = await stripe.checkout.sessions.create({
+services/billing.service.ts:122:    return this.subscriptionRepo.findByTenant(tenantId);
+services/billing.service.ts:134:    const subscription = await this.subscriptionRepo.findByTenant(tenantId);
+services/billing.service.ts:138:    const id = await this.invoiceRepo.create({
+services/parents.service.ts:31:    const doc = await this.repository.findById(userId, tenantId);
+services/parents.service.ts:37:    const parent = await this.repository.findById(userId, tenantId);
+services/parents.service.ts:47:    const parent = await this.repository.findById(userId, tenantId);
+services/parents.service.ts:52:    const parent = await this.repository.findById(userId, tenantId);
+services/parents.service.ts:97:    await this.repository.update(userId, updatePayload, tenantId);
+services/parents.service.ts:116:    await this.repository.delete(parentId, tenantId);
+services/AdmissionsService.ts:14:    await this.repository.update(studentId, {
+services/AdmissionsService.ts:22:    await this.repository.update(studentId, {
+services/invoice.service.ts:31:    return this.repo.create(invoice, data.tenantId);
+services/configuration-cache.service.ts:53:      await this.memoryCache.delete(cacheKey);
+services/quiz.service.ts:30:    const id = await this.repo.create(createData, tenantId);
+services/quiz.service.ts:31:    const quiz = await this.repo.findById(id, tenantId);
+services/quiz.service.ts:59:    return this.repo.findById(id, tenantId);
+services/quiz.service.ts:71:    const quiz = await this.repo.findById(parsed.quizId, tenantId);
+services/quiz.service.ts:121:    await this.repo.delete(id, tenantId);
+services/report.service.ts:39:    const student = await studentRepo.findById(studentId, tenantId);
+services/featureFlag.service.ts:15:    const flags = await featureFlagRepo.findByTenant(tenantId);
+services/timetable.service.ts:39:    const id = await this.repo.create(entryData as any, tenantId);
+services/timetable.service.ts:67:    const entry = await this.repo.findById(id, tenantId);
+services/timetable.service.ts:70:    await this.repo.delete(id, tenantId);
+services/academic-year.service.ts:17:  async findById(id: string, tenantId: string): Promise<(AcademicYear & { id: string }) | null> {
+services/academic-year.service.ts:18:    return this.repository.findById(id, tenantId);
+services/academic-year.service.ts:21:  async create(data: AcademicYear, tenantId: string, userId: string): Promise<string> {
+services/academic-year.service.ts:26:    const id = await this.repository.create(data as any, tenantId);
+services/job.service.ts:8:    return this.jobRepo.create({
+services/job.service.ts:32:  async findById(tenantId: string, jobId: string) {
+services/job.service.ts:33:    return this.jobRepo.findById(tenantId, jobId);
+services/leave.service.ts:25:    const teacher = await this.staffRepo.findById(staffId, tenantId);
+services/tenant.service.ts:59:    const ayId = await this.academicYearRepo.create({
+services/telemetry.service.ts:41:    const loginLogs = await this.auditRepo.findByTenant(
+services/analytics.service.ts:28:    const tenant = await this.tenantRepo.findById(tenantId, tenantId);
+services/admit-card.service.ts:14:    const students = await this.studentRepo.findBySection(classGrade, section, tenantId);
+services/attendance.service.ts:105:  async findByStudentId(tenantId: string, studentId: string): Promise<AttendanceEntity[]> {
+services/attendance.service.ts:106:    const docs = await this.repository.findByStudentId(tenantId, studentId);
+services/attendance.service.ts:110:  async findByStudentIds(tenantId: string, studentIds: string[], limit = 30): Promise<AttendanceEntity[]> {
+services/attendance.service.ts:111:    const docs = await this.repository.findByStudentIds(tenantId, studentIds, limit);
+services/attendance.service.ts:115:  async getById(tenantId: string, id: string): Promise<AttendanceEntity | null> {
+services/attendance.service.ts:116:    const doc = await this.repository.findById(id, tenantId);
+services/attendance.service.ts:122:    const existing = await this.repository.findById(id, tenantId);
+services/attendance.service.ts:134:    await this.repository.update(id, updatePayload, tenantId);
+services/attendance.service.ts:135:    const updated = await this.repository.findById(id, tenantId);
+services/attendance.service.ts:161:    const record = await this.repository.findById(id, tenantId);
+services/attendance.service.ts:162:    await this.repository.delete(id, tenantId);
+services/assignment.service.ts:34:    const id = await this.repo.create(createData, tenantId);
+services/assignment.service.ts:35:    const assignment = await this.repo.findById(id, tenantId);
+services/assignment.service.ts:65:    return this.repo.findById(id, tenantId);
+services/assignment.service.ts:70:    await this.repo.update(id, parsed, tenantId);
+services/assignment.service.ts:91:    await this.repo.delete(id, tenantId);
+services/class.service.ts:14:    const records = await this.repo.getAll(tenantId);
+services/StudentService.ts:24:  async create(data: CreateStudentDTO, tenantId: string, userId: string): Promise<StudentEntity> {
+services/StudentService.ts:31:      const existing = await this.repository.findByRollNumber(rollNum, tenantId);
+services/StudentService.ts:59:  async update(tenantId: string, studentId: string, data: UpdateStudentDTO, userId: string): Promise<StudentEntity | null> {
+services/StudentService.ts:70:    await this.repository.update(studentId, updatePayload as Parameters<IStudentRepository["update"]>[1], tenantId);
+services/StudentService.ts:71:    const updated = await this.getById(tenantId, studentId);
+services/StudentService.ts:82:  async getById(tenantId: string, studentId: string): Promise<StudentEntity | null> {
+services/StudentService.ts:83:    const doc = await this.repository.findById(studentId, tenantId);
+services/StudentService.ts:96:  async delete(tenantId: string, studentId: string, userId?: string): Promise<void> {
+services/StudentService.ts:107:    await this.repository.delete(studentId, tenantId);
+services/StudentService.ts:117:    await this.repository.update(studentId, {
+services/StudentService.ts:125:    await this.repository.update(studentId, {
+services/StudentService.ts:133:    const student = await this.getById(tenantId, studentId);
+services/StudentService.ts:153:    const student = await this.getById(tenantId, studentId);
+services/StudentService.ts:169:    await this.repository.update(studentId, {
+services/StudentService.ts:181:    await this.repository.update(studentId, { status: "archived", updatedBy: userId }, tenantId);
+services/StudentService.ts:200:        const created = await this.create(studentData as CreateStudentDTO, tenantId, userId);
+services/StaffService.ts:57:  async getById(tenantId: string, id: string): Promise<StaffEntity> {
+services/StaffService.ts:58:    const doc = await this.repository.findById(id, tenantId);
+services/StaffService.ts:63:  async create(data: CreateStaffDTO, tenantId: string, userId: string): Promise<string> {
+services/StaffService.ts:73:      const existing = await this.repository.findByEmail(tenantId, validation.data.contact.email);
+services/StaffService.ts:120:  async update(tenantId: string, id: string, data: UpdateStaffDTO, userId?: string): Promise<void> {
+services/StaffService.ts:121:    await this.getById(tenantId, id);
+services/StaffService.ts:141:    await this.repository.update(id, updatePayload, tenantId);
+services/StaffService.ts:160:  async delete(tenantId: string, id: string, userId?: string): Promise<void> {
+services/StaffService.ts:161:    const staff = await this.getById(tenantId, id);
+services/StaffService.ts:220:    const id = await this.create(hireData, tenantId, userId);
+services/StaffService.ts:247:    const staff = await this.getById(tenantId, staffId);
+services/StaffService.ts:273:    await this.update(tenantId, staffId, updateData, userId);
+services/StaffService.ts:299:    const staff = await this.getById(tenantId, staffId);
+services/StaffService.ts:315:    await this.update(tenantId, staffId, updateData, userId);
+services/StaffService.ts:333:    const staff = await this.getById(tenantId, staffId);
+services/StaffService.ts:349:    await this.update(tenantId, staffId, updateData, userId);
+services/StaffService.ts:438:    const staff = await this.getById(tenantId, staffId);
+services/StaffService.ts:443:    const staff = await this.getById(tenantId, staffId);
+services/StaffService.ts:450:    const staff = await this.getById(tenantId, staffId);
+services/StaffService.ts:467:    const staff = await this.getById(tenantId, staffId);
+services/StaffService.ts:529:        const created = await this.create(studentData, tenantId, userId);
+services/AuditService.ts:24:      await this.auditRepo.create(entry, entry.tenantId);
+services/AuditService.ts:35:      return await this.auditRepo.findByTenant(tenantId, options);
+app/api/v1/attendance/[id]/route.ts:21:        const record = await service.getById(tenantId, id);
+app/api/v1/attendance/[id]/route.ts:49:        const record = await service.getById(tenantId, id);
+app/api/v1/parents/dashboard/route.ts:26:        const allAttendance = await attendanceService.findByStudentIds(tenantId, childIds, 5).catch(() => []);
+app/api/v1/parents/results/route.ts:21:            const marks = await marksService.findByStudent(tenantId, childId);
+app/api/v1/ledger/route.ts:14:        const data = await service.findByTenant(tenantId);
+app/api/v1/chat/route.ts:19:        const messages = await service.findByTenant(tenantId, teacherId || undefined, parentId || undefined);
+app/api/v1/admin/delete-student/route.ts:23:        const student = await studentService.getById(tenantId, studentId);
+app/api/v1/admin/delete-student/route.ts:29:        const studentAttendance = await attendanceService.findByStudentId(tenantId, studentId);
+app/api/v1/admin/delete-student/route.ts:36:        const studentFees = await feesService.findByStudent(tenantId, studentId, 9999);
+app/api/v1/students/get/route.ts:23:        const student = await service.getById(tenantId, studentId);
+app/api/v1/students/route.ts:34:    const student = await service.create(body, tenantId, context.user.uid);
+app/api/v1/students/[id]/route.ts:24:        const student = await service.getById(tenantId, id);
+app/api/v1/students/[id]/route.ts:40:        const updated = await service.update(tenantId, id, body, user.uid);
+app/api/v1/students/[id]/route.ts:55:        await service.delete(tenantId, id, user.uid);
+app/api/v1/gdpr/delete/[id]/route.ts:25:        const student = await studentService.getById(tenantId, id);
+app/api/v1/gdpr/delete/[id]/route.ts:29:        const studentAttendance = await attendanceService.findByStudentId(tenantId, id);
+app/api/v1/gdpr/delete/[id]/route.ts:36:        const studentFees = await feesService.findByStudent(tenantId, id, 9999);
+app/api/v1/gdpr/delete/[id]/route.ts:42:        await studentService.delete(tenantId, id, user.uid);
+app/api/v1/gdpr/export/[id]/route.ts:23:        const student = await studentService.getById(tenantId, id);
+app/api/v1/gdpr/export/[id]/route.ts:27:        const studentAttendance = await attendanceService.findByStudentId(tenantId, id);
+app/api/v1/gdpr/export/[id]/route.ts:30:        const studentFees = await feesService.findByStudent(tenantId, id, 9999);
+app/api/v1/academic-year/route.ts:30:        const id = await service.create({ name, startDate, endDate, isCurrent: !!isCurrent, tenantId } as any, tenantId, user.uid);
+app/api/v1/academic-year/[id]/route.ts:18:      const doc = await service.findById(id, tenantId);
+app/api/v1/staff/route.ts:79:            const id = await service.create(body, tenantId, user.uid);
+app/api/v1/staff/[id]/route.ts:18:  const staff = await service.getById(tenantId, id);
+app/api/v1/staff/[id]/route.ts:33:  await service.update(tenantId, id, body, context.user.uid);
+app/api/v1/staff/[id]/route.ts:47:  await service.delete(tenantId, id, context.user.uid);
+app/api/v1/jobs/[jobId]/route.ts:19:      const job = await service.findById(tenantId, jobId);
+app/api/v1/buses/route.ts:14:        const buses = await service.getAll(tenantId);
+app/api/v1/buses/route.ts:27:        const bus = await service.create(body, tenantId, user.uid);
+app/api/v1/buses/[id]/route.ts:21:        const bus = await service.getById(id, tenantId);
+app/api/v1/buses/[id]/route.ts:38:        await service.update(id, body, tenantId, user.uid);
+app/api/v1/buses/[id]/route.ts:51:        const bus = await service.getById(id, tenantId);
+app/api/v1/buses/[id]/route.ts:56:        await service.delete(id, tenantId, user.uid);
+app/api/v1/video-lectures/route.ts:27:        const lecture = await service.create(body, tenantId, user.uid);
+app/api/v1/reports/generate/route.tsx:30:        const student = await (new (await import("@/repositories/student.repository")).StudentRepository()).findById(studentId, tenantId);
+app/api/v1/stripe/create-checkout/route.ts:32:        const session = await stripe.checkout.sessions.create({

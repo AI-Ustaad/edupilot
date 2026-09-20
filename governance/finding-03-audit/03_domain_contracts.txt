@@ -1,0 +1,25 @@
+repositories/class.repository.ts:1:// repositories/class.repository.ts
+repositories/class.repository.ts:7:  classGrade: string;
+repositories/class.repository.ts:8:  sectionName: string;
+repositories/class.repository.ts:18:export class ClassRepository extends BaseRepository<ClassRecord> implements IClassRepository {
+repositories/class.repository.ts:20:    super("sections");
+repositories/class.repository.ts:33:  async createClass(data: { classGrade: string; sectionName: string; subjects?: { core: string[]; electives: string[] }; createdBy?: string }, tenantId: string): Promise<string> {
+repositories/class.repository.ts:46:export const classRepository = new ClassRepository();
+repositories/section.repository.ts:6:  classGrade: string;
+repositories/section.repository.ts:7:  sectionName: string;
+repositories/section.repository.ts:17:export class SectionRepository extends BaseRepository<Section> implements ISectionRepository {
+repositories/section.repository.ts:19:    super("sections");
+repositories/section.repository.ts:58:    structure: Array<{ classGrade: string; sectionName: string; subjects: { core: string[]; electives: string[] } }>,
+repositories/section.repository.ts:62:    const keys = new Set(existing.map((section) => `${section.classGrade}::${section.sectionName}`.toLowerCase()));
+repositories/section.repository.ts:63:    const missing = structure.filter((section) => !keys.has(`${section.classGrade}::${section.sectionName}`.toLowerCase()));
+repositories/section.repository.ts:65:    await this.bulkCreate(missing.map((section) => ({ ...section, tenantId, deleted: false, createdBy: userId })), tenantId);
+repositories/section.repository.ts:70:export const sectionRepository = new SectionRepository();
+documents/FeeDocument.ts:7:  classGrade?: string;
+documents/AttendanceDocument.ts:6:  classGrade: string;
+documents/AttendanceDocument.ts:7:  section: string;
+documents/StudentDocument.ts:18:  classGrade?: string;
+documents/StudentDocument.ts:19:  section?: string;
+documents/StaffDocument.ts:42:  classesAssigned?: string[];
+documents/StaffDocument.ts:44:  sectionAssignment?: string;
+documents/StaffDocument.ts:45:  classTeacher?: boolean;
+documents/FeeStructureDocument.ts:7:  classId?: string;

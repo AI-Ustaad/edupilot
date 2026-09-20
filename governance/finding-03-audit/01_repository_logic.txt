@@ -1,0 +1,44 @@
+repositories/class.repository.ts:11:  createdBy?: string;
+repositories/class.repository.ts:12:  tenantId: string;
+repositories/class.repository.ts:13:  deleted?: boolean;
+repositories/class.repository.ts:14:  createdAt?: any;
+repositories/class.repository.ts:15:  updatedAt?: any;
+repositories/class.repository.ts:19:  constructor() {
+repositories/class.repository.ts:20:    super("sections");
+repositories/class.repository.ts:23:  async getAll(tenantId: string): Promise<(ClassRecord & { id: string })[]> {
+repositories/class.repository.ts:25:      .collection(this.collectionName)
+repositories/class.repository.ts:26:      .where("tenantId", "==", tenantId)
+repositories/class.repository.ts:30:      .filter(r => !r.deleted);
+repositories/class.repository.ts:33:  async createClass(data: { classGrade: string; sectionName: string; subjects?: { core: string[]; electives: string[] }; createdBy?: string }, tenantId: string): Promise<string> {
+repositories/class.repository.ts:34:    const id = await this.create(
+repositories/class.repository.ts:35:      { ...data, tenantId, createdAt: dbTimestamp } as any,
+repositories/class.repository.ts:36:      tenantId
+repositories/class.repository.ts:41:  async deleteClass(id: string, tenantId: string): Promise<void> {
+repositories/class.repository.ts:42:    await this.update(id, { deleted: true, deletedAt: dbTimestamp } as any, tenantId);
+repositories/section.repository.ts:10:  tenantId: string;
+repositories/section.repository.ts:11:  deleted?: boolean;
+repositories/section.repository.ts:12:  deletedAt?: any;
+repositories/section.repository.ts:13:  deletedBy?: string;
+repositories/section.repository.ts:14:  createdBy?: string;
+repositories/section.repository.ts:18:  constructor() {
+repositories/section.repository.ts:19:    super("sections");
+repositories/section.repository.ts:22:  async findAllActive(tenantId: string): Promise<(Section & { id: string })[]> {
+repositories/section.repository.ts:24:      .collection(this.collectionName)
+repositories/section.repository.ts:25:      .where("tenantId", "==", tenantId)
+repositories/section.repository.ts:29:      .filter(s => !s.deleted);
+repositories/section.repository.ts:32:  async softDeleteBySectionId(id: string, tenantId: string, userId: string): Promise<void> {
+repositories/section.repository.ts:33:    const docRef = this.db.collection(this.collectionName).doc(id);
+repositories/section.repository.ts:35:    if (!docSnap.exists || docSnap.data()?.tenantId !== tenantId) {
+repositories/section.repository.ts:38:    await docRef.update({
+repositories/section.repository.ts:39:      deleted: true,
+repositories/section.repository.ts:40:      deletedAt: dbTimestamp,
+repositories/section.repository.ts:41:      deletedBy: userId,
+repositories/section.repository.ts:42:      updatedAt: dbTimestamp,
+repositories/section.repository.ts:46:  async deleteAllForTenant(tenantId: string): Promise<void> {
+repositories/section.repository.ts:48:      .collection(this.collectionName)
+repositories/section.repository.ts:49:      .where("tenantId", "==", tenantId)
+repositories/section.repository.ts:52:    snapshot.docs.forEach(doc => batch.delete(doc.ref));
+repositories/section.repository.ts:56:  async createMissingStructure(
+repositories/section.repository.ts:57:    tenantId: string,
+repositories/section.repository.ts:61:    const existing = await this.findAllActive(tenantId);
+repositories/section.repository.ts:65:    await this.bulkCreate(missing.map((section) => ({ ...section, tenantId, deleted: false, createdBy: userId })), tenantId);
