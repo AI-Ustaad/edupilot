@@ -6,7 +6,7 @@ import { createSuccessResponse, createErrorResponse } from "@/lib/api/response";
 export async function GET(req: Request) {
   // Security – verify cron secret
   const authHeader = req.headers.get("authorization");
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!process.env.CRON_SECRET || authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
     return createErrorResponse(401, "Unauthorized");
   }
 

@@ -545,7 +545,7 @@ export class StudentRepository extends BaseRepository<StudentDocument> implement
       const entries: TimelineEntry[] = [];
 
       // Admission entry
-      const created = this.toIsoDate(student.createdAt);
+      const created = this.toIsoDate(student.createdAt || student.metadata?.createdAt);
       if (created) {
         entries.push({
           date: created,
@@ -557,8 +557,9 @@ export class StudentRepository extends BaseRepository<StudentDocument> implement
       }
 
       // Promotion entries
-      if ((student as any).promotionHistory) {
+      if (Array.isArray((student as any).promotionHistory)) {
         for (const promo of (student as any).promotionHistory) {
+          if (!promo) continue;
           const promoDate = this.toIsoDate(promo.promotedAt);
           if (promoDate) {
             entries.push({

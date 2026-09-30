@@ -35,7 +35,7 @@ export const DELETE = withErrorHandler(
         const feesService = new FeesService();
         const studentFees = await feesService.findByStudent(tenantId, studentId, 9999);
         for (const fee of studentFees) {
-          await feesService.deleteFee(fee.id!, tenantId);
+          await feesService.deleteFee(tenantId, fee.id!, user.uid);
         }
 
         await studentService.hardDelete(tenantId, studentId, user.uid);

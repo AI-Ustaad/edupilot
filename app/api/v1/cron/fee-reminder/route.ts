@@ -6,7 +6,7 @@ import { FeeReminderService } from "@/services/fee-reminder.service";
 export async function GET(req: Request) {
   try {
     const authHeader = req.headers.get("authorization");
-    if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+    if (!process.env.CRON_SECRET || authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
       return createErrorResponse(401, "Unauthorized");
     }
 

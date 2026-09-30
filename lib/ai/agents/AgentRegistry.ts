@@ -65,7 +65,12 @@ export class AgentRegistry {
       const systemPrompt = agent.buildSystemPrompt(context);
       const userPrompt = agent.buildUserPrompt(context);
 
-      const response = await this.provider.generateContent(userPrompt, systemPrompt);
+      const response = await this.provider.generateContent(
+        userPrompt,
+        systemPrompt,
+        undefined,
+        { temperature: agent.getTemperature() }
+      );
 
       success = true;
       tokensUsed = response.tokensUsed ?? 0;

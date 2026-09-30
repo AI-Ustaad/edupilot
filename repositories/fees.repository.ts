@@ -15,14 +15,23 @@ export class FeesRepository extends BaseRepository<FeeDocument> implements IFees
     studentId: string,
     limit = 100
   ): Promise<(FeeDocument & { id: string })[]> {
-    const snapshot = await this.db
+    let query: FirebaseFirestore.Query = this.db
       .collection(this.collectionName)
       .where("tenantId", "==", tenantId)
-      .where("studentId", "==", studentId)
-      .orderBy("createdAt", "desc")
-      .limit(limit)
-      .get();
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as FeeDocument & { id: string }));
+      .where("studentId", "==", studentId);
+
+    if (typeof limit === "number" && limit > 0) {
+      query = query.limit(limit);
+    }
+
+    const snapshot = await query.get();
+    const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as FeeDocument & { id: string }));
+    docs.sort((a, b) => {
+      const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return timeB - timeA;
+    });
+    return docs;
   }
 
   async findWithFilters(

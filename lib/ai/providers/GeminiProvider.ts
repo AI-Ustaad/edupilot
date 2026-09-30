@@ -35,7 +35,8 @@ export class GeminiProvider implements AIProvider {
   async generateContent(
     prompt: string,
     systemInstruction?: string,
-    file?: { data: string; mimeType: string }
+    file?: { data: string; mimeType: string },
+    options?: { responseMimeType?: string; temperature?: number }
   ): Promise<AIProviderResponse> {
     if (!this.isAvailable()) {
       throw new ProviderException("GEMINI_API_KEY is not configured");
@@ -56,12 +57,17 @@ export class GeminiProvider implements AIProvider {
 
     parts.push({ text: prompt });
 
+    const generationConfig: Record<string, any> = {
+      temperature: typeof options?.temperature === "number" ? options.temperature : 0.1,
+    };
+
+    if (options?.responseMimeType) {
+      generationConfig.responseMimeType = options.responseMimeType;
+    }
+
     const requestBody: any = {
       contents: [{ role: "user", parts }],
-      generationConfig: {
-        temperature: 0.1,
-        responseMimeType: "application/json",
-      },
+      generationConfig,
     };
 
     if (systemInstruction) {

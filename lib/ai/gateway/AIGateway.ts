@@ -55,7 +55,8 @@ export class AIGateway implements IAIGateway {
     const providerResponse = await this.provider.generateContent(
       prompt,
       systemInstruction,
-      { data: base64Data, mimeType }
+      { data: base64Data, mimeType },
+      { responseMimeType: "application/json" }
     );
 
     // Parse the response using the strategy

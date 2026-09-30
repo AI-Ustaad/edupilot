@@ -10,13 +10,24 @@ export const GET = withErrorHandler(
   withAuth(
     withTenant(
       withPermission(PERMISSIONS.chat.view)(async (req: Request, context: any) => {
-        const { tenantId } = context;
+        const { tenantId, user } = context;
         const { searchParams } = new URL(req.url);
+        const chatId = searchParams.get("chatId");
+        const receiverId = searchParams.get("receiverId");
         const teacherId = searchParams.get("teacherId");
         const parentId = searchParams.get("parentId");
 
+        let resolvedChatId = chatId;
+        if (!resolvedChatId && receiverId && user?.uid) {
+          resolvedChatId = [user.uid, receiverId].sort().join("_");
+        }
+
         const service = new ChatService();
-        const messages = await service.findByTenant(tenantId, teacherId || undefined, parentId || undefined);
+        const filter = resolvedChatId
+          ? { chatId: resolvedChatId }
+          : { teacherId: teacherId || undefined, parentId: parentId || undefined };
+
+        const messages = await service.findByTenant(tenantId, filter);
         
         return createSuccessResponse(messages);
       })
@@ -28,23 +39,39 @@ export const POST = withErrorHandler(
   withAuth(
     withTenant(
       withPermission(PERMISSIONS.chat.send)(async (req: Request, { tenantId, user }: TenantContext) => {
-        const { teacherId, parentId, text } = await req.json();
+        const body = await req.json().catch(() => ({}));
+        const text = (body.text || body.message || "").trim();
         
-        if (!teacherId || !parentId || !text || !text.trim()) {
-          return createErrorResponse(400, "Missing fields");
+        if (!text) {
+          return createErrorResponse(400, "Message text is required");
         }
+
+        let receiverId = body.receiverId;
+        if (!receiverId && body.teacherId && body.parentId) {
+          receiverId = user.uid === body.teacherId ? body.parentId : body.teacherId;
+        }
+
+        if (!receiverId) {
+          return createErrorResponse(400, "Recipient ID is required");
+        }
+
+        const senderId = user.uid;
+        const chatId = body.chatId || [senderId, receiverId].sort().join("_");
         
         const service = new ChatService();
         const id = await service.createMessage({
-          teacherId,
-          parentId,
-          text: text.trim(),
+          chatId,
+          senderId,
+          receiverId,
           senderRole: user.role,
           senderUid: user.uid,
           tenantId,
+          text,
+          teacherId: body.teacherId || (user.role === "teacher" ? user.uid : receiverId),
+          parentId: body.parentId || (user.role === "parent" ? user.uid : receiverId),
         });
         
-        return createApiResponse(201, { id });
+        return createApiResponse(201, { id, chatId });
       })
     )
   )

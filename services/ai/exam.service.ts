@@ -28,7 +28,12 @@ Return the result as a valid JSON object with this structure:
 }
 Only return the JSON, no other text.`;
 
-    const response = await this.provider.generateContent(prompt);
+    const response = await this.provider.generateContent(
+      prompt,
+      undefined,
+      undefined,
+      { responseMimeType: "application/json" }
+    );
     const text = response.text;
     let exam: ExamOutput;
     try {

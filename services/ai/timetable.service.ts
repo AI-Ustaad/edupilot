@@ -36,7 +36,12 @@ export class TimetableService implements IAITimetableService {
     `;
 
     const startTime = Date.now();
-    const response = await this.provider.generateContent(prompt);
+    const response = await this.provider.generateContent(
+      prompt,
+      undefined,
+      undefined,
+      { responseMimeType: "application/json" }
+    );
     const text = response.text;
     try {
       const timetable = JSON.parse(text.replace(/```json|```/g, "").trim());

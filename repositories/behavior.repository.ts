@@ -19,15 +19,24 @@ export class BehaviorRepository extends BaseRepository<BehaviorLog> implements I
   }
 
   async findByStudent(studentId: string, tenantId: string, limit = 20): Promise<(BehaviorLog & { id: string })[]> {
-    const snapshot = await this.db
+    let query: FirebaseFirestore.Query = this.db
       .collection(this.collectionName)
       .where("studentId", "==", studentId)
-      .where("tenantId", "==", tenantId)
-      .orderBy("createdAt", "desc")
-      .limit(limit)
-      .get();
+      .where("tenantId", "==", tenantId);
+
+    if (typeof limit === "number" && limit > 0) {
+      query = query.limit(limit);
+    }
+
+    const snapshot = await query.get();
       
     // 🟢 Using the Global Enterprise Serializer
-    return snapshot.docs.map(doc => serializeDoc<BehaviorLog>(doc));
+    const docs = snapshot.docs.map(doc => serializeDoc<BehaviorLog>(doc));
+    docs.sort((a, b) => {
+      const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return timeB - timeA;
+    });
+    return docs;
   }
 }

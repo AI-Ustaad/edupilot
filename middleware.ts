@@ -32,6 +32,22 @@ const PUBLIC_PREFIXES = [
   "/api/v1/auth/logout",
 ];
 
+/**
+ * Dedicated machine-to-machine endpoints (cron schedules, background workers).
+ *
+ * These endpoints authenticate via machine secrets/signatures directly
+ * in their route handlers and do NOT use browser session cookies.
+ *
+ * IMPORTANT: These paths are not public application endpoints. The
+ * middleware simply does not require a browser Firebase session for them.
+ */
+const MACHINE_PATHS = [
+  "/api/v1/cron/fee-reminder",
+  "/api/v1/jobs/attendance-report",
+  "/api/v1/jobs/fee-reminder",
+  "/api/v1/jobs/events",
+];
+
 function unauthenticated(req: NextRequest, pathname: string) {
   // API consumers get a JSON 401; page navigations get a login redirect.
   if (pathname.startsWith("/api/")) {
@@ -40,6 +56,7 @@ function unauthenticated(req: NextRequest, pathname: string) {
       { status: 401 }
     );
   }
+
   const loginUrl = new URL("/login", req.url);
   loginUrl.searchParams.set("redirect", pathname);
   return NextResponse.redirect(loginUrl);
@@ -50,7 +67,8 @@ export async function middleware(req: NextRequest) {
 
   if (
     PUBLIC_PATHS.includes(pathname) ||
-    PUBLIC_PREFIXES.some(prefix => pathname.startsWith(prefix)) ||
+    PUBLIC_PREFIXES.some((prefix) => pathname.startsWith(prefix)) ||
+    MACHINE_PATHS.includes(pathname) ||
     pathname.startsWith("/_next") ||
     pathname.includes(".")
   ) {
