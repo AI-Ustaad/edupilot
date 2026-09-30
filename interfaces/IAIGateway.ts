@@ -13,12 +13,18 @@ export interface IAIGateway {
   getProvider(): string;
 }
 
+export interface GenerateContentOptions {
+  responseMimeType?: string;
+  temperature?: number;
+}
+
 export interface AIProvider {
   name: string;
   generateContent(
     prompt: string,
     systemInstruction?: string,
-    file?: { data: string; mimeType: string }
+    file?: { data: string; mimeType: string },
+    options?: GenerateContentOptions
   ): Promise<AIProviderResponse>;
   isAvailable(): boolean;
   getConfig(): AIProviderConfig;

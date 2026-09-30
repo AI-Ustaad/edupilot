@@ -18,7 +18,7 @@ export async function POST(req: Request) {
   const context = buildRequestContext(req);
 
   try {
-    const { success, reset } = await checkAuthRateLimit();
+    const { success, reset } = await checkAuthRateLimit(context.ip);
     if (!success) {
       return NextResponse.json(
         { success: false, error: `Too many login attempts. Try again later.` },

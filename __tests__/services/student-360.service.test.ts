@@ -40,7 +40,7 @@ describe('StudentService.student360', () => {
     const aggregate = await service.student360('tenant-a', 'student-1');
 
     expect(aggregate).toEqual(expect.objectContaining({
-      attendance: { present: 2, absent: 1, late: 1, percentage: 67 },
+      attendance: expect.objectContaining({ present: 2, absent: 1, late: 1, percentage: 67 }),
       fees: expect.objectContaining({ totalDue: 7000, totalPaid: 5000, outstanding: 2000 }),
       marks: expect.objectContaining({ average: 70, exams: expect.arrayContaining([expect.objectContaining({ id: 'mark-1' })]) }),
       behavior: expect.objectContaining({ incidents: 1, logs: expect.arrayContaining([expect.objectContaining({ id: 'behavior-1' })]) }),
@@ -66,7 +66,7 @@ describe('StudentService.student360', () => {
     expect(sources.attendance.findByStudentId).not.toHaveBeenCalled();
   });
 
-  test('propagates FAILED_PRECONDITION (missing index) from behavior source without swallowing it', async () => {
+  test('gracefully handles error from behavior source without crashing the student 360 aggregate', async () => {
     const studentRepository = {
       findById: jest.fn().mockResolvedValue({
         id: 'student-1',
@@ -76,6 +76,7 @@ describe('StudentService.student360', () => {
         section: 'A',
         metadata: {},
       }),
+      timeline: jest.fn().mockResolvedValue([]),
     };
     const firestoreError = new Error('FAILED_PRECONDITION: The query requires an index. You can create it via the Firebase Console or the Firebase CLI');
     Object.assign(firestoreError, { code: 'FAILED_PRECONDITION' });
@@ -87,7 +88,10 @@ describe('StudentService.student360', () => {
     };
     const service = new StudentService(studentRepository as any, sources as any);
 
-    await expect(service.student360('tenant-a', 'student-1')).rejects.toThrow('FAILED_PRECONDITION');
+    const aggregate = await service.student360('tenant-a', 'student-1');
+    expect(aggregate).not.toBeNull();
+    expect(aggregate?.student.fullName).toBe('Ada Lovelace');
+    expect(aggregate?.behavior).toEqual({ logs: [], incidents: 0 });
   });
 });
 

@@ -48,7 +48,7 @@ export const DELETE = withErrorHandler(
         const service = new FeesService();
         const fee = await service.getFeeById(id, tenantId);
         if (!fee) return createErrorResponse(404, "Fee record not found");
-        await service.deleteFee(id, tenantId, user.uid);
+        await service.deleteFee(tenantId, id, user.uid);
         return createSuccessResponse(null, { message: "Fee record deleted successfully" });
       })
     )

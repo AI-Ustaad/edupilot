@@ -60,6 +60,7 @@ export const ROLE_PERMISSIONS: Record<string, string[]> = {
   ],
   parent: [
     "parents.view", "parents.manage",
+    "chat.send", "chat.view",
   ],
   student: [
     "students.view",

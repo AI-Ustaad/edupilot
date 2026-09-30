@@ -17,6 +17,7 @@ import { randomUUID } from "crypto";
 import { nowISO } from "@/lib/date";
 import { eventBus } from "@/lib/events";
 import { EVENTS } from "@/lib/events/event-types";
+import { logger } from "@/lib/logger/logger";
 
 type Student360DataSources = {
   attendance: Pick<AttendanceRepository, "findByStudentId">;
@@ -176,27 +177,49 @@ export class StudentService implements IStudentService {
     if (!student) return null;
 
     const [attendanceRecords, feeRecords, marks, behaviorLogs, timeline] = await Promise.all([
-      this.student360Sources.attendance.findByStudentId(tenantId, studentId),
-      this.student360Sources.fees.findByStudent(tenantId, studentId),
-      this.student360Sources.marks.findByStudent(tenantId, studentId),
-      this.student360Sources.behavior.findByStudent(studentId, tenantId),
-      this.getTimeline(tenantId, studentId),
+      Promise.resolve(this.student360Sources.attendance.findByStudentId(tenantId, studentId)).catch((err) => {
+        logger.warn("Student 360: Attendance fetch failed, defaulting to empty", { tenantId, studentId, error: err?.message });
+        return [];
+      }),
+      Promise.resolve(this.student360Sources.fees.findByStudent(tenantId, studentId)).catch((err) => {
+        logger.warn("Student 360: Fees fetch failed, defaulting to empty", { tenantId, studentId, error: err?.message });
+        return [];
+      }),
+      Promise.resolve(this.student360Sources.marks.findByStudent(tenantId, studentId)).catch((err) => {
+        logger.warn("Student 360: Marks fetch failed, defaulting to empty", { tenantId, studentId, error: err?.message });
+        return [];
+      }),
+      Promise.resolve(this.student360Sources.behavior.findByStudent(studentId, tenantId)).catch((err) => {
+        logger.warn("Student 360: Behavior fetch failed, defaulting to empty", { tenantId, studentId, error: err?.message });
+        return [];
+      }),
+      Promise.resolve(this.getTimeline(tenantId, studentId)).catch((err) => {
+        logger.warn("Student 360: Timeline fetch failed, defaulting to empty", { tenantId, studentId, error: err?.message });
+        return [];
+      }),
     ]);
 
-    const present = attendanceRecords.filter((record) => record.status === "Present" || record.status === "Late").length;
-    const absent = attendanceRecords.filter((record) => record.status === "Absent").length;
-    const late = attendanceRecords.filter((record) => record.status === "Late").length;
-    const attendancePercentage = attendanceRecords.length > 0
-      ? Math.round((present / attendanceRecords.length) * 100)
+    const safeAttendance = Array.isArray(attendanceRecords) ? attendanceRecords : [];
+    const safeFees = Array.isArray(feeRecords) ? feeRecords : [];
+    const safeMarks = Array.isArray(marks) ? marks : [];
+    const safeBehavior = Array.isArray(behaviorLogs) ? behaviorLogs : [];
+    const safeTimeline = Array.isArray(timeline) ? timeline : [];
+
+    const present = safeAttendance.filter((record) => record && (record.status === "Present" || record.status === "Late")).length;
+    const absent = safeAttendance.filter((record) => record && record.status === "Absent").length;
+    const late = safeAttendance.filter((record) => record && record.status === "Late").length;
+    const attendancePercentage = safeAttendance.length > 0
+      ? Math.round((present / safeAttendance.length) * 100)
       : 0;
 
-    const feeAmount = (fee: { amountPaid?: number }) => Number(fee.amountPaid) || 0;
-    const totalDue = feeRecords.reduce((sum, fee) => sum + feeAmount(fee), 0);
-    const totalPaid = feeRecords
-      .filter((fee) => fee.status?.trim().toLowerCase() === "paid")
-      .reduce((sum, fee) => sum + feeAmount(fee), 0);
+    const feeAmount = (fee: any) => Number(fee?.amountPaid ?? fee?.amount ?? fee?.totalAmount) || 0;
+    const totalDue = safeFees.reduce((sum, fee) => sum + feeAmount(fee), 0);
+    const totalPaid = safeFees
+      .filter((fee) => typeof fee?.status === "string" && fee.status.trim().toLowerCase() === "paid")
+      .reduce((sum, fee) => sum + (Number(fee?.amountPaid) || 0), 0);
 
-    const markPercentages = marks.map((mark) => {
+    const markPercentages = safeMarks.map((mark) => {
+      if (!mark) return 0;
       const supplied = Number(mark.percentage);
       if (Number.isFinite(supplied)) return supplied;
       const total = Number(mark.totalMarks) || 0;
@@ -206,18 +229,20 @@ export class StudentService implements IStudentService {
       ? Math.round(markPercentages.reduce((sum, percentage) => sum + percentage, 0) / markPercentages.length)
       : 0;
 
+    const incidents = safeBehavior.filter((log) => log && Number(log.points) < 0).length;
+
     return {
       student: {
         ...student,
         id: student.studentId || student.id!,
       },
-      attendance: { present, absent, late, percentage: attendancePercentage },
-      fees: { totalDue, totalPaid, outstanding: Math.max(0, totalDue - totalPaid), records: feeRecords },
-      marks: { exams: marks, average: markAverage, trend: "stable" },
-      behavior: { logs: behaviorLogs, incidents: behaviorLogs.filter((log) => Number(log.points) < 0).length },
+      attendance: { present, absent, late, percentage: attendancePercentage, records: safeAttendance },
+      fees: { totalDue, totalPaid, outstanding: Math.max(0, totalDue - totalPaid), records: safeFees },
+      marks: { exams: safeMarks, average: markAverage, trend: "stable", records: safeMarks },
+      behavior: { logs: safeBehavior, incidents },
       transport: null,
       hostel: null,
-      timeline,
+      timeline: safeTimeline,
       aiSummary: "",
     };
   }

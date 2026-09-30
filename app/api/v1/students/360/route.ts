@@ -19,12 +19,16 @@ export const GET = withErrorHandler(
           const { searchParams } = new URL(req.url);
           studentId = searchParams.get("id");
 
-          if (!studentId) {
+          if (!studentId || !studentId.trim()) {
             return createErrorResponse(400, "Student ID required");
           }
 
           const studentService = new StudentService();
-          const data = await studentService.student360(tenantId, studentId);
+          const data = await studentService.student360(tenantId, studentId.trim());
+
+          if (!data) {
+            return createErrorResponse(404, "Student not found");
+          }
 
           return createSuccessResponse(data);
         } catch (error: any) {

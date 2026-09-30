@@ -37,7 +37,16 @@ export default function StudentProfilePage({ params }: { params: { id: string } 
   }
 
   // Extract data safely
-  const { student, attendance = [], fees = [], marks = [] } = data;
+  const student = data?.student;
+  const attendance = Array.isArray(data?.attendance)
+    ? data.attendance
+    : (data?.attendance?.records || []);
+  const fees = Array.isArray(data?.fees)
+    ? data.fees
+    : (data?.fees?.records || []);
+  const marks = Array.isArray(data?.marks)
+    ? data.marks
+    : (data?.marks?.exams || data?.marks?.records || []);
 
   return (
     <div className="p-6 max-w-6xl mx-auto space-y-6">

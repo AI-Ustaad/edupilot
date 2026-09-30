@@ -117,9 +117,9 @@ export interface TimelineEntry {
 
 export interface Student360Aggregate {
   student: StudentEntity & { id: string };
-  attendance: { present: number; absent: number; late: number; percentage: number };
+  attendance: { present: number; absent: number; late: number; percentage: number; records?: any[] };
   fees: { totalDue: number; totalPaid: number; outstanding: number; records: any[] };
-  marks: { exams: any[]; average: number; trend: string };
+  marks: { exams: any[]; average: number; trend: string; records?: any[] };
   behavior: { logs: any[]; incidents: number };
   transport: any | null;
   hostel: any | null;

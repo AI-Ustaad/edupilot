@@ -50,9 +50,14 @@ export class AttendanceRepository extends BaseRepository<AttendanceDocument> imp
       .collection(this.collectionName)
       .where("tenantId", "==", tenantId)
       .where("studentId", "==", studentId)
-      .orderBy("date", "desc")
       .get();
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as AttendanceDocument & { id: string }));
+    const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as AttendanceDocument & { id: string }));
+    docs.sort((a, b) => {
+      const timeA = a.date ? new Date(a.date).getTime() : 0;
+      const timeB = b.date ? new Date(b.date).getTime() : 0;
+      return timeB - timeA;
+    });
+    return docs;
   }
 
   async findByStudentIds(tenantId: string, studentIds: string[], limit = 30): Promise<(AttendanceDocument & { id: string })[]> {
