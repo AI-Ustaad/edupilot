@@ -6,7 +6,7 @@ import { AnalyticsService } from "@/services/analytics.service";
 export const GET = withErrorHandler(
   withAuth(async (_req: Request, context: any) => {
     const user = context?.user;
-    if (!user || (user.role !== "super_admin" && user.role !== "superAdmin")) {
+    if (!user || user.role !== "superAdmin") {
       return createErrorResponse(403, "Forbidden: Super Admin access required");
     }
 
