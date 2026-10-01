@@ -23,12 +23,12 @@ export class TenantResolver implements ITenantResolver {
       };
     }
 
-    const derivedTenantId = this.deriveTenantId(user.uid, user.email);
-    return {
-      tenantId: derivedTenantId,
-      source: "derived_from_uid",
-      confidence: "medium",
-    };
+    // SECURITY FIX (Phase 1): never invent a tenant ID. A user with no
+    // assigned tenant is rejected (fail closed) instead of being silently
+    // scoped to a fabricated `tenant_<hash>` namespace, which would break
+    // the foundational tenant-isolation guarantee. Callers (withTenant)
+    // translate this error into a 403 response.
+    throw new TenantResolutionError("User is not assigned to a tenant");
   }
 
   async resolveFromContext(
@@ -67,29 +67,6 @@ export class TenantResolver implements ITenantResolver {
       });
       throw error;
     }
-  }
-
-  private deriveTenantId(uid: string, email?: string): string {
-    if (uid.startsWith("tenant_")) {
-      return uid;
-    }
-
-    if (email) {
-      const emailHash = this.simpleHash(email);
-      return `tenant_${emailHash}`;
-    }
-
-    return `tenant_${uid}`;
-  }
-
-  private simpleHash(str: string): number {
-    let hash = 0;
-    for (let i = 0; i < str.length; i++) {
-      const char = str.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
-      hash = hash & hash;
-    }
-    return Math.abs(hash);
   }
 
   async verifyTenantExists(tenantId: string): Promise<boolean> {
