@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   try {
     const user = await getSessionUser();
-    if (!user || user.role !== "super_admin") {
+    if (!user || user.role !== "superAdmin") {
       return createErrorResponse(403, "Forbidden: Super Admin access required");
     }
 
