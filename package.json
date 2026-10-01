@@ -27,6 +27,7 @@
     "firebase-admin": "^13.10.0",
     "framer-motion": "^10.16.4",
     "html2canvas": "^1.4.1",
+    "jose": "^6.2.12",
     "jspdf": "^2.5.2",
     "jspdf-autotable": "^3.8.0",
     "lucide-react": "^0.344.0",
