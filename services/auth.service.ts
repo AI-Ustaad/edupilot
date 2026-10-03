@@ -84,10 +84,17 @@ export class AuthService implements IAuthService {
       throw new InvalidTokenError();
     }
 
-    const sessionUser = await this.userRepo.findByUidWithFallback(decodedToken.uid, decodedToken.email, context);
+    let sessionUser: SessionUser;
+    try {
+      sessionUser = await this.userRepo.findByUidWithFallback(decodedToken.uid, decodedToken.email, context);
+    } catch {
+      const result = await this.getOrCreateUser(decodedToken.uid, decodedToken.email, "admin", null);
+      sessionUser = result.user;
+    }
+
     await this.claimsService.sync(sessionUser, context);
 
-    const redirectTo = ROLE_CONFIG[sessionUser.role]?.redirect || "/login";
+    const redirectTo = ROLE_CONFIG[sessionUser.role]?.redirect || "/dashboard";
 
     return {
       success: true,

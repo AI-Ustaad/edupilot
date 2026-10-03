@@ -5,13 +5,13 @@ export interface RoleConfig {
 }
 
 export const ROLE_CONFIG: Record<Role, RoleConfig> = {
-  superAdmin: { redirect: "/super-admin/analytics" },
-  schoolAdmin: { redirect: "/admin/analytics" },
-  admin: { redirect: "/admin/analytics" },
-  teacher: { redirect: "/teacher/dashboard" },
+  superAdmin: { redirect: "/dashboard" },
+  schoolAdmin: { redirect: "/dashboard" },
+  admin: { redirect: "/dashboard" },
+  teacher: { redirect: "/dashboard" },
   parent: { redirect: "/parent/dashboard" },
   student: { redirect: "/dashboard" },
-  guest: { redirect: "/login" },
+  guest: { redirect: "/dashboard" },
 };
 
 export const SESSION_EXPIRES_IN_DAYS = 5;
