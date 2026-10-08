@@ -29,7 +29,7 @@ service cloud.firestore {
     }
 
     function isSuperAdmin() {
-      return isAuthenticated() && getUserRole() == 'super_admin';
+      return isAuthenticated() && (getUserRole() == 'superAdmin' || getUserRole() == 'super_admin');
     }
 
     function isStaff() {

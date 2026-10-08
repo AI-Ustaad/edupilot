@@ -16,7 +16,7 @@ import { useAuth } from '@/context/AuthContext';
 function LoginContent() {
   const searchParams = useSearchParams();
   const redirectParam = searchParams.get('redirect');
-  const { user, loading: authLoading, refreshUser } = useAuth();
+  const { user, loading: authLoading, refreshUser, setUser } = useAuth();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -51,6 +51,9 @@ function LoginContent() {
 
     if (response.ok) {
       const result = await response.json();
+      if (result.user) {
+        setUser(result.user);
+      }
       await refreshUser();
       const destination = resolveDestination(result.redirectTo);
       // Hard navigation ensures HttpOnly cookie is attached to SSR document request
@@ -59,7 +62,7 @@ function LoginContent() {
       const errorData = await response.json().catch(() => ({}));
       throw new Error(errorData.error || 'Failed to create secure session.');
     }
-  }, [refreshUser, resolveDestination]);
+  }, [refreshUser, resolveDestination, setUser]);
 
   // Handle Google Redirect Result on page mount (fallback for mobile/popup-blocked browsers)
   useEffect(() => {

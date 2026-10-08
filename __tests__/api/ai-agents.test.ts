@@ -13,6 +13,7 @@ jest.mock("@/lib/ai/providers/GeminiProvider", () => ({
 jest.mock("@/lib/ai/monitoring/UsageTracker", () => ({
   UsageTracker: jest.fn().mockImplementation(() => ({
     track: jest.fn(),
+    checkQuota: jest.fn().mockResolvedValue({ allowed: true, used: 0, quota: 1000 }),
   })),
 }));
 

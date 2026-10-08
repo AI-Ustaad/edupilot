@@ -8,7 +8,13 @@ export class UploadService {
     this.storageRepo = storageRepo;
   }
 
-  async uploadFile(buffer: Buffer, fileName: string, contentType: string, folder?: string): Promise<string> {
-    return this.storageRepo.uploadFile(buffer, fileName, contentType, folder);
+  async uploadFile(
+    buffer: Buffer,
+    fileName: string,
+    contentType: string,
+    folder?: string,
+    makePublic = false
+  ): Promise<string> {
+    return this.storageRepo.uploadFile(buffer, fileName, contentType, folder, makePublic);
   }
 }

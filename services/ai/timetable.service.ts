@@ -20,6 +20,9 @@ export class TimetableService implements IAITimetableService {
   }
 
   async generateTimetable(req: TimetableRequest, tenantId?: string, userId?: string): Promise<any[]> {
+    if (tenantId) {
+      await this.usageTracker.checkQuota(tenantId);
+    }
     const prompt = `
       Generate a valid JSON array representing a weekly school timetable. Do not include any other text, explanation, or markdown formatting such as \`\`\`json.
 

@@ -17,6 +17,9 @@ export class ExamService implements IAIExamService {
 
   async generateExam(req: ExamRequest, tenantId?: string, userId?: string): Promise<ExamOutput> {
     logger.info("[ExamService] Generating exam", { metadata: { className: req.className, subject: req.subject, topic: req.topic, difficulty: req.difficulty } });
+    if (tenantId) {
+      await this.usageTracker.checkQuota(tenantId);
+    }
     const startTime = Date.now();
 
     const prompt = `Generate 5 multiple-choice questions (MCQs), 2 short answer questions, and 1 long answer question for a ${req.className} class in subject "${req.subject}" on the topic "${req.topic}" at difficulty level "${req.difficulty}".

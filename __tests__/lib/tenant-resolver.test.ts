@@ -13,12 +13,12 @@ jest.mock('@/lib/firebase-admin', () => ({
 }));
 
 jest.mock('@/lib/logger/logger', () => ({
-  info: jest.fn(),
-  error: jest.fn(),
-  warn: jest.fn(),
+  logger: {
+    info: jest.fn(),
+    error: jest.fn(),
+    warn: jest.fn(),
+  },
 }));
-
-const mockLogger = require('@/lib/logger/logger');
 
 describe('TenantResolver', () => {
   let resolver: TenantResolver;
@@ -46,7 +46,7 @@ describe('TenantResolver', () => {
       expect(result.confidence).toBe('high');
     });
 
-    test('should derive tenantId from uid when tenantId is null', async () => {
+    test('should reject with TenantResolutionError when tenantId is null (tenantless user)', async () => {
       const context: TenantResolverContext = {
         user: {
           uid: 'tenant_already_started',
@@ -56,24 +56,20 @@ describe('TenantResolver', () => {
         },
       };
 
-      const result: ResolvedTenant = await resolver.resolve(context);
-
-      expect(result.tenantId).toBe('tenant_already_started');
+      await expect(resolver.resolve(context)).rejects.toThrow('User is not assigned to a tenant');
     });
 
-    test('should derive tenantId from email hash when uid starts with tenant_', async () => {
+    test('should reject with TenantResolutionError when tenantId is empty string', async () => {
       const context: TenantResolverContext = {
         user: {
           uid: 'tenant_already',
           email: 'test@example.com',
           role: 'admin',
-          tenantId: null,
+          tenantId: '   ',
         },
       };
 
-      const result: ResolvedTenant = await resolver.resolve(context);
-
-      expect(result.tenantId).toBe('tenant_already');
+      await expect(resolver.resolve(context)).rejects.toThrow('User is not assigned to a tenant');
     });
 
     test('should throw error when no user context is provided', async () => {
@@ -83,22 +79,33 @@ describe('TenantResolver', () => {
     });
   });
 
-  describe('deriveTenantId', () => {
-    test('should return uid unchanged when it starts with tenant_', async () => {
-      const result = await resolver.resolve({
-        user: { uid: 'tenant_existing', email: 'test@test.com', role: 'admin', tenantId: null }
-      });
-      expect(result.tenantId).toBe('tenant_existing');
+  describe('Security invariants', () => {
+    test('never fabricates synthetic tenant IDs for tenantless users', async () => {
+      await expect(
+        resolver.resolve({
+          user: { uid: 'tenant_existing', email: 'test@test.com', role: 'admin', tenantId: null }
+        })
+      ).rejects.toThrow('User is not assigned to a tenant');
     });
 
-    test('should derive consistent hash from same email', async () => {
-      const result1 = await resolver.resolve({
-        user: { uid: 'uid1', email: 'same@example.com', role: 'admin', tenantId: null }
-      });
-      const result2 = await resolver.resolve({
-        user: { uid: 'uid1', email: 'same@example.com', role: 'admin', tenantId: null }
-      });
-      expect(result1.tenantId).toBe(result2.tenantId);
+    test('rejects tenantless users in resolveFromContext', async () => {
+      const mockReqContext = {
+        requestId: 'req_123',
+        traceId: null,
+        spanId: null,
+        ip: '127.0.0.1',
+        userAgent: 'test-agent',
+        referer: 'none',
+        origin: 'http://localhost',
+        requestTime: new Date().toISOString(),
+      };
+
+      await expect(
+        resolver.resolveFromContext(
+          mockReqContext,
+          { uid: 'uid1', email: 'same@example.com', role: 'admin', tenantId: null }
+        )
+      ).rejects.toThrow('User is not assigned to a tenant');
     });
   });
 });

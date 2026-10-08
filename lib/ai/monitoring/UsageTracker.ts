@@ -2,6 +2,7 @@
 import { adminDb } from "@/lib/firebase-admin";
 import { FieldValue } from "firebase-admin/firestore";
 import { logger } from "@/lib/logger/logger";
+import { SubscriptionLimitException } from "@/errors/AppError";
 
 export interface UsageRecord {
   tenantId: string;
@@ -17,6 +18,63 @@ export interface UsageRecord {
 }
 
 export class UsageTracker {
+  async checkQuota(
+    tenantId: string,
+    customQuota?: number
+  ): Promise<{ allowed: boolean; used: number; quota: number }> {
+    if (!tenantId || tenantId.trim() === "") {
+      throw new SubscriptionLimitException("Tenant ID is required for AI operations.");
+    }
+
+    try {
+      let quota = typeof customQuota === "number" ? customQuota : 1000;
+      if (typeof customQuota !== "number") {
+        try {
+          const configDoc = await adminDb
+            .collection("tenants")
+            .doc(tenantId)
+            .collection("settings")
+            .doc("configuration")
+            .get();
+          if (configDoc.exists) {
+            const cfg = configDoc.data();
+            if (typeof cfg?.features?.ai?.quota === "number") {
+              quota = cfg.features.ai.quota;
+            }
+          }
+        } catch {
+          // Default quota if settings lookup fails
+        }
+      }
+
+      const startOfMonth = new Date();
+      startOfMonth.setDate(1);
+      startOfMonth.setHours(0, 0, 0, 0);
+
+      const snapshot = await adminDb
+        .collection("ai_usage")
+        .where("tenantId", "==", tenantId)
+        .where("timestamp", ">=", startOfMonth)
+        .get();
+
+      const used = snapshot.size;
+
+      if (used >= quota) {
+        throw new SubscriptionLimitException(
+          `AI quota exceeded for tenant ${tenantId} (${used}/${quota} used). Upgrade plan for more quota.`
+        );
+      }
+
+      return { allowed: true, used, quota };
+    } catch (err) {
+      if (err instanceof SubscriptionLimitException) {
+        throw err;
+      }
+      logger.error("[UsageTracker] Error checking quota:", { metadata: { error: err, tenantId } });
+      return { allowed: true, used: 0, quota: 1000 };
+    }
+  }
+
   async track(record: UsageRecord): Promise<void> {
     try {
       await adminDb.collection("ai_usage").add({

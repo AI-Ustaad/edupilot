@@ -61,6 +61,10 @@ export class AgentRegistry {
     let success = false;
     let tokensUsed = 0;
 
+    if (context.tenantId) {
+      await this.usageTracker.checkQuota(context.tenantId);
+    }
+
     try {
       const systemPrompt = agent.buildSystemPrompt(context);
       const userPrompt = agent.buildUserPrompt(context);

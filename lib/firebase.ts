@@ -4,16 +4,34 @@ import { getAuth, Auth } from "firebase/auth";
 import { getFirestore, Firestore } from "firebase/firestore";
 import { clientEnv } from "@/lib/env.client";
 
-const effectiveConfig = clientEnv.apiKey ? clientEnv : {
-  apiKey: "AIzaSy_placeholder_key_for_ssr",
-  authDomain: clientEnv.authDomain || "edupilot-d262f.firebaseapp.com",
-  projectId: clientEnv.projectId || "edupilot-d262f",
-  storageBucket: clientEnv.storageBucket || "edupilot-d262f.appspot.com",
-  messagingSenderId: clientEnv.messagingSenderId || "123456789012",
-  appId: clientEnv.appId || "1:123456789012:web:placeholder",
-};
+function getValidatedFirebaseConfig() {
+  const missing: string[] = [];
+  if (!clientEnv.apiKey) missing.push("NEXT_PUBLIC_FIREBASE_API_KEY");
+  if (!clientEnv.projectId) missing.push("NEXT_PUBLIC_FIREBASE_PROJECT_ID");
+  if (!clientEnv.authDomain) missing.push("NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN");
+  if (!clientEnv.appId) missing.push("NEXT_PUBLIC_FIREBASE_APP_ID");
 
-const app: FirebaseApp = getApps().length > 0 ? getApp() : initializeApp(effectiveConfig);
+  if (missing.length > 0) {
+    throw new Error(
+      `Firebase client configuration error: Missing required environment variables: ${missing.join(
+        ", "
+      )}. Please configure valid client credentials in your environment.`
+    );
+  }
+
+  return {
+    apiKey: clientEnv.apiKey,
+    authDomain: clientEnv.authDomain,
+    projectId: clientEnv.projectId,
+    storageBucket: clientEnv.storageBucket,
+    messagingSenderId: clientEnv.messagingSenderId,
+    appId: clientEnv.appId,
+  };
+}
+
+const config = getValidatedFirebaseConfig();
+
+const app: FirebaseApp = getApps().length > 0 ? getApp() : initializeApp(config);
 
 export const auth: Auth = getAuth(app);
 export const db: Firestore = getFirestore(app);

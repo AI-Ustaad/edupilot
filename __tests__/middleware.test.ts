@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { middleware } from "@/middleware";
 
 describe("Middleware - Machine Authentication and Route Protection", () => {
-  it("allows machine cron/jobs endpoints through without a browser session cookie", () => {
+  it("allows machine cron/jobs endpoints through without a browser session cookie", async () => {
     const machineEndpoints = [
       "/api/v1/cron/fee-reminder",
       "/api/v1/jobs/attendance-report",
@@ -13,7 +13,7 @@ describe("Middleware - Machine Authentication and Route Protection", () => {
     for (const pathname of machineEndpoints) {
       const req = new NextRequest(new URL(pathname, "http://localhost"));
       // Notice: NO session cookie attached
-      const res = middleware(req);
+      const res = await middleware(req);
 
       // Must allow request to proceed (status 200 / next()), NOT redirect to /login
       expect(res.status).toBe(200);
@@ -21,7 +21,7 @@ describe("Middleware - Machine Authentication and Route Protection", () => {
     }
   });
 
-  it("returns 401 JSON for unauthenticated requests to protected API endpoints", () => {
+  it("returns 401 JSON for unauthenticated requests to protected API endpoints", async () => {
     const protectedApiEndpoints = [
       "/api/v1/students",
       "/api/v1/fees",
@@ -31,7 +31,7 @@ describe("Middleware - Machine Authentication and Route Protection", () => {
     for (const pathname of protectedApiEndpoints) {
       const req = new NextRequest(new URL(pathname, "http://localhost"));
       // No session cookie
-      const res = middleware(req);
+      const res = await middleware(req);
 
       // Must NOT redirect to HTML /login
       expect(res.headers.get("location")).toBeNull();
@@ -40,7 +40,7 @@ describe("Middleware - Machine Authentication and Route Protection", () => {
     }
   });
 
-  it("redirects unauthenticated browser page visits to /login", () => {
+  it("redirects unauthenticated browser page visits to /login", async () => {
     const protectedPages = [
       "/dashboard",
       "/admin/analytics",
@@ -49,7 +49,7 @@ describe("Middleware - Machine Authentication and Route Protection", () => {
 
     for (const pathname of protectedPages) {
       const req = new NextRequest(new URL(pathname, "http://localhost"));
-      const res = middleware(req);
+      const res = await middleware(req);
 
       expect(res.status).toBe(307);
       const redirectUrl = res.headers.get("location");
@@ -58,7 +58,7 @@ describe("Middleware - Machine Authentication and Route Protection", () => {
     }
   });
 
-  it("allows public endpoints through without authentication", () => {
+  it("allows public endpoints through without authentication", async () => {
     const publicPaths = [
       "/login",
       "/api/v1/auth/login",
@@ -69,7 +69,7 @@ describe("Middleware - Machine Authentication and Route Protection", () => {
 
     for (const pathname of publicPaths) {
       const req = new NextRequest(new URL(pathname, "http://localhost"));
-      const res = middleware(req);
+      const res = await middleware(req);
       expect(res.status).toBe(200);
       expect(res.headers.get("location")).toBeNull();
     }
