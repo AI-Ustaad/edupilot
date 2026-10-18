@@ -16,6 +16,7 @@ export interface SchoolConfigurationViewModel extends BaseViewModel {
   classes: { id: string; name: string }[]; // For UI dropdowns
   classCount: number;
   classSummary: string; // e.g., "24 Classes"
+  subjects?: string[];
   subjectCount: number;
   sectionCount: number;
   sectionNames: string[]; // For UI dropdowns

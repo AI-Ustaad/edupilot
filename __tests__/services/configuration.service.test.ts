@@ -260,7 +260,7 @@ describe('ConfigurationService', () => {
         },
       };
 
-      const result = await svc.saveAndPublishConfiguration(input, tenantId, 'user1');
+      const result = await svc.saveAndPublishConfiguration(input, tenantId, 'user1', 'admin');
 
       expect(result.state).toBe('Published');
       expect(result.metadata.academicYearId).toBe('academic-year-1');
@@ -311,7 +311,7 @@ describe('ConfigurationService', () => {
         },
       };
 
-      await expect(svc.saveAndPublishConfiguration(input, tenantId, 'user1')).rejects.toThrow('section write failed');
+      await expect(svc.saveAndPublishConfiguration(input, tenantId, 'user1', 'admin')).rejects.toThrow('section write failed');
       expect(repoMock.saveConfiguration).not.toHaveBeenCalled();
       expect(repoMock.publishConfiguration).not.toHaveBeenCalled();
       expect(mockCache.invalidateConfiguration).not.toHaveBeenCalled();
@@ -368,7 +368,7 @@ describe('ConfigurationService', () => {
         },
       };
 
-      await svc.saveAndPublishConfiguration(input, tenantId, 'user1');
+      await svc.saveAndPublishConfiguration(input, tenantId, 'user1', 'admin');
 
       const publishOrder = (repoMock.publishConfiguration as jest.MockedFunction<any>).mock.invocationCallOrder[0];
       const provisionOrder = (provisioning.provisionFromConfiguration as jest.MockedFunction<any>).mock.invocationCallOrder[0];
@@ -420,7 +420,7 @@ describe('ConfigurationService', () => {
         },
       };
 
-      await expect(svc.saveAndPublishConfiguration(input, tenantId, 'user1')).rejects.toThrow('Tenant');
+      await expect(svc.saveAndPublishConfiguration(input, tenantId, 'user1', 'admin')).rejects.toThrow('Tenant');
       expect(mockTenantService.provisionOrRepairTenant).toHaveBeenCalledWith(tenantId, 'user1');
       expect(provisioning.provisionFromConfiguration).not.toHaveBeenCalled();
       expect(repoMock.publishConfiguration).not.toHaveBeenCalled();
@@ -498,7 +498,7 @@ describe('ConfigurationService', () => {
         },
       };
 
-      const result = await svc.saveAndPublishConfiguration(input, tenantId, 'user1');
+      const result = await svc.saveAndPublishConfiguration(input, tenantId, 'user1', 'admin');
 
       expect(mockTenantService.provisionOrRepairTenant).toHaveBeenCalledWith(tenantId, 'user1');
       expect(mockHealthService.checkHealth).toHaveBeenCalledTimes(2);
@@ -563,7 +563,7 @@ describe('ConfigurationService', () => {
         },
       };
 
-      const result = await svc.saveAndPublishConfiguration(input, tenantId, 'user1');
+      const result = await svc.saveAndPublishConfiguration(input, tenantId, 'user1', 'admin');
 
       expect(mockTenantService.provisionOrRepairTenant).toHaveBeenCalledWith(tenantId, 'user1');
       expect(provisioning.provisionFromConfiguration).toHaveBeenCalledTimes(1);
@@ -618,7 +618,7 @@ describe('ConfigurationService', () => {
         },
       };
 
-      await expect(svc.saveAndPublishConfiguration(input, tenantId, 'user1')).rejects.toThrow('Tenant');
+      await expect(svc.saveAndPublishConfiguration(input, tenantId, 'user1', 'admin')).rejects.toThrow('Tenant');
       expect(mockTenantService.provisionOrRepairTenant).toHaveBeenCalledWith(tenantId, 'user1');
       expect(provisioning.provisionFromConfiguration).not.toHaveBeenCalled();
       expect(repoMock.publishConfiguration).not.toHaveBeenCalled();

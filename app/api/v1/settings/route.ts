@@ -15,7 +15,7 @@ export const GET = withErrorHandler(
         const config = await configurationService.getConfigurationViewModel(tenantId);
         
         if (!config) {
-          return createSuccessResponse({ schoolName: "", schoolType: "Private", affiliation: "" });
+          return createSuccessResponse({ schoolName: "", schoolType: "Private", affiliation: "", classes: [], subjects: [] });
         }
 
         return createSuccessResponse({
@@ -23,6 +23,8 @@ export const GET = withErrorHandler(
           schoolType: config.schoolType,
           affiliation: config.boardName,
           levelsOffered: config.levels,
+          classes: config.classes || [],
+          subjects: config.subjects || [],
         });
       })
     )
@@ -84,7 +86,8 @@ export const PUT = withErrorHandler(
             },
           },
           tenantId,
-          user.uid
+          user.uid,
+          user.role
         );
 
         return createSuccessResponse({ success: true }, { message: "School configuration updated" });

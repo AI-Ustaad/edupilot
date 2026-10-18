@@ -30,4 +30,19 @@ export interface FeeEntity {
   updatedBy?: string;
   createdAt?: any;
   updatedAt?: any;
+
+  // Flat Compatibility Fields
+  studentId?: string;
+  studentName?: string;
+  rollNumber?: number;
+  email?: string;
+  classGrade?: string;
+  feeMonth?: string;
+  amountPaid?: number;
+  amountDue?: number;
+  amount?: number;
+  paymentMethod?: string;
+  dueDate?: string;
+  status?: string;
+  remarks?: string;
 }

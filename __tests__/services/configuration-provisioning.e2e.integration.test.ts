@@ -137,7 +137,7 @@ describe("Configuration Provisioning — End-to-End Integration", () => {
 
     // 1. Create and publish configuration
     const input = buildWizardInput();
-    const result = await service.saveAndPublishConfiguration(input, tenantId, userId);
+    const result = await service.saveAndPublishConfiguration(input, tenantId, userId, "admin");
 
     // Verify configuration was saved
     expect(result).toBeDefined();
@@ -219,11 +219,11 @@ describe("Configuration Provisioning — End-to-End Integration", () => {
     const input = buildWizardInput();
 
     // First publish
-    const r1 = await service.saveAndPublishConfiguration(input, tenantId, userId);
+    const r1 = await service.saveAndPublishConfiguration(input, tenantId, userId, "admin");
     const ayId1 = r1.metadata.academicYearId;
 
     // Second publish
-    const r2 = await service.saveAndPublishConfiguration(input, tenantId, userId);
+    const r2 = await service.saveAndPublishConfiguration(input, tenantId, userId, "admin");
     const ayId2 = r2.metadata.academicYearId;
 
     // Academic year ID remains stable
@@ -250,7 +250,7 @@ describe("Configuration Provisioning — End-to-End Integration", () => {
       deletedBy: "admin",
     });
 
-    const r3 = await service.saveAndPublishConfiguration(input, tenantId, userId);
+    const r3 = await service.saveAndPublishConfiguration(input, tenantId, userId, "admin");
     const sectionsAfter = await getDoc(tenantId, "sections") as any[];
     const softA = sectionsAfter.find((s: any) => s.classGrade === "1" && s.sectionName.toLowerCase() === "a");
     expect(softA).toBeDefined();
@@ -269,10 +269,10 @@ describe("Configuration Provisioning — End-to-End Integration", () => {
     const inputB = buildWizardInput({ schoolProfile: { ...buildWizardInput().schoolProfile!, name: "School B" } });
 
     // Provision Tenant A
-    await service.saveAndPublishConfiguration(inputA, "tenant-iso-a", "user-a");
+    await service.saveAndPublishConfiguration(inputA, "tenant-iso-a", "user-a", "admin");
 
     // Provision Tenant B
-    await service.saveAndPublishConfiguration(inputB, "tenant-iso-b", "user-b");
+    await service.saveAndPublishConfiguration(inputB, "tenant-iso-b", "user-b", "admin");
 
     // Tenant A dashboard metrics should not include Tenant B records
     const metricsA = await dashboardService.getDashboardMetrics("tenant-iso-a");
@@ -301,7 +301,7 @@ describe("Configuration Provisioning — End-to-End Integration", () => {
     await ensureTenant(tenantId);
 
     const input = buildWizardInput();
-    const published = await service.saveAndPublishConfiguration(input, tenantId, userId);
+    const published = await service.saveAndPublishConfiguration(input, tenantId, userId, "admin");
 
     expect(published.state).toBe("Published");
     expect(published.metadata.isConfigured).toBe(true);
@@ -330,7 +330,7 @@ describe("Configuration Provisioning — End-to-End Integration", () => {
 
     await ensureTenant(tenantId);
 
-    await service.saveAndPublishConfiguration(buildWizardInput(), tenantId, userId);
+    await service.saveAndPublishConfiguration(buildWizardInput(), tenantId, userId, "admin");
 
     // Simulate the API route response
     const { createSuccessResponse } = require("@/lib/api/response");

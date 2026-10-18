@@ -31,9 +31,26 @@ describe("verifyEdgeSession - Edge Runtime Firebase Session Verification", () =>
     privateKey = await importPKCS8(keyPem, "RS256");
   });
 
+  let originalFetch: typeof global.fetch;
+
   beforeEach(() => {
     jest.resetModules();
     process.env = { ...originalEnv, NEXT_PUBLIC_FIREBASE_PROJECT_ID: PROJECT_ID };
+    originalFetch = global.fetch;
+    global.fetch = jest.fn().mockImplementation(async (url: string) => {
+      if (typeof url === "string" && url.includes("identitytoolkit/v3/relyingparty/publicKeys")) {
+        return {
+          ok: true,
+          headers: new Headers({ "cache-control": "public, max-age=3600" }),
+          json: async () => ({ [testKid]: testCert }),
+        };
+      }
+      return originalFetch(url as any);
+    }) as any;
+  });
+
+  afterEach(() => {
+    global.fetch = originalFetch;
   });
 
   afterAll(() => {
@@ -118,26 +135,10 @@ describe("verifyEdgeSession - Edge Runtime Firebase Session Verification", () =>
       .setExpirationTime("24h")
       .sign(privateKey);
 
-    const originalFetch = global.fetch;
-    global.fetch = jest.fn().mockImplementation(async (url: string) => {
-      if (url.includes("identitytoolkit/v3/relyingparty/publicKeys")) {
-        return {
-          ok: true,
-          headers: new Headers({ "cache-control": "public, max-age=3600" }),
-          json: async () => ({ [testKid]: testCert }),
-        };
-      }
-      return originalFetch(url as any);
-    }) as any;
-
-    try {
-      const session = await verifyEdgeSession(validSessionToken);
-      expect(session).not.toBeNull();
-      expect(session?.uid).toBe("user_valid_123");
-      expect(session?.email).toBe("teacher@school.com");
-    } finally {
-      global.fetch = originalFetch;
-    }
+    const session = await verifyEdgeSession(validSessionToken);
+    expect(session).not.toBeNull();
+    expect(session?.uid).toBe("user_valid_123");
+    expect(session?.email).toBe("teacher@school.com");
   });
 
   it("returns null when session token signature is forged or mismatched", async () => {
@@ -154,23 +155,7 @@ describe("verifyEdgeSession - Edge Runtime Firebase Session Verification", () =>
       .setExpirationTime("24h")
       .sign(forgedKp.privateKey);
 
-    const originalFetch = global.fetch;
-    global.fetch = jest.fn().mockImplementation(async (url: string) => {
-      if (url.includes("identitytoolkit/v3/relyingparty/publicKeys")) {
-        return {
-          ok: true,
-          headers: new Headers({ "cache-control": "public, max-age=3600" }),
-          json: async () => ({ [testKid]: testCert }),
-        };
-      }
-      return originalFetch(url as any);
-    }) as any;
-
-    try {
-      const session = await verifyEdgeSession(forgedToken);
-      expect(session).toBeNull();
-    } finally {
-      global.fetch = originalFetch;
-    }
+    const session = await verifyEdgeSession(forgedToken);
+    expect(session).toBeNull();
   });
 });

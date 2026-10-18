@@ -1,7 +1,7 @@
 // interfaces/IStudentService.ts
 import type { StudentEntity, Student360Aggregate, StudentComment, TimelineEntry } from "@/entities/student.entity";
 import type { CreateStudentDTO, UpdateStudentDTO } from "@/dto";
-import type { StudentAnalytics } from "@/types/student";
+import type { StudentAnalytics, StudentFilter } from "@/types/student";
 import type { PaginatedResult } from "@/types/api";
 
 export interface IStudentService {
@@ -9,6 +9,7 @@ export interface IStudentService {
   update(tenantId: string, studentId: string, data: UpdateStudentDTO, userId: string): Promise<StudentEntity | null>;
   getById(tenantId: string, studentId: string): Promise<StudentEntity | null>;
   paginate(tenantId: string, page: number, limit: number): Promise<PaginatedResult<StudentEntity>>;
+  advancedFilter(tenantId: string, filter: StudentFilter): Promise<PaginatedResult<StudentEntity>>;
   delete(tenantId: string, studentId: string, userId?: string): Promise<void>;
   hardDelete(tenantId: string, studentId: string, userId: string): Promise<void>;
   approveAdmission(tenantId: string, studentId: string, userId: string): Promise<void>;

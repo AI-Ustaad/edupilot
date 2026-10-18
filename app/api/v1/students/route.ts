@@ -11,8 +11,27 @@ export const GET = withErrorHandler(
     const { searchParams } = new URL(req.url);
     const page = parseInt(searchParams.get("page") || "1", 10);
     const limit = parseInt(searchParams.get("limit") || "9999", 10);
+    const classGrade = searchParams.get("classGrade") || undefined;
+    const section = searchParams.get("section") || undefined;
+    const status = searchParams.get("status") || undefined;
+    const search = searchParams.get("search") || undefined;
+    const gender = searchParams.get("gender") || undefined;
+    const academicYear = searchParams.get("academicYear") || undefined;
+
     const service = new StudentService();
-    const result = await service.paginate(tenantId, page, limit);
+    const result = (classGrade || section || status || search || gender || academicYear)
+      ? await service.advancedFilter(tenantId, {
+          classGrade,
+          section,
+          status,
+          search,
+          gender,
+          academicYear,
+          page,
+          limit,
+        })
+      : await service.paginate(tenantId, page, limit);
+
     return createSuccessResponse(result.data, {
       message: "Students fetched",
       meta: { total: result.total, page: result.page, totalPages: result.totalPages },

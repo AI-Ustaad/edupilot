@@ -9,7 +9,7 @@ export interface IConfigurationService {
   getConfigurationViewModel(tenantId: string): Promise<SchoolConfigurationViewModel | null>;
   getConfigurationHistoryViewModel(tenantId: string, limit?: number): Promise<ConfigurationHistoryViewModel[]>;
   loadConfiguration(tenantId: string): Promise<ConfigurationLoadResult>;
-  saveAndPublishConfiguration(input: any, tenantId: string, userId: string): Promise<MasterSchoolConfiguration>;
+  saveAndPublishConfiguration(input: any, tenantId: string, userId: string, userRole?: string): Promise<MasterSchoolConfiguration>;
   getHealthStatus(tenantId: string): Promise<ConfigurationHealthResult>;
   createDefaultConfiguration(tenantId: string, userId: string): Promise<MasterSchoolConfiguration>;
   getConfigurationForSetup(tenantId: string): Promise<SchoolConfigurationViewModel | null>;

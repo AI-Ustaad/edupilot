@@ -16,8 +16,16 @@ export const GET = withErrorHandler(
       const month = url.searchParams.get("month") || undefined;
       const classGrade = url.searchParams.get("classGrade") || undefined;
       const section = url.searchParams.get("section") || undefined;
+      const studentId = url.searchParams.get("studentId") || undefined;
+      const page = parseInt(url.searchParams.get("page") || "1", 10);
+      const limit = parseInt(url.searchParams.get("limit") || "50", 10);
 
-      const result = await feesService.listFees(tenantId);
+      const result = await feesService.listFees(
+        tenantId,
+        { studentId, month, classGrade, section },
+        page,
+        limit
+      );
       return createSuccessResponse(result.data, { meta: { total: result.total, page: result.page, totalPages: result.totalPages } });
     }
   )

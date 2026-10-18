@@ -111,7 +111,7 @@ export class ConfigurationService implements IConfigurationService {
     }
   }
 
-  async saveAndPublishConfiguration(input: WizardInput, tenantId: string, userId: string): Promise<MasterSchoolConfiguration> {
+  async saveAndPublishConfiguration(input: WizardInput, tenantId: string, userId: string, userRole?: string): Promise<MasterSchoolConfiguration> {
     try {
       const health = await this.healthService.checkHealth(tenantId);
       if (!health.diagnostics.tenantValid) {
@@ -130,10 +130,9 @@ export class ConfigurationService implements IConfigurationService {
       const previousVersion = existing?.version.number || 0;
       const { schoolProfile, academicStructure } = input;
 
-      if (existing && existing.state === "Published") {
-        if (existing.metadata.configuredBy && existing.metadata.configuredBy !== userId) {
-          throw new ConfigurationValidationError("Configuration Write Violation: A published configuration exists. Only the original publisher or an administrator can modify it.");
-        }
+      const isAdmin = userRole === "admin" || userRole === "superAdmin" || userRole === "schoolAdmin" || userRole === "super_admin";
+      if (!isAdmin) {
+        throw new ConfigurationValidationError("Configuration Write Violation: Only administrators can create or publish school configuration.");
       }
 
       if (!academicStructure || !academicStructure.grades || academicStructure.grades.length === 0) {
@@ -180,10 +179,10 @@ export class ConfigurationService implements IConfigurationService {
           country: schoolProfile.country || "PK",
         },
         academic: {
-          levels: academicStructure.levels.map((l: any) => l.id || l.name),
+          levels: (academicStructure.levels || []).map((l: any) => l.id || l.name || l),
           classes: mappedClasses,
           sectionNames,
-          subjects: academicStructure.allSubjects.map((s: any) => s.name),
+          subjects: (academicStructure.allSubjects || []).map((s: any) => s.name || s),
           requiredLabs: academicStructure.requiredLabs || [],
           requiredTeachers: academicStructure.requiredTeachers || {},
           departments: academicStructure.departments || [],

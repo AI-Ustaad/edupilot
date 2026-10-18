@@ -18,7 +18,7 @@ export const GET = withErrorHandler(
       withPermission(PERMISSIONS.fees.view)(async (req: Request, { tenantId }: TenantContext) => {
         const id = getIdFromUrl(req);
         const service = new FeesService();
-        const fee = await service.getFeeById(id, tenantId);
+        const fee = await service.getFeeById(tenantId, id);
         if (!fee) return createErrorResponse(404, "Fee record not found");
         return createSuccessResponse(fee);
       })
@@ -46,7 +46,7 @@ export const DELETE = withErrorHandler(
       withPermission(PERMISSIONS.fees.delete)(async (req: Request, { tenantId, user }: TenantContext) => {
         const id = getIdFromUrl(req);
         const service = new FeesService();
-        const fee = await service.getFeeById(id, tenantId);
+        const fee = await service.getFeeById(tenantId, id);
         if (!fee) return createErrorResponse(404, "Fee record not found");
         await service.deleteFee(tenantId, id, user.uid);
         return createSuccessResponse(null, { message: "Fee record deleted successfully" });

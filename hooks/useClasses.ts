@@ -1,12 +1,13 @@
 // hooks/useClasses.ts
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import apiClient from "@/lib/api/client";
+import { safeArray } from "@/lib/api/safeResponse";
 import { QueryKeys } from "@/lib/api/queryKeys";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/components/ToastProvider";
 import { logger } from "@/lib/logger/logger";
 
-// 🔄 Fetch All Classes (Crash-Proof)
+// 🔄 Fetch All Classes
 export const useClasses = () => {
   const { user } = useAuth();
   const tenantId = user?.tenantId || "unknown";
@@ -14,15 +15,8 @@ export const useClasses = () => {
   return useQuery({
     queryKey: QueryKeys.classes(tenantId),
     queryFn: async () => {
-      try {
-        const res = await apiClient.get("/classes");
-        let data = Array.isArray(res) ? res : (res?.data || []);
-        if (!Array.isArray(data)) data = [];
-        return data;
-      } catch (error) {
-        logger.error("Failed to fetch classes:", { metadata: { error } });
-        return [];
-      }
+      const res = await apiClient.get("/classes");
+      return safeArray(res);
     },
     enabled: !!tenantId && tenantId !== "unknown",
   });

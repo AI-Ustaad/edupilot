@@ -188,4 +188,228 @@ describe('School Configuration Route', () => {
       );
     });
   });
+
+  describe('Route-Level RBAC & Permission Enforcement (Actual GET and POST routes)', () => {
+    const { GET, POST } = require('@/app/api/v1/settings/school-configuration/route');
+
+    const validPayload = {
+      schoolProfile: {
+        name: "Acme Academy",
+        type: "Private",
+        curriculumId: "c_standard",
+        boardName: "BISE",
+        sections: ["A", "B"],
+      },
+      academicStructure: {
+        levels: ["Primary", "Secondary"],
+        grades: [{ id: "g1", name: "Grade 1", schemeOfStudy: { subjects: [{ name: "Math" }] } }],
+        allSubjects: [{ name: "Math" }, { name: "Science" }],
+      },
+    };
+
+    test('GET: rejects unauthenticated caller with 401', async () => {
+      getSessionUser.mockResolvedValue(null);
+      const req = new Request('http://localhost/api/v1/settings/school-configuration', { method: 'GET' });
+      const res = await GET(req);
+      expect(res.status).toBe(401);
+    });
+
+    test('GET: rejects student with 403 Forbidden', async () => {
+      getSessionUser.mockResolvedValue({ uid: 'stud_1', email: 's@test.com', role: 'student', tenantId: 'tenant_1' });
+      const req = new Request('http://localhost/api/v1/settings/school-configuration', { method: 'GET' });
+      const res = await GET(req);
+      expect(res.status).toBe(403);
+    });
+
+    test('GET: rejects teacher with 403 Forbidden', async () => {
+      getSessionUser.mockResolvedValue({ uid: 'teach_1', email: 't@test.com', role: 'teacher', tenantId: 'tenant_1' });
+      const req = new Request('http://localhost/api/v1/settings/school-configuration', { method: 'GET' });
+      const res = await GET(req);
+      expect(res.status).toBe(403);
+    });
+
+    test('GET: rejects parent with 403 Forbidden', async () => {
+      getSessionUser.mockResolvedValue({ uid: 'par_1', email: 'p@test.com', role: 'parent', tenantId: 'tenant_1' });
+      const req = new Request('http://localhost/api/v1/settings/school-configuration', { method: 'GET' });
+      const res = await GET(req);
+      expect(res.status).toBe(403);
+    });
+
+    test('GET: authorizes admin user with 200 OK', async () => {
+      getSessionUser.mockResolvedValue({ uid: 'adm_1', email: 'admin@test.com', role: 'admin', tenantId: 'tenant_1' });
+      mockConfigurationService.loadConfiguration.mockResolvedValue({ status: 'NOT_CONFIGURED', nextAction: 'Setup' });
+      const req = new Request('http://localhost/api/v1/settings/school-configuration', { method: 'GET' });
+      const res = await GET(req);
+      expect(res.status).toBe(200);
+    });
+
+    test('GET: authorizes schoolAdmin user with 200 OK', async () => {
+      getSessionUser.mockResolvedValue({ uid: 'sadm_1', email: 'schooladmin@test.com', role: 'schoolAdmin', tenantId: 'tenant_1' });
+      mockConfigurationService.loadConfiguration.mockResolvedValue({ status: 'NOT_CONFIGURED', nextAction: 'Setup' });
+      const req = new Request('http://localhost/api/v1/settings/school-configuration', { method: 'GET' });
+      const res = await GET(req);
+      expect(res.status).toBe(200);
+    });
+
+    test('POST: rejects unauthenticated caller with 401', async () => {
+      getSessionUser.mockResolvedValue(null);
+      const req = new Request('http://localhost/api/v1/settings/school-configuration', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(validPayload),
+      });
+      const res = await POST(req);
+      expect(res.status).toBe(401);
+    });
+
+    test('POST: rejects student write attempts with 403 Forbidden', async () => {
+      getSessionUser.mockResolvedValue({ uid: 'stud_1', email: 's@test.com', role: 'student', tenantId: 'tenant_1' });
+      const req = new Request('http://localhost/api/v1/settings/school-configuration', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(validPayload),
+      });
+      const res = await POST(req);
+      expect(res.status).toBe(403);
+      expect(mockConfigurationService.saveAndPublishConfiguration).not.toHaveBeenCalled();
+    });
+
+    test('POST: rejects teacher write attempts with 403 Forbidden', async () => {
+      getSessionUser.mockResolvedValue({ uid: 'teach_1', email: 't@test.com', role: 'teacher', tenantId: 'tenant_1' });
+      const req = new Request('http://localhost/api/v1/settings/school-configuration', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(validPayload),
+      });
+      const res = await POST(req);
+      expect(res.status).toBe(403);
+      expect(mockConfigurationService.saveAndPublishConfiguration).not.toHaveBeenCalled();
+    });
+
+    test('POST: rejects parent write attempts with 403 Forbidden', async () => {
+      getSessionUser.mockResolvedValue({ uid: 'par_1', email: 'p@test.com', role: 'parent', tenantId: 'tenant_1' });
+      const req = new Request('http://localhost/api/v1/settings/school-configuration', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(validPayload),
+      });
+      const res = await POST(req);
+      expect(res.status).toBe(403);
+      expect(mockConfigurationService.saveAndPublishConfiguration).not.toHaveBeenCalled();
+    });
+
+    test('POST: authorizes admin write and delegates with user.role', async () => {
+      getSessionUser.mockResolvedValue({ uid: 'adm_1', email: 'admin@test.com', role: 'admin', tenantId: 'tenant_1' });
+      mockConfigurationService.saveAndPublishConfiguration.mockResolvedValue({ id: 'config_1', state: 'Published' });
+
+      const req = new Request('http://localhost/api/v1/settings/school-configuration', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(validPayload),
+      });
+      const res = await POST(req);
+      expect(res.status).toBe(200);
+      expect(mockConfigurationService.saveAndPublishConfiguration).toHaveBeenCalledWith(
+        expect.objectContaining({ schoolProfile: expect.anything() }),
+        'tenant_1',
+        'adm_1',
+        'admin'
+      );
+    });
+
+    test('GET: rejects missing role with 401 Unauthorized', async () => {
+      getSessionUser.mockResolvedValue({ uid: 'usr_norole', email: 'norole@test.com', tenantId: 'tenant_1' } as any);
+      const req = new Request('http://localhost/api/v1/settings/school-configuration', { method: 'GET' });
+      const res = await GET(req);
+      expect(res.status).toBe(401);
+    });
+
+    test('GET: rejects empty role with 401 Unauthorized', async () => {
+      getSessionUser.mockResolvedValue({ uid: 'usr_empty', email: 'empty@test.com', role: '', tenantId: 'tenant_1' });
+      const req = new Request('http://localhost/api/v1/settings/school-configuration', { method: 'GET' });
+      const res = await GET(req);
+      expect(res.status).toBe(401);
+    });
+
+    test('GET: rejects unknown role with 403 Forbidden', async () => {
+      getSessionUser.mockResolvedValue({ uid: 'usr_unknown', email: 'unknown@test.com', role: 'intruder', tenantId: 'tenant_1' });
+      const req = new Request('http://localhost/api/v1/settings/school-configuration', { method: 'GET' });
+      const res = await GET(req);
+      expect(res.status).toBe(403);
+    });
+
+    test('POST: rejects missing role with 401 Unauthorized', async () => {
+      getSessionUser.mockResolvedValue({ uid: 'usr_norole', email: 'norole@test.com', tenantId: 'tenant_1' } as any);
+      const req = new Request('http://localhost/api/v1/settings/school-configuration', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(validPayload),
+      });
+      const res = await POST(req);
+      expect(res.status).toBe(401);
+      expect(mockConfigurationService.saveAndPublishConfiguration).not.toHaveBeenCalled();
+    });
+
+    test('POST: rejects empty role with 401 Unauthorized', async () => {
+      getSessionUser.mockResolvedValue({ uid: 'usr_empty', email: 'empty@test.com', role: '', tenantId: 'tenant_1' });
+      const req = new Request('http://localhost/api/v1/settings/school-configuration', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(validPayload),
+      });
+      const res = await POST(req);
+      expect(res.status).toBe(401);
+      expect(mockConfigurationService.saveAndPublishConfiguration).not.toHaveBeenCalled();
+    });
+
+    test('POST: rejects unknown role with 403 Forbidden', async () => {
+      getSessionUser.mockResolvedValue({ uid: 'usr_unknown', email: 'unknown@test.com', role: 'intruder', tenantId: 'tenant_1' });
+      const req = new Request('http://localhost/api/v1/settings/school-configuration', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(validPayload),
+      });
+      const res = await POST(req);
+      expect(res.status).toBe(403);
+      expect(mockConfigurationService.saveAndPublishConfiguration).not.toHaveBeenCalled();
+    });
+
+    test('POST: authorizes superAdmin write and delegates with user.role', async () => {
+      getSessionUser.mockResolvedValue({ uid: 'super_1', email: 'super@test.com', role: 'superAdmin', tenantId: 'tenant_1' });
+      mockConfigurationService.saveAndPublishConfiguration.mockResolvedValue({ id: 'config_1', state: 'Published' });
+
+      const req = new Request('http://localhost/api/v1/settings/school-configuration', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(validPayload),
+      });
+      const res = await POST(req);
+      expect(res.status).toBe(200);
+      expect(mockConfigurationService.saveAndPublishConfiguration).toHaveBeenCalledWith(
+        expect.objectContaining({ schoolProfile: expect.anything() }),
+        'tenant_1',
+        'super_1',
+        'superAdmin'
+      );
+    });
+
+    test('POST: authorizes super_admin write and delegates with user.role', async () => {
+      getSessionUser.mockResolvedValue({ uid: 'super2_1', email: 'super2@test.com', role: 'super_admin', tenantId: 'tenant_1' });
+      mockConfigurationService.saveAndPublishConfiguration.mockResolvedValue({ id: 'config_1', state: 'Published' });
+
+      const req = new Request('http://localhost/api/v1/settings/school-configuration', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(validPayload),
+      });
+      const res = await POST(req);
+      expect(res.status).toBe(200);
+      expect(mockConfigurationService.saveAndPublishConfiguration).toHaveBeenCalledWith(
+        expect.objectContaining({ schoolProfile: expect.anything() }),
+        'tenant_1',
+        'super2_1',
+        'super_admin'
+      );
+    });
+  });
 });

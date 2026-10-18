@@ -2,7 +2,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, useCallback } from "react";
 import apiClient from "@/lib/api/client";
-import { safeArray } from "@/lib/api/safeResponse";
+import { safeArray, safeObject } from "@/lib/api/safeResponse";
 import { QueryKeys } from "@/lib/api/queryKeys";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/components/ToastProvider";
@@ -228,7 +228,7 @@ export const useStaffDirectory = (filters: Record<string, any> = {}) => {
     queryKey: [...QueryKeys.staff(tenantId), "directory", params.toString()],
     queryFn: async () => {
       const response = await apiClient.get(`/staff?${params.toString()}`);
-      return (response as any)?.data ?? response;
+      return safeObject(response);
     },
     enabled: !!tenantId && tenantId !== "unknown",
   });
@@ -241,7 +241,7 @@ export const useStaffAnalytics = () => {
     queryKey: [...QueryKeys.staff(tenantId), "analytics"],
     queryFn: async () => {
       const response = await apiClient.get("/staff/analytics");
-      return (response as any)?.data ?? response;
+      return safeObject(response);
     },
     enabled: !!tenantId && tenantId !== "unknown",
   });

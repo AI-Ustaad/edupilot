@@ -136,6 +136,14 @@ export class StudentService implements IStudentService {
     };
   }
 
+  async advancedFilter(tenantId: string, filter: import("@/types/student").StudentFilter): Promise<PaginatedResult<StudentEntity>> {
+    const result = await this.repository.advancedFilter(tenantId, filter);
+    return {
+      ...result,
+      data: result.data.map((doc: any) => StudentPersistenceMapper.fromFirestore(doc))
+    };
+  }
+
   async delete(tenantId: string, studentId: string, userId?: string): Promise<void> {
     await this.repository.softDelete(studentId, tenantId);
 

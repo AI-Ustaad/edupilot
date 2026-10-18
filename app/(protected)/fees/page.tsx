@@ -47,10 +47,20 @@ export default function FeesPage() {
   );
 
   const handleSaveAll = async () => {
+    const studentsToSave = filteredStudents.filter((student: any) => {
+      const entry = feeEntries[student.id];
+      return entry && Number(entry.amount) > 0;
+    });
+
+    if (studentsToSave.length === 0) {
+      alert("Please enter fee amounts greater than 0 for students before saving.");
+      return;
+    }
+
     setSaving(true);
     try {
-      await Promise.all(filteredStudents.map((student: any) => {
-        const entry = feeEntries[student.id] || { amount: "0", status: "pending" };
+      await Promise.all(studentsToSave.map((student: any) => {
+        const entry = feeEntries[student.id];
         return saveMutation.mutateAsync({
           studentId: student.id,
           studentName: student.fullName || student.name,
@@ -58,7 +68,7 @@ export default function FeesPage() {
           section: student.section,
           feeMonth: selectedMonth,
           amountPaid: Number(entry.amount),
-          status: entry.status,
+          status: entry.status || "paid",
         });
       }));
       setSuccess("Fee records saved successfully!");
@@ -76,9 +86,29 @@ export default function FeesPage() {
     }
   };
 
-  // 🛡️ Case-Insensitive Math Logic
-  const totalCollected = feeRecords.filter((f: any) => f.status?.toLowerCase() === "paid").reduce((sum: number, f: any) => sum + (f.amountPaid || 0), 0);
-  const totalPending = feeRecords.filter((f: any) => f.status?.toLowerCase() === "pending" || f.status?.toLowerCase() === "partial").reduce((sum: number, f: any) => sum + (f.amountPaid || 0), 0);
+  // 🛡️ Accounting-Invariant Aggregation Logic (Zero-Preserving & Null-Aware)
+  const totalCollected = feeRecords.reduce((sum: number, f: any) => {
+    // Only verified positive finite payments count as collected cash (never infer from status or assessed fee)
+    const paid = typeof f.amountPaid === "number" && Number.isFinite(f.amountPaid) ? Math.max(0, f.amountPaid) : 0;
+    if (paid > 0) {
+      return sum + paid;
+    }
+    return sum;
+  }, 0);
+
+  const totalPending = feeRecords.reduce((sum: number, f: any) => {
+    const status = f.status?.toLowerCase()?.trim();
+    const explicitDue = typeof f.amountDue === "number" && Number.isFinite(f.amountDue) ? Math.max(0, f.amountDue) : null;
+    if (explicitDue !== null) {
+      return sum + explicitDue;
+    }
+    if (status === "pending" || status === "partial") {
+      const assessed = typeof f.amount === "number" && Number.isFinite(f.amount) ? Math.max(0, f.amount) : 0;
+      const paid = typeof f.amountPaid === "number" && Number.isFinite(f.amountPaid) ? Math.max(0, f.amountPaid) : 0;
+      return sum + Math.max(0, assessed - paid);
+    }
+    return sum;
+  }, 0);
 
   if (!user?.tenantId) return <div className="p-8 text-center">Loading...</div>;
 

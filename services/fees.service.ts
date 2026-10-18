@@ -69,13 +69,31 @@ export class FeesService implements IFeesService {
     return FeePersistenceMapper.fromFirestore(doc);
   }
 
-  async listFees(tenantId: string, studentId?: string, page = 1, limit = 20): Promise<PaginatedResult<FeeEntity>> {
+  async listFees(
+    tenantId: string,
+    filtersOrStudentId?: string | { studentId?: string; month?: string; classGrade?: string; section?: string },
+    page = 1,
+    limit = 20
+  ): Promise<PaginatedResult<FeeEntity>> {
     let fees: FeeDocument[];
+    const filters = typeof filtersOrStudentId === "string"
+      ? { studentId: filtersOrStudentId }
+      : filtersOrStudentId || {};
     
-    if (studentId) {
-      fees = await (this.repository as FeesRepository).findByStudent(tenantId, studentId, page * limit);
+    if (filters.studentId) {
+      fees = await (this.repository as FeesRepository).findByStudent(tenantId, filters.studentId, page * limit);
     } else {
       fees = await this.repository.findAll(tenantId);
+    }
+
+    if (filters.month) {
+      fees = fees.filter(f => f.feeMonth === filters.month || f.paymentDetails?.billingMonth === filters.month);
+    }
+    if (filters.classGrade) {
+      fees = fees.filter(f => f.classGrade === filters.classGrade || f.studentInfo?.classId === filters.classGrade);
+    }
+    if (filters.section) {
+      fees = fees.filter(f => f.section === filters.section || f.studentInfo?.sectionId === filters.section);
     }
 
     fees.sort((a, b) => {

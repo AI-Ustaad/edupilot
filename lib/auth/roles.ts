@@ -7,7 +7,7 @@ export const ROLE_PERMISSIONS: Record<string, string[]> = {
     "attendance.view", "attendance.create", "attendance.update", "attendance.delete",
     "parents.view", "parents.create", "parents.manage",
     "dashboard.view", "analytics.view",
-    "settings.view", "settings.manage",
+    "settings.view", "settings.update", "settings.manage",
     "billing.view", "billing.manage",
     "audit.view",
     "ledger.view",
