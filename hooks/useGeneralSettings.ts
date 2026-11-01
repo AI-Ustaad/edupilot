@@ -23,6 +23,10 @@ export const useUpdateGeneralSettings = () => {
     mutationFn: async (data: any) => apiClient.put("/settings/general", data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["generalSettings", user?.tenantId] });
+      queryClient.invalidateQueries({ queryKey: ["general-settings", user?.tenantId] });
+      queryClient.invalidateQueries({ queryKey: ["settings", user?.tenantId] });
+      queryClient.invalidateQueries({ queryKey: ["school-configuration", user?.tenantId] });
+      queryClient.invalidateQueries({ queryKey: ["enterprise-runtime-config"] });
       showToast("General settings updated successfully!", "success");
     },
     onError: () => showToast("Failed to update settings.", "error"),

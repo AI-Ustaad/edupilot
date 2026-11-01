@@ -1,5 +1,6 @@
 // services/fees.service.ts
 import { FeesRepository } from "@/repositories/fees.repository";
+import { LedgerService } from "./ledger.service";
 import { AuditService } from "./AuditService";
 import { ValidationService } from "./ValidationService";
 import { CreateFeeSchema, UpdateFeeSchema } from "@/dto";
@@ -18,11 +19,13 @@ export class FeesService implements IFeesService {
   private audit: AuditService;
   private validation: ValidationService;
   private repository: IFeesRepository;
+  private ledgerService: LedgerService;
 
-  constructor(repository?: IFeesRepository) {
+  constructor(repository?: IFeesRepository, ledgerService?: LedgerService) {
     this.repository = repository ?? new FeesRepository();
     this.audit = new AuditService();
     this.validation = new ValidationService();
+    this.ledgerService = ledgerService ?? new LedgerService();
   }
 
   async createFee(data: CreateFeeDTO, tenantId: string, userId?: string): Promise<FeeEntity> {
@@ -57,6 +60,20 @@ export class FeesService implements IFeesService {
       month: parsed.feeMonth,
       collectedBy: userId,
     }, tenantId);
+
+    if (parsed.amountPaid && parsed.amountPaid > 0) {
+      try {
+        await this.ledgerService.createEntry({
+          type: "income",
+          description: `Fee collected for ${parsed.studentName || parsed.studentId} (${parsed.feeMonth})`,
+          amount: parsed.amountPaid,
+          tenantId,
+          createdBy: userId || "system",
+        }, tenantId);
+      } catch (err) {
+        console.warn("[FeesService] Failed to record income ledger entry on fee collection:", err);
+      }
+    }
 
     const created = await this.repository.findById(id, tenantId);
     if (!created) throw new Error("Fee record created but could not be retrieved");

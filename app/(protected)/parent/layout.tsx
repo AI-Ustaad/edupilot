@@ -13,7 +13,7 @@ export default function ParentLayout({ children }: { children: React.ReactNode }
   const handleLogout = async () => {
     try {
       await signOut(auth);
-      await fetch("/api/auth/logout", { method: "POST" });
+      await fetch("/api/v1/auth/logout", { method: "POST" });
       window.location.href = "/";
     } catch (error) {
       console.error("Logout failed", error);

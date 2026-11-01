@@ -8,7 +8,7 @@ export function ClientBranding({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!user?.tenantId) return;
-    fetch("/api/settings/whitelabel")
+    fetch("/api/v1/settings/whitelabel")
       .then(res => res.json())
       .then(data => {
         if (data.success && data.data) {

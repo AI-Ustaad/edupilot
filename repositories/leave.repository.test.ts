@@ -30,17 +30,24 @@ describe('LeaveRepository', () => {
 
   test('should update leave status', async () => {
     const { mockDocRef } = require('@/lib/firebase-admin');
+    mockDocRef.get.mockResolvedValue({
+      exists: true,
+      data: () => ({ tenantId, status: 'pending' }),
+    });
     await repo.updateStatus('l1', { status: 'approved' }, tenantId);
     expect(mockDocRef.update).toHaveBeenCalledWith(
       expect.objectContaining({ status: 'approved' })
     );
   });
 
-  test('should update leave status without tenantId', async () => {
+  test('should throw error when updating leave with mismatched tenantId or not found', async () => {
     const { mockDocRef } = require('@/lib/firebase-admin');
-    await repo.updateStatus('l1', { status: 'approved' });
-    expect(mockDocRef.update).toHaveBeenCalledWith(
-      expect.objectContaining({ status: 'approved' })
+    mockDocRef.get.mockResolvedValue({
+      exists: true,
+      data: () => ({ tenantId: 'other-tenant', status: 'pending' }),
+    });
+    await expect(repo.updateStatus('l1', { status: 'approved' }, tenantId)).rejects.toThrow(
+      'Leave request not found or access denied for this tenant'
     );
   });
 

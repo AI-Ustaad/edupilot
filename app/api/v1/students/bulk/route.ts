@@ -6,8 +6,11 @@ import { withErrorHandler, withAuth, withTenant } from "@/route-helpers";
 import { withPermission } from "@/lib/auth/rbac";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 import { StudentService } from "@/services/StudentService";
+import { SubscriptionService } from "@/services/subscription.service";
 import type { TenantContext } from "@/types/api";
 import * as XLSX from 'xlsx';
+
+const subscriptionService = new SubscriptionService();
 
 export const POST = withErrorHandler(
   withAuth(
@@ -63,6 +66,9 @@ export const POST = withErrorHandler(
 
         // Delegate to service
         const service = new StudentService();
+        const limits = await subscriptionService.getPlanLimits(tenantId);
+        await service.checkSubscriptionLimit(tenantId, limits.maxStudents, studentsToAdd.length);
+
         const result = await service.bulkCreate(tenantId, studentsToAdd, user.uid);
 
         return NextResponse.json({

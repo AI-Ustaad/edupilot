@@ -17,8 +17,8 @@ export class LeaveService {
     return this.leaveRepo.findPendingByTenant(tenantId);
   }
 
-  async updateStatus(id: string, data: Partial<LeaveRequest>): Promise<void> {
-    return this.leaveRepo.updateStatus(id, data);
+  async updateStatus(id: string, data: Partial<LeaveRequest>, tenantId: string): Promise<void> {
+    return this.leaveRepo.updateStatus(id, data, tenantId);
   }
 
   async getStaffName(staffId: string, tenantId: string): Promise<string> {

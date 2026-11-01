@@ -19,7 +19,7 @@ export const POST = withErrorHandler(
           arrangements: arrangedPeriods,
           status: "approved",
           approvedAt: new Date(),
-        });
+        }, tenantId);
 
         const teacherName = await leaveService.getStaffName(substituteTeacherId, tenantId);
         logger.info(`Notification: ${teacherName} assigned covering duty`, { metadata: { arrangedPeriods } });

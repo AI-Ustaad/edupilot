@@ -5,22 +5,34 @@ import { usePathname } from "next/navigation";
 import { ServerCog, AlertTriangle, CheckCircle2, XCircle } from "lucide-react";
 import { useConfiguration } from "./ConfigurationProvider";
 import { useRuntimeStore } from "@/lib/store/runtime.store";
+import { useAuth } from "@/context/AuthContext";
 
 export function RuntimeProvider({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const { user } = useAuth();
   const { config, isLoading, error } = useConfiguration();
   const initializeKernel = useRuntimeStore((state) => state.initializeKernel);
 
+  const cfg = config as any;
+  const isPublished = Boolean(
+    cfg && (cfg.state === "Published" || cfg.status === "Published" || cfg.stateLabel === "Published" || cfg.state === "CONFIGURED" || cfg.status === "CONFIGURED")
+  );
+  const hasProfile = Boolean(cfg?.school?.name || cfg?.schoolName);
+  const hasAcademic = Boolean(
+    cfg?.academic?.classes?.length ||
+    (Array.isArray(cfg?.classes) && cfg.classes.length > 0) ||
+    (Array.isArray(cfg?.subjects) && cfg.subjects.length > 0)
+  );
+  const isValidConfig = Boolean(cfg && (isPublished || (hasProfile && hasAcademic)));
+
   useEffect(() => {
-    // 🚀 FIX: Cast to 'any' to bypass strict ViewModel type mismatch
-    const cfg = config as any;
-    if (cfg && cfg.state === "Published" && cfg.school && cfg.academic) {
-      const tenantId = cfg.tenantId || cfg.metadata?.tenantId || "";
+    if (isValidConfig) {
+      const tenantId = cfg.tenantId || cfg.metadata?.tenantId || user?.tenantId || "";
       if (tenantId) {
         initializeKernel(tenantId, cfg);
       }
     }
-  }, [config, initializeKernel]);
+  }, [cfg, isValidConfig, user?.tenantId, initializeKernel]);
 
   if (isLoading) {
     return (
@@ -32,19 +44,17 @@ export function RuntimeProvider({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // 🟢 FIX 1: Added /admin/school-setup to bypass
-  const isSetupPage = 
+  // Allow setup and configuration pages to always render without being blocked by initialization errors
+  const isSetupOrSettingsPage = 
     pathname?.includes("/admin/school-setup") || 
-    pathname?.includes("/settings/school-configuration");
+    pathname?.includes("/settings") ||
+    pathname?.includes("/onboarding");
     
-  if (isSetupPage) {
+  if (isSetupOrSettingsPage) {
     return <>{children}</>;
   }
 
-  if (error || !config || config.state !== "Published") {
-    // 🚀 FIX: Cast config to 'any' here as well to safely check properties for Diagnostics
-    const cfg = config as any;
-    
+  if (error || !config || (!isPublished && !isValidConfig)) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-red-50 p-6 text-center z-50 fixed inset-0">
         <AlertTriangle className="w-16 h-16 text-red-600 mb-4" />
@@ -56,10 +66,10 @@ export function RuntimeProvider({ children }: { children: React.ReactNode }) {
         <div className="mt-6 bg-white border border-red-200 rounded-xl p-6 text-left shadow-sm max-w-md w-full">
           <h3 className="text-sm font-bold text-slate-800 mb-3 uppercase tracking-wider">Configuration Diagnostics</h3>
           <DiagnosticItem label="Configuration Document Loaded" isOk={!!cfg} />
-          <DiagnosticItem label="State is 'Published'" isOk={cfg?.state === "Published"} />
-          <DiagnosticItem label="Metadata Exists" isOk={!!cfg?.metadata} />
-          <DiagnosticItem label="School Profile Exists" isOk={!!cfg?.school} />
-          <DiagnosticItem label="Academic Structure Exists" isOk={!!cfg?.academic} />
+          <DiagnosticItem label="State is 'Published'" isOk={isPublished} />
+          <DiagnosticItem label="Metadata Exists" isOk={Boolean(cfg?.metadata || cfg?.id)} />
+          <DiagnosticItem label="School Profile Exists" isOk={hasProfile} />
+          <DiagnosticItem label="Academic Structure Exists" isOk={hasAcademic} />
         </div>
 
         <button 

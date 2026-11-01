@@ -32,3 +32,6 @@ export const PUT = withErrorHandler(
     )
   )
 );
+
+export const POST = PUT;
+export const PATCH = PUT;

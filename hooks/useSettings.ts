@@ -19,6 +19,11 @@ export const useUpdateSettings = () => {
   const tenantId = user?.tenantId || "unknown";
   return useMutation({
     mutationFn: async (data: any) => apiClient.put("/settings", data),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["settings", tenantId] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["settings", tenantId] });
+      queryClient.invalidateQueries({ queryKey: ["generalSettings", tenantId] });
+      queryClient.invalidateQueries({ queryKey: ["school-configuration", tenantId] });
+      queryClient.invalidateQueries({ queryKey: ["enterprise-runtime-config"] });
+    },
   });
 };

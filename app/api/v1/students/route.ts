@@ -3,7 +3,10 @@ import { withErrorHandler } from "@/route-helpers";
 import { withAuthAndPermission } from "@/route-helpers/withAuthAndPermission";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 import { StudentService } from "@/services/StudentService";
+import { SubscriptionService } from "@/services/subscription.service";
 import { createSuccessResponse, createErrorResponse, createApiResponse } from "@/lib/api/response";
+
+const subscriptionService = new SubscriptionService();
 
 export const GET = withErrorHandler(
   withAuthAndPermission(PERMISSIONS.students.view, async (req, context) => {
@@ -50,6 +53,9 @@ export const POST = withErrorHandler(
     }
 
     const service = new StudentService();
+    const limits = await subscriptionService.getPlanLimits(tenantId);
+    await service.checkSubscriptionLimit(tenantId, limits.maxStudents, 1);
+
     const student = await service.create(body, tenantId, context.user.uid);
     return createApiResponse(201, student, "Student admitted");
   })

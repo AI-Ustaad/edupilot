@@ -14,9 +14,9 @@ export class TimetableService implements IAITimetableService {
   private provider: GeminiProvider;
   private usageTracker: UsageTracker;
 
-  constructor() {
-    this.provider = new GeminiProvider();
-    this.usageTracker = new UsageTracker();
+  constructor(provider?: GeminiProvider, usageTracker?: UsageTracker) {
+    this.provider = provider ?? new GeminiProvider();
+    this.usageTracker = usageTracker ?? new UsageTracker();
   }
 
   async generateTimetable(req: TimetableRequest, tenantId?: string, userId?: string): Promise<any[]> {
@@ -33,8 +33,8 @@ export class TimetableService implements IAITimetableService {
       - Subjects: ${req.subjects.join(", ")}
       - Teachers: ${req.teachers.join(", ")}
 
-      Each entry must have exactly these keys: "day", "period", "subject", "class", "teacher".
-      The period should be a number (e.g., 1, 2, 3...).
+      Each entry must have exactly these keys: "day", "period", "subject", "classGrade", "teacher".
+      The period should be a string representing the period (e.g., "1", "2", "3...").
       Ensure the JSON is valid and complete. Return ONLY the JSON array.
     `;
 
@@ -47,10 +47,21 @@ export class TimetableService implements IAITimetableService {
     );
     const text = response.text;
     try {
-      const timetable = JSON.parse(text.replace(/```json|```/g, "").trim());
-      if (!Array.isArray(timetable) || timetable.length === 0) {
+      const parsed = JSON.parse(text.replace(/```json|```/g, "").trim());
+      if (!Array.isArray(parsed) || parsed.length === 0) {
         throw new Error("Empty or invalid timetable");
       }
+
+      // Normalize entries to strictly adhere to CreateTimetableEntrySchema (DEF-016)
+      const timetable = parsed.map((entry: any) => ({
+        ...entry,
+        classGrade: String(entry.classGrade || entry.class || ""),
+        class: String(entry.class || entry.classGrade || ""),
+        period: String(entry.period ?? ""),
+        subject: String(entry.subject ?? ""),
+        teacher: String(entry.teacher ?? ""),
+        day: String(entry.day ?? ""),
+      }));
 
       if (tenantId && userId) {
         await this.usageTracker.track({

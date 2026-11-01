@@ -1,5 +1,6 @@
 import { BaseRepository } from "./base.repository";
 import type { ILeaveRepository } from "@/interfaces/ILeaveRepository";
+import { NotFoundException } from "@/errors/AppError";
 
 export interface LeaveRequest {
   tenantId: string;
@@ -33,8 +34,13 @@ export class LeaveRepository extends BaseRepository<LeaveRequest> implements ILe
   async updateStatus(
     id: string,
     data: Partial<LeaveRequest>,
-    _tenantId?: string
+    tenantId: string
   ): Promise<void> {
-    await this.db.collection(this.collectionName).doc(id).update(data);
+    const docRef = this.db.collection(this.collectionName).doc(id);
+    const docSnap = await docRef.get();
+    if (!docSnap.exists || docSnap.data()?.tenantId !== tenantId) {
+      throw new NotFoundException("Leave request not found or access denied for this tenant");
+    }
+    await docRef.update(data);
   }
 }

@@ -27,6 +27,7 @@ export interface IStudentService {
 
   count(tenantId: string): Promise<number>;
   countByClass(tenantId: string): Promise<Record<string, number>>;
+  checkSubscriptionLimit(tenantId: string, maxStudents: number, addingCount?: number): Promise<void>;
   getAnalytics(tenantId: string): Promise<StudentAnalytics>;
   getRiskData(tenantId: string): Promise<StudentEntity[]>;
 }

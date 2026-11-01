@@ -3,6 +3,7 @@ import { CreateStudentSchema } from "@/dto/CreateStudentDTO";
 import type { CreateStudentDTO, UpdateStudentDTO } from "@/dto";
 import { StudentPersistenceMapper } from "@/lib/mappers/StudentPersistenceMapper";
 import { BusinessError } from "@/errors";
+import { SubscriptionLimitException } from "@/errors/AppError";
 import { StudentRepository } from "@/repositories/student.repository";
 import { AttendanceRepository } from "@/repositories/attendance.repository";
 import { FeesRepository } from "@/repositories/fees.repository";
@@ -70,6 +71,8 @@ export class StudentService implements IStudentService {
         classGrade: document.classGrade,
         section: document.section,
       },
+      userId,
+      createdBy: userId,
     }, tenantId);
 
     return createdEntity;
@@ -169,6 +172,31 @@ export class StudentService implements IStudentService {
       admissionStatus: "approved",
       updatedBy: userId,
       updatedAt: new Date()
+    }, tenantId);
+
+    const studentDoc = await this.repository.findById(studentId, tenantId);
+    const studentData = {
+      fullName: studentDoc?.fullName || studentDoc?.firstName || "",
+      classGrade: studentDoc?.classGrade || "",
+      section: studentDoc?.section || "",
+      admissionNumber: studentDoc?.admissionNumber,
+      rollNumber: studentDoc?.rollNumber,
+    };
+
+    await eventBus.publish(EVENTS.ADMISSION_APPROVED, {
+      tenantId,
+      studentId,
+      studentData,
+      approvedBy: userId,
+      userId,
+    }, tenantId);
+
+    await eventBus.publish(EVENTS.STUDENT_ENROLLED, {
+      tenantId,
+      studentId,
+      studentData,
+      approvedBy: userId,
+      userId,
     }, tenantId);
   }
 
@@ -301,8 +329,21 @@ export class StudentService implements IStudentService {
       await this.repository.bulkUpdate(tenantId, validIds, {
         classGrade: newClass,
         section: newSection,
+        ...(academicYear ? { academicYear } : {}),
         updatedAt: new Date().toISOString() as any,
+        updatedBy: userId,
       });
+
+      await eventBus.publish(EVENTS.STUDENT_PROMOTED, {
+        tenantId,
+        studentIds: validIds,
+        newClass,
+        newClassGrade: newClass,
+        newSection,
+        academicYear,
+        promotedBy: userId,
+        userId,
+      }, tenantId);
     }
 
     return { success: errors.length === 0, promoted: validIds.length, errors };
@@ -353,6 +394,19 @@ export class StudentService implements IStudentService {
 
   async countByClass(tenantId: string): Promise<Record<string, number>> {
     return this.repository.countByClass(tenantId);
+  }
+
+  async checkSubscriptionLimit(
+    tenantId: string,
+    maxStudents: number,
+    addingCount: number = 1
+  ): Promise<void> {
+    const currentCount = await this.count(tenantId);
+    if (currentCount + addingCount > maxStudents) {
+      throw new SubscriptionLimitException(
+        `Student limit reached (${maxStudents}). Current: ${currentCount}, adding: ${addingCount}. Please upgrade your plan.`
+      );
+    }
   }
 
   async getAnalytics(tenantId: string): Promise<StudentAnalytics> {

@@ -1,6 +1,7 @@
 import { BaseRepository } from "./base.repository";
 import { adminDb, dbTimestamp } from "@/lib/firebase-admin";
 import type { IAcademicYearRepository } from "@/interfaces/IAcademicYearRepository";
+import { NotFoundException } from "@/errors/AppError";
 
 export interface AcademicYear {
   name: string;
@@ -43,6 +44,14 @@ export class AcademicYearRepository extends BaseRepository<AcademicYear> impleme
   }
 
   async setCurrent(id: string, tenantId: string): Promise<void> {
+    if (id) {
+      const docRef = this.db.collection(this.collectionName).doc(id);
+      const docSnap = await docRef.get();
+      if (!docSnap.exists || docSnap.data()?.tenantId !== tenantId) {
+        throw new NotFoundException("Academic year not found or access denied for this tenant");
+      }
+    }
+
     // Unset all current flags for this tenant
     const all = await this.db
       .collection(this.collectionName)
@@ -53,7 +62,9 @@ export class AcademicYearRepository extends BaseRepository<AcademicYear> impleme
     await batch.commit();
 
     // Set the target as current
-    await this.db.collection(this.collectionName).doc(id).update({ isCurrent: true });
+    if (id) {
+      await this.db.collection(this.collectionName).doc(id).update({ isCurrent: true });
+    }
   }
 }
 

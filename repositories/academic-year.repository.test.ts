@@ -175,6 +175,10 @@ describe('AcademicYearRepository', () => {
 
   test('should set current academic year', async () => {
     const { adminDb, mockCollection, mockBatch, mockDocRef } = require('@/lib/firebase-admin');
+    mockDocRef.get.mockResolvedValue({
+      exists: true,
+      data: () => ({ tenantId }),
+    });
     mockCollection.where.mockReturnValue({
       get: jest.fn().mockResolvedValue({
         docs: [
@@ -187,6 +191,18 @@ describe('AcademicYearRepository', () => {
     await repo.setCurrent('ay-1', tenantId);
     expect(mockBatch.update).toHaveBeenCalled();
     expect(mockDocRef.update).toHaveBeenCalledWith({ isCurrent: true });
+  });
+
+  test('should throw error when setting current academic year of another tenant or not found', async () => {
+    const { mockDocRef } = require('@/lib/firebase-admin');
+    mockDocRef.get.mockResolvedValue({
+      exists: true,
+      data: () => ({ tenantId: 'other-tenant' }),
+    });
+
+    await expect(repo.setCurrent('ay-1', tenantId)).rejects.toThrow(
+      'Academic year not found or access denied for this tenant'
+    );
   });
 
   test('should create if absent by name when AY does not exist', async () => {

@@ -3,6 +3,9 @@ import { BaseViewModel } from "./base.viewmodel";
 import { ConfigurationState } from "@/types/configuration/core";
 
 export interface SchoolConfigurationViewModel extends BaseViewModel {
+  tenantId?: string;
+  status?: string;
+  metadata?: any;
   state: ConfigurationState;
   stateLabel: string; // e.g., "Published", "Draft"
   

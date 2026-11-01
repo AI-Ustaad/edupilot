@@ -1,6 +1,7 @@
 // services/marks.service.ts
 import { MarksRepository } from "@/repositories/marks.repository";
 import { StudentRepository } from "@/repositories/student.repository";
+import { ParentsRepository } from "@/repositories/parents.repository";
 import { AuditService } from "./AuditService";
 import { ValidationService } from "./ValidationService";
 import { SaveMarkSchema, BulkPublishSchema, SkillsSchema } from "@/validators/marks";
@@ -18,11 +19,17 @@ export class MarksService implements IMarksService {
   private audit: AuditService;
   private validation: ValidationService;
   private studentRepo: StudentRepository;
+  private parentsRepo: ParentsRepository;
 
-  constructor(private repo: IMarksRepository = new MarksRepository()) {
+  constructor(
+    private repo: IMarksRepository = new MarksRepository(),
+    studentRepo?: StudentRepository,
+    parentsRepo?: ParentsRepository
+  ) {
     this.audit = new AuditService();
     this.validation = new ValidationService();
-    this.studentRepo = new StudentRepository();
+    this.studentRepo = studentRepo ?? new StudentRepository();
+    this.parentsRepo = parentsRepo ?? new ParentsRepository();
   }
 
   async saveMark(data: unknown, tenantId: string, userId: string): Promise<{ id: string; message: string }> {
@@ -125,15 +132,22 @@ export class MarksService implements IMarksService {
     const marksByStudent = new Map<string, (Mark & { id: string })[]>();
     for (const mark of marks) { const list = marksByStudent.get(mark.studentId) || []; list.push(mark); marksByStudent.set(mark.studentId, list); }
 
+    const studentIds = Array.from(marksByStudent.keys());
+    const studentDocs = studentIds.length > 0 ? await this.studentRepo.batchFindByIds(tenantId, studentIds) : [];
+    const studentMap = new Map<string, any>(studentDocs.map((s: any) => [s.id || "", s]));
+
     const results: { studentId: string; studentName: string; rollNumber: string | number; marks: (Mark & { id: string })[]; totalObtained: number; totalMax: number; percentage: string; grade: string }[] = [];
     for (const [studentId, studentMarks] of marksByStudent) {
+      const student = studentMap.get(studentId);
+      const studentName = student?.fullName || student?.firstName || studentMarks[0]?.studentName || "Unknown";
+      const rollNumber = student?.rollNumber ?? (studentMarks[0] as any)?.rollNumber ?? "-";
       const totalObtained = studentMarks.reduce((sum, m) => sum + (Number(m.marksObtained) || 0), 0);
       const totalMax = studentMarks.reduce((sum, m) => sum + (Number(m.totalMarks) || 0), 0);
       const pct = totalMax > 0 ? ((totalObtained / totalMax) * 100) : 0;
       const percentage = pct.toFixed(2);
       let grade = "U";
       if (pct >= 90) grade = "A++"; else if (pct >= 80) grade = "A+"; else if (pct >= 70) grade = "A"; else if (pct >= 60) grade = "B"; else if (pct >= 50) grade = "C"; else if (pct >= 40) grade = "D";
-      results.push({ studentId, studentName: studentMarks[0]?.studentName || "Unknown", rollNumber: "-", marks: studentMarks, totalObtained, totalMax, percentage, grade });
+      results.push({ studentId, studentName, rollNumber, marks: studentMarks, totalObtained, totalMax, percentage, grade });
     }
     results.sort((a, b) => parseFloat(b.percentage) - parseFloat(a.percentage));
     return results;
@@ -145,12 +159,37 @@ export class MarksService implements IMarksService {
     const studentIds = [...new Set((marks as any[]).map(m => m.studentId))] as string[];
     if (studentIds.length === 0) return { students: 0, emailsSent: 0 };
 
-    const studentRepo = new StudentRepository();
-    const allStudents = await studentRepo.batchFindByIds(tenantId, studentIds);
+    const allStudents = await this.studentRepo.batchFindByIds(tenantId, studentIds);
 
-    const parentEmails = allStudents
-      .filter((s: any) => s.parentEmail || s.parent_email)
-      .map((s: any) => ({ email: (s.parentEmail || s.parent_email)!, studentName: s.fullName || s.name || "Your child" }));
+    // Resolve parent emails: check primaryParentId in ParentsRepository, fallback to parentEmail, email
+    const parentIds = [...new Set(allStudents.map((s: any) => s.primaryParentId).filter(Boolean))] as string[];
+    const parentDocs = await Promise.all(
+      parentIds.map(pid => this.parentsRepo.findById(pid, tenantId).catch(() => null))
+    );
+    const parentMap = new Map<string, any>();
+    for (const p of parentDocs) {
+      if (p && p.id) {
+        parentMap.set(p.id, p);
+      }
+    }
+
+    const parentEmails: { email: string; studentName: string }[] = [];
+    for (const s of allStudents as any[]) {
+      const studentName = s.fullName || s.firstName || s.name || "Your child";
+      let email: string | undefined;
+
+      if (s.primaryParentId && parentMap.has(s.primaryParentId)) {
+        const parent = parentMap.get(s.primaryParentId);
+        email = parent.email;
+      }
+      if (!email) {
+        email = s.parentEmail || s.parent_email || s.guardianEmail || s.email;
+      }
+
+      if (email) {
+        parentEmails.push({ email, studentName });
+      }
+    }
 
     await Promise.all(parentEmails.map(p => sendEmail(p.email, `Exam Results Published - ${parsed.term}`, `<p>Dear Parent,</p><p>Results for <strong>${p.studentName}</strong> in <strong>${parsed.term}</strong> are now available.</p>`).catch(err => logger.error("Failed to send results email:", { metadata: { error: err } }))));
 
