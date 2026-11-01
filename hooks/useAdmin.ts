@@ -95,6 +95,31 @@ export const useUpdateUserRole = () => {
   });
 };
 
+export const useCreateUser = () => {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const tenantId = user?.tenantId || "unknown";
+  const { showToast } = useToast();
+  return useMutation({
+    mutationFn: async (data: { email: string; role: string; password?: string; name?: string }) => {
+      return apiClient.post("/create-user", {
+        email: data.email,
+        role: data.role,
+        password: data.password || "EduPilot@123",
+        name: data.name || data.email.split("@")[0],
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["users", tenantId] });
+      showToast("User created and invited successfully!", "success");
+    },
+    onError: (err: any) => {
+      const msg = err?.response?.data?.message || err?.message || "Failed to create user.";
+      showToast(msg, "error");
+    },
+  });
+};
+
 // 6. White Label (Branding)
 export const useBranding = () => {
   const { user } = useAuth();

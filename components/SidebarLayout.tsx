@@ -7,14 +7,15 @@ import { signOut } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import {
   Menu, X, LogOut, ShieldCheck, ChevronDown, ChevronRight,
-  LayoutDashboard, BarChart3, FileText, Users, UserCircle,
+  LayoutDashboard, TrendingUp, Users, UserCircle,
   GraduationCap, BookOpen, Clock, Award, ClipboardCheck,
-  HelpCircle, Wallet, DollarSign, Bus, Sparkles, Settings,
+  Wallet, DollarSign, Bus, Sparkles, Settings,
   Flag, ScrollText, Palette, Heart, PlusCircle, Calendar,
-  Eye, TrendingUp, CreditCard, Package, Link2, Bookmark,
-  FileSpreadsheet, UserCheck, UserPlus, Library, Route,
+  CreditCard, Package, Bookmark,
+  UserCheck, UserPlus, Library,
   Bot, FileQuestion, BrainCircuit, School, Activity, Briefcase,
-  ArrowUpDown, Shield, PaintBucket, Globe,
+  ArrowUpDown, Shield, Globe, FileText, Film, MessageSquare,
+  ScanLine, Compass
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { ROLE_PERMISSIONS } from "@/lib/auth/roles";
@@ -28,7 +29,7 @@ const MENU_GROUPS = [
     items: [
       { name: "Overview", icon: LayoutDashboard, path: "/dashboard", permission: "analytics.view" },
       { name: "Analytics", icon: TrendingUp, path: "/admin/analytics", permission: "analytics.view" },
-      { name: "Reports", icon: FileText, path: "/reports", permission: "analytics.view" },
+      { name: "Config Dashboard", icon: Activity, path: "/admin/configuration-dashboard", permission: "settings.manage" },
     ],
   },
   {
@@ -38,7 +39,8 @@ const MENU_GROUPS = [
     items: [
       { name: "All Students", icon: Users, path: "/students", permission: "students.view" },
       { name: "Add Student", icon: UserPlus, path: "/students/add", permission: "students.create" },
-      { name: "Student 360", icon: Activity, path: "/students/360", permission: "students.view" },
+      { name: "Student 360", icon: Activity, path: "/student-profile", permission: "students.view" },
+      { name: "OCR Admission", icon: ScanLine, path: "/students/ocr-admission", permission: "students.create" },
       { name: "Promote Students", icon: ArrowUpDown, path: "/admin/promote", permission: "students.update" },
       { name: "Admissions", icon: FileText, path: "/admin/admissions", permission: "students.create" },
     ],
@@ -50,18 +52,9 @@ const MENU_GROUPS = [
     items: [
       { name: "All Staff", icon: UserCircle, path: "/staff", permission: "staff.view" },
       { name: "Add Staff", icon: UserPlus, path: "/staff/add", permission: "staff.create" },
+      { name: "Staff OCR", icon: ScanLine, path: "/staff/ocr", permission: "staff.create" },
       { name: "Departments", icon: Briefcase, path: "/staff/departments", permission: "staff.view" },
-      { name: "Leave Management", icon: Calendar, path: "/leave-requests", permission: "leave.manage" },
-    ],
-  },
-  {
-    title: "Parents",
-    icon: Heart,
-    key: "parents",
-    items: [
-      { name: "All Parents", icon: Heart, path: "/admin/parents", permission: "parents.view" },
-      { name: "Add Parent", icon: UserPlus, path: "/admin/parents/add", permission: "parents.create" },
-      { name: "Parent Portal", icon: Globe, path: "/parent/dashboard", permission: "parents.view" },
+      { name: "Leave Requests", icon: Calendar, path: "/leave-requests", permission: "leave.manage" },
     ],
   },
   {
@@ -69,11 +62,14 @@ const MENU_GROUPS = [
     icon: BookOpen,
     key: "academics",
     items: [
+      { name: "Classes", icon: GraduationCap, path: "/classes", permission: "settings.manage" },
+      { name: "Sections & Allocation", icon: BookOpen, path: "/admin/sections", permission: "settings.manage" },
+      { name: "Admin Syllabus", icon: FileText, path: "/admin/syllabus", permission: "academics.view" },
+      { name: "Course Syllabus", icon: Bookmark, path: "/syllabus", permission: "academics.view" },
+      { name: "Exam Management", icon: Award, path: "/exams", permission: "exams.view" },
       { name: "Academic Year", icon: Calendar, path: "/admin/academic-year", permission: "settings.manage" },
-      { name: "Sections", icon: BookOpen, path: "/classes", permission: "settings.manage" },
-      { name: "Syllabus", icon: FileText, path: "/admin/syllabus", permission: "academics.view" },
       { name: "Timetable", icon: Clock, path: "/timetable", permission: "timetable.view" },
-      { name: "Subjects", icon: Bookmark, path: "/settings", permission: "settings.manage" },
+      { name: "School Setup", icon: School, path: "/admin/school-setup", permission: "settings.manage" },
     ],
   },
   {
@@ -83,7 +79,6 @@ const MENU_GROUPS = [
     items: [
       { name: "Student Attendance", icon: Users, path: "/attendance", permission: "attendance.view" },
       { name: "Staff Attendance", icon: UserCheck, path: "/staff-attendance", permission: "attendance.view" },
-      { name: "Attendance Reports", icon: FileSpreadsheet, path: "/attendance/reports", permission: "attendance.view" },
     ],
   },
   {
@@ -91,164 +86,112 @@ const MENU_GROUPS = [
     icon: Award,
     key: "exams",
     items: [
-      { name: "Exams", icon: Award, path: "/teacher/exam-center", permission: "exams.view" },
+      { name: "Teacher Exam Center", icon: Award, path: "/teacher/exam-center", permission: "exams.view" },
       { name: "Marks Entry", icon: FileText, path: "/marks", permission: "marks.create" },
-      { name: "Results", icon: BarChart3, path: "/result", permission: "exams.view" },
-      { name: "Report Cards", icon: FileText, path: "/result/report-cards", permission: "exams.view" },
+      { name: "Exam Results", icon: TrendingUp, path: "/result", permission: "exams.view" },
     ],
   },
   {
-    title: "Assignments",
+    title: "Teaching Tools",
     icon: FileText,
-    key: "assignments",
+    key: "teaching",
     items: [
-      { name: "All Assignments", icon: FileText, path: "/teacher/assignments", permission: "assignments.view" },
+      { name: "Assignments", icon: FileText, path: "/teacher/assignments", permission: "assignments.view" },
       { name: "Create Assignment", icon: PlusCircle, path: "/teacher/assignments/create", permission: "assignments.create" },
-      { name: "Grade Assignments", icon: Award, path: "/teacher/assignments/submissions", permission: "assignments.grade" },
+      { name: "Submissions", icon: Award, path: "/teacher/assignments/submissions", permission: "assignments.grade" },
+      { name: "Quizzes", icon: FileQuestion, path: "/teacher/quizzes", permission: "quizzes.view" },
+      { name: "Quiz Results", icon: Award, path: "/teacher/quizzes/results", permission: "quizzes.grade" },
+      { name: "Homework", icon: FileText, path: "/teacher/homework", permission: "homework.create" },
+      { name: "Lesson Plans", icon: Calendar, path: "/teacher/lesson-plans", permission: "lessonPlans.create" },
+      { name: "Skills Assessment", icon: Activity, path: "/teacher/skills", permission: "skills.view" },
+      { name: "Behavior Points", icon: PlusCircle, path: "/teacher/behavior", permission: "behavior.view" },
+      { name: "Teacher Chat", icon: MessageSquare, path: "/teacher/chat", permission: "chat.send" },
     ],
   },
   {
-    title: "Quizzes",
-    icon: HelpCircle,
-    key: "quizzes",
-    items: [
-      { name: "All Quizzes", icon: HelpCircle, path: "/teacher/quizzes", permission: "quizzes.view" },
-      { name: "Create Quiz", icon: PlusCircle, path: "/teacher/quizzes/create", permission: "quizzes.create" },
-      { name: "Grade Quiz", icon: Award, path: "/teacher/quizzes/results", permission: "quizzes.grade" },
-    ],
-  },
-  {
-    title: "Books & Library",
+    title: "Learning & Library",
     icon: Library,
-    key: "books",
+    key: "library",
     items: [
-      { name: "Books", icon: BookOpen, path: "/teacher/book-center", permission: "bookCenter.view" },
+      { name: "Book Center", icon: BookOpen, path: "/teacher/book-center", permission: "bookCenter.view" },
       { name: "Manage Books", icon: FileText, path: "/teacher/manage-books", permission: "bookCenter.create" },
-      { name: "Categories", icon: Bookmark, path: "/teacher/book-categories", permission: "bookCenter.view" },
+      { name: "Teacher Lectures", icon: Film, path: "/teacher/video-lectures", permission: "videoLectures.create" },
+      { name: "Video Library", icon: Film, path: "/video-lectures", permission: "videoLectures.view" },
+      { name: "Study Center", icon: Compass, path: "/study-center", permission: "students.view" },
     ],
   },
   {
-    title: "Fees",
+    title: "Fees & Finance",
     icon: Wallet,
     key: "fees",
     items: [
-      { name: "Fee Collection", icon: Wallet, path: "/fees", permission: "fees.create" },
-      { name: "Fee Records", icon: FileText, path: "/fees/records", permission: "fees.view" },
-      { name: "Fee Reports", icon: FileSpreadsheet, path: "/fees/reports", permission: "fees.view" },
+      { name: "Fee Management", icon: Wallet, path: "/fees", permission: "fees.view" },
     ],
   },
   {
-    title: "Finance",
-    icon: DollarSign,
-    key: "finance",
-    items: [
-      { name: "Revenue", icon: TrendingUp, path: "/finance/revenue", permission: "finance.view" },
-      { name: "Expenses", icon: DollarSign, path: "/finance/expenses", permission: "finance.view" },
-      { name: "Transactions", icon: Activity, path: "/finance/transactions", permission: "finance.view" },
-    ],
-  },
-  {
-    title: "Ledger",
-    icon: FileText,
-    key: "ledger",
-    items: [
-      { name: "General Ledger", icon: FileText, path: "/ledger", permission: "ledger.view" },
-      { name: "Income Ledger", icon: TrendingUp, path: "/ledger/income", permission: "ledger.view" },
-      { name: "Expense Ledger", icon: DollarSign, path: "/ledger/expense", permission: "ledger.view" },
-    ],
-  },
-  {
-    title: "Transport",
+    title: "Operations",
     icon: Bus,
-    key: "transport",
+    key: "operations",
     items: [
-      { name: "Buses", icon: Bus, path: "/admin/buses", permission: "buses.view" },
-      { name: "Routes", icon: Route, path: "/admin/buses/routes", permission: "buses.view" },
-      { name: "Assignments", icon: UserCheck, path: "/admin/buses/assignments", permission: "buses.update" },
+      { name: "Buses & Transport", icon: Bus, path: "/admin/buses", permission: "buses.view" },
     ],
   },
   {
-    title: "AI Tools",
+    title: "AI Copilot & Agents",
     icon: Sparkles,
     key: "ai",
     items: [
       { name: "AI Assistant", icon: Bot, path: "/ai-chatbot", permission: "chat.send" },
+      { name: "Principal Copilot", icon: BrainCircuit, path: "/ai/principal-copilot", permission: "ai.view" },
       { name: "Exam Generator", icon: FileQuestion, path: "/ai-exam-questions", permission: "ai.view" },
       { name: "Timetable Generator", icon: Sparkles, path: "/ai-timetable", permission: "ai.view" },
-      { name: "Analytics Assistant", icon: BrainCircuit, path: "/ai-analytics", permission: "ai.view" },
+      { name: "Report Comments AI", icon: FileText, path: "/ai/report-comments", permission: "ai.view" },
+      { name: "Smart Book Center", icon: Library, path: "/ai/smart-book-center", permission: "ai.view" },
     ],
   },
   {
-    title: "Analytics",
-    icon: BarChart3,
-    key: "analytics",
+    title: "Parents",
+    icon: Heart,
+    key: "parents",
     items: [
-      { name: "Student Analytics", icon: Users, path: "/admin/analytics/students", permission: "analytics.view" },
-      { name: "Financial Analytics", icon: DollarSign, path: "/admin/analytics/finance", permission: "analytics.view" },
-      { name: "Attendance Analytics", icon: ClipboardCheck, path: "/admin/analytics/attendance", permission: "analytics.view" },
+      { name: "Parent Directory", icon: Heart, path: "/admin/parents", permission: "parents.view" },
+      { name: "Parent Dashboard", icon: Globe, path: "/parent/dashboard", permission: "parents.view" },
+      { name: "Parent Chat", icon: MessageSquare, path: "/parent/chat", permission: "parents.view" },
     ],
   },
   {
-    title: "Users",
-    icon: Users,
-    key: "users",
-    items: [
-      { name: "All Users", icon: Users, path: "/admin/users", permission: "staff.view" },
-      { name: "Add User", icon: UserPlus, path: "/admin/users/add", permission: "staff.create" },
-      { name: "Role Assignment", icon: ShieldCheck, path: "/admin/users/role", permission: "settings.manage" },
-    ],
-  },
-  {
-    title: "Roles & Permissions",
+    title: "Security & Governance",
     icon: Shield,
-    key: "roles",
+    key: "governance",
     items: [
-      { name: "Roles", icon: Shield, path: "/admin/roles", permission: "settings.manage" },
-      { name: "Permissions", icon: FileText, path: "/admin/permissions", permission: "settings.manage" },
-      { name: "Access Control", icon: ShieldCheck, path: "/admin/access-control", permission: "settings.manage" },
+      { name: "Users & Identity", icon: Users, path: "/admin/users", permission: "settings.manage" },
+      { name: "Security Center", icon: ShieldCheck, path: "/admin/security", permission: "settings.manage" },
+      { name: "Audit Center", icon: ScrollText, path: "/admin/audit", permission: "audit.view" },
+      { name: "Feature Flags", icon: Flag, path: "/admin/feature-flags", permission: "settings.manage" },
+      { name: "Menu Manager", icon: Settings, path: "/admin/menu-manager", permission: "settings.manage" },
     ],
   },
   {
-    title: "Settings",
+    title: "Settings & Billing",
     icon: Settings,
     key: "settings",
     items: [
-      { name: "School Settings", icon: School, path: "/settings", permission: "settings.manage" },
-      { name: "Billing", icon: CreditCard, path: "/settings/billing", permission: "billing.view" },
-      { name: "Addons", icon: Package, path: "/settings/addons", permission: "settings.manage" },
-      { name: "White Label", icon: Palette, path: "/settings/whitelabel", permission: "settings.manage" },
-      { name: "Integrations", icon: Link2, path: "/settings/integrations", permission: "settings.manage" },
+      { name: "General Settings", icon: School, path: "/settings/general", permission: "settings.manage" },
+      { name: "School Configuration", icon: Settings, path: "/settings", permission: "settings.manage" },
+      { name: "Classes & Curriculum", icon: BookOpen, path: "/settings/curriculum", permission: "settings.manage" },
+      { name: "Subscription & Billing", icon: CreditCard, path: "/settings/billing", permission: "billing.view" },
+      { name: "Addons & Modules", icon: Package, path: "/settings/addons", permission: "settings.manage" },
+      { name: "White Label (Settings)", icon: Palette, path: "/settings/whitelabel", permission: "settings.manage" },
+      { name: "Admin Branding", icon: Palette, path: "/admin/whitelabel", permission: "settings.manage" },
     ],
   },
   {
-    title: "Feature Flags",
-    icon: Flag,
-    key: "featureFlags",
+    title: "Super Admin",
+    icon: ShieldCheck,
+    key: "superadmin",
     items: [
-      { name: "Enable Features", icon: Flag, path: "/admin/feature-flags", permission: "settings.manage" },
-      { name: "Disable Features", icon: Flag, path: "/admin/feature-flags?mode=disable", permission: "settings.manage" },
-      { name: "Beta Features", icon: Sparkles, path: "/admin/feature-flags/beta", permission: "settings.manage" },
-    ],
-  },
-  {
-    title: "Audit Logs",
-    icon: ScrollText,
-    key: "audit",
-    items: [
-      { name: "User Logs", icon: Users, path: "/admin/audit/users", permission: "audit.view" },
-      { name: "Security Logs", icon: Shield, path: "/admin/audit/security", permission: "audit.view" },
-      { name: "System Events", icon: Activity, path: "/admin/audit/system", permission: "audit.view" },
-    ],
-  },
-  {
-    title: "White Label",
-    icon: Palette,
-    key: "whitelabel",
-    items: [
-      { name: "Logo", icon: FileText, path: "/settings/whitelabel", permission: "settings.manage" },
-      { name: "Theme", icon: PaintBucket, path: "/settings/whitelabel/theme", permission: "settings.manage" },
-      { name: "Branding", icon: Palette, path: "/settings/whitelabel", permission: "settings.manage" },
-      { name: "Custom Domain", icon: Globe, path: "/settings/whitelabel/domain", permission: "settings.manage" },
+      { name: "Platform Analytics", icon: TrendingUp, path: "/super-admin/analytics", permission: "superadmin.view" },
+      { name: "System Telemetry", icon: Activity, path: "/super-admin/telemetry", permission: "superadmin.view" },
     ],
   },
 ];
@@ -261,12 +204,15 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
   const { user, loading: authLoading } = useAuth();
 
   const role = user?.role || "teacher";
-  const userPermissions: string[] = (ROLE_PERMISSIONS as Record<string, string[]>)[role] || [];
+  const isSuperAdmin = role === "superAdmin" || role === "super_admin";
+  const userPermissions: string[] = isSuperAdmin
+    ? [...Object.values(ROLE_PERMISSIONS).flat(), "superadmin.view", "settings.manage", "analytics.view", "billing.view"]
+    : (ROLE_PERMISSIONS as Record<string, string[]>)[role] || [];
 
   // صرف وہ گروپ دکھائیں جن کی کم از کم ایک ذیلی آئٹم کی پرمیشن یوزر کے پاس ہو
   const visibleGroups = MENU_GROUPS.map((group) => {
     const filteredItems = group.items.filter(
-      (item) => !item.permission || userPermissions.includes(item.permission)
+      (item) => !item.permission || userPermissions.includes(item.permission) || isSuperAdmin
     );
     return { ...group, items: filteredItems };
   }).filter((group) => group.items.length > 0);
@@ -323,7 +269,7 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
         <div className="flex-1 overflow-y-auto py-4 px-3 custom-scrollbar">
           {visibleGroups.map((group) => {
             const isOpen = openGroups[group.key] ?? false;
-            const isActive = pathname.startsWith(group.items[0]?.path?.split("/")[1] || "");
+            const isActive = group.items.some((item) => pathname === item.path || pathname.startsWith(item.path + "/"));
 
             return (
               <div key={group.key} className="mb-1">

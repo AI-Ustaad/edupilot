@@ -1,20 +1,50 @@
 "use client";
 import { useState } from "react";
-import { Users, ShieldCheck, Loader2, CheckCircle2, AlertCircle, UserPlus, MoreVertical } from "lucide-react";
+import { Users, ShieldCheck, Loader2, CheckCircle2, AlertCircle, UserPlus, MoreVertical, X } from "lucide-react";
 import RequirePermission from "@/components/RequirePermission";
 import { PERMISSIONS } from "@/lib/auth/permissions";
-import { useUsers, useUpdateUserRole } from "@/hooks/useAdmin";
+import { useUsers, useUpdateUserRole, useCreateUser } from "@/hooks/useAdmin";
 import { useToast } from "@/components/ToastProvider";
-import { TableSkeleton } from "@/components/ui/skeleton/TableSkeleton"; // Make sure you have this skeleton
+import { TableSkeleton } from "@/components/ui/skeleton/TableSkeleton";
 
 export default function ManageUsersPage() {
   const { data: users = [], isLoading, isError } = useUsers();
   const updateRoleMutation = useUpdateUserRole();
+  const createUserMutation = useCreateUser();
   const { showToast } = useToast();
-  const [showInviteModal, setShowInviteModal] = useState(false);
 
-  const handleRoleChange = (uid: string, role: string) => {
-    updateRoleMutation.mutate({ uid, role });
+  const [showInviteModal, setShowInviteModal] = useState(false);
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [role, setRole] = useState("teacher");
+  const [password, setPassword] = useState("");
+
+  const handleRoleChange = (uid: string, newRole: string) => {
+    updateRoleMutation.mutate({ uid, role: newRole });
+  };
+
+  const handleCreateUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email) {
+      showToast("Email address is required.", "info");
+      return;
+    }
+
+    try {
+      await createUserMutation.mutateAsync({
+        email,
+        role,
+        name: name || undefined,
+        password: password || undefined,
+      });
+      setShowInviteModal(false);
+      setName("");
+      setEmail("");
+      setRole("teacher");
+      setPassword("");
+    } catch {
+      // error toast is handled inside useCreateUser hook
+    }
   };
 
   if (isLoading) return <div className="p-8"><TableSkeleton rows={5} cols={4} /></div>;
@@ -75,7 +105,7 @@ export default function ManageUsersPage() {
                         <select
                           value={u.role}
                           onChange={(e) => handleRoleChange(u.uid, e.target.value)}
-                          disabled={updateRoleMutation.isPending && updateRoleMutation.variables?.uid === u.uid}
+                          disabled={updateRoleMutation.isPending && (updateRoleMutation.variables as any)?.uid === u.uid}
                           className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm font-bold outline-none focus:border-blue-400 disabled:opacity-50 transition"
                         >
                           <option value="admin">Admin</option>
@@ -102,11 +132,9 @@ export default function ManageUsersPage() {
                         {u.lastLogin ? new Date(u.lastLogin).toLocaleString() : "Never"}
                       </td>
 
-                      {/* Actions (Placeholder for Suspend/Delete) */}
+                      {/* Actions */}
                       <td className="p-5 text-right">
-                        <button className="text-slate-400 hover:text-slate-600 p-2 rounded-lg hover:bg-slate-100">
-                          <MoreVertical size={18} />
-                        </button>
+                        <span className="text-xs font-mono text-slate-400">{u.uid?.slice(0, 8)}...</span>
                       </td>
                     </tr>
                   ))
@@ -117,26 +145,88 @@ export default function ManageUsersPage() {
         </div>
       </div>
 
-      {/* Invite User Modal (UI Only for now) */}
+      {/* Real Invite / Create User Modal (DEF-007) */}
       {showInviteModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="bg-white w-full max-w-md mx-4 rounded-2xl shadow-xl p-6 relative">
-            <button onClick={() => setShowInviteModal(false)} className="absolute top-3 right-3 text-gray-400 hover:text-gray-700">✕</button>
-            <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2"><UserPlus size={20} /> Invite New User</h2>
-            <div className="space-y-4">
-              <input type="email" placeholder="Email Address" className="w-full p-3 border rounded-xl" />
-              <select className="w-full p-3 border rounded-xl">
-                <option value="teacher">Teacher</option>
-                <option value="accountant">Accountant</option>
-                <option value="parent">Parent</option>
-              </select>
-              <button 
-                onClick={() => { showToast("Invitation sent successfully!", "success"); setShowInviteModal(false); }} 
-                className="w-full bg-blue-600 text-white py-3 rounded-xl font-bold"
-              >
-                Send Invitation
-              </button>
-            </div>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white w-full max-w-md rounded-3xl shadow-2xl p-6 relative">
+            <button 
+              onClick={() => setShowInviteModal(false)} 
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-700 p-1 rounded-lg"
+            >
+              <X size={20} />
+            </button>
+            <h2 className="text-xl font-black text-gray-900 mb-1 flex items-center gap-2">
+              <UserPlus className="text-blue-600" size={24} /> Invite New User
+            </h2>
+            <p className="text-xs text-gray-500 mb-6">Create credentials and assign an organizational role.</p>
+
+            <form onSubmit={handleCreateUser} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Full Name</label>
+                <input 
+                  type="text" 
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="e.g. Tariq Mehmood" 
+                  className="w-full p-3 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none" 
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Email Address *</label>
+                <input 
+                  type="email" 
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="user@school.edu" 
+                  className="w-full p-3 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none" 
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Role *</label>
+                <select 
+                  value={role}
+                  onChange={(e) => setRole(e.target.value)}
+                  className="w-full p-3 border border-gray-200 rounded-xl text-sm font-bold bg-white focus:ring-2 focus:ring-blue-500 outline-none"
+                >
+                  <option value="teacher">Teacher</option>
+                  <option value="admin">Admin</option>
+                  <option value="accountant">Accountant / Finance</option>
+                  <option value="parent">Parent</option>
+                  <option value="student">Student</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Initial Password (Optional)</label>
+                <input 
+                  type="password" 
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Defaults to EduPilot@123" 
+                  className="w-full p-3 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none" 
+                />
+              </div>
+
+              <div className="pt-2 flex gap-3">
+                <button 
+                  type="button"
+                  onClick={() => setShowInviteModal(false)}
+                  className="flex-1 py-3 border border-gray-200 rounded-xl font-bold text-gray-600 hover:bg-gray-50 transition"
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit"
+                  disabled={createUserMutation.isPending}
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition disabled:opacity-50"
+                >
+                  {createUserMutation.isPending ? <Loader2 size={18} className="animate-spin" /> : "Create & Send Invite"}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
