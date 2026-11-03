@@ -22,6 +22,7 @@ import apiClient from "@/lib/api/client";
 import { safeObject } from "@/lib/api/safeResponse";
 
 // 🟢 NEW: Enterprise Runtime Providers
+import { logoutUser } from "@/lib/auth/auth-client";
 import { ConfigurationProvider } from "./providers/ConfigurationProvider";
 import { RuntimeProvider } from "./providers/RuntimeProvider";
 
@@ -75,10 +76,7 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
 
   const handleLogout = async () => {
     try {
-      await signOut(auth);
-      // 🚀 FIX: Removed /api/v1 because apiClient already has it as baseURL
-      await apiClient.post("/auth/logout"); 
-      window.location.href = "/";
+      await logoutUser("/");
     } catch (error) {
       logger.error("Logout error:", { metadata: { error } });
     }

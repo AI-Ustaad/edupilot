@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { ROLE_PERMISSIONS } from "@/lib/auth/roles";
+import { logoutUser } from "@/lib/auth/auth-client";
 
 // ─── مینو ڈھانچہ (گروپس + ذیلی آئٹمز) ──────────────
 const MENU_GROUPS = [
@@ -222,9 +223,7 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
   };
 
   const handleLogout = async () => {
-    await signOut(auth);
-    await fetch("/api/v1/auth/logout", { method: "POST" });
-    window.location.href = "/login";
+    await logoutUser("/login");
   };
 
   if (authLoading) {

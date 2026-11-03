@@ -6,4 +6,5 @@ export { ROLE_PERMISSIONS } from "./roles";
 export type { Role } from "./roles";
 
 export { hasPermission, hasAnyPermission, hasAllPermissions } from "./client-rbac";
-export { loginWithGoogle, loginWithFacebook, mapAuthError } from "./auth-client";
+export { loginWithGoogle, loginWithFacebook, logoutUser, mapAuthError } from "./auth-client";
+export * from "./rbac-guard";

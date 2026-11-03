@@ -88,6 +88,8 @@ async function getSessionCookiePublicKey(kid: string): Promise<any | null> {
 export interface EdgeSession {
   uid: string;
   email?: string;
+  role?: string;
+  tenantId?: string;
 }
 
 /**
@@ -147,6 +149,8 @@ export async function verifyEdgeSession(
     return {
       uid: payload.sub,
       email: typeof payload.email === "string" ? payload.email : undefined,
+      role: typeof payload.role === "string" ? payload.role : undefined,
+      tenantId: typeof payload.tenantId === "string" ? payload.tenantId : undefined,
     };
   } catch {
     return null; // fail closed on any verification error

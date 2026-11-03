@@ -18,12 +18,13 @@ export class TenantSetupRepository implements ITenantSetupRepository {
     const batch = adminDb.batch();
 
     const userRef = adminDb.collection("users").doc(userId);
-    batch.update(userRef, {
+    batch.set(userRef, {
       onboardingRequired: false,
       role: "admin",
       tenantId,
+      schoolId: tenantId,
       updatedAt: new Date(),
-    });
+    }, { merge: true });
 
     const tenantRef = adminDb.collection("tenants").doc(tenantId);
     batch.set(tenantRef, {
@@ -33,6 +34,21 @@ export class TenantSetupRepository implements ITenantSetupRepository {
       ownerId: userId,
       status: "active",
       createdAt: new Date(),
+      updatedAt: new Date(),
+    }, { merge: true });
+
+    const subRef = adminDb.collection("subscriptions").doc(tenantId);
+    batch.set(subRef, {
+      tenantId,
+      planId: "free",
+      tier: "free",
+      status: "active",
+      limits: {
+        students: 50,
+        staff: 10,
+      },
+      createdAt: now,
+      updatedAt: now,
     }, { merge: true });
 
     const settingsRef = adminDb.collection("tenants").doc(tenantId).collection("settings").doc("config");

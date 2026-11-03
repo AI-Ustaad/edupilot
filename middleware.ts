@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyEdgeSession } from "./lib/auth/edge-session";
+import { checkRouteRole } from "./lib/auth/rbac-guard";
 
 const PUBLIC_PATHS = [
   "/",
@@ -90,6 +91,21 @@ export async function middleware(req: NextRequest) {
 
   if (!session) {
     return unauthenticated(req, pathname);
+  }
+
+  // Path-level RBAC enforcement at Edge
+  const { allowed } = checkRouteRole(pathname, session.role);
+  if (!allowed) {
+    if (pathname.startsWith("/api/")) {
+      return NextResponse.json(
+        { success: false, error: "FORBIDDEN", message: "Insufficient role permissions" },
+        { status: 403 }
+      );
+    }
+
+    const redirectUrl = new URL("/dashboard", req.url);
+    redirectUrl.searchParams.set("error", "unauthorized");
+    return NextResponse.redirect(redirectUrl);
   }
 
   return NextResponse.next();

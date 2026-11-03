@@ -5,6 +5,7 @@ import {
   FacebookAuthProvider,
   signInWithPopup,
   signInWithRedirect,
+  signOut,
   User,
 } from "firebase/auth";
 import {
@@ -232,5 +233,43 @@ export const loginWithFacebook = async () => {
   } catch (error) {
     console.error("❌ Facebook Login Error:", error);
     throw error instanceof Error ? error : new Error(mapAuthError(error));
+  }
+};
+
+export const logoutUser = async (redirectPath: string = "/login"): Promise<void> => {
+  try {
+    // 1. Invalidate session cookie & revoke refresh tokens on server
+    try {
+      await fetch("/api/v1/auth/logout", {
+        method: "POST",
+        credentials: "include",
+      });
+    } catch {
+      try {
+        await fetch("/api/v1/auth/session", {
+          method: "DELETE",
+          credentials: "include",
+        });
+      } catch {}
+    }
+
+    // 2. Client-side Firebase sign-out
+    if (auth.currentUser) {
+      await signOut(auth);
+    }
+
+    // 3. Purge storage & cached state
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.clear();
+        sessionStorage.clear();
+      } catch {}
+      window.location.href = redirectPath;
+    }
+  } catch (err) {
+    console.error("Logout failed:", err);
+    if (typeof window !== "undefined") {
+      window.location.href = redirectPath;
+    }
   }
 };

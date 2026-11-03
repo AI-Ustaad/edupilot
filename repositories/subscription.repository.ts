@@ -10,7 +10,9 @@ export interface Subscription {
   id?: string;
   tenantId: string;
   planId: string;
+  planTier?: string;
   status: "active" | "canceled" | "trialing" | "past_due";
+  subscriptionStatus?: "active" | "canceled" | "trialing" | "past_due";
   currentPeriodStart: Date;
   currentPeriodEnd: Date;
   stripeCustomerId?: string;
