@@ -5,19 +5,35 @@ import { logger } from "@/lib/logger/logger";
 const GLOBAL_ROLES = new Set(["superAdmin", "support", "system"]);
 
 export async function getSessionUser() {
-  const { cookies } = await import("next/headers");
-  const sessionCookie = cookies().get("session")?.value;
-  if (!sessionCookie) return null;
+  const nextHeaders = await import("next/headers");
+  let token: string | undefined;
 
-  let decodedToken;
+  try {
+    const cookieStore = nextHeaders.cookies?.();
+    token = cookieStore?.get?.("session")?.value;
+  } catch {}
+
+  if (!token) {
+    try {
+      const headerStore = nextHeaders.headers?.();
+      const authHeader = headerStore?.get?.("authorization");
+      if (authHeader?.startsWith("Bearer ")) {
+        token = authHeader.split(" ")[1];
+      }
+    } catch {}
+  }
+
+  if (!token) return null;
+
+  let decodedToken: any;
   
   try {
-    // پہلے یہ چیک کریں کہ یہ Session Cookie ہے (Google OAuth کے لیے)
-    decodedToken = await adminAuth.verifySessionCookie(sessionCookie, true);
+    // 1. Verify as Firebase Session Cookie (standard browser cookie)
+    decodedToken = await adminAuth.verifySessionCookie(token, true);
   } catch (e) {
     try {
-      // اگر Session Cookie نہیں ہے، تو Custom Token کے طور پر Verify کریں (Email/Password کے لیے)
-      decodedToken = await adminAuth.verifyIdToken(sessionCookie);
+      // 2. Fallback to Firebase ID Token (Bearer header or direct token)
+      decodedToken = await adminAuth.verifyIdToken(token);
     } catch (err) {
       logger.error("Session verification failed:", { metadata: { error: err } });
       return null;
@@ -25,10 +41,10 @@ export async function getSessionUser() {
   }
 
   try {
-    // 1. UID سے تلاش
+    // 1. Lookup by Firebase UID
     let userDoc = await adminDb.collection("users").doc(decodedToken.uid).get();
 
-    // 2. اگر UID document موجود نہیں تو email fallback
+    // 2. Email fallback if UID document does not exist yet
     if (!userDoc.exists && decodedToken.email) {
       const snapshot = await adminDb.collection("users").where("email", "==", decodedToken.email).get();
       if (!snapshot.empty) {
@@ -37,16 +53,22 @@ export async function getSessionUser() {
     }
 
     if (!userDoc.exists) {
-      return { uid: decodedToken.uid, email: decodedToken.email, role: "guest", tenantId: null, onboardingRequired: true };
+      return {
+        uid: decodedToken.uid,
+        email: decodedToken.email || "",
+        role: decodedToken.role || "guest",
+        tenantId: decodedToken.tenantId ?? null,
+        onboardingRequired: true,
+      };
     }
 
     const userData = userDoc.data() ?? {};
 
     return {
       uid: decodedToken.uid,
-      email: decodedToken.email,
-      role: userData.role || "guest",
-      tenantId: userData.tenantId ?? null,
+      email: decodedToken.email || userData.email || "",
+      role: userData.role || decodedToken.role || "guest",
+      tenantId: userData.tenantId ?? decodedToken.tenantId ?? null,
       onboardingRequired: userData.onboardingRequired ?? false,
     };
   } catch (error) {

@@ -20,8 +20,8 @@ export default function SignupPage() {
     setErrorMsg("");
 
     try {
-      // 1. API کو کال کر کے اسکول رجسٹر کریں
-      const res = await fetch("/api/users/register-school", {
+      // 1. API call to register school
+      const res = await fetch("/api/v1/users/register-school", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),
@@ -33,13 +33,12 @@ export default function SignupPage() {
         throw new Error(errorData.error || "Failed to register workspace");
       }
 
-      // 🔥 THE MAGIC FIX: اسکول رجسٹر ہونے کے بعد فائر بیس سے نیا ٹوکن منگوائیں!
-      // اس ٹوکن میں اب "tenantId" اور "role: admin" کی مہر لگی ہوگی
+      // Fetch fresh token with tenantId and role claims
       if (auth.currentUser) {
          const idToken = await auth.currentUser.getIdToken(true);
 
-         // 2. اس نئے طاقتور ٹوکن سے اپنا سیشن اپڈیٹ کریں
-         await fetch("/api/auth/session", {
+         // 2. Update session with refreshed token
+         await fetch("/api/v1/auth/session", {
            method: "POST",
            headers: { "Content-Type": "application/json" },
            body: JSON.stringify({ idToken }),

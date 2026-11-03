@@ -6,7 +6,7 @@ const mockFindByStripeCustomerId = jest.fn().mockResolvedValue(null);
 const mockGetPlanLimits = jest.fn().mockResolvedValue({ maxStudents: 50, maxStaff: 10 });
 
 const mockStudentCount = jest.fn().mockResolvedValue(0);
-const mockStudentGetAll = jest.fn().mockResolvedValue([]);
+const mockStudentPaginate = jest.fn().mockResolvedValue({ data: [], total: 0 });
 
 const mockStaffCount = jest.fn().mockResolvedValue(0);
 const mockStaffGetAll = jest.fn().mockResolvedValue([]);
@@ -61,7 +61,7 @@ jest.mock("@/services/subscription.service", () => ({
 jest.mock("@/services/StudentService", () => ({
   StudentService: jest.fn().mockImplementation(() => ({
     count: mockStudentCount,
-    getAll: mockStudentGetAll,
+    paginate: mockStudentPaginate,
   })),
 }));
 
@@ -399,13 +399,13 @@ describe("Phase 5: Stripe Webhook Lifecycle, Idempotency & Quota Guardrails", ()
       }));
 
       mockStudentCount.mockResolvedValue(existingStudents.length);
-      mockStudentGetAll.mockResolvedValue(existingStudents);
+      mockStudentPaginate.mockResolvedValue({ data: existingStudents, total: existingStudents.length });
       mockGetPlanLimits.mockResolvedValue({ maxStudents: 50, maxStaff: 10 });
 
       // 1. Reading existing data succeeds without lockout
       const studentService = new StudentService();
-      const readResults = await studentService.getAll("tenant_downgraded_softcap");
-      expect(readResults.length).toBe(120);
+      const readResults = await studentService.paginate("tenant_downgraded_softcap", 1, 200);
+      expect(readResults.data.length).toBe(120);
 
       // 2. Creating an additional student is blocked with QuotaExceededException
       await expect(checkStudentQuota("tenant_downgraded_softcap", 1)).rejects.toThrow(

@@ -94,7 +94,9 @@ export class AuthService implements IAuthService {
 
     await this.claimsService.sync(sessionUser, context);
 
-    const redirectTo = ROLE_CONFIG[sessionUser.role]?.redirect || "/dashboard";
+    const redirectTo = (!sessionUser.tenantId || sessionUser.onboardingRequired || sessionUser.role === "guest")
+      ? "/onboarding"
+      : (ROLE_CONFIG[sessionUser.role]?.redirect || "/dashboard");
 
     return {
       success: true,

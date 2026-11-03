@@ -75,13 +75,18 @@ export async function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
-  const sessionCookie = req.cookies.get("session")?.value;
+  let token = req.cookies.get("session")?.value;
+  if (!token) {
+    const authHeader = req.headers.get("authorization");
+    if (authHeader?.startsWith("Bearer ")) {
+      token = authHeader.split(" ")[1];
+    }
+  }
 
-  // SECURITY FIX (Phase 1): verify the session JWT's signature and claims
-  // at the Edge instead of trusting cookie presence alone. Previously a
-  // forged or expired cookie value passed this gate; now only a genuinely
-  // signed, unexpired Firebase token for this project is accepted.
-  const session = await verifyEdgeSession(sessionCookie);
+  // SECURITY FIX: verify the session JWT's signature and claims
+  // at the Edge instead of trusting cookie presence alone. Accepts both
+  // Firebase session cookies and ID tokens (Bearer auth).
+  const session = await verifyEdgeSession(token);
 
   if (!session) {
     return unauthenticated(req, pathname);

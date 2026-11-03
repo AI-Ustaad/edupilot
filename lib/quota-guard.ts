@@ -38,3 +38,4 @@ export async function checkStaffQuota(tenantId: string, addingCount: number = 1)
     );
   }
 }
+

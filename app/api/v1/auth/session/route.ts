@@ -5,7 +5,10 @@ import { logger } from "@/lib/logger/logger";
 
 export async function POST(req: Request) {
   try {
-    const { idToken } = await req.json();
+    const body = await req.json().catch(() => ({}));
+    const authHeader = req.headers.get("authorization");
+    const idToken = body.idToken || (authHeader?.startsWith("Bearer ") ? authHeader.split(" ")[1] : undefined);
+
     if (!idToken) {
       return NextResponse.json({ error: "Missing token" }, { status: 400 });
     }
