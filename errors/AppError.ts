@@ -69,7 +69,16 @@ export class RateLimitException extends AppError {
 }
 
 export class SubscriptionLimitException extends AppError {
-  constructor(message = "Subscription limit reached") {
-    super(message, 403, "SUBSCRIPTION_LIMIT");
+  constructor(message = "Subscription limit reached", code = "SUBSCRIPTION_LIMIT", details?: any) {
+    super(message, 403, code, details);
+  }
+}
+
+export class QuotaExceededException extends SubscriptionLimitException {
+  constructor(
+    message = "Plan limit reached. Please upgrade your subscription or archive inactive records.",
+    details?: any
+  ) {
+    super(message, "SUBSCRIPTION_LIMIT", details);
   }
 }

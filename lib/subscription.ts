@@ -1,12 +1,9 @@
 import { adminDb } from "@/lib/firebase-admin";
-import { PLANS } from "@/lib/config/subscription-plans";
+import { PLANS, PlanLimits } from "@/lib/config/subscription-plans";
 import { StudentRepository } from "@/repositories/student.repository";
 import { StaffRepository } from "@/repositories/staff.repository";
 
-export interface PlanLimits {
-  students: number;
-  staff: number;
-}
+export type { PlanLimits };
 
 export async function getTenantSubscription(tenantId: string) {
   const subDoc = await adminDb.collection("subscriptions").doc(tenantId).get();

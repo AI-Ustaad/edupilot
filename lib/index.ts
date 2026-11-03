@@ -11,6 +11,7 @@ export * from "./ratelimit";
 export * from "./stats";
 export * from "./stripe";
 export * from "./subscription";
+export type { PlanLimits } from "./config/subscription-plans";
 export * from "./tenant-utils";
 export * from "./theme";
 export * from "./utils/api-response";

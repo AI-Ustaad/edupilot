@@ -4,6 +4,7 @@ import { withPermission } from "@/lib/auth/rbac";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 import { createSuccessResponse, createErrorResponse, createApiResponse } from "@/lib/api/response";
 import { AuthService } from "@/services/auth.service";
+import { checkStudentQuota, checkStaffQuota } from "@/lib/quota-guard";
 import type { TenantContext } from "@/types/api";
 
 const authService = new AuthService();
@@ -22,6 +23,12 @@ export const POST = withErrorHandler(
         const allowedRoles = ["admin", "teacher", "accountant", "student", "parent"];
         if (!allowedRoles.includes(role)) {
           return createErrorResponse(400, "Invalid role");
+        }
+
+        if (role === "student") {
+          await checkStudentQuota(tenantId, 1);
+        } else if (["admin", "teacher", "accountant"].includes(role)) {
+          await checkStaffQuota(tenantId, 1);
         }
 
         const { uid, user } = await authService.registerUser(email, password, role, tenantId);

@@ -3,7 +3,7 @@ import { AuditService } from './AuditService';
 import { eventBus } from '@/lib/events';
 import { EVENTS } from '@/lib/events/event-types';
 import { invalidateCache } from '@/lib/cache';
-import { SubscriptionRepository } from "@/repositories/subscription.repository";
+import { SubscriptionRepository, Subscription } from "@/repositories/subscription.repository";
 import type { ISubscriptionService } from "@/interfaces/ISubscriptionService";
 
 export class SubscriptionService implements ISubscriptionService {
@@ -22,18 +22,35 @@ export class SubscriptionService implements ISubscriptionService {
   }
 
   async getPlanLimits(tenantId: string) {
+    const subscription = await this.subscriptionRepo.findByTenant(tenantId);
     const plan = await this.getTenantPlan(tenantId);
-    return { maxStudents: plan.maxStudents, maxStaff: plan.maxStaff };
+    return {
+      maxStudents: subscription?.maxStudents ?? plan.maxStudents,
+      maxStaff: subscription?.maxStaff ?? plan.maxStaff,
+    };
   }
 
-  async getSubscription(tenantId: string) {
+  async getSubscription(tenantId: string): Promise<Subscription | { planId: string; status: string; maxStudents: number; maxStaff: number }> {
     const subscription = await this.subscriptionRepo.findByTenant(tenantId);
-    if (!subscription) return { planId: "free", status: "active" };
+    if (!subscription) return { planId: "free", status: "active", maxStudents: PLANS.free.maxStudents, maxStaff: PLANS.free.maxStaff };
     return subscription;
   }
 
-  async activateSubscription(tenantId: string, planId: string, userId?: string) {
-    await this.subscriptionRepo.activate(tenantId, planId, userId);
+  async findByStripeSubscriptionId(stripeSubscriptionId: string): Promise<Subscription | null> {
+    return this.subscriptionRepo.findByStripeSubscriptionId(stripeSubscriptionId);
+  }
+
+  async findByStripeCustomerId(stripeCustomerId: string): Promise<Subscription | null> {
+    return this.subscriptionRepo.findByStripeCustomerId(stripeCustomerId);
+  }
+
+  async activateSubscription(
+    tenantId: string,
+    planId: string,
+    userId?: string,
+    extraData: Partial<Subscription> = {}
+  ) {
+    await this.subscriptionRepo.activate(tenantId, planId, userId, extraData);
 
     await invalidateCache(`subscription:${tenantId}`);
 
@@ -43,11 +60,11 @@ export class SubscriptionService implements ISubscriptionService {
         userId,
         tenantId,
         entityType: "subscription",
-        metadata: { planId },
+        metadata: { planId, ...extraData },
       });
     }
 
-    await eventBus.publish(EVENTS.SUBSCRIPTION_ACTIVATED, { tenantId, planId }, tenantId);
+    await eventBus.publish(EVENTS.SUBSCRIPTION_ACTIVATED, { tenantId, planId, ...extraData }, tenantId);
   }
 
   async cancelSubscription(tenantId: string, userId?: string) {
@@ -68,7 +85,7 @@ export class SubscriptionService implements ISubscriptionService {
   }
 
   async updateSubscription(tenantId: string, data: Record<string, any>, userId?: string) {
-    await this.subscriptionRepo.update(tenantId, data, tenantId);
+    await this.subscriptionRepo.updateSubscription(tenantId, data);
 
     await invalidateCache(`subscription:${tenantId}`);
 

@@ -5,6 +5,7 @@ import { createSuccessResponse, createApiResponse } from "@/lib/api/response";
 import { StaffService } from "@/services/StaffService";
 import { standardRateLimit } from "@/lib/ratelimit";
 import { SubscriptionService } from "@/services/subscription.service";
+import { checkStaffQuota } from "@/lib/quota-guard";
 import type { TenantContext } from "@/types/api";
 import { withPermission } from "@/lib/auth/rbac";
 import { PERMISSIONS } from "@/lib/auth/permissions";
@@ -65,16 +66,8 @@ export const POST = withRateLimit(standardRateLimit)(
         withPermission(PERMISSIONS.staff.create)(
           async (req: Request, { tenantId, user }: TenantContext) => {
             const body = await req.json();
+            await checkStaffQuota(tenantId, 1);
             const service = new StaffService();
-
-            try {
-              const limits = await subscriptionService.getPlanLimits(tenantId);
-              await service.checkSubscriptionLimit(tenantId, limits.maxStaff);
-            } catch (err: unknown) {
-              if (err instanceof Error && err.message === "SUBSCRIPTION_LIMIT") {
-                throw err;
-              }
-            }
 
             const id = await service.create(body, tenantId, user.uid);
             return createApiResponse(201, { id }, "Staff added successfully");

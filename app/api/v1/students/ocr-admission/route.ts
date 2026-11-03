@@ -4,6 +4,7 @@ import { withAuth, withTenant, withErrorHandler } from "@/route-helpers";
 import { withPermission } from "@/lib/auth/rbac";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 import { createSuccessResponse, createErrorResponse, createApiResponse } from "@/lib/api/response";
+import { checkStudentQuota } from "@/lib/quota-guard";
 import type { TenantContext } from "@/types/api";
 
 function bufferToBase64(buffer: Buffer, mimeType = "image/jpeg"): string {
@@ -43,6 +44,8 @@ export const POST = withErrorHandler(
   withAuth(
     withTenant(
       withPermission(PERMISSIONS.admissions.create)(async (req: Request, { tenantId }: TenantContext) => {
+        await checkStudentQuota(tenantId, 1);
+
         const formData = await req.formData();
         const file = formData.get("file") as File;
         if (!file) return createErrorResponse(400, "No file provided");

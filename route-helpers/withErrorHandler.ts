@@ -24,9 +24,11 @@ export function withErrorHandler(handler: Function) {
       });
 
       if (error instanceof AppError) {
+        const isQuota = error.code === "SUBSCRIPTION_LIMIT" || error.code === "QUOTA_EXCEEDED";
         return NextResponse.json(
           {
             success: false,
+            error: isQuota ? "QUOTA_EXCEEDED" : error.code,
             message: error.message,
             data: null,
             errors: error.details || null,

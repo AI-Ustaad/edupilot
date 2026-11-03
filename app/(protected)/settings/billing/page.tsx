@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { CreditCard, Zap, Check, Loader2, FileText, Download, TrendingUp, AlertCircle } from "lucide-react";
+import { CreditCard, Zap, Check, Loader2, FileText, Download, TrendingUp, AlertCircle, AlertTriangle } from "lucide-react";
 import RequirePermission from "@/components/RequirePermission";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 import { useToast } from "@/components/ToastProvider";
@@ -75,6 +75,12 @@ export default function EnterpriseBillingPage() {
     ? 1 
     : Math.min((staffUsed / currentPlan.limits.staff) * 100, 100);
 
+  const isPastDue = (subData as any)?.status === "past_due";
+  const isCancelAtPeriodEnd = !!(subData as any)?.cancelAtPeriodEnd;
+  const isStudentOverLimit = currentPlan.limits.students < 999999 && studentsUsed > currentPlan.limits.students;
+  const isStaffOverLimit = currentPlan.limits.staff < 999999 && staffUsed > currentPlan.limits.staff;
+  const isQuotaExceeded = isStudentOverLimit || isStaffOverLimit;
+
   // 3. Real Stripe Checkout & Subscription Activation Handler (DEF-006)
   const handleUpgrade = async (planId: string) => {
     setLoadingPlan(planId);
@@ -112,6 +118,62 @@ export default function EnterpriseBillingPage() {
           </h1>
           <p className="text-sm text-gray-500 mt-1">Manage your active plan, view real-time quota usage, and upgrade via Stripe.</p>
         </div>
+
+        {/* Status & Guardrail Banners */}
+        {isPastDue && (
+          <div className="bg-red-50 border-2 border-red-300 rounded-2xl p-5 flex items-start gap-4 shadow-sm">
+            <div className="p-2 bg-red-100 rounded-xl text-red-600 shrink-0">
+              <AlertCircle size={24} />
+            </div>
+            <div className="flex-1">
+              <h3 className="font-bold text-red-900 text-base">Payment Past Due</h3>
+              <p className="text-sm text-red-700 mt-1">
+                Your latest subscription renewal payment could not be processed. Please update your payment method or re-subscribe immediately to prevent service interruption.
+              </p>
+              <div className="mt-3 flex gap-3">
+                <button
+                  onClick={() => handleUpgrade(currentPlanId === "free" ? "starter" : currentPlanId)}
+                  className="bg-red-600 hover:bg-red-700 text-white text-xs font-bold px-4 py-2 rounded-xl transition shadow-sm"
+                >
+                  Update Payment Method
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {isCancelAtPeriodEnd && (
+          <div className="bg-amber-50 border-2 border-amber-300 rounded-2xl p-5 flex items-start gap-4 shadow-sm">
+            <div className="p-2 bg-amber-100 rounded-xl text-amber-600 shrink-0">
+              <AlertTriangle size={24} />
+            </div>
+            <div className="flex-1">
+              <h3 className="font-bold text-amber-900 text-base">Subscription Scheduled for Cancellation</h3>
+              <p className="text-sm text-amber-700 mt-1">
+                Your subscription is active but scheduled to cancel at the end of the current billing cycle. When canceled, your account will gracefully revert to the Free tier (50 students / 10 staff limit). All existing records will remain safe and accessible.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {isQuotaExceeded && (
+          <div className="bg-orange-50 border-2 border-orange-300 rounded-2xl p-5 flex items-start gap-4 shadow-sm">
+            <div className="p-2 bg-orange-100 rounded-xl text-orange-600 shrink-0">
+              <AlertCircle size={24} />
+            </div>
+            <div className="flex-1">
+              <h3 className="font-bold text-orange-900 text-base">Plan Limit Reached &bull; Soft-Cap Active</h3>
+              <p className="text-sm text-orange-700 mt-1">
+                {isStudentOverLimit && isStaffOverLimit
+                  ? `Your tenant has exceeded both student (${studentsUsed}/${currentPlan.limits.students}) and staff (${staffUsed}/${currentPlan.limits.staff}) limits.`
+                  : isStudentOverLimit
+                  ? `Your student count (${studentsUsed}) exceeds your active plan limit (${currentPlan.limits.students}).`
+                  : `Your staff count (${staffUsed}) exceeds your active plan limit (${currentPlan.limits.staff}).`}
+                {" "}All existing student and staff records remain fully accessible for viewing and management. However, creating or enrolling new records is blocked until you upgrade your plan.
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Current Plan & Real Usage */}
         <div className="bg-gradient-to-br from-blue-900 to-indigo-800 text-white rounded-3xl p-8 shadow-lg">

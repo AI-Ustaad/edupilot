@@ -5,4 +5,5 @@ export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 });
 
 // Re-export plans from the single source of truth
-export { PLANS, getStripePriceId } from "@/lib/config/subscription-plans";
+export { PLANS, SUBSCRIPTION_PLANS, getStripePriceId, getPlanByPriceId } from "@/lib/config/subscription-plans";
+export type { PlanTier, Plan, PlanLimits } from "@/lib/config/subscription-plans";
