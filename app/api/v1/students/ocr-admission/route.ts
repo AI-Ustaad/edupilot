@@ -5,6 +5,7 @@ import { withPermission } from "@/lib/auth/rbac";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 import { createSuccessResponse, createErrorResponse, createApiResponse } from "@/lib/api/response";
 import { checkStudentQuota } from "@/lib/quota-guard";
+import { enforceAiQuota, createAiErrorResponse, recordAiTelemetry } from "@/lib/ai/ai-quota-guard";
 import type { TenantContext } from "@/types/api";
 
 function bufferToBase64(buffer: Buffer, mimeType = "image/jpeg"): string {
@@ -43,7 +44,13 @@ function extractStudentFields(text: string) {
 export const POST = withErrorHandler(
   withAuth(
     withTenant(
-      withPermission(PERMISSIONS.admissions.create)(async (req: Request, { tenantId }: TenantContext) => {
+      withPermission(PERMISSIONS.admissions.create)(async (req: Request, { tenantId, user }: TenantContext) => {
+        // AI Quota & Burst Rate Limit Guard
+        const quotaCheck = await enforceAiQuota(user, "ocr-admission");
+        if (!quotaCheck.allowed) {
+          return createAiErrorResponse(quotaCheck);
+        }
+
         await checkStudentQuota(tenantId, 1);
 
         const formData = await req.formData();
@@ -56,34 +63,56 @@ export const POST = withErrorHandler(
 
         let extractedText = "";
         let photoBase64: string | null = null;
+        const startTime = Date.now();
 
-        if (fileType === "image") {
-          const worker = await createWorker("eng");
-          const { data } = await worker.recognize(buffer);
-          await worker.terminate();
-          extractedText = data.text;
-          const mime = getImageMime(buffer);
-          photoBase64 = bufferToBase64(buffer, mime);
-        } else if (fileType === "pdf") {
-          const pdfParse = (await import("pdf-parse")).default;
-          const data = await pdfParse(buffer);
-          extractedText = data.text;
-        } else if (fileType === "docx") {
-          const mammoth = await import("mammoth");
-          const result = await mammoth.extractRawText({ buffer });
-          extractedText = result.value;
-        } else {
-          return createErrorResponse(400, "Unsupported file type");
+        try {
+          if (fileType === "image") {
+            const worker = await createWorker("eng");
+            const { data } = await worker.recognize(buffer);
+            await worker.terminate();
+            extractedText = data.text;
+            const mime = getImageMime(buffer);
+            photoBase64 = bufferToBase64(buffer, mime);
+          } else if (fileType === "pdf") {
+            const pdfParse = (await import("pdf-parse")).default;
+            const data = await pdfParse(buffer);
+            extractedText = data.text;
+          } else if (fileType === "docx") {
+            const mammoth = await import("mammoth");
+            const result = await mammoth.extractRawText({ buffer });
+            extractedText = result.value;
+          } else {
+            return createErrorResponse(400, "Unsupported file type");
+          }
+
+          if (!extractedText || extractedText.trim().length < 20) {
+            return createErrorResponse(400, "Could not extract enough text");
+          }
+
+          const extractedData = extractStudentFields(extractedText);
+          if (photoBase64) (extractedData as any).photoBase64 = photoBase64;
+
+          await recordAiTelemetry({
+            tenantId,
+            userId: user.uid,
+            featureKey: "ocr-admission",
+            latencyMs: Date.now() - startTime,
+            success: true,
+          });
+
+          return createSuccessResponse({ success: true, data: extractedData });
+        } catch (err: any) {
+          await recordAiTelemetry({
+            tenantId,
+            userId: user.uid,
+            featureKey: "ocr-admission",
+            latencyMs: Date.now() - startTime,
+            success: false,
+            error: err.message,
+          });
+
+          return createErrorResponse(500, "OCR document processing failed.");
         }
-
-        if (!extractedText || extractedText.trim().length < 20) {
-          return createErrorResponse(400, "Could not extract enough text");
-        }
-
-        const extractedData = extractStudentFields(extractedText);
-        if (photoBase64) (extractedData as any).photoBase64 = photoBase64;
-
-        return createSuccessResponse({ success: true, data: extractedData });
       })
     )
   )

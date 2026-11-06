@@ -6,6 +6,7 @@ export type PlanTier = "free" | "starter" | "professional" | "enterprise";
 export interface PlanLimits {
   students: number;
   staff: number;
+  maxAiQuota?: number;
 }
 
 export interface Plan {
@@ -17,6 +18,7 @@ export interface Plan {
   stripePriceId?: string;
   maxStudents: number;
   maxStaff: number;
+  maxAiQuota: number;
   limits: PlanLimits;
   features: Feature[];
 }
@@ -29,7 +31,8 @@ export const PLANS: Record<string, Plan> = {
     currency: "PKR",
     maxStudents: 50,
     maxStaff: 10,
-    limits: { students: 50, staff: 10 },
+    maxAiQuota: 50,
+    limits: { students: 50, staff: 10, maxAiQuota: 50 },
     features: Object.values(ALL_FEATURES).filter(f =>
       ['videoLectures', 'ledger', 'behavior', 'skills', 'chat', 'assignments', 'homework', 'quizzes', 'lessonPlans', 'bookCenter', 'examCenter', 'admissions', 'parents', 'leaveRequests'].includes(f)
     ) as Feature[],
@@ -43,7 +46,8 @@ export const PLANS: Record<string, Plan> = {
     stripePriceId: process.env.STRIPE_STARTER_PRICE_ID || "price_starter_placeholder",
     maxStudents: 200,
     maxStaff: 50,
-    limits: { students: 200, staff: 50 },
+    maxAiQuota: 500,
+    limits: { students: 200, staff: 50, maxAiQuota: 500 },
     features: Object.values(ALL_FEATURES).filter(
       f => !["aiAssistant", "aiExamGenerator", "aiTimetable", "transport"].includes(f)
     ) as Feature[],
@@ -57,7 +61,8 @@ export const PLANS: Record<string, Plan> = {
     stripePriceId: process.env.STRIPE_PROFESSIONAL_PRICE_ID || "price_professional_placeholder",
     maxStudents: 1000,
     maxStaff: 200,
-    limits: { students: 1000, staff: 200 },
+    maxAiQuota: 2500,
+    limits: { students: 1000, staff: 200, maxAiQuota: 2500 },
     features: Object.values(ALL_FEATURES) as Feature[],
   },
   enterprise: {
@@ -69,7 +74,8 @@ export const PLANS: Record<string, Plan> = {
     stripePriceId: process.env.STRIPE_ENTERPRISE_PRICE_ID || "price_enterprise_placeholder",
     maxStudents: 999999,
     maxStaff: 999999,
-    limits: { students: 999999, staff: 999999 },
+    maxAiQuota: 10000,
+    limits: { students: 999999, staff: 999999, maxAiQuota: 10000 },
     features: Object.values(ALL_FEATURES) as Feature[],
   },
 };

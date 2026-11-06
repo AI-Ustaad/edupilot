@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
-import { Loader2, FileText, Sparkles, CheckCircle2, Save } from "lucide-react";
+import Link from "next/link";
+import { Loader2, FileText, Sparkles, CheckCircle2, Save, AlertTriangle, ArrowRight, Zap } from "lucide-react";
 import RequirePermission from "@/components/RequirePermission";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 import { useStudents } from "@/hooks/useStudents";
@@ -14,6 +15,8 @@ export default function ReportCommentsPage() {
   const [marks, setMarks] = useState("");
   const [attendance, setAttendance] = useState("");
   const [comment, setComment] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
+  const [isQuotaExceeded, setIsQuotaExceeded] = useState(false);
   const { showToast } = useToast();
   
   const generateMutation = useGenerateReportComments();
@@ -24,6 +27,8 @@ export default function ReportCommentsPage() {
     e.preventDefault();
     if (!selectedStudentId || !marks || !attendance) return;
     setComment("");
+    setErrorMessage("");
+    setIsQuotaExceeded(false);
     
     generateMutation.mutate(
       { 
@@ -34,8 +39,19 @@ export default function ReportCommentsPage() {
         attendance: parseInt(attendance) 
       },
       {
-        onSuccess: (data) => setComment(data?.comment || "Could not generate comment."),
-        onError: () => setComment("Network error or AI service unavailable."),
+        onSuccess: (data: any) => setComment(data?.comment || "Could not generate comment."),
+        onError: (err: any) => {
+          const errorData = err?.response?.data;
+          if (err?.response?.status === 429 || errorData?.error === "RATE_LIMIT_EXCEEDED") {
+            const seconds = errorData?.retryAfterSeconds || 60;
+            setErrorMessage(`Rate limit reached: Too many AI requests. Please wait ${seconds} seconds before trying again.`);
+          } else if (err?.response?.status === 402 || errorData?.error === "AI_QUOTA_EXCEEDED") {
+            setIsQuotaExceeded(true);
+            setErrorMessage(errorData?.message || "Monthly AI quota reached for your current plan. Please upgrade your subscription to unlock more capacity.");
+          } else {
+            setErrorMessage(errorData?.message || "Network error or AI service unavailable.");
+          }
+        },
       }
     );
   };
@@ -59,6 +75,24 @@ export default function ReportCommentsPage() {
          <p className="text-gray-500 text-sm">Generate personalized remarks and save them directly to the student profile.</p>
         </div>
       </div>
+
+      {/* Error / Quota Alert Banner */}
+      {errorMessage && (
+        <div className={`p-5 rounded-2xl border flex items-start gap-4 ${isQuotaExceeded ? 'bg-amber-50 border-amber-300 text-amber-900' : 'bg-red-50 border-red-200 text-red-800'}`}>
+          <AlertTriangle className={isQuotaExceeded ? 'text-amber-600' : 'text-red-600'} size={24} />
+          <div className="flex-1 space-y-2">
+            <p className="font-bold text-sm">{errorMessage}</p>
+            {isQuotaExceeded && (
+              <Link
+                href="/settings/billing"
+                className="inline-flex items-center gap-1.5 px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold transition shadow-sm"
+              >
+                <Zap size={14} /> Upgrade Subscription <ArrowRight size={14} />
+              </Link>
+            )}
+          </div>
+        </div>
+      )}
 
       <form onSubmit={generate} className="bg-white border border-gray-200 shadow-sm rounded-2xl p-6 space-y-5">
         <div>

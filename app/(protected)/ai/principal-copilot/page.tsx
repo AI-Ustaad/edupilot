@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
-import { Sparkles, Loader2, AlertTriangle, TrendingUp, Lightbulb } from "lucide-react";
+import Link from "next/link";
+import { Sparkles, Loader2, AlertTriangle, TrendingUp, ArrowRight, Zap } from "lucide-react";
 import RequirePermission from "@/components/RequirePermission";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 import { usePrincipalAgent } from "@/hooks/useAIAgents";
@@ -8,13 +9,32 @@ import { usePrincipalAgent } from "@/hooks/useAIAgents";
 export default function PrincipalCopilotPage() {
   const [query, setQuery] = useState("");
   const [insights, setInsights] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
+  const [isQuotaExceeded, setIsQuotaExceeded] = useState(false);
   
   const agentMutation = usePrincipalAgent();
 
   const generateInsights = async () => {
     setInsights("");
+    setErrorMessage("");
+    setIsQuotaExceeded(false);
+
     agentMutation.mutate(query, {
-      onSuccess: (data) => setInsights(data?.data || "No insights generated."),
+      onSuccess: (data: any) => {
+        setInsights(data?.data?.answer || data?.answer || data?.data || "No insights generated.");
+      },
+      onError: (err: any) => {
+        const errorData = err?.response?.data;
+        if (err?.response?.status === 429 || errorData?.error === "RATE_LIMIT_EXCEEDED") {
+          const seconds = errorData?.retryAfterSeconds || 60;
+          setErrorMessage(`Rate limit reached: Too many AI requests. Please wait ${seconds} seconds before trying again.`);
+        } else if (err?.response?.status === 402 || errorData?.error === "AI_QUOTA_EXCEEDED") {
+          setIsQuotaExceeded(true);
+          setErrorMessage(errorData?.message || "Monthly AI quota reached for your current plan. Please upgrade your subscription to unlock more capacity.");
+        } else {
+          setErrorMessage(errorData?.message || "Failed to generate AI insights. Please try again.");
+        }
+      },
     });
   };
 
@@ -28,6 +48,24 @@ export default function PrincipalCopilotPage() {
             <p className="text-gray-500 text-sm">AI-powered insights for school administration.</p>
           </div>
         </div>
+
+        {/* Error / Quota Alert Banner */}
+        {errorMessage && (
+          <div className={`p-5 rounded-2xl border flex items-start gap-4 ${isQuotaExceeded ? 'bg-amber-50 border-amber-300 text-amber-900' : 'bg-red-50 border-red-200 text-red-800'}`}>
+            <AlertTriangle className={isQuotaExceeded ? 'text-amber-600' : 'text-red-600'} size={24} />
+            <div className="flex-1 space-y-2">
+              <p className="font-bold text-sm">{errorMessage}</p>
+              {isQuotaExceeded && (
+                <Link
+                  href="/settings/billing"
+                  className="inline-flex items-center gap-1.5 px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold transition shadow-sm"
+                >
+                  <Zap size={14} /> Upgrade Subscription <ArrowRight size={14} />
+                </Link>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Input Area */}
         <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm space-y-4">

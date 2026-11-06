@@ -15,29 +15,29 @@ const BILLING_PLANS = [
     id: "free", 
     name: "Free", 
     price: 0, 
-    limits: { students: 50, staff: 10 },
-    features: ["Core Student Management", "Basic Attendance", "Manual Grading", "Email Notices"]
+    limits: { students: 50, staff: 10, aiQuota: 50 },
+    features: ["Core Student Management", "Basic Attendance", "Manual Grading", "50 AI Calls / month", "Email Notices"]
   },
   { 
     id: "starter", 
     name: "Starter", 
     price: 2000, 
-    limits: { students: 200, staff: 50 },
-    features: ["Up to 200 Students", "50 Staff Accounts", "Full Exam Center", "Fee Invoicing & Receipts", "Standard Support"]
+    limits: { students: 200, staff: 50, aiQuota: 500 },
+    features: ["Up to 200 Students", "50 Staff Accounts", "Full Exam Center", "Fee Invoicing & Receipts", "500 AI Calls / month", "Standard Support"]
   },
   { 
     id: "professional", 
     name: "Professional", 
     price: 3000, 
-    limits: { students: 1000, staff: 200 },
-    features: ["Up to 1,000 Students", "200 Staff Accounts", "AI Exam & Timetable Copilot", "White Label Portal", "Priority Support"]
+    limits: { students: 1000, staff: 200, aiQuota: 2500 },
+    features: ["Up to 1,000 Students", "200 Staff Accounts", "AI Exam & Timetable Copilot", "2,500 AI Calls / month", "White Label Portal", "Priority Support"]
   },
   { 
     id: "enterprise", 
     name: "Enterprise", 
     price: 5000, 
-    limits: { students: 999999, staff: 999999 },
-    features: ["Unlimited Students", "Unlimited Staff", "Custom Multi-Campus", "Full AI Suite Access", "Dedicated Account Manager"]
+    limits: { students: 999999, staff: 999999, aiQuota: 10000 },
+    features: ["Unlimited Students", "Unlimited Staff", "Custom Multi-Campus", "10,000+ AI Calls / month", "Full AI Suite Access", "Dedicated Account Manager"]
   },
 ];
 
@@ -66,6 +66,7 @@ export default function EnterpriseBillingPage() {
 
   const studentsUsed = Number((dashboardData as any)?.totalStudents ?? 0);
   const staffUsed = Number((dashboardData as any)?.totalStaff ?? 0);
+  const aiUsed = Number((subData as any)?.aiUsageCount ?? (dashboardData as any)?.aiUsageCount ?? 0);
 
   const studentUsagePercent = currentPlan.limits.students >= 999999 
     ? 1 
@@ -75,11 +76,15 @@ export default function EnterpriseBillingPage() {
     ? 1 
     : Math.min((staffUsed / currentPlan.limits.staff) * 100, 100);
 
+  const aiLimit = currentPlan.limits.aiQuota || 50;
+  const aiUsagePercent = Math.min((aiUsed / aiLimit) * 100, 100);
+
   const isPastDue = (subData as any)?.status === "past_due";
   const isCancelAtPeriodEnd = !!(subData as any)?.cancelAtPeriodEnd;
   const isStudentOverLimit = currentPlan.limits.students < 999999 && studentsUsed > currentPlan.limits.students;
   const isStaffOverLimit = currentPlan.limits.staff < 999999 && staffUsed > currentPlan.limits.staff;
-  const isQuotaExceeded = isStudentOverLimit || isStaffOverLimit;
+  const isAiOverLimit = aiUsed >= aiLimit;
+  const isQuotaExceeded = isStudentOverLimit || isStaffOverLimit || isAiOverLimit;
 
   // 3. Real Stripe Checkout & Subscription Activation Handler (DEF-006)
   const handleUpgrade = async (planId: string) => {
@@ -223,6 +228,21 @@ export default function EnterpriseBillingPage() {
                 <div 
                   className={`h-3 rounded-full transition-all ${staffUsagePercent > 90 ? 'bg-red-400' : 'bg-green-400'}`} 
                   style={{ width: `${staffUsagePercent}%` }} 
+                />
+              </div>
+            </div>
+
+            <div>
+              <div className="flex justify-between text-sm mb-2">
+                <span className="font-medium text-blue-100">Monthly AI Generation Quota</span>
+                <span className="font-bold text-white">
+                  {isSubLoading ? "..." : `${aiUsed} / ${aiLimit} calls`}
+                </span>
+              </div>
+              <div className="w-full bg-blue-800/50 rounded-full h-3">
+                <div 
+                  className={`h-3 rounded-full transition-all ${aiUsagePercent >= 100 ? 'bg-red-400' : aiUsagePercent > 80 ? 'bg-amber-400' : 'bg-purple-400'}`} 
+                  style={{ width: `${aiUsagePercent}%` }} 
                 />
               </div>
             </div>

@@ -4,6 +4,7 @@ import { withAuth, withTenant, withErrorHandler } from "@/route-helpers";
 import { createSuccessResponse, createErrorResponse } from "@/lib/api/response";
 import { AuditService } from "@/services/AuditService";
 import { logger } from "@/lib/logger/logger";
+import { enforceAiQuota, createAiErrorResponse, recordAiTelemetry } from "@/lib/ai/ai-quota-guard";
 import type { TenantContext } from "@/types/api";
 
 function base64ToBuffer(base64: string): Buffer {
@@ -32,7 +33,13 @@ function extractSalaryFields(text: string) {
 export const POST = withErrorHandler(
   withAuth(
     withTenant(async (req: Request, { tenantId, user }: TenantContext) => {
-      const { image, documentType } = await req.json();
+      // AI Quota & Burst Rate Limit Guard
+      const quotaCheck = await enforceAiQuota(user, "ocr-salary-slip");
+      if (!quotaCheck.allowed) {
+        return createAiErrorResponse(quotaCheck);
+      }
+
+      const { image, documentType } = await req.json().catch(() => ({}));
       if (!image) return createErrorResponse(400, "No file");
       if (documentType !== "salary_slip") return createErrorResponse(400, "Unsupported type");
 
@@ -45,27 +52,52 @@ export const POST = withErrorHandler(
         return createErrorResponse(422, "PDF OCR extraction is not supported");
       }
 
-      const worker = await createWorker("eng");
-      const { data } = await worker.recognize(buffer);
-      await worker.terminate();
+      try {
+        const worker = await createWorker("eng");
+        const { data } = await worker.recognize(buffer);
+        await worker.terminate();
 
-      const extractedData = extractSalaryFields(data.text);
-      const processingTimeMs = Date.now() - startTime;
+        const extractedData = extractSalaryFields(data.text);
+        const processingTimeMs = Date.now() - startTime;
 
-      logger.info("[OCR] Document processed", {
-        metadata: { tenantId, userId: user.uid, documentType, processingTimeMs },
-      });
+        logger.info("[OCR] Document processed", {
+          metadata: { tenantId, userId: user.uid, documentType, processingTimeMs },
+        });
 
-      await audit.log({
-        action: "ocr.extracted",
-        userId: user.uid,
-        tenantId,
-        entityId: user.uid,
-        entityType: "ocr",
-        metadata: { documentType, provider: "tesseract", processingTimeMs },
-      });
+        await audit.log({
+          action: "ocr.extracted",
+          userId: user.uid,
+          tenantId,
+          entityId: user.uid,
+          entityType: "ocr",
+          metadata: { documentType, provider: "tesseract", processingTimeMs },
+        });
 
-      return createSuccessResponse(extractedData);
+        await recordAiTelemetry({
+          tenantId,
+          userId: user.uid,
+          featureKey: "ocr-salary-slip",
+          latencyMs: processingTimeMs,
+          success: true,
+          provider: "tesseract",
+          model: "eng",
+        });
+
+        return createSuccessResponse(extractedData);
+      } catch (err: any) {
+        await recordAiTelemetry({
+          tenantId,
+          userId: user.uid,
+          featureKey: "ocr-salary-slip",
+          latencyMs: Date.now() - startTime,
+          success: false,
+          error: err.message,
+          provider: "tesseract",
+          model: "eng",
+        });
+
+        return createErrorResponse(500, "OCR document processing failed.");
+      }
     })
   )
 );
