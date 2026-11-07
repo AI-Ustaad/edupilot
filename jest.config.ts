@@ -3,10 +3,17 @@ import type { Config } from '@jest/types';
 const config: Config.InitialOptions = {
   preset: 'ts-jest',
   testEnvironment: 'node',
-  roots: ['<rootDir>/repositories', '<rootDir>/services', '<rootDir>/__tests__'],
+  roots: ['<rootDir>/repositories', '<rootDir>/services', '<rootDir>/__tests__', '<rootDir>/app'],
   testMatch: ['**/*.test.ts', '**/*.spec.ts'],
   transform: {
-    '^.+\\.tsx?$': ['ts-jest', { tsconfig: 'tsconfig.json' }],
+    '^.+\\.tsx?$': [
+      'ts-jest',
+      {
+        tsconfig: {
+          jsx: 'react-jsx',
+        },
+      },
+    ],
   },
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/$1',
