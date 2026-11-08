@@ -58,7 +58,51 @@ export const POST = withErrorHandler(
 );
 
 // ==========================================
-// 3. DELETE: Soft Delete Section
+// 3. PUT: Update Section / Class Allocation
+// ==========================================
+export const PUT = withErrorHandler(
+  withAuth(
+    withTenant(
+      withPermission(PERMISSIONS.classes.update)(async (req: Request, { tenantId, user }: TenantContext) => {
+        const body = await req.json();
+        const { id, classTeacherId, classTeacherName, incharge, subjects } = body;
+
+        if (!id) {
+          return createErrorResponse(400, "Section ID required");
+        }
+
+        const sectionRepo = new SectionRepository();
+        const patchData: Record<string, any> = { updatedAt: new Date().toISOString() };
+        if (classTeacherId !== undefined) patchData.classTeacherId = classTeacherId;
+        if (classTeacherName !== undefined) {
+          patchData.classTeacherName = classTeacherName;
+          patchData.incharge = classTeacherName;
+        }
+        if (incharge !== undefined) patchData.incharge = incharge;
+        if (subjects !== undefined) patchData.subjects = subjects;
+
+        await sectionRepo.update(id, patchData, tenantId);
+
+        const audit = new AuditService();
+        await audit.log({
+          action: "class.update",
+          userId: user.uid,
+          tenantId,
+          entityId: id,
+          entityType: "section",
+          metadata: { classTeacherId, classTeacherName },
+        });
+
+        return createSuccessResponse(null, { message: "Section updated successfully" });
+      })
+    )
+  )
+);
+
+export const PATCH = PUT;
+
+// ==========================================
+// 4. DELETE: Soft Delete Section
 // ==========================================
 export const DELETE = withErrorHandler(
   withAuth(

@@ -1,11 +1,12 @@
 "use client";
 import React from "react";
+import Link from "next/link";
 import {
   ShieldCheck, AlertTriangle, CheckCircle2, XCircle,
   School, BookOpen, Users, Briefcase, Clock,
   MapPin, Home, Bus, Library, Wallet,
   GraduationCap, AlertCircle, Loader2, RefreshCw,
-  Calendar,
+  Calendar, Settings2,
 } from "lucide-react";
 import { useConfigurationDashboard } from "@/hooks/useConfigurationDashboard";
 import { useAuth } from "@/context/AuthContext";
@@ -73,9 +74,17 @@ export default function ConfigurationDashboardPage() {
           </h1>
           <p className="text-sm text-gray-500 mt-1">Master configuration status and completion overview</p>
         </div>
-        <button onClick={() => refetch()} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl font-bold text-sm">
-          <RefreshCw size={16} /> Refresh
-        </button>
+        <div className="flex items-center gap-2">
+          <Link
+            href="/admin/school-setup?edit=true"
+            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl font-bold text-sm shadow-sm transition"
+          >
+            <Settings2 size={16} /> Edit Configuration
+          </Link>
+          <button onClick={() => refetch()} className="flex items-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-xl font-bold text-sm transition">
+            <RefreshCw size={16} /> Refresh
+          </button>
+        </div>
       </div>
 
       {/* Completion Overview */}

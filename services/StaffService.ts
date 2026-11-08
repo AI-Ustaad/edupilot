@@ -21,6 +21,56 @@ import { eventBus } from "@/lib/events";
 import { EVENTS } from "@/lib/events/event-types";
 import { GeminiProvider } from "@/lib/ai/providers/GeminiProvider";
 import { StaffPersistenceMapper } from "@/lib/mappers/StaffPersistenceMapper";
+import { adminDb } from "@/lib/firebase-admin";
+
+function normalizeStaffInput(data: any): any {
+  const result: any = { ...data };
+  if (!result.personal) result.personal = {};
+  if (!result.contact) result.contact = {};
+  if (!result.professional) result.professional = {};
+  if (!result.payroll) result.payroll = {};
+  if (!result.academic) result.academic = {};
+
+  if (data.fullName || data.name) {
+    result.personal.fullName = data.fullName || data.name;
+  }
+  if (data.email) {
+    result.contact.email = data.email;
+  }
+  if (data.mobile || data.phone) {
+    result.contact.mobile = data.mobile || data.phone;
+  }
+  if (data.designation) {
+    result.professional.designation = data.designation;
+  }
+  if (data.department) {
+    result.professional.department = data.department;
+  }
+  if (data.qualification) {
+    result.professional.qualification = data.qualification;
+  }
+  if (data.personnelNo) {
+    result.professional.personnelNo = data.personnelNo;
+  } else if (!result.professional.personnelNo) {
+    result.professional.personnelNo = `STF-${Date.now().toString().slice(-6)}`;
+  }
+  if (data.basicSalary !== undefined || data.salary !== undefined) {
+    result.payroll.basicSalary = Number(data.basicSalary ?? data.salary) || 0;
+  }
+  if (data.classesAssigned) {
+    result.academic.classesAssigned = Array.isArray(data.classesAssigned) ? data.classesAssigned : [data.classesAssigned];
+  }
+  if (data.sectionAssignment) {
+    result.academic.sectionAssignment = data.sectionAssignment;
+  }
+  if (data.classTeacher !== undefined) {
+    result.academic.classTeacher = Boolean(data.classTeacher);
+  }
+  if (data.status) {
+    result.status = data.status;
+  }
+  return result;
+}
 
 export class StaffService implements IStaffService {
   private repository: IStaffRepository;
@@ -117,10 +167,11 @@ export class StaffService implements IStaffService {
     return id;
   }
 
-  async update(tenantId: string, id: string, data: UpdateStaffDTO, userId?: string): Promise<void> {
-    await this.getById(tenantId, id);
+  async update(tenantId: string, id: string, data: UpdateStaffDTO | any, userId?: string): Promise<void> {
+    const existing = await this.getById(tenantId, id);
 
-    const validation = this.validation.validate(UpdateStaffSchema, data);
+    const normalizedData = normalizeStaffInput(data);
+    const validation = this.validation.validate(UpdateStaffSchema, normalizedData);
     if (!validation.success) {
       logger.warn("[StaffService] Update validation failed", {
         metadata: { errors: validation.errors, staffId: id, tenantId },
@@ -131,7 +182,35 @@ export class StaffService implements IStaffService {
     const entity = StaffPersistenceMapper.fromDTO(validation.data);
     const document = StaffPersistenceMapper.toFirestore(entity, userId || "");
 
-    const updatePayload: Record<string, unknown> = { ...document, updatedBy: userId || "system", updatedAt: new Date() };
+    const updatePayload: Record<string, unknown> = {
+      ...document,
+      personal: {
+        ...(existing?.personal || {}),
+        ...(validation.data?.personal || {}),
+        fullName: validation.data?.personal?.fullName || document.fullName,
+      },
+      contact: {
+        ...(existing?.contact || {}),
+        ...(validation.data?.contact || {}),
+        email: validation.data?.contact?.email || document.email,
+        mobile: validation.data?.contact?.mobile || document.mobile,
+      },
+      professional: {
+        ...(existing?.professional || {}),
+        ...(validation.data?.professional || {}),
+        designation: validation.data?.professional?.designation || document.designation,
+      },
+      academic: {
+        ...(existing?.academic || {}),
+        ...(validation.data?.academic || {}),
+      },
+      payroll: {
+        ...(existing?.payroll || {}),
+        ...(validation.data?.payroll || {}),
+      },
+      updatedBy: userId || "system",
+      updatedAt: new Date(),
+    };
     Object.keys(updatePayload).forEach(key => {
       if (updatePayload[key as keyof typeof updatePayload] === undefined) {
         delete updatePayload[key as keyof typeof updatePayload];
@@ -139,6 +218,15 @@ export class StaffService implements IStaffService {
     });
 
     await this.repository.update(id, updatePayload, tenantId);
+
+    // 100% Cross-Module Sync: Classes, Sections, and Users
+    await this.cascadeTeacherUpdates(tenantId, id, {
+      fullName: (document as any).personal?.fullName || (data as any).fullName || (data as any).name || document.fullName,
+      email: (document as any).contact?.email || (data as any).email || document.email,
+      designation: (document as any).professional?.designation || (data as any).designation || document.designation,
+      classesAssigned: (document as any).academic?.classesAssigned || (data as any).classesAssigned || document.classesAssigned,
+      sectionAssignment: (document as any).academic?.sectionAssignment || (data as any).sectionAssignment || document.sectionAssignment,
+    });
 
     await this.audit.log({
       action: "staff.updated",
@@ -155,6 +243,91 @@ export class StaffService implements IStaffService {
       userId: userId || "system",
       updatedFields: Object.keys(data),
     }, tenantId);
+  }
+
+  private async cascadeTeacherUpdates(
+    tenantId: string,
+    teacherId: string,
+    updates: {
+      fullName?: string;
+      email?: string;
+      designation?: string;
+      classesAssigned?: string[];
+      sectionAssignment?: string;
+    }
+  ): Promise<void> {
+    const db = (this.repository as any).db || adminDb;
+    if (!db) return;
+
+    // 1. Sync Section / Classes teacher assignment
+    try {
+      const secSnap = await db.collection("sections")
+        .where("tenantId", "==", tenantId)
+        .get();
+      
+      if (secSnap?.docs?.length) {
+        for (const doc of secSnap.docs) {
+          const d = doc.data();
+          const isAssigned = d.classTeacherId === teacherId || d.inchargeId === teacherId || d.incharge === teacherId || d.classTeacherName === updates.fullName;
+          if (isAssigned && updates.fullName) {
+            if (typeof doc.ref?.update === "function") {
+              await doc.ref.update({
+                classTeacherName: updates.fullName,
+                incharge: updates.fullName,
+                updatedAt: new Date().toISOString(),
+              });
+            }
+          }
+        }
+      }
+
+      // If specific classes are assigned, ensure those classes link this teacher
+      if (updates.classesAssigned && updates.classesAssigned.length > 0) {
+        for (const clsName of updates.classesAssigned) {
+          const clsSnap = await db.collection("sections")
+            .where("tenantId", "==", tenantId)
+            .where("classGrade", "==", clsName)
+            .get();
+          if (clsSnap?.docs?.length) {
+            for (const doc of clsSnap.docs) {
+              if (typeof doc.ref?.update === "function") {
+                await doc.ref.update({
+                  classTeacherId: teacherId,
+                  classTeacherName: updates.fullName || "Teacher",
+                  incharge: updates.fullName || "Teacher",
+                  updatedAt: new Date().toISOString(),
+                });
+              }
+            }
+          }
+        }
+      }
+    } catch (err) {
+      logger.warn("[StaffService] Could not cascade section teacher allocations", { metadata: { teacherId, err } });
+    }
+
+    // 2. Sync linked User account in 'users' collection
+    try {
+      const usersSnap = await db.collection("users")
+        .where("tenantId", "==", tenantId)
+        .get();
+      if (usersSnap?.docs?.length) {
+        for (const doc of usersSnap.docs) {
+          const u = doc.data();
+          const isMatch = u.staffId === teacherId || (updates.email && u.email?.toLowerCase() === updates.email.toLowerCase());
+          if (isMatch) {
+            const userPatch: Record<string, any> = { updatedAt: new Date().toISOString() };
+            if (updates.fullName) userPatch.displayName = updates.fullName;
+            if (updates.email) userPatch.email = updates.email;
+            if (typeof doc.ref?.update === "function") {
+              await doc.ref.update(userPatch);
+            }
+          }
+        }
+      }
+    } catch (err) {
+      logger.warn("[StaffService] Could not cascade teacher user account sync", { metadata: { teacherId, err } });
+    }
   }
 
   async delete(tenantId: string, id: string, userId?: string): Promise<void> {

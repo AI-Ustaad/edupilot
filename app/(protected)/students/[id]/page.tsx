@@ -1,13 +1,32 @@
 "use client";
-import { useStudent360 } from "@/hooks/useStudents";
+import { useState } from "react";
+import { useStudent360, useDeleteStudent } from "@/hooks/useStudents";
 import { useRouter } from "next/navigation";
-import { AlertTriangle, Loader2, ArrowLeft, UserCircle, GraduationCap, Wallet, Activity, ClipboardCheck } from "lucide-react";
+import { AlertTriangle, Loader2, ArrowLeft, UserCircle, GraduationCap, Wallet, Activity, ClipboardCheck, Pencil, Trash2 } from "lucide-react";
+import RequirePermission from "@/components/RequirePermission";
+import { PERMISSIONS } from "@/lib/auth/permissions";
+import EditStudentModal from "@/components/students/EditStudentModal";
+import { useToast } from "@/components/ToastProvider";
 
 export default function StudentProfilePage({ params }: { params: { id: string } }) {
   const router = useRouter();
+  const { showToast } = useToast();
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const deleteMutation = useDeleteStudent();
   
   // Fetch all student data (Profile, Attendance, Fees, Marks) in one single call
   const { data, isLoading, error } = useStudent360(params.id);
+
+  const handleDeleteStudent = async () => {
+    if (!confirm("Are you sure you want to delete/archive this student?")) return;
+    try {
+      await deleteMutation.mutateAsync(params.id);
+      showToast("Student deleted successfully", "success");
+      router.push("/students");
+    } catch (err: any) {
+      showToast(err?.message || "Failed to delete student", "error");
+    }
+  };
 
   if (isLoading) {
     return (
@@ -70,7 +89,32 @@ export default function StudentProfilePage({ params }: { params: { id: string } 
             <span className="flex items-center gap-1"><Activity size={16} /> Guardian: {student.guardianName || student.fatherName || "N/A"}</span>
           </div>
         </div>
+
+        <div className="flex flex-wrap gap-2">
+          <RequirePermission permissions={[PERMISSIONS.students.update]}>
+            <button
+              onClick={() => setIsEditModalOpen(true)}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl font-bold flex items-center gap-2 transition shadow-sm"
+            >
+              <Pencil size={16} /> Edit Student
+            </button>
+          </RequirePermission>
+          <RequirePermission permissions={[PERMISSIONS.students.delete]}>
+            <button
+              onClick={handleDeleteStudent}
+              className="bg-red-50 hover:bg-red-100 text-red-600 px-4 py-2.5 rounded-xl font-bold flex items-center gap-2 transition border border-red-200"
+            >
+              <Trash2 size={16} /> Delete
+            </button>
+          </RequirePermission>
+        </div>
       </div>
+
+      <EditStudentModal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        student={{ id: params.id, ...student }}
+      />
 
       {/* Grid Layout for Data */}
       <div className="grid md:grid-cols-2 gap-6">

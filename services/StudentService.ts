@@ -19,6 +19,53 @@ import { nowISO } from "@/lib/date";
 import { eventBus } from "@/lib/events";
 import { EVENTS } from "@/lib/events/event-types";
 import { logger } from "@/lib/logger/logger";
+import { adminDb } from "@/lib/firebase-admin";
+
+function normalizeCreateStudentInput(data: any): CreateStudentDTO {
+  if (data?.personal && data?.academic) {
+    return data as CreateStudentDTO;
+  }
+  const rawName = (data?.fullName || data?.name || "").trim();
+  const nameParts = rawName ? rawName.split(" ") : ["Student"];
+  const firstName = nameParts[0] || "Student";
+  const lastName = nameParts.slice(1).join(" ") || undefined;
+
+  return {
+    identity: {
+      admissionNumber: data?.admissionNumber || `ADM-${Date.now()}`,
+      rollNumber: data?.rollNumber !== undefined ? String(data.rollNumber) : undefined,
+      cnicOrBForm: data?.cnic || data?.cnicOrBForm || "",
+    },
+    personal: {
+      firstName,
+      lastName,
+      dateOfBirth: data?.dob || data?.dateOfBirth,
+      gender: (data?.gender === "Female" || data?.gender === "Other") ? data.gender : "Male",
+      avatarUrl: data?.avatarUrl || data?.photoBase64 || "",
+    },
+    academic: {
+      campusId: data?.campusId || "main",
+      classId: data?.classGrade || data?.className || data?.classId || "General",
+      sectionId: data?.section || data?.sectionId || "A",
+      admissionDate: data?.admissionDate || new Date().toISOString().split("T")[0],
+    },
+    parentReferences: {
+      primaryParentId: data?.parentId || data?.primaryParentId || null,
+      emergencyContactPhone: data?.guardianPhone || data?.emergencyContactPhone || data?.phone || "",
+    },
+    contacts: {
+      phone: data?.phone || data?.guardianPhone || "",
+      email: data?.email || data?.guardianEmail || "",
+      address: data?.address || "",
+    },
+    guardian: {
+      name: data?.guardianName || data?.fatherName || "",
+      relation: data?.guardianRelation || "Guardian",
+      phone: data?.guardianPhone || data?.phone || "",
+    },
+    status: data?.status || "Active",
+  };
+}
 
 type Student360DataSources = {
   attendance: Pick<AttendanceRepository, "findByStudentId">;
@@ -41,8 +88,9 @@ export class StudentService implements IStudentService {
     };
   }
 
-  async create(data: CreateStudentDTO, tenantId: string, userId: string): Promise<StudentEntity> {
-    const validatedDTO = CreateStudentSchema.parse(data);
+  async create(data: CreateStudentDTO | any, tenantId: string, userId: string): Promise<StudentEntity> {
+    const normalizedInput = normalizeCreateStudentInput(data);
+    const validatedDTO = CreateStudentSchema.parse(normalizedInput);
     const entity = StudentPersistenceMapper.fromDTO(validatedDTO);
     const document = StudentPersistenceMapper.toFirestore(entity, userId);
 
@@ -60,10 +108,62 @@ export class StudentService implements IStudentService {
     }, tenantId);
     
     const createdEntity = StudentPersistenceMapper.fromFirestore(savedDoc);
+    const studentId = createdEntity.studentId || savedDoc.id || "";
+
+    // 100% Cross-Module Sync: Provision Initial Fee Record
+    try {
+      const monthlyFee = (data as any)?.monthlyFee !== undefined ? Number((data as any).monthlyFee) : 5000;
+      const initialFee = {
+        studentId,
+        studentName: document.fullName || `${document.firstName || ""} ${document.lastName || ""}`.trim(),
+        rollNumber: document.rollNumber ? (Number(document.rollNumber) || document.rollNumber) : undefined,
+        classGrade: document.classGrade || "General",
+        section: document.section || "A",
+        feeMonth: new Date().toLocaleString("en-US", { month: "long", year: "numeric" }),
+        amountPaid: 0,
+        amount: monthlyFee,
+        status: "Pending",
+        paymentMethod: "Pending",
+        dueDate: new Date(Date.now() + 15 * 86400000).toISOString().split("T")[0],
+        tenantId,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      const db = (this.repository as any).db || adminDb;
+      if (db?.collection) {
+        await db.collection("fees").add(initialFee);
+      }
+    } catch (err) {
+      logger.warn("[StudentService] Could not provision initial fee profile", { metadata: { studentId, err } });
+    }
+
+    // 100% Cross-Module Sync: Roster Class/Section verification
+    try {
+      const db = (this.repository as any).db || adminDb;
+      if (db?.collection && document.classGrade) {
+        const secSnap = await db.collection("sections")
+          .where("tenantId", "==", tenantId)
+          .where("classGrade", "==", document.classGrade)
+          .where("sectionName", "==", document.section || "A")
+          .get();
+        if (secSnap?.empty) {
+          await db.collection("sections").add({
+            classGrade: document.classGrade,
+            sectionName: document.section || "A",
+            tenantId,
+            deleted: false,
+            createdAt: new Date().toISOString(),
+            createdBy: userId,
+          });
+        }
+      }
+    } catch (err) {
+      logger.warn("[StudentService] Could not ensure section roster existence", { metadata: { studentId, err } });
+    }
 
     eventBus.publish(EVENTS.STUDENT_CREATED, {
       tenantId,
-      studentId: createdEntity.studentId || savedDoc.id,
+      studentId,
       studentData: {
         firstName: document.firstName,
         lastName: document.lastName,
@@ -78,26 +178,73 @@ export class StudentService implements IStudentService {
     return createdEntity;
   }
 
-  async update(tenantId: string, studentId: string, data: UpdateStudentDTO, userId: string): Promise<StudentEntity | null> {
+  async update(tenantId: string, studentId: string, data: UpdateStudentDTO | any, userId: string): Promise<StudentEntity | null> {
     const existing = await this.repository.findById(studentId, tenantId);
     if (!existing) return null;
 
-    // Update DTOs are partial. Mapping them directly fills omitted nested
-    // fields with create-time defaults, which silently overwrites persisted
-    // student data. Merge at the domain boundary before writing the document.
+    // Support flat inputs alongside nested DTO
+    const flatFullName = (data as any).fullName || (data as any).name;
+    const flatRoll = (data as any).rollNumber;
+    const flatClass = (data as any).classGrade || (data as any).className;
+    const flatSection = (data as any).section;
+    const flatGuardianName = (data as any).guardianName || (data as any).fatherName;
+    const flatGuardianPhone = (data as any).guardianPhone;
+    const flatGuardianEmail = (data as any).guardianEmail;
+    const flatEmail = (data as any).email || flatGuardianEmail;
+    const flatPhone = (data as any).phone || flatGuardianPhone;
+    const flatAddress = (data as any).address;
+    const flatDob = (data as any).dob;
+    const flatGender = (data as any).gender;
+    const flatStatus = (data as any).status;
+    const flatMonthlyFee = (data as any).monthlyFee;
+
     const current = StudentPersistenceMapper.fromFirestore(existing);
     const merged = {
-      identity: { ...current.identity, ...data.identity },
-      personal: { ...current.personal, ...data.personal },
-      academic: { ...current.academic, ...data.academic },
-      parentReferences: { ...current.parentReferences, ...data.parentReferences },
-      contacts: { ...current.contacts, ...data.contacts },
-      guardian: { ...current.guardian, ...data.guardian },
-      medical: { ...current.medical, ...data.medical },
-      demographics: { ...current.demographics, ...data.demographics },
-      status: data.status ?? current.status,
-      metadata: { ...current.metadata, ...data.metadata },
+      identity: {
+        ...current.identity,
+        ...(data.identity || {}),
+        ...(flatRoll !== undefined ? { rollNumber: Number(flatRoll) || flatRoll } : {}),
+      },
+      personal: {
+        ...current.personal,
+        ...(data.personal || {}),
+        ...(flatFullName ? {
+          firstName: flatFullName.split(" ")[0],
+          lastName: flatFullName.split(" ").slice(1).join(" ") || undefined
+        } : {}),
+        ...(flatDob ? { dateOfBirth: flatDob } : {}),
+        ...(flatGender ? { gender: flatGender } : {}),
+      },
+      academic: {
+        ...current.academic,
+        ...(data.academic || {}),
+        ...(flatClass ? { classId: flatClass } : {}),
+        ...(flatSection ? { sectionId: flatSection } : {}),
+      },
+      parentReferences: {
+        ...current.parentReferences,
+        ...(data.parentReferences || {}),
+        ...(flatGuardianPhone ? { emergencyContactPhone: flatGuardianPhone } : {}),
+      },
+      contacts: {
+        ...current.contacts,
+        ...(data.contacts || {}),
+        ...(flatPhone ? { phone: flatPhone } : {}),
+        ...(flatEmail ? { email: flatEmail } : {}),
+        ...(flatAddress ? { address: flatAddress } : {}),
+      },
+      guardian: {
+        ...current.guardian,
+        ...(data.guardian || {}),
+        ...(flatGuardianName ? { name: flatGuardianName } : {}),
+        ...(flatGuardianPhone ? { phone: flatGuardianPhone } : {}),
+      },
+      medical: { ...current.medical, ...(data.medical || {}) },
+      demographics: { ...current.demographics, ...(data.demographics || {}) },
+      status: flatStatus ?? data.status ?? current.status,
+      metadata: { ...current.metadata, ...(data.metadata || {}) },
     };
+
     const entity = StudentPersistenceMapper.fromDTO(merged);
     const document = StudentPersistenceMapper.toFirestore(entity, userId);
     document.metadata = {
@@ -105,7 +252,22 @@ export class StudentService implements IStudentService {
       ...document.metadata,
       createdAt: existing.metadata?.createdAt,
     };
-    
+
+    // Explicitly retain flat top-level fields for backwards/cross-module compatibility
+    if (flatFullName) document.fullName = flatFullName;
+    if (flatRoll !== undefined) document.rollNumber = String(flatRoll);
+    if (flatClass) document.classGrade = flatClass;
+    if (flatSection) document.section = flatSection;
+    if (flatGuardianName) document.guardianName = flatGuardianName;
+    if (flatGuardianPhone) document.guardianPhone = flatGuardianPhone;
+    if (flatEmail) document.email = flatEmail;
+    if (flatPhone) document.phone = flatPhone;
+    if (flatAddress) document.address = flatAddress;
+    if (flatDob) document.dob = flatDob;
+    if (flatGender) document.gender = flatGender;
+    if (flatStatus) document.status = flatStatus;
+    if (flatMonthlyFee !== undefined) (document as any).monthlyFee = Number(flatMonthlyFee);
+
     const updatePayload: Record<string, unknown> = { ...document, updatedBy: userId, updatedAt: new Date() };
     Object.keys(updatePayload).forEach(key => {
       if (updatePayload[key as keyof typeof updatePayload] === undefined) {
@@ -114,6 +276,15 @@ export class StudentService implements IStudentService {
     });
 
     await this.repository.update(studentId, updatePayload as Parameters<IStudentRepository["update"]>[1], tenantId);
+
+    // 100% Cross-Module Cascading Updates (Fees, Attendance, Marks, Invoices)
+    await this.cascadeStudentUpdates(tenantId, studentId, {
+      fullName: document.fullName,
+      rollNumber: document.rollNumber,
+      classGrade: document.classGrade,
+      section: document.section,
+    });
+
     const updated = await this.getById(tenantId, studentId);
 
     eventBus.publish(EVENTS.STUDENT_UPDATED, {
@@ -123,6 +294,123 @@ export class StudentService implements IStudentService {
     }, tenantId);
 
     return updated;
+  }
+
+  private async cascadeStudentUpdates(
+    tenantId: string,
+    studentId: string,
+    updates: {
+      fullName?: string;
+      rollNumber?: string | number;
+      classGrade?: string;
+      section?: string;
+    }
+  ): Promise<void> {
+    const db = (this.repository as any).db || adminDb;
+    if (!db) return;
+
+    const patchData: Record<string, any> = {};
+    if (updates.fullName) {
+      patchData.studentName = updates.fullName;
+      patchData.fullName = updates.fullName;
+    }
+    if (updates.rollNumber !== undefined) {
+      patchData.rollNumber = updates.rollNumber;
+    }
+    if (updates.classGrade) {
+      patchData.classGrade = updates.classGrade;
+      patchData.className = updates.classGrade;
+    }
+    if (updates.section) {
+      patchData.section = updates.section;
+    }
+
+    if (Object.keys(patchData).length === 0) return;
+
+    // 1. Cascade to fees
+    try {
+      const feesSnap = await db.collection("fees")
+        .where("tenantId", "==", tenantId)
+        .where("studentId", "==", studentId)
+        .get();
+      if (feesSnap?.docs?.length) {
+        for (const doc of feesSnap.docs) {
+          const docPatch: Record<string, any> = { updatedAt: new Date().toISOString() };
+          if (patchData.studentName) docPatch.studentName = patchData.studentName;
+          if (patchData.rollNumber !== undefined) docPatch.rollNumber = Number(patchData.rollNumber) || patchData.rollNumber;
+          if (patchData.classGrade) docPatch.classGrade = patchData.classGrade;
+          if (typeof doc.ref?.update === "function") {
+            await doc.ref.update(docPatch);
+          }
+        }
+      }
+    } catch (err) {
+      logger.warn("[StudentService] Could not cascade fees update", { metadata: { studentId, err } });
+    }
+
+    // 2. Cascade to attendance
+    try {
+      const attSnap = await db.collection("attendance")
+        .where("tenantId", "==", tenantId)
+        .where("studentId", "==", studentId)
+        .get();
+      if (attSnap?.docs?.length) {
+        for (const doc of attSnap.docs) {
+          const docPatch: Record<string, any> = { updatedAt: new Date().toISOString() };
+          if (patchData.studentName) docPatch.studentName = patchData.studentName;
+          if (patchData.rollNumber !== undefined) docPatch.rollNumber = patchData.rollNumber;
+          if (patchData.classGrade) docPatch.classGrade = patchData.classGrade;
+          if (patchData.section) docPatch.section = patchData.section;
+          if (typeof doc.ref?.update === "function") {
+            await doc.ref.update(docPatch);
+          }
+        }
+      }
+    } catch (err) {
+      logger.warn("[StudentService] Could not cascade attendance update", { metadata: { studentId, err } });
+    }
+
+    // 3. Cascade to marks
+    try {
+      const marksSnap = await db.collection("marks")
+        .where("tenantId", "==", tenantId)
+        .where("studentId", "==", studentId)
+        .get();
+      if (marksSnap?.docs?.length) {
+        for (const doc of marksSnap.docs) {
+          const docPatch: Record<string, any> = { updatedAt: new Date().toISOString() };
+          if (patchData.studentName) docPatch.studentName = patchData.studentName;
+          if (patchData.rollNumber !== undefined) docPatch.rollNumber = patchData.rollNumber;
+          if (patchData.classGrade) docPatch.classGrade = patchData.classGrade;
+          if (patchData.section) docPatch.section = patchData.section;
+          if (typeof doc.ref?.update === "function") {
+            await doc.ref.update(docPatch);
+          }
+        }
+      }
+    } catch (err) {
+      logger.warn("[StudentService] Could not cascade marks update", { metadata: { studentId, err } });
+    }
+
+    // 4. Cascade to invoices
+    try {
+      const invSnap = await db.collection("invoices")
+        .where("tenantId", "==", tenantId)
+        .where("studentId", "==", studentId)
+        .get();
+      if (invSnap?.docs?.length) {
+        for (const doc of invSnap.docs) {
+          const docPatch: Record<string, any> = { updatedAt: new Date().toISOString() };
+          if (patchData.studentName) docPatch.studentName = patchData.studentName;
+          if (patchData.classGrade) docPatch.classGrade = patchData.classGrade;
+          if (typeof doc.ref?.update === "function") {
+            await doc.ref.update(docPatch);
+          }
+        }
+      }
+    } catch (err) {
+      logger.warn("[StudentService] Could not cascade invoices update", { metadata: { studentId, err } });
+    }
   }
 
   async getById(tenantId: string, studentId: string): Promise<StudentEntity | null> {

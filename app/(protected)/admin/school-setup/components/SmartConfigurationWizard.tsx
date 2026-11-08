@@ -7,17 +7,22 @@ import { useEducationRulesEngine } from "@/hooks/useEducationRulesEngine";
 import { useToast } from "@/components/ToastProvider";
 import apiClient from "@/lib/api/client";
 
-export function SmartConfigurationWizard({ onGenerated }: { onGenerated: (data: any) => void }) {
+export function SmartConfigurationWizard({ onGenerated, initialConfig }: { onGenerated: (data: any) => void; initialConfig?: any }) {
   const { showToast } = useToast();
   
   // Step 1: Institution Profile
-  const [schoolName, setSchoolName] = useState("");
-  const [ownershipType, setOwnershipType] = useState(""); // Public / Private
-  const [institutionType, setInstitutionType] = useState("School"); // School / Madrassah
-  const [countryId, setCountryId] = useState("pk");
+  const [schoolName, setSchoolName] = useState(initialConfig?.schoolName || initialConfig?.school?.name || "");
+  const [ownershipType, setOwnershipType] = useState(initialConfig?.school?.type === "Government" ? "Public" : (initialConfig?.school?.type || ""));
+  const [institutionType, setInstitutionType] = useState(initialConfig?.school?.type === "Madrissa" ? "Madrassah" : "School");
+  const [countryId, setCountryId] = useState(initialConfig?.school?.country?.toLowerCase() || "pk");
+  const [currency, setCurrency] = useState(initialConfig?.currency || "PKR");
   
-  // 🚀 NEW: Manual Inputs
-  const [sections, setSections] = useState("A, B"); 
+  // 🚀 Manual Inputs
+  const [sections, setSections] = useState(
+    Array.isArray(initialConfig?.academic?.sectionNames)
+      ? initialConfig.academic.sectionNames.join(", ")
+      : (initialConfig?.sections?.join(", ") || "A, B")
+  ); 
   const [facilities, setFacilities] = useState(""); // For Grounds, Rooms, etc.
   
   // Step 2: Cascading Selections
@@ -64,36 +69,42 @@ export function SmartConfigurationWizard({ onGenerated }: { onGenerated: (data: 
   };
 
   const handleSave = () => {
-    if (!schoolName || !generatedData) {
-      showToast("Missing school name or generated data.", "error");
+    if (!schoolName || (!generatedData && !initialConfig)) {
+      showToast("Missing school name or configuration structure.", "error");
       return;
     }
 
-    const parsedSections = sections.split(",").map(s => s.trim()).filter(Boolean);
-    
-    // 🚀 NEW: Parse manual facilities
+    const parsedSections = sections.split(",").map(s => s.trim().toUpperCase()).filter(Boolean);
     const parsedFacilities = facilities.split(",").map(f => f.trim()).filter(Boolean);
 
-    // Merge auto-generated labs with manually entered facilities
+    const baseStructure = generatedData || {
+      levels: initialConfig?.academic?.levels || ["General"],
+      grades: initialConfig?.academic?.classes || [],
+      allSubjects: initialConfig?.academic?.subjects || [],
+      requiredLabs: initialConfig?.academic?.requiredLabs || [],
+      requiredTeachers: initialConfig?.academic?.requiredTeachers || {},
+      departments: initialConfig?.academic?.departments || [],
+    };
+
     const allLabsAndFacilities = [
-      ...(generatedData.requiredLabs || []),
+      ...(baseStructure.requiredLabs || []),
       ...parsedFacilities
     ];
 
     onGenerated({
       schoolProfile: {
         name: schoolName,
-        type: ownershipType === "Public" ? "Government" : "Private",
-        curriculumId: systemId,
-        boardName: authorities.find(a => a.id === authorityId)?.name || "Custom Board",
-        country: countryId,
-        sections: parsedSections
+        type: ownershipType === "Public" ? "Government" : (institutionType === "Madrassah" ? "Madrissa" : "Private"),
+        curriculumId: systemId || initialConfig?.school?.curriculumId || "custom",
+        boardName: authorities.find((a: any) => a.id === authorityId)?.name || initialConfig?.school?.boardName || "Custom Board",
+        country: countryId.toUpperCase(),
+        sections: parsedSections.length ? parsedSections : ["A", "B"]
       },
       academicStructure: {
-        ...generatedData,
-        // 🚀 Override requiredLabs with merged list
+        ...baseStructure,
         requiredLabs: allLabsAndFacilities 
-      }
+      },
+      currency,
     });
   };
 

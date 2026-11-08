@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, Suspense } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useSearchParams, useParams, useRouter } from "next/navigation";
 import { Loader2, Save, ArrowLeft, User } from "lucide-react";
 import { useStaffMember, useUpdateStaff } from "@/hooks/useStaff";
 import { logger } from "@/lib/logger/logger";
@@ -9,8 +9,9 @@ import type { StaffFormData } from "@/lib/mappers/staff.mapper";
 
 function EditStaffContent() {
   const searchParams = useSearchParams();
+  const params = useParams();
   const router = useRouter();
-  const staffId = searchParams.get("id");
+  const staffId = (params?.id as string) || searchParams.get("id");
 
   const { data: staffData, isLoading: loading } = useStaffMember(staffId || "");
   const updateMutation = useUpdateStaff();

@@ -9,6 +9,7 @@ import RequirePermission from "@/components/RequirePermission";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 import { useStaffDirectory, useDeleteStaff, useStaffAnalytics } from "@/hooks/useStaff";
 import { TableSkeleton } from "@/components/Skeletons";
+import EditStaffModal from "@/components/staff/EditStaffModal";
 
 const STATUS_COLORS: Record<string, string> = {
   active: "bg-green-50 text-green-700 border-green-200",
@@ -39,6 +40,7 @@ export default function StaffDirectoryPage() {
   const [uploading, setUploading] = useState(false);
   const [bulkMessage, setBulkMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [showFilters, setShowFilters] = useState(false);
+  const [editingStaff, setEditingStaff] = useState<any>(null);
 
   const filters = useMemo(() => ({
     page, limit: 20, search: search || undefined, category: category || undefined,
@@ -290,9 +292,13 @@ export default function StaffDirectoryPage() {
                           <Link href={`/staff-profile?id=${s.id}`} className="text-blue-500 hover:bg-blue-50 p-2 rounded-lg transition" title="View Profile">
                             <Users size={16} />
                           </Link>
-                          <Link href={`/staff/${s.id}/edit`} className="text-blue-500 hover:bg-blue-50 p-2 rounded-lg transition" title="Edit">
+                          <button
+                            onClick={() => setEditingStaff(s)}
+                            className="text-blue-500 hover:bg-blue-50 p-2 rounded-lg transition"
+                            title="Quick Edit"
+                          >
                             <Edit3 size={16} />
-                          </Link>
+                          </button>
                           <RequirePermission permissions={[PERMISSIONS.staff.delete]}>
                             <button onClick={() => handleDelete(s.id)}
                               className="text-red-500 hover:bg-red-50 p-2 rounded-lg transition disabled:opacity-50"
@@ -355,6 +361,14 @@ export default function StaffDirectoryPage() {
               </div>
             </div>
           </div>
+        )}
+        {/* Edit Staff Modal */}
+        {editingStaff && (
+          <EditStaffModal
+            isOpen={Boolean(editingStaff)}
+            onClose={() => setEditingStaff(null)}
+            staff={editingStaff}
+          />
         )}
       </div>
     </RequirePermission>

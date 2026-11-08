@@ -63,6 +63,11 @@ export const useCreateStaff = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QueryKeys.staff(tenantId) });
+      queryClient.invalidateQueries({ queryKey: ["staff"] });
+      queryClient.invalidateQueries({ queryKey: ["classes"] });
+      queryClient.invalidateQueries({ queryKey: ["sections"] });
+      queryClient.invalidateQueries({ queryKey: ["users"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
       queryClient.invalidateQueries({ queryKey: QueryKeys.dashboard(tenantId) });
       showToast("Staff member added successfully!", "success");
     },
@@ -84,6 +89,11 @@ export const useUpdateStaff = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QueryKeys.staff(tenantId) });
+      queryClient.invalidateQueries({ queryKey: ["staff"] });
+      queryClient.invalidateQueries({ queryKey: ["classes"] });
+      queryClient.invalidateQueries({ queryKey: ["sections"] });
+      queryClient.invalidateQueries({ queryKey: ["users"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
       queryClient.invalidateQueries({ queryKey: QueryKeys.dashboard(tenantId) });
       showToast("Staff member updated!", "success");
     },

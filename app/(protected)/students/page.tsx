@@ -1,15 +1,31 @@
 // app/(protected)/students/page.tsx
 "use client";
-import { useStudents } from "@/hooks/useStudents";
+import { useState } from "react";
+import { useStudents, useDeleteStudent } from "@/hooks/useStudents";
 import { useAuth } from "@/context/AuthContext";
-import { AlertTriangle, Loader2, Users, PlusCircle, Upload } from "lucide-react";
+import { AlertTriangle, Loader2, Users, PlusCircle, Pencil, Trash2, Eye } from "lucide-react";
 import Link from "next/link";
 import RequirePermission from "@/components/RequirePermission";
 import { PERMISSIONS } from "@/lib/auth/permissions";
+import EditStudentModal from "@/components/students/EditStudentModal";
+import { useToast } from "@/components/ToastProvider";
 
 export default function StudentsPage() {
   const { user, loading: authLoading } = useAuth();
   const { data: students, isLoading, error } = useStudents();
+  const deleteMutation = useDeleteStudent();
+  const { showToast } = useToast();
+  const [editingStudent, setEditingStudent] = useState<any>(null);
+
+  const handleDelete = async (id: string, name: string) => {
+    if (!confirm(`Are you sure you want to delete ${name}?`)) return;
+    try {
+      await deleteMutation.mutateAsync(id);
+      showToast(`${name} deleted successfully!`, "success");
+    } catch (err: any) {
+      showToast(err?.message || "Failed to delete student", "error");
+    }
+  };
 
   if (authLoading || isLoading) {
     return (
@@ -87,12 +103,33 @@ export default function StudentsPage() {
                     <td className="p-4 text-gray-600 font-medium">{s.rollNumber || "N/A"}</td>
                     <td className="p-4 text-gray-600 font-medium hidden md:table-cell">{s.guardianName || s.fatherName || "N/A"}</td>
                     <td className="p-4 hidden md:table-cell">
-                      <Link 
-                        href={`/students/${s.id}`}
-                        className="text-blue-600 hover:text-blue-800 font-bold text-sm hover:underline"
-                      >
-                        View Profile
-                      </Link>
+                      <div className="flex items-center gap-2">
+                        <Link 
+                          href={`/students/${s.id}`}
+                          className="text-blue-600 hover:text-blue-800 font-bold text-xs flex items-center gap-1 hover:underline p-1.5 rounded-lg hover:bg-blue-50 transition"
+                          title="View Profile"
+                        >
+                          <Eye size={15} /> View
+                        </Link>
+                        <RequirePermission permissions={[PERMISSIONS.students.update]}>
+                          <button
+                            onClick={() => setEditingStudent(s)}
+                            className="text-indigo-600 hover:text-indigo-800 font-bold text-xs flex items-center gap-1 p-1.5 rounded-lg hover:bg-indigo-50 transition"
+                            title="Edit Student"
+                          >
+                            <Pencil size={15} /> Edit
+                          </button>
+                        </RequirePermission>
+                        <RequirePermission permissions={[PERMISSIONS.students.delete]}>
+                          <button
+                            onClick={() => handleDelete(s.id, s.fullName || s.name || "Student")}
+                            className="text-red-500 hover:text-red-700 font-bold text-xs flex items-center gap-1 p-1.5 rounded-lg hover:bg-red-50 transition"
+                            title="Delete Student"
+                          >
+                            <Trash2 size={15} /> Delete
+                          </button>
+                        </RequirePermission>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -100,6 +137,14 @@ export default function StudentsPage() {
             </table>
           </div>
         </div>
+      )}
+
+      {editingStudent && (
+        <EditStudentModal
+          isOpen={Boolean(editingStudent)}
+          onClose={() => setEditingStudent(null)}
+          student={editingStudent}
+        />
       )}
     </div>
   );

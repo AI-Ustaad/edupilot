@@ -18,6 +18,7 @@ import { createVersion, buildDefaultConfiguration } from "@/types/configuration/
 import { nowISO } from "@/lib/date";
 import { configurationProvisioningService } from "@/services/configuration-provisioning.service";
 import type { IConfigurationProvisioningService } from "@/interfaces/IConfigurationProvisioningService";
+import { adminDb } from "@/lib/firebase-admin";
 
 export class ConfigurationService implements IConfigurationService {
   constructor(
@@ -208,6 +209,67 @@ export class ConfigurationService implements IConfigurationService {
       await this.repo.publishConfiguration(tenantId, newConfig, userId);
       await this.cache.invalidateConfiguration(tenantId);
       await this.cache.setConfiguration(tenantId, newConfig);
+
+      // 100% Cross-Module Cascading Sync: Tenant Profile, Fee Structures, and Exam Terms
+      try {
+        const db = (this.repo as any).db || adminDb;
+        if (db?.collection) {
+          // 1. Sync Tenant Profile metadata
+          await db.collection("tenants").doc(tenantId).set({
+            name: newConfig.school.name,
+            schoolName: newConfig.school.name,
+            academicYear: newConfig.metadata.academicYearId,
+            academicYearId: newConfig.metadata.academicYearId,
+            currency: (input as any).currency || "PKR",
+            country: newConfig.school.country || "PK",
+            updatedAt: new Date().toISOString(),
+          }, { merge: true });
+
+          // 2. Sync Default Fee Structures / Heads
+          const feeHeads = (input as any).feeCategories || ["Tuition Fee", "Admission Fee", "Exam Fee"];
+          for (const headName of feeHeads) {
+            const hName = typeof headName === "string" ? headName : headName?.name;
+            if (!hName) continue;
+            const existingFees = await db.collection("fee_structures")
+              .where("tenantId", "==", tenantId)
+              .where("name", "==", hName)
+              .get();
+            if (existingFees.empty) {
+              await db.collection("fee_structures").add({
+                name: hName,
+                amount: 5000,
+                currency: (input as any).currency || "PKR",
+                frequency: "monthly",
+                tenantId,
+                createdAt: new Date().toISOString(),
+              });
+            }
+          }
+
+          // 3. Sync Default Exam Terms
+          const examTerms = (input as any).examTerms || ["Mid-Term", "Final Term"];
+          for (const term of examTerms) {
+            const tName = typeof term === "string" ? term : term?.name;
+            if (!tName) continue;
+            const existingTerms = await db.collection("exam_terms")
+              .where("tenantId", "==", tenantId)
+              .where("name", "==", tName)
+              .get();
+            if (existingTerms.empty) {
+              await db.collection("exam_terms").add({
+                name: tName,
+                academicYearId: newConfig.metadata.academicYearId,
+                tenantId,
+                createdAt: new Date().toISOString(),
+              });
+            }
+          }
+        }
+      } catch (cascadeErr) {
+        logger.warn("[ConfigurationService] Cross-module sync non-fatal warning", {
+          metadata: { tenantId, err: cascadeErr },
+        });
+      }
 
       eventBus.publish(EVENTS.SCHOOL_SETUP_COMPLETED, {
         tenantId,

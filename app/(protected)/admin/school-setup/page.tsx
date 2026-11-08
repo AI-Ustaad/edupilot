@@ -1,7 +1,8 @@
 // app/(protected)/admin/school-setup/page.tsx
 "use client";
 
-import { useState } from "react";
+import { useState, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import RequirePermission from "@/components/RequirePermission";
 import { PERMISSIONS } from "@/lib/auth/permissions";
@@ -11,13 +12,14 @@ import { SchoolProfileCard } from "./components/SchoolProfileCard";
 import { AcademicStructureCard } from "./components/AcademicStructureCard";
 import { ConfigurationStatusCard } from "./components/ConfigurationStatusCard";
 import { ConfigurationHistoryCard } from "./components/ConfigurationHistoryCard";
-import { SmartConfigurationWizard } from "./components/SmartConfigurationWizard"; // 🚀 NEW SMART WIZARD
+import { SmartConfigurationWizard } from "./components/SmartConfigurationWizard";
 
-export default function SchoolConfigurationPage() {
+function SchoolConfigurationContent() {
+  const searchParams = useSearchParams();
   const { data, isLoading } = useSchoolConfiguration();
   const saveMutation = useSaveSchoolConfiguration();
   
-  const [editing, setEditing] = useState(false);
+  const [editing, setEditing] = useState(searchParams.get("edit") === "true");
   
   const config = data?.configuration;
   const history = data?.history || [];
@@ -47,17 +49,43 @@ export default function SchoolConfigurationPage() {
           </>
         ) : (
           <div className="space-y-6">
-            {/* 🚀 THE NEW AUTONOMOUS SMART WIZARD */}
-            <SmartConfigurationWizard onGenerated={handleWizardComplete} />
+            {isConfigured && (
+              <div className="flex justify-between items-center bg-blue-50 border border-blue-200 p-4 rounded-2xl">
+                <div>
+                  <h3 className="font-bold text-blue-900 text-sm">Editing Existing Configuration</h3>
+                  <p className="text-xs text-blue-700">Updating settings will automatically synchronize classes, sections, and fee structures.</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setEditing(false)}
+                  className="px-4 py-2 bg-white text-gray-700 rounded-xl text-xs font-bold border border-gray-200 hover:bg-gray-50 transition"
+                >
+                  Cancel / Return to Overview
+                </button>
+              </div>
+            )}
+            
+            <SmartConfigurationWizard
+              initialConfig={config}
+              onGenerated={handleWizardComplete}
+            />
             
             {saveMutation.isPending && (
               <div className="flex justify-center items-center text-blue-600 font-bold text-lg">
-                <Loader2 className="animate-spin mr-2" /> Saving Autonomous Configuration...
+                <Loader2 className="animate-spin mr-2" /> Saving & Synchronizing Configuration...
               </div>
             )}
           </div>
         )}
       </div>
     </RequirePermission>
+  );
+}
+
+export default function SchoolConfigurationPage() {
+  return (
+    <Suspense fallback={<div className="flex h-72 items-center justify-center"><Loader2 className="animate-spin text-blue-600" /></div>}>
+      <SchoolConfigurationContent />
+    </Suspense>
   );
 }

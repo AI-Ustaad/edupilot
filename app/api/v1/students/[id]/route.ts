@@ -44,6 +44,8 @@ export const PUT = withErrorHandler(
   )
 );
 
+export const PATCH = PUT;
+
 export const DELETE = withErrorHandler(
   withAuth(
     withTenant(

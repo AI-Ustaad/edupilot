@@ -76,6 +76,12 @@ export const useCreateStudent = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QueryKeys.students(tenantId) });
+      queryClient.invalidateQueries({ queryKey: ["students"] });
+      queryClient.invalidateQueries({ queryKey: ["classes"] });
+      queryClient.invalidateQueries({ queryKey: ["fees"] });
+      queryClient.invalidateQueries({ queryKey: ["attendance"] });
+      queryClient.invalidateQueries({ queryKey: ["results"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
       queryClient.invalidateQueries({ queryKey: QueryKeys.dashboard(tenantId) });
     },
   });
@@ -94,6 +100,14 @@ export const useUpdateStudent = () => {
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: QueryKeys.students(tenantId) });
       queryClient.invalidateQueries({ queryKey: QueryKeys.student(tenantId, variables.id) });
+      queryClient.invalidateQueries({ queryKey: ["students"] });
+      queryClient.invalidateQueries({ queryKey: ["student", variables.id] });
+      queryClient.invalidateQueries({ queryKey: ["classes"] });
+      queryClient.invalidateQueries({ queryKey: ["fees"] });
+      queryClient.invalidateQueries({ queryKey: ["attendance"] });
+      queryClient.invalidateQueries({ queryKey: ["results"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+      queryClient.invalidateQueries({ queryKey: QueryKeys.dashboard(tenantId) });
     },
   });
 };

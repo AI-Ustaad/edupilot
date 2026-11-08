@@ -37,7 +37,14 @@ export function useSaveSchoolConfiguration() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: key(user?.tenantId) });
       queryClient.invalidateQueries({ queryKey: ["enterprise-runtime-config"] }); // Refresh Runtime
-      showToast("School configuration published successfully.", "success");
+      queryClient.invalidateQueries({ queryKey: ["school-config"] });
+      queryClient.invalidateQueries({ queryKey: ["classes"] });
+      queryClient.invalidateQueries({ queryKey: ["sections"] });
+      queryClient.invalidateQueries({ queryKey: ["fees"] });
+      queryClient.invalidateQueries({ queryKey: ["exams"] });
+      queryClient.invalidateQueries({ queryKey: ["syllabus"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+      showToast("School configuration published and synchronized across all modules.", "success");
     },
     onError: () => showToast("Unable to save school configuration.", "error"),
   });

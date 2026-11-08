@@ -61,3 +61,38 @@ export const POST = withErrorHandler(
   })
 );
 
+export const PUT = withErrorHandler(
+  withAuthAndPermission(PERMISSIONS.students.update, async (req, context) => {
+    const tenantId = context.user.tenantId;
+    let body;
+    try {
+      body = await req.json();
+    } catch {
+      return createErrorResponse(400, "Invalid JSON");
+    }
+
+    const { searchParams } = new URL(req.url);
+    const id = body?.id || searchParams.get("id");
+    if (!id) return createErrorResponse(400, "Student ID is required");
+
+    const service = new StudentService();
+    const updated = await service.update(tenantId, id, body, context.user.uid);
+    return createSuccessResponse(updated, { message: "Student updated" });
+  })
+);
+
+export const PATCH = PUT;
+
+export const DELETE = withErrorHandler(
+  withAuthAndPermission(PERMISSIONS.students.delete, async (req, context) => {
+    const tenantId = context.user.tenantId;
+    const { searchParams } = new URL(req.url);
+    const id = searchParams.get("id");
+    if (!id) return createErrorResponse(400, "Student ID is required");
+
+    const service = new StudentService();
+    await service.delete(tenantId, id, context.user.uid);
+    return createSuccessResponse(null, { message: "Student deleted" });
+  })
+);
+

@@ -34,6 +34,8 @@ export const PUT = withAuthAndPermission(PERMISSIONS.staff.update, async (req, c
   return createSuccessResponse(null, { message: "Staff updated successfully" });
 });
 
+export const PATCH = PUT;
+
 export const DELETE = withAuthAndPermission(PERMISSIONS.staff.delete, async (req, context) => {
   const tenantId = context.user.tenantId;
   const url = new URL(req.url);

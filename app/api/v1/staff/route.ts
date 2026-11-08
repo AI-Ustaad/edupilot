@@ -77,3 +77,42 @@ export const POST = withRateLimit(standardRateLimit)(
     )
   )
 );
+
+export const PUT = withErrorHandler(
+  withAuth(
+    withTenant(
+      withPermission(PERMISSIONS.staff.update)(
+        async (req: Request, { tenantId, user }: TenantContext) => {
+          const body = await req.json();
+          const { searchParams } = new URL(req.url);
+          const id = body?.id || searchParams.get("id");
+          if (!id) return createApiResponse(400, null, "Staff ID is required");
+
+          const service = new StaffService();
+          await service.update(tenantId, id, body, user.uid);
+          return createSuccessResponse(null, { message: "Staff updated successfully" });
+        }
+      )
+    )
+  )
+);
+
+export const PATCH = PUT;
+
+export const DELETE = withErrorHandler(
+  withAuth(
+    withTenant(
+      withPermission(PERMISSIONS.staff.delete)(
+        async (req: Request, { tenantId, user }: TenantContext) => {
+          const { searchParams } = new URL(req.url);
+          const id = searchParams.get("id");
+          if (!id) return createApiResponse(400, null, "Staff ID is required");
+
+          const service = new StaffService();
+          await service.delete(tenantId, id, user.uid);
+          return createSuccessResponse(null, { message: "Staff deleted successfully" });
+        }
+      )
+    )
+  )
+);
