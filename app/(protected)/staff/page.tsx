@@ -90,8 +90,14 @@ export default function StaffDirectoryPage() {
   const exportCSV = () => {
     const headers = ["Name", "Designation", "Department", "Category", "Status", "Email", "Phone", "CNIC"];
     const rows = staff.map((s: any) => [
-      s.personal?.fullName || "", s.professional?.designation || "", s.professional?.department || "",
-      s.category || "", s.status || "active", s.contact?.email || "", s.contact?.mobile || "", s.personal?.cnic || "",
+      s.personal?.fullName || s.fullName || s.name || "",
+      s.professional?.designation || s.designation || s.role || "",
+      s.professional?.department || s.department || "",
+      s.category || "Teaching",
+      s.status || "active",
+      s.contact?.email || s.email || "",
+      s.contact?.mobile || s.mobile || s.phone || "",
+      s.personal?.cnic || s.cnic || "",
     ]);
     const csv = [headers.join(","), ...rows.map(r => r.map(c => `"${c}"`).join(","))].join("\n");
     const blob = new Blob([csv], { type: "text/csv" });

@@ -30,10 +30,35 @@ export default function PromoteStudentsPage() {
   const { data: studentsData, isLoading } = useStudents();
   const students: any[] = Array.isArray(studentsData) ? studentsData : [];
 
-  // Filter students by fromClass
+  const normClass = (c: any) => String(c || "").replace(/^Class\s*/i, "").trim().toLowerCase();
+
+  // Dynamic Class Options derived from students and base options
+  const availableClasses = useMemo(() => {
+    const set = new Set<string>();
+    CLASS_OPTIONS.forEach(c => set.add(c));
+    students.forEach((s: any) => {
+      const c = String(s.classGrade || s.class || "").replace(/^Class\s*/i, "").trim();
+      if (c) set.add(c);
+    });
+    return Array.from(set).sort((a, b) => {
+      const numA = parseInt(a, 10);
+      const numB = parseInt(b, 10);
+      if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
+      return a.localeCompare(b);
+    });
+  }, [students]);
+
+  // Filter students by fromClass (normalized and sorted numerically by roll number)
   const eligibleStudents = useMemo(() => {
     if (!fromClass) return [];
-    return students.filter(s => s.classGrade === fromClass && (s.status || "active") === "active" && !s.deleted);
+    const target = normClass(fromClass);
+    return students
+      .filter(s => normClass(s.classGrade || s.class) === target && (s.status || "active").toLowerCase() === "active" && !s.deleted)
+      .sort((a, b) => {
+        const rollA = Number(String(a.rollNumber || "").replace(/\D/g, "")) || 0;
+        const rollB = Number(String(b.rollNumber || "").replace(/\D/g, "")) || 0;
+        return rollA - rollB;
+      });
   }, [students, fromClass]);
 
   // Promotion mutation
@@ -100,14 +125,14 @@ export default function PromoteStudentsPage() {
             <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">From Class</label>
             <select value={fromClass} onChange={e => { setFromClass(e.target.value); setSelectedIds(new Set()); setResult(null); }} className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
               <option value="">Select class</option>
-              {CLASS_OPTIONS.map(c => <option key={c} value={c}>Class {c}</option>)}
+              {availableClasses.map(c => <option key={c} value={c}>{c.startsWith("Class ") ? c : `Class ${c}`}</option>)}
             </select>
           </div>
           <div>
             <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">To Class</label>
             <select value={toClass} onChange={e => setToClass(e.target.value)} className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
               <option value="">Select class</option>
-              {CLASS_OPTIONS.map(c => <option key={c} value={c}>Class {c}</option>)}
+              {availableClasses.map(c => <option key={c} value={c}>{c.startsWith("Class ") ? c : `Class ${c}`}</option>)}
             </select>
           </div>
           <div>

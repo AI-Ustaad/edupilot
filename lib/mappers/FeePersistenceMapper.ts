@@ -82,11 +82,15 @@ export class FeePersistenceMapper {
       : 0;
 
     // 2. Resolve Assessed (amount): original fee obligation
-    const assessed = isFiniteNumber(doc.amount)
+    let assessed = isFiniteNumber(doc.amount)
       ? Math.max(0, doc.amount)
       : isFiniteNumber(doc.paymentDetails?.amount)
       ? Math.max(0, doc.paymentDetails.amount)
-      : (isFiniteNumber(doc.amountDue) ? Math.max(0, doc.amountDue) + collected : collected);
+      : isFiniteNumber(doc.financial?.amount)
+      ? Math.max(0, doc.financial.amount)
+      : isFiniteNumber(doc.amountDue)
+      ? Math.max(0, doc.amountDue) + collected
+      : collected;
 
     // 3. Resolve Outstanding Balance (amountDue): amount still owed
     let outstanding: number;
@@ -94,10 +98,10 @@ export class FeePersistenceMapper {
       outstanding = Math.max(0, doc.amountDue);
     } else if (isFiniteNumber(doc.paymentDetails?.remainingAmount)) {
       outstanding = Math.max(0, doc.paymentDetails.remainingAmount);
-    } else if (isFiniteNumber(doc.amount) || isFiniteNumber(doc.paymentDetails?.amount)) {
-      outstanding = Math.max(0, assessed - collected);
+    } else if (isFiniteNumber(doc.financial?.amountDue)) {
+      outstanding = Math.max(0, doc.financial.amountDue);
     } else {
-      outstanding = 0;
+      outstanding = Math.max(0, assessed - collected);
     }
 
     // 4. Resolve Canonical Status (paid, partial, pending)
@@ -112,13 +116,25 @@ export class FeePersistenceMapper {
       }
     }
 
+    // Clean up classGrade / section duplicate strings
+    let classGrade = doc.classGrade || doc.financial?.classGrade || "";
+    let section = doc.section || "";
+    if (classGrade.includes("CLASSCLASS") || classGrade.includes("SECTION")) {
+      const match = classGrade.match(/CLASS.*?(\d+).*?SECTION\s*([A-Za-z])/i);
+      if (match) {
+        classGrade = `Class ${match[1]}`;
+        section = match[2].toUpperCase();
+      } else {
+        classGrade = classGrade.replace(/CLASSCLASS/i, "Class").trim();
+      }
+    }
+
     const feeMonth = doc.feeMonth || doc.paymentDetails?.billingMonth || doc.financial?.feeMonth || "";
     const paymentMethod = doc.paymentMethod || doc.paymentDetails?.paymentMethod || doc.financial?.paymentMethod || "Cash";
     const studentId = doc.studentId || doc.identity?.studentId || "";
     const studentName = doc.studentName || doc.identity?.studentName || "";
     const rollNumber = doc.rollNumber ?? doc.identity?.rollNumber;
     const email = doc.email || doc.identity?.email;
-    const classGrade = doc.classGrade || doc.financial?.classGrade;
     const dueDate = doc.dueDate || doc.financial?.dueDate;
     const remarks = doc.remarks || doc.financial?.remarks;
 

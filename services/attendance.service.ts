@@ -106,10 +106,12 @@ export class AttendanceService implements IAttendanceService {
     const records: AttendanceDocument[] = validRecords.map(rec => {
       const student = studentMap.get(rec.studentId)!;
       const docId = `${rec.studentId}_${rec.date}`;
+      const cls = student.classGrade || rec.classGrade;
+      const sec = student.section || rec.section || "A";
       const entity = AttendancePersistenceMapper.fromDTO({
         ...rec,
-        classGrade: student.classGrade,
-        section: student.section || "A",
+        classGrade: cls,
+        section: sec,
       });
       const document = AttendancePersistenceMapper.toFirestore(entity, userId);
       document.id = docId;

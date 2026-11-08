@@ -21,6 +21,23 @@ export const GET = withErrorHandler(
         if (!id) return createErrorResponse(400, "Student ID is required");
 
         const service = new StudentService();
+        try {
+          const data360 = await service.student360(tenantId, id);
+          if (data360 && data360.student) {
+            return createSuccessResponse({
+              ...data360.student,
+              student: data360.student,
+              attendance: data360.attendance?.records || [],
+              fees: data360.fees?.records || [],
+              marks: data360.marks?.exams || [],
+              timeline: data360.timeline || [],
+              analytics: (data360 as any).analytics,
+            });
+          }
+        } catch {
+          // fallback to getById
+        }
+
         const student = await service.getById(tenantId, id);
         return createSuccessResponse(student);
       })

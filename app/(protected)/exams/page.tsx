@@ -16,9 +16,21 @@ const norm = (str?: string) => (str || "").trim().toLowerCase();
 interface StudentRecord { id: string; classGrade?: string; section?: string; rollNumber?: number; fullName?: string; name?: string; fatherName?: string; photoBase64?: string; }
 interface ClassSection { id: string; classGrade?: string; name?: string; sectionName?: string; section?: string; subjects?: { core?: string[]; electives?: string[] }; }
 
-const fetchStudents = async (): Promise<StudentRecord[]> => { const res = await apiClient.get("/students") as any; return res?.data || res || []; };
-const fetchSections = async (): Promise<ClassSection[]> => { const res = await apiClient.get("/classes") as any; return res?.data || res || []; };
-const fetchMarks = async (p: { classGrade: string; section: string; term: string; subject: string }): Promise<(Mark & { id: string })[]> => { const res = await apiClient.get(`/marks?${new URLSearchParams(Object.entries(p).filter(([,v]) => v))}`) as any; return res?.data || []; };
+const fetchStudents = async (): Promise<StudentRecord[]> => {
+  const res = await apiClient.get("/students") as any;
+  const payload = res?.data?.data ?? res?.data;
+  return Array.isArray(payload) ? payload : [];
+};
+const fetchSections = async (): Promise<ClassSection[]> => {
+  const res = await apiClient.get("/classes") as any;
+  const payload = res?.data?.data ?? res?.data;
+  return Array.isArray(payload) ? payload : [];
+};
+const fetchMarks = async (p: { classGrade: string; section: string; term: string; subject: string }): Promise<(Mark & { id: string })[]> => {
+  const res = await apiClient.get(`/marks?${new URLSearchParams(Object.entries(p).filter(([,v]) => v))}`) as any;
+  const payload = res?.data?.data ?? res?.data;
+  return Array.isArray(payload) ? payload : [];
+};
 const saveMarkApi = async (d: Record<string, unknown>) => { return (await apiClient.post("/marks", d)) as any; };
 const deleteMarkApi = async (id: string) => { return (await apiClient.delete(`/marks?id=${id}`)) as any; };
 
@@ -35,20 +47,30 @@ export default function ExamsAndMarksPage() {
   const [err, setErr] = useState("");
   const [ok, setOk] = useState(false);
 
-  const { data: students = [], isLoading: ls } = useQuery({ queryKey: ["students", user?.tenantId], queryFn: fetchStudents, enabled: !!user?.tenantId });
-  const { data: sections = [], isLoading: lsec } = useQuery({ queryKey: ["sections", user?.tenantId], queryFn: fetchSections, enabled: !!user?.tenantId });
-  const { data: marks = [], isLoading: lm } = useQuery({ queryKey: ["marks", user?.tenantId, cls, sec, term, sub], queryFn: () => fetchMarks({ classGrade: cls, section: sec, term, subject: sub }), enabled: !!user?.tenantId && !!cls && !!sec && !!sub });
+  const { data: rawStudents = [], isLoading: ls } = useQuery({ queryKey: ["students", user?.tenantId], queryFn: fetchStudents, enabled: !!user?.tenantId });
+  const { data: rawSections = [], isLoading: lsec } = useQuery({ queryKey: ["sections", user?.tenantId], queryFn: fetchSections, enabled: !!user?.tenantId });
+  const { data: rawMarks = [], isLoading: lm } = useQuery({ queryKey: ["marks", user?.tenantId, cls, sec, term, sub], queryFn: () => fetchMarks({ classGrade: cls, section: sec, term, subject: sub }), enabled: !!user?.tenantId && !!cls && !!sec && !!sub });
+
+  const students = Array.isArray(rawStudents) ? rawStudents : [];
+  const sections = Array.isArray(rawSections) ? rawSections : [];
+  const marks = Array.isArray(rawMarks) ? rawMarks : [];
 
   useEffect(() => { setEntry({}); }, [term, cls, sec, sub]);
 
   const saveMut = useMutation({ mutationFn: saveMarkApi, onSuccess: () => { qc.invalidateQueries({ queryKey: ["marks", user?.tenantId, cls, sec, term, sub] }); setOk(true); setTimeout(() => setOk(false), 3000); }, onError: () => setErr("Failed to save mark.") });
   const delMut = useMutation({ mutationFn: deleteMarkApi, onSuccess: () => { qc.invalidateQueries({ queryKey: ["marks", user?.tenantId, cls, sec, term, sub] }); }, onError: () => setErr("Failed to delete mark.") });
 
-  const classes = Array.from(new Set(sections.map(s => s.classGrade || s.name || "")));
+  const classes = Array.from(new Set(sections.map(s => s.classGrade || s.name || "").filter(Boolean)));
   const secs = sections.filter(s => norm(s.classGrade || s.name) === norm(cls));
   const active = sections.find(s => norm(s.classGrade || s.name) === norm(cls) && norm(s.sectionName || s.section) === norm(sec));
-  const subs = active?.subjects ? [...(active.subjects.core || []), ...(active.subjects.electives || [])] : [];
-  const filtered = students.filter(s => norm(s.classGrade) === norm(cls) && norm(s.section) === norm(sec));
+  const mappedSubs = active?.subjects ? [...(active.subjects.core || []), ...(active.subjects.electives || [])] : [];
+  const subs = mappedSubs.length > 0 ? mappedSubs : ["English", "Mathematics", "Science", "Urdu", "Islamiat", "Social Studies", "Physics", "Chemistry", "Biology"];
+  
+  const filtered = students.filter(s => {
+    const sCls = norm(s.classGrade).replace(/^class\s*/i, "");
+    const targetCls = norm(cls).replace(/^class\s*/i, "");
+    return sCls === targetCls && norm(s.section) === norm(sec);
+  });
 
   const grade = (o: number, t: number) => { if (!t || !o) return "-"; const p = (o / t) * 100; if (p >= 90) return "A++"; if (p >= 80) return "A+"; if (p >= 70) return "A"; if (p >= 60) return "B"; if (p >= 50) return "C"; if (p >= 40) return "D"; return "U"; };
 
@@ -95,7 +117,7 @@ export default function ExamsAndMarksPage() {
         : <div className="divide-y divide-slate-100">
             <div className="px-6 py-4 bg-[#0F172A] text-gray-900 flex items-center justify-between"><div><h2 className="text-lg font-black uppercase">{cls} - {sec}</h2><p className="text-xs text-slate-300 font-medium">Entering marks for: <span className="font-bold text-[#3ac47d] uppercase">{sub}</span></p></div></div>
             <div className="px-6 py-3 grid grid-cols-12 gap-4 bg-slate-50 text-[10px] font-bold text-slate-400 uppercase tracking-widest border-b border-slate-200"><div className="col-span-1">Roll No</div><div className="col-span-4">Student Name</div><div className="col-span-2 text-center">Total Marks</div><div className="col-span-2 text-center">Obtained</div><div className="col-span-3 text-right">Result & Action</div></div>
-            {filtered.sort((a, b) => (a.rollNumber || 0) - (b.rollNumber || 0)).map(s => {
+            {filtered.sort((a, b) => (Number(String(a.rollNumber).replace(/\D/g, "")) || 0) - (Number(String(b.rollNumber).replace(/\D/g, "")) || 0)).map(s => {
               const oStr = getVal(s.id, "obtained"), tStr = getVal(s.id, "total");
               const pct = tStr && oStr ? ((Number(oStr) / Number(tStr)) * 100).toFixed(1) : "0.0";
               const g = grade(Number(oStr), Number(tStr));

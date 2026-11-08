@@ -1,14 +1,28 @@
 "use client";
-import { useState } from "react";
-import { Clock, AlertCircle, Video, Trash2, Loader2 } from "lucide-react";
+import { useState, useMemo } from "react";
+import { Clock, AlertCircle, Video, Trash2, Loader2, Plus } from "lucide-react";
 import RequirePermission from "@/components/RequirePermission";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 
 // 🚀 Layered Architecture Hooks
 import { useClasses } from "@/hooks/useClasses";
 import { useSettings } from "@/hooks/useSettings";
+import { useStaff } from "@/hooks/useStaff";
 import { useTimetable, useCreateTimetableEntry, useDeleteTimetableEntry } from "@/hooks/useTimetable";
 import { TableSkeleton } from "@/components/Skeletons";
+
+const FALLBACK_SUBJECTS = [
+  "English", 
+  "Mathematics", 
+  "Science", 
+  "Urdu", 
+  "Islamiat", 
+  "Pakistan Studies", 
+  "Computer Science", 
+  "Physics", 
+  "Chemistry", 
+  "Biology"
+];
 
 export default function TimetablePage() {
   const [form, setForm] = useState({ day: "", period: "", subject: "", classGrade: "", teacher: "", meetingLink: "" });
@@ -16,7 +30,34 @@ export default function TimetablePage() {
   // 1. Fetch Live Data
   const { data: classes = [] } = useClasses();
   const { data: settings } = useSettings();
-  const subjects = settings?.subjects || [];
+  const { data: staffData = [] } = useStaff();
+  const staffList: any[] = Array.isArray(staffData) ? staffData : [];
+
+  // Fallback subjects
+  const subjects = useMemo(() => {
+    if (settings?.subjects && Array.isArray(settings.subjects) && settings.subjects.length > 0) {
+      return settings.subjects;
+    }
+    return FALLBACK_SUBJECTS;
+  }, [settings?.subjects]);
+
+  // Unique classes
+  const uniqueClasses = useMemo(() => {
+    const set = new Set<string>();
+    classes.forEach((c: any) => {
+      const cls = c.classGrade || c.name;
+      if (cls) set.add(cls);
+    });
+    if (set.size === 0) {
+      ["Class 1", "Class 2", "Class 3", "Class 4", "Class 5", "Class 6", "Class 7", "Class 8", "Class 9", "Class 10"].forEach(c => set.add(c));
+    }
+    return Array.from(set);
+  }, [classes]);
+
+  // Teachers list from staff
+  const teachers = useMemo(() => {
+    return staffList.map((s: any) => s.fullName || s.name || s.personal?.fullName).filter(Boolean);
+  }, [staffList]);
   
   const { data: entries = [], isLoading, error } = useTimetable();
   const createMutation = useCreateTimetableEntry();
@@ -54,18 +95,32 @@ export default function TimetablePage() {
               <option value="">Select Day</option>
               {["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"].map(d => <option key={d} value={d}>{d}</option>)}
             </select>
-            <input placeholder="Period (e.g., 1st)" value={form.period} onChange={e => setForm({...form, period: e.target.value})} className="bg-gray-50 border border-gray-300 rounded-xl p-3 text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none" required />
+            <input placeholder="Period (e.g., 1st Period, 9:00 AM)" value={form.period} onChange={e => setForm({...form, period: e.target.value})} className="bg-gray-50 border border-gray-300 rounded-xl p-3 text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none" required />
             <select value={form.subject} onChange={e => setForm({...form, subject: e.target.value})} className="bg-gray-50 border border-gray-300 rounded-xl p-3 text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none" required>
               <option value="">Select Subject</option>
-              {subjects.map(s => <option key={s} value={s}>{s}</option>)}
+              {subjects.map((s: string) => <option key={s} value={s}>{s}</option>)}
             </select>
             
             <select value={form.classGrade} onChange={e => setForm({...form, classGrade: e.target.value})} className="bg-gray-50 border border-gray-300 rounded-xl p-3 text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none" required>
               <option value="">Select Class</option>
-              {classes.map((c: any) => <option key={c.id} value={c.classGrade}>{c.classGrade}</option>)}
+              {uniqueClasses.map((clsName: string) => <option key={clsName} value={clsName}>{clsName}</option>)}
             </select>
 
-            <input placeholder="Teacher Name" value={form.teacher} onChange={e => setForm({...form, teacher: e.target.value})} className="bg-gray-50 border border-gray-300 rounded-xl p-3 text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none" required />
+            {/* Teacher: select from staff or enter custom */}
+            {teachers.length > 0 ? (
+              <select 
+                value={form.teacher} 
+                onChange={e => setForm({...form, teacher: e.target.value})} 
+                className="bg-gray-50 border border-gray-300 rounded-xl p-3 text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none" 
+                required
+              >
+                <option value="">Select Teacher</option>
+                {teachers.map((t: string) => <option key={t} value={t}>{t}</option>)}
+              </select>
+            ) : (
+              <input placeholder="Teacher Name" value={form.teacher} onChange={e => setForm({...form, teacher: e.target.value})} className="bg-gray-50 border border-gray-300 rounded-xl p-3 text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none" required />
+            )}
+
             <input placeholder="Meeting Link (optional)" value={form.meetingLink} onChange={e => setForm({...form, meetingLink: e.target.value})} className="bg-gray-50 border border-gray-300 rounded-xl p-3 text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none" />
             
             <button type="submit" disabled={createMutation.isPending} className="bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl font-bold col-span-full transition disabled:opacity-50 flex items-center justify-center gap-2">

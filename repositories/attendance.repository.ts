@@ -29,7 +29,15 @@ export class AttendanceRepository extends BaseRepository<AttendanceDocument> imp
       query = query.where("date", "==", filters.date);
     }
     if (filters?.classGrade) {
-      query = query.where("classGrade", "==", filters.classGrade);
+      const cls = filters.classGrade.trim();
+      const stripped = cls.replace(/^Class\s*/i, "");
+      const withPrefix = `Class ${stripped}`;
+      const candidates = Array.from(new Set([cls, stripped, withPrefix])).filter(Boolean);
+      if (candidates.length === 1) {
+        query = query.where("classGrade", "==", candidates[0]);
+      } else {
+        query = query.where("classGrade", "in", candidates);
+      }
     }
     if (filters?.section) {
       query = query.where("section", "==", filters.section);

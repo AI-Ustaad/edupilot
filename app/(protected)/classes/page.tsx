@@ -4,6 +4,7 @@ import { School, Plus, Trash2, Loader2, CheckCircle, AlertCircle, Users } from "
 import RequirePermission from "@/components/RequirePermission";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 import { useClasses, useCreateClass, useDeleteClass } from "@/hooks/useClasses";
+import { useStudents } from "@/hooks/useStudents";
 import { useToast } from "@/components/ToastProvider";
 
 // 🛡️ Natural Sorting Logic (Prep, Class 1, Class 2, Class 10)
@@ -27,6 +28,8 @@ const sortClasses = (a: any, b: any) => {
 
 export default function ClassesManagementPage() {
   const { data: sections = [], isLoading } = useClasses();
+  const { data: studentsData = [] } = useStudents();
+  const students: any[] = Array.isArray(studentsData) ? studentsData : [];
   const createMutation = useCreateClass();
   const deleteMutation = useDeleteClass();
   const { showToast } = useToast();
@@ -34,6 +37,27 @@ export default function ClassesManagementPage() {
   const [newClass, setNewClass] = useState("");
   const [newSection, setNewSection] = useState("");
   const [error, setError] = useState("");
+
+  // Dynamic student counts
+  const studentCounts = useMemo(() => {
+    const classMap: Record<string, number> = {};
+    const sectionMap: Record<string, number> = {};
+
+    students.forEach((s: any) => {
+      const cls = String(s.classGrade || s.class || "").replace(/^Class\s*/i, "").trim().toLowerCase();
+      const sec = String(s.section || "").replace(/^Section\s*/i, "").trim().toLowerCase();
+
+      if (cls) {
+        classMap[cls] = (classMap[cls] || 0) + 1;
+        if (sec) {
+          const key = `${cls}__${sec}`;
+          sectionMap[key] = (sectionMap[key] || 0) + 1;
+        }
+      }
+    });
+
+    return { classMap, sectionMap };
+  }, [students]);
 
   // Group and Sort Data Enterprise Style
   const groupedSections = useMemo(() => {
@@ -163,7 +187,9 @@ export default function ClassesManagementPage() {
               {Object.entries(groupedSections).map(([className, sectionsList]: any) => {
                 // Clean display name
                 const displayName = className.startsWith("Class ") ? className : `Class ${className}`;
-                const totalStudents = sectionsList.reduce((sum: number, sec: any) => sum + (sec.studentCount || 0), 0);
+                const normCls = className.replace(/^Class\s*/i, "").trim().toLowerCase();
+                const dynamicTotal = studentCounts.classMap[normCls] ?? 0;
+                const totalStudents = dynamicTotal > 0 ? dynamicTotal : sectionsList.reduce((sum: number, sec: any) => sum + (sec.studentCount || 0), 0);
 
                 return (
                   <div key={className} className="p-6 hover:bg-gray-50 transition-colors">
@@ -187,6 +213,10 @@ export default function ClassesManagementPage() {
                     <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
                       {sectionsList.map((sec: any) => {
                         const secName = sec.sectionName || sec.section;
+                        const normSec = String(secName || "").replace(/^Section\s*/i, "").trim().toLowerCase();
+                        const dynamicSecCount = studentCounts.sectionMap[`${normCls}__${normSec}`] ?? 0;
+                        const displaySecCount = dynamicSecCount > 0 ? dynamicSecCount : (sec.studentCount || 0);
+
                         return (
                           <div 
                             key={sec.id} 
@@ -205,6 +235,7 @@ export default function ClassesManagementPage() {
                               </RequirePermission>
                             </div>
                             <div className="text-xs text-gray-500 space-y-1">
+                              <p>Students: <span className="font-bold text-blue-600">{displaySecCount}</span></p>
                               <p>Teacher: <span className="font-medium text-gray-600">{sec.incharge || "Not Assigned"}</span></p>
                               <p>Capacity: <span className="font-medium text-gray-600">{sec.capacity || "N/A"}</span></p>
                             </div>

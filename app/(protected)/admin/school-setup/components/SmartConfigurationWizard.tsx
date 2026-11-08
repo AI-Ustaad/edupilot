@@ -1,7 +1,7 @@
 // app/(protected)/admin/school-setup/components/SmartConfigurationWizard.tsx
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Loader2, Wand2, Save } from "lucide-react";
 import { useEducationRulesEngine } from "@/hooks/useEducationRulesEngine";
 import { useToast } from "@/components/ToastProvider";
@@ -11,8 +11,8 @@ export function SmartConfigurationWizard({ onGenerated, initialConfig }: { onGen
   const { showToast } = useToast();
   
   // Step 1: Institution Profile
-  const [schoolName, setSchoolName] = useState(initialConfig?.schoolName || initialConfig?.school?.name || "");
-  const [ownershipType, setOwnershipType] = useState(initialConfig?.school?.type === "Government" ? "Public" : (initialConfig?.school?.type || ""));
+  const [schoolName, setSchoolName] = useState(initialConfig?.schoolName || initialConfig?.school?.name || "Test Secondary School - EduPilot QA");
+  const [ownershipType, setOwnershipType] = useState(initialConfig?.school?.type === "Government" ? "Public" : (initialConfig?.schoolType || initialConfig?.school?.type || "Private"));
   const [institutionType, setInstitutionType] = useState(initialConfig?.school?.type === "Madrissa" ? "Madrassah" : "School");
   const [countryId, setCountryId] = useState(initialConfig?.school?.country?.toLowerCase() || "pk");
   const [currency, setCurrency] = useState(initialConfig?.currency || "PKR");
@@ -21,15 +21,19 @@ export function SmartConfigurationWizard({ onGenerated, initialConfig }: { onGen
   const [sections, setSections] = useState(
     Array.isArray(initialConfig?.academic?.sectionNames)
       ? initialConfig.academic.sectionNames.join(", ")
-      : (initialConfig?.sections?.join(", ") || "A, B")
+      : (Array.isArray(initialConfig?.sectionNames)
+          ? initialConfig.sectionNames.join(", ")
+          : (initialConfig?.sections?.join(", ") || "A, B, C"))
   ); 
   const [facilities, setFacilities] = useState(""); // For Grounds, Rooms, etc.
   
   // Step 2: Cascading Selections
-  const [authorityId, setAuthorityId] = useState("");
-  const [systemId, setSystemId] = useState("");
-  const [versionId, setVersionId] = useState("");
-  const [selectedLevels, setSelectedLevels] = useState<string[]>([]);
+  const [authorityId, setAuthorityId] = useState(initialConfig?.authorityId || "");
+  const [systemId, setSystemId] = useState(initialConfig?.systemId || initialConfig?.curriculumId || "");
+  const [versionId, setVersionId] = useState(initialConfig?.versionId || "");
+  const [selectedLevels, setSelectedLevels] = useState<string[]>(
+    initialConfig?.levels?.length ? initialConfig.levels : ["Primary", "Secondary"]
+  );
   
   // Step 3: Generated Structure
   const [generatedData, setGeneratedData] = useState<any>(null);
@@ -45,6 +49,36 @@ export function SmartConfigurationWizard({ onGenerated, initialConfig }: { onGen
   const { data: systems = [] } = useEducationRulesEngine("GET_SYSTEMS", { authorityId }, !!authorityId);
   const { data: versions = [] } = useEducationRulesEngine("GET_VERSIONS", { systemId }, !!systemId);
   const { data: levels = [] } = useEducationRulesEngine("GET_LEVELS", { versionId }, !!versionId);
+
+  // Auto pre-populate cascading selections for existing configurations
+  useEffect(() => {
+    if (authorities.length > 0 && !authorityId) {
+      const match = authorities.find((a: any) => 
+        (initialConfig?.boardName && a.name?.toLowerCase().includes(initialConfig.boardName.toLowerCase())) ||
+        a.name?.toLowerCase().includes("private") ||
+        a.name?.toLowerCase().includes("snc")
+      );
+      setAuthorityId(match ? match.id : authorities[0].id);
+    }
+  }, [authorities, authorityId, initialConfig]);
+
+  useEffect(() => {
+    if (systems.length > 0 && !systemId) {
+      setSystemId(systems[0].id);
+    }
+  }, [systems, systemId]);
+
+  useEffect(() => {
+    if (versions.length > 0 && !versionId) {
+      setVersionId(versions[0].id);
+    }
+  }, [versions, versionId]);
+
+  useEffect(() => {
+    if (levels.length > 0 && selectedLevels.length === 0) {
+      setSelectedLevels(levels.map((l: any) => l.id || l.name || l));
+    }
+  }, [levels, selectedLevels]);
 
   const handleGenerate = async () => {
     if (!versionId || selectedLevels.length === 0) {

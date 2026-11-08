@@ -4,7 +4,7 @@ import { z } from "zod";
 export const MarkAttendanceSchema = z.object({
   studentId: z.string().min(1, "Student ID is required"),
   studentName: z.string().optional(),
-  rollNumber: z.number().optional(),
+  rollNumber: z.union([z.number(), z.string()]).optional(),
   classGrade: z.string().min(1, "Class is required"),
   section: z.string().min(1, "Section is required"),
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Invalid date format (YYYY-MM-DD)"),

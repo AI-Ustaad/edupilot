@@ -9,7 +9,7 @@ import { PERMISSIONS } from "@/lib/auth/permissions";
 import { useClasses } from "@/hooks/useClasses";
 import { useStudents } from "@/hooks/useStudents";
 import { useRealtimeAttendance } from "@/hooks/useRealtimeAttendance"; // Live Hook
-import { useSaveAttendance } from "@/hooks/useAttendance"; // Save Mutation
+import { useAttendance, useSaveAttendance } from "@/hooks/useAttendance"; // Save Mutation & Server Query
 import { useToast } from "@/components/ToastProvider";
 
 export default function AttendancePage() {
@@ -23,19 +23,50 @@ export default function AttendancePage() {
 
   // 1. Fetch Live Classes
   const { data: classesData = [] } = useClasses();
-  const availableClasses = useMemo(() => Array.from(new Set(classesData.map((c: any) => c.classGrade))), [classesData]);
+  const availableClasses = useMemo(() => Array.from(new Set(classesData.map((c: any) => c.classGrade).filter(Boolean))), [classesData]);
   const availableSections = useMemo(() => classesData.filter((c: any) => c.classGrade === selectedClass).map((c: any) => c.sectionName || c.section), [classesData, selectedClass]);
 
   // 2. Fetch Live Students (Filtered by Class & Section)
-  const { data: students = [], isLoading: loadingStudents } = useStudents(
+  const { data: rawStudents = [], isLoading: loadingStudents } = useStudents(
     selectedClass && selectedSection ? { classGrade: selectedClass, section: selectedSection } : undefined
   );
 
-  // 3. 🚀 Fetch REAL-TIME Attendance for the day
-  const { data: attendanceRecords = [], isLoading: loadingAttendance } = useRealtimeAttendance(selectedClass, selectedSection, selectedDate);
+  // Numeric roll number sorting: 1, 2, ..., 9, 10 (never 1, 10, 2)
+  const students = useMemo(() => {
+    return [...rawStudents].sort((a: any, b: any) => {
+      const numA = Number(String(a.rollNumber || "").replace(/\D/g, "")) || 0;
+      const numB = Number(String(b.rollNumber || "").replace(/\D/g, "")) || 0;
+      if (numA !== numB) return numA - numB;
+      return (a.fullName || a.name || "").localeCompare(b.fullName || b.name || "");
+    });
+  }, [rawStudents]);
+
+  // 3. Fetch Attendance (both realtime listener and direct server query)
+  const { data: realtimeRecords = [], isLoading: loadingRealtime } = useRealtimeAttendance(selectedClass, selectedSection, selectedDate);
+  const { data: apiRecords = [], isLoading: loadingApi } = useAttendance(selectedClass, selectedSection, selectedDate);
+
+  const attendanceRecords = useMemo(() => {
+    return realtimeRecords.length > 0 ? realtimeRecords : apiRecords;
+  }, [realtimeRecords, apiRecords]);
 
   // 4. Save Mutation
   const saveMutation = useSaveAttendance();
+
+  const handleMarkStatus = async (student: any, status: "Present" | "Absent" | "Late") => {
+    setEntries(p => ({ ...p, [student.id]: status }));
+    try {
+      await saveMutation.mutateAsync({
+        studentId: student.id,
+        studentName: student.fullName || student.name,
+        classGrade: selectedClass,
+        section: selectedSection,
+        date: selectedDate,
+        status,
+      });
+    } catch {
+      // Non-fatal, handleSaveAll is also available
+    }
+  };
 
   const handleSaveAll = async () => {
     if (students.length === 0) return;
@@ -46,12 +77,11 @@ export default function AttendancePage() {
         classGrade: selectedClass,
         section: selectedSection,
         date: selectedDate,
-        // 🚀 FIX: Cast status to specific union type to satisfy TypeScript
-        status: (entries[student.id] || "Absent") as "Present" | "Absent" | "Leave" | "Late" | "HalfDay" | "Holiday",
+        status: (entries[student.id] || attendanceRecords.find((a: any) => a.studentId === student.id)?.status || "Absent") as "Present" | "Absent" | "Leave" | "Late" | "HalfDay" | "Holiday",
       }));
       await saveMutation.mutateAsync(bulkData);
       showToast("Attendance saved successfully!", "success");
-    } catch (err) {
+    } catch {
       showToast("Failed to save attendance.", "error");
     }
   };
@@ -81,7 +111,7 @@ export default function AttendancePage() {
             className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 shadow-md disabled:opacity-50"
           >
             {saveMutation.isPending ? <Loader2 className="animate-spin"/> : <Save size={18}/>} 
-            Save All
+            Save Attendance
           </button>
         </RequirePermission>
       </div>
@@ -100,7 +130,10 @@ export default function AttendancePage() {
           className="border border-gray-300 rounded-lg px-3 py-2 font-medium"
         >
           <option value="">Select Class</option>
-          {availableClasses.map((c: string) => <option key={c} value={c}>Class {c}</option>)}
+          {availableClasses.map((c: string) => {
+            const label = c.toLowerCase().startsWith("class ") ? c : `Class ${c}`;
+            return <option key={c} value={c}>{label}</option>;
+          })}
         </select>
         <select 
           value={selectedSection} 
@@ -119,7 +152,7 @@ export default function AttendancePage() {
           <Users size={18}/> Students
         </div>
         
-        {loadingStudents || loadingAttendance ? (
+        {loadingStudents || (loadingRealtime && loadingApi) ? (
           <div className="p-8 flex justify-center"><Loader2 className="animate-spin text-blue-500" size={32}/></div>
         ) : !selectedClass || !selectedSection ? (
           <div className="p-8 text-center text-gray-400 font-bold flex flex-col items-center gap-2">
@@ -133,7 +166,6 @@ export default function AttendancePage() {
         ) : (
           <div className="divide-y divide-gray-100">
             {students.map((student: any) => {
-              // 🚀 Real-time status check
               const existing = attendanceRecords.find((a: any) => a.studentId === student.id);
               const currentStatus = entries[student.id] || existing?.status || "Absent";
               
@@ -150,19 +182,19 @@ export default function AttendancePage() {
                   </div>
                   <div className="flex gap-2">
                     <button 
-                      onClick={() => setEntries(p => ({...p, [student.id]: "Present"}))}
+                      onClick={() => handleMarkStatus(student, "Present")}
                       className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${currentStatus === "Present" ? "bg-green-600 text-white" : "bg-gray-100 text-gray-600 hover:bg-green-50 hover:text-green-700"}`}
                     >
                       <CheckCircle2 size={14} className="inline mr-1"/> Present
                     </button>
                     <button 
-                      onClick={() => setEntries(p => ({...p, [student.id]: "Absent"}))}
+                      onClick={() => handleMarkStatus(student, "Absent")}
                       className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${currentStatus === "Absent" ? "bg-red-600 text-white" : "bg-gray-100 text-gray-600 hover:bg-red-50 hover:text-red-700"}`}
                     >
                       <XCircle size={14} className="inline mr-1"/> Absent
                     </button>
                     <button 
-                      onClick={() => setEntries(p => ({...p, [student.id]: "Late"}))}
+                      onClick={() => handleMarkStatus(student, "Late")}
                       className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${currentStatus === "Late" ? "bg-amber-500 text-white" : "bg-gray-100 text-gray-600 hover:bg-amber-50 hover:text-amber-700"}`}
                     >
                       <Clock size={14} className="inline mr-1"/> Late

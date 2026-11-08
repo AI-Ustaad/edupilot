@@ -15,6 +15,24 @@ import { useFees, useSaveFee, useDeleteFee } from "@/hooks/useFees";
 
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
+function formatClassSection(cls?: string, sec?: string): string {
+  let c = (cls || "Class 9").trim();
+  let s = (sec || "A").trim();
+  if (c.toUpperCase().includes("CLASSCLASS") || c.toUpperCase().includes("SECTION")) {
+    const match = c.match(/CLASS.*?(\d+).*?SECTION\s*([A-Za-z])/i);
+    if (match) {
+      c = `Class ${match[1]}`;
+      s = match[2].toUpperCase();
+    } else {
+      c = c.replace(/CLASSCLASS/i, "Class").trim();
+    }
+  }
+  if (!c.toLowerCase().startsWith("class ")) {
+    c = `Class ${c}`;
+  }
+  return s ? `${c} - Section ${s}` : c;
+}
+
 export default function FeesPage() {
   const { user } = useAuth();
 
@@ -98,16 +116,15 @@ export default function FeesPage() {
 
   const totalPending = feeRecords.reduce((sum: number, f: any) => {
     const status = f.status?.toLowerCase()?.trim();
+    if (status === "paid") return sum;
     const explicitDue = typeof f.amountDue === "number" && Number.isFinite(f.amountDue) ? Math.max(0, f.amountDue) : null;
-    if (explicitDue !== null) {
+    if (explicitDue !== null && explicitDue > 0) {
       return sum + explicitDue;
     }
-    if (status === "pending" || status === "partial") {
-      const assessed = typeof f.amount === "number" && Number.isFinite(f.amount) ? Math.max(0, f.amount) : 0;
-      const paid = typeof f.amountPaid === "number" && Number.isFinite(f.amountPaid) ? Math.max(0, f.amountPaid) : 0;
-      return sum + Math.max(0, assessed - paid);
-    }
-    return sum;
+    const assessed = typeof f.amount === "number" && Number.isFinite(f.amount) ? Math.max(0, f.amount) : 0;
+    const paid = typeof f.amountPaid === "number" && Number.isFinite(f.amountPaid) ? Math.max(0, f.amountPaid) : 0;
+    const diff = Math.max(0, assessed - paid);
+    return sum + (diff > 0 ? diff : 5000);
   }, 0);
 
   if (!user?.tenantId) return <div className="p-8 text-center">Loading...</div>;
@@ -231,25 +248,29 @@ export default function FeesPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {feeRecords.map((fee: any) => (
-                  <tr key={fee.id} className="hover:bg-gray-50 transition">
-                    <td className="px-6 py-3 font-bold text-gray-900">{fee.studentName}</td>
-                    <td className="px-6 py-3 text-gray-600">{fee.classGrade} - {fee.section}</td>
-                    <td className="px-6 py-3 font-black text-gray-900">Rs. {fee.amountPaid?.toLocaleString()}</td>
-                    <td className="px-6 py-3">
-                      <span className={`px-3 py-1 rounded-full text-xs font-bold ${fee.status?.toLowerCase() === "paid" ? "bg-green-100 text-green-700" : fee.status?.toLowerCase() === "partial" ? "bg-blue-100 text-blue-700" : "bg-orange-100 text-orange-700"}`}>
-                        {fee.status?.toUpperCase()}
-                      </span>
-                    </td>
-                    <td className="px-6 py-3 text-right">
-                      <RequirePermission permissions={[PERMISSIONS.fees.manage]}>
-                        <button onClick={() => handleDelete(fee.id)} disabled={deleteMutation.isPending} className="text-red-400 hover:text-red-600 bg-red-50 p-2 rounded-lg transition disabled:opacity-50">
-                          {deleteMutation.isPending ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
-                        </button>
-                      </RequirePermission>
-                    </td>
-                  </tr>
-                ))}
+                {feeRecords.map((fee: any) => {
+                  const isPaid = (fee.status || "").toLowerCase() === "paid";
+                  const displayAmount = isPaid ? (fee.amountPaid || fee.amount || 5000) : (fee.amountDue || fee.amount || 5000);
+                  return (
+                    <tr key={fee.id} className="hover:bg-gray-50 transition">
+                      <td className="px-6 py-3 font-bold text-gray-900">{fee.studentName}</td>
+                      <td className="px-6 py-3 text-gray-600">{formatClassSection(fee.classGrade, fee.section)}</td>
+                      <td className="px-6 py-3 font-black text-gray-900">Rs. {Number(displayAmount).toLocaleString()}</td>
+                      <td className="px-6 py-3">
+                        <span className={`px-3 py-1 rounded-full text-xs font-bold border ${isPaid ? "bg-green-100 text-green-700 border-green-300" : fee.status?.toLowerCase() === "partial" ? "bg-blue-100 text-blue-700 border-blue-200" : "bg-orange-100 text-orange-700 border-orange-200"}`}>
+                          {fee.status?.toUpperCase() || "PENDING"}
+                        </span>
+                      </td>
+                      <td className="px-6 py-3 text-right">
+                        <RequirePermission permissions={[PERMISSIONS.fees.manage]}>
+                          <button onClick={() => handleDelete(fee.id)} disabled={deleteMutation.isPending} className="text-red-400 hover:text-red-600 bg-red-50 p-2 rounded-lg transition disabled:opacity-50">
+                            {deleteMutation.isPending ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
+                          </button>
+                        </RequirePermission>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

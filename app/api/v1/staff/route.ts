@@ -34,24 +34,13 @@ export const GET = withErrorHandler(
 
           const service = new StaffService();
 
-          const hasFilters = search || category || department || designation || status || campus || gender || employmentType;
+          const result = await service.advancedFilter(tenantId, {
+            search, category, department, designation, status, campus, gender, employmentType,
+            page, limit, orderBy, direction,
+          });
 
-          if (hasFilters) {
-            const result = await service.advancedFilter(tenantId, {
-              search, category, department, designation, status, campus, gender, employmentType,
-              page, limit, orderBy, direction,
-            });
-            return createApiResponse(200, result, "Staff filtered results", {
-              page, limit, total: result.total, totalPages: result.totalPages,
-            });
-          }
-
-          const result = await service.paginate(tenantId, page, limit);
-          return createApiResponse(200, result, "Staff list fetched", {
-            page,
-            limit,
-            total: result.total,
-            totalPages: result.totalPages,
+          return createApiResponse(200, result, "Staff directory fetched", {
+            page, limit, total: result.total, totalPages: result.totalPages,
           });
         }
       )
