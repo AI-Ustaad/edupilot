@@ -186,12 +186,13 @@ describe("Phase 11 — Live Verification Remediations & Auto-Reconciliation", ()
         department: i < 5 ? "Science" : "Arts",
       }));
 
-      const mockFees = [
-        { id: "f-1", studentId: "s-1", status: "paid", amountPaid: 5000, amount: 5000 },
+      const mockFees: Array<{ id: string; studentId: string; status: string; amountPaid?: number; amountDue?: number; amount: number }> = [
+        { id: "f-1", studentId: "s-1", status: "paid", amountPaid: 5000, amountDue: 0, amount: 5000 },
         ...Array.from({ length: 29 }, (_, i) => ({
           id: `f-${i + 2}`,
           studentId: `s-${i + 2}`,
           status: "pending",
+          amountPaid: 0,
           amountDue: 5000,
           amount: 5000,
         })),

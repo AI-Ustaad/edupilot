@@ -25,7 +25,7 @@ const FALLBACK_SUBJECTS = [
 ];
 
 export default function TimetablePage() {
-  const [form, setForm] = useState({ day: "", period: "", subject: "", classGrade: "", teacher: "", meetingLink: "" });
+  const [form, setForm] = useState({ day: "", period: "", subject: "", classGrade: "", section: "A", teacher: "", meetingLink: "" });
 
   // 1. Fetch Live Data
   const { data: classes = [] } = useClasses();
@@ -54,6 +54,18 @@ export default function TimetablePage() {
     return Array.from(set);
   }, [classes]);
 
+  // Available sections based on selected class
+  const availableSections = useMemo(() => {
+    if (!form.classGrade) return ["A", "B", "C"];
+    const matched = classes.filter((c: any) => (c.classGrade || c.name) === form.classGrade);
+    const secs = new Set<string>();
+    matched.forEach((c: any) => {
+      const s = c.sectionName || c.section;
+      if (s) secs.add(s);
+    });
+    return secs.size > 0 ? Array.from(secs) : ["A", "B", "C"];
+  }, [classes, form.classGrade]);
+
   // Teachers list from staff
   const teachers = useMemo(() => {
     return staffList.map((s: any) => s.fullName || s.name || s.personal?.fullName).filter(Boolean);
@@ -66,7 +78,7 @@ export default function TimetablePage() {
   const addEntry = (e: React.FormEvent) => {
     e.preventDefault();
     createMutation.mutate(form, {
-      onSuccess: () => setForm({ day: "", period: "", subject: "", classGrade: "", teacher: "", meetingLink: "" })
+      onSuccess: () => setForm({ day: "", period: "", subject: "", classGrade: "", section: "A", teacher: "", meetingLink: "" })
     });
   };
 
@@ -104,6 +116,15 @@ export default function TimetablePage() {
             <select value={form.classGrade} onChange={e => setForm({...form, classGrade: e.target.value})} className="bg-gray-50 border border-gray-300 rounded-xl p-3 text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none" required>
               <option value="">Select Class</option>
               {uniqueClasses.map((clsName: string) => <option key={clsName} value={clsName}>{clsName}</option>)}
+            </select>
+
+            <select 
+              value={form.section} 
+              onChange={e => setForm({...form, section: e.target.value})} 
+              className="bg-gray-50 border border-gray-300 rounded-xl p-3 text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none"
+            >
+              <option value="">Select Section</option>
+              {availableSections.map((sec: string) => <option key={sec} value={sec}>Section {sec}</option>)}
             </select>
 
             {/* Teacher: select from staff or enter custom */}
@@ -152,7 +173,7 @@ export default function TimetablePage() {
                   <td className="p-4 font-bold text-gray-900">{e.day}</td>
                   <td className="p-4 font-medium text-gray-700">{e.period}</td>
                   <td className="p-4 text-gray-700">{e.subject}</td>
-                  <td className="p-4 font-medium text-blue-600">{e.classGrade || e.class}</td>
+                  <td className="p-4 font-medium text-blue-600">{e.classGrade || e.class}{e.section ? ` (${e.section})` : ""}</td>
                   <td className="p-4 text-gray-700">{e.teacher}</td>
                   <td className="p-4">
                     {e.meetingLink ? <a href={e.meetingLink} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:bg-blue-50 px-3 py-1.5 rounded-lg inline-flex items-center gap-1 text-sm font-bold transition"><Video size={16} /> Join</a> : <span className="text-gray-400">—</span>}

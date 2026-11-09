@@ -39,7 +39,16 @@ export const POST = withErrorHandler(
           return createErrorResponse(400, "Class and Section name required");
         }
 
-        const id = await classService.createClass({ classGrade, sectionName, subjects: subjects || { core: [], electives: [] }, createdBy: user.uid }, tenantId);
+        const normGrade = classGrade.toString().trim().replace(/^Class\s+/i, "Class ");
+        const finalGrade = normGrade.startsWith("Class ") ? normGrade : `Class ${normGrade}`;
+        const finalSection = sectionName.toString().trim().replace(/^Section\s+/i, "").toUpperCase();
+
+        const id = await classService.createClass({ 
+          classGrade: finalGrade, 
+          sectionName: finalSection, 
+          subjects: subjects || { core: [], electives: [] }, 
+          createdBy: user.uid 
+        }, tenantId);
 
         const audit = new AuditService();
         await audit.log({

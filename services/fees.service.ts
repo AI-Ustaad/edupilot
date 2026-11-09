@@ -35,8 +35,14 @@ export class FeesService implements IFeesService {
       const db = (this.repository as any).db || adminDb;
       if (!db?.collection) return;
 
-      const snap = await db.collection("fees").where("tenantId", "==", tenantId).get();
-      if (snap.empty) return;
+      const [studentsSnap, snap] = await Promise.all([
+        db.collection("students").where("tenantId", "==", tenantId).get().catch(() => ({ docs: [] })),
+        db.collection("fees").where("tenantId", "==", tenantId).get().catch(() => ({ docs: [] })),
+      ]);
+
+      const activeStudents = studentsSnap.docs
+        .map((d: any) => ({ id: d.id, ...d.data() }))
+        .filter((s: any) => (s.status || "active").toLowerCase() === "active");
 
       const docs = snap.docs;
       const byStudentMonth = new Map<string, any[]>();
@@ -44,7 +50,7 @@ export class FeesService implements IFeesService {
       for (const d of docs) {
         const data = d.data();
         const studentId = data.studentId || "";
-        const m = (data.feeMonth || "November").toString().trim();
+        const m = (data.feeMonth || data.month || "November").toString().trim();
         const monthPrefix = m.split(" ")[0].toLowerCase();
         const key = `${studentId}_${monthPrefix}`;
         if (!byStudentMonth.has(key)) {
@@ -53,6 +59,7 @@ export class FeesService implements IFeesService {
         byStudentMonth.get(key)!.push({ ref: d.ref, id: d.id, data, rawMonth: m });
       }
 
+      // 1. Reconcile existing records (deduplicate & heal amount <= 0)
       for (const [, records] of byStudentMonth.entries()) {
         const paidRecord = records.find(r => (r.data.status || "").toLowerCase() === "paid");
         if (paidRecord) {
@@ -71,11 +78,41 @@ export class FeesService implements IFeesService {
                 amount: 5000,
                 amountDue: 5000,
                 amountPaid: 0,
-                status: "pending",
+                status: "Pending",
                 updatedAt: new Date().toISOString(),
               }).catch(() => {});
             }
           }
+        }
+      }
+
+      // 2. Auto-seed missing monthly fee records for students 02-30 (November 2026)
+      const currentMonthFull = "November 2026";
+      for (const student of activeStudents) {
+        const key = `${student.id}_nov`;
+        const existingRecords = byStudentMonth.get(key) || [];
+        if (existingRecords.length === 0) {
+          const feeDocId = `fee_${student.id}_nov2026`;
+          const amount = Number(student.monthlyFee) || 5000;
+          const newFeeDoc = {
+            id: feeDocId,
+            tenantId,
+            studentId: student.id,
+            studentName: student.fullName || student.name || "Student",
+            rollNumber: student.rollNumber || "",
+            classGrade: student.classGrade || student.className || "Class 9",
+            section: student.section || "A",
+            feeMonth: currentMonthFull,
+            month: currentMonthFull,
+            amount,
+            amountDue: amount,
+            amountPaid: 0,
+            status: "Pending",
+            paymentMethod: "Cash",
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          };
+          await db.collection("fees").doc(feeDocId).set(newFeeDoc).catch(() => {});
         }
       }
     } catch {

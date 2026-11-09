@@ -2,7 +2,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, useCallback } from "react";
 import apiClient from "@/lib/api/client";
-import { safeArray, safeObject } from "@/lib/api/safeResponse";
+import { safeArray, safeObject, unwrapApiResponse } from "@/lib/api/safeResponse";
 import { QueryKeys } from "@/lib/api/queryKeys";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/components/ToastProvider";
@@ -45,7 +45,8 @@ export const useStaffMember = (id: string) => {
     queryKey: QueryKeys.staffMember(tenantId, id),
     queryFn: async () => {
       const response = await apiClient.get(`/staff/${id}`);
-      return (response as any)?.data ?? response;
+      const unwrapped = unwrapApiResponse(response);
+      return unwrapped?.data ?? unwrapped ?? response;
     },
     enabled: !!id && !!tenantId && tenantId !== "unknown",
   });

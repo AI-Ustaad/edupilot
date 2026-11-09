@@ -6,6 +6,7 @@ export const CreateTimetableEntrySchema = z.object({
   period: z.string().min(1, "Period is required"),
   subject: z.string().min(1, "Subject is required"),
   classGrade: z.string().min(1, "Class is required"),
+  section: z.string().optional(),
   teacher: z.string().min(1, "Teacher is required"),
   meetingLink: z.string().url("Invalid meeting link URL").optional().or(z.literal("")),
 });

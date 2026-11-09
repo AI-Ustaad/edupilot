@@ -36,10 +36,15 @@ export const useSaveAttendance = () => {
     onSuccess: (_data, variables) => {
       // جب Attendance Save ہو، تو اسی Date کی Attendance اور Dashboard ریفریش ہو
       const firstRecord = Array.isArray(variables) ? variables[0] : variables;
-      queryClient.invalidateQueries({
-        queryKey: QueryKeys.attendance(tenantId, firstRecord.classGrade, firstRecord.section, firstRecord.date)
-      });
+      if (firstRecord) {
+        queryClient.invalidateQueries({
+          queryKey: QueryKeys.attendance(tenantId, firstRecord.classGrade, firstRecord.section, firstRecord.date)
+        });
+      }
+      queryClient.invalidateQueries({ queryKey: ["attendance"] });
       queryClient.invalidateQueries({ queryKey: QueryKeys.dashboard(tenantId) });
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+      queryClient.invalidateQueries({ queryKey: ["students"] });
     },
   });
 };

@@ -72,7 +72,11 @@ export default function ResultsPage() {
       <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm flex flex-wrap gap-4">
         <select value={selectedClass} onChange={e => { setSelectedClass(e.target.value); setSelectedSection(""); }} className="w-full md:w-64 border border-gray-300 rounded-lg px-3 py-2 font-medium">
           <option value="">Select Class</option>
-          {availableClasses.map((c: string) => <option key={c} value={c}>Class {c}</option>)}
+          {availableClasses.map((c: string) => {
+            if (!c) return null;
+            const cleanLabel = c.toLowerCase().startsWith("class ") ? c : `Class ${c}`;
+            return <option key={c} value={c}>{cleanLabel}</option>;
+          })}
         </select>
         <select value={selectedSection} onChange={e => setSelectedSection(e.target.value)} disabled={!selectedClass} className="w-full md:w-64 border border-gray-300 rounded-lg px-3 py-2 font-medium disabled:bg-gray-100">
           <option value="">Select Section</option>

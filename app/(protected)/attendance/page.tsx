@@ -63,6 +63,7 @@ export default function AttendancePage() {
         date: selectedDate,
         status,
       });
+      showToast(`${student.fullName || student.name} marked ${status}`, "success");
     } catch {
       // Non-fatal, handleSaveAll is also available
     }
@@ -104,16 +105,15 @@ export default function AttendancePage() {
           </p>
         </div>
         
-        <RequirePermission permissions={[PERMISSIONS.attendance.mark]}>
-          <button 
-            onClick={handleSaveAll} 
-            disabled={saveMutation.isPending || students.length === 0}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 shadow-md disabled:opacity-50"
-          >
-            {saveMutation.isPending ? <Loader2 className="animate-spin"/> : <Save size={18}/>} 
-            Save Attendance
-          </button>
-        </RequirePermission>
+        <button 
+          onClick={handleSaveAll} 
+          disabled={saveMutation.isPending || students.length === 0}
+          className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 shadow-md disabled:opacity-50 transition"
+          title="Save Attendance for all students"
+        >
+          {saveMutation.isPending ? <Loader2 className="animate-spin" size={18}/> : <Save size={18}/>} 
+          Save Attendance
+        </button>
       </div>
 
       {/* FILTERS - 100% Dynamic */}

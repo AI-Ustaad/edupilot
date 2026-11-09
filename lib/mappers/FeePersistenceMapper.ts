@@ -176,6 +176,7 @@ export class FeePersistenceMapper {
       rollNumber,
       email,
       classGrade,
+      section,
       feeMonth,
       amountPaid: collected,
       amountDue: outstanding,

@@ -12,7 +12,7 @@ export const GET = withErrorHandler(
   withAuth(
     withTenant(async (req: Request, { tenantId }: TenantContext) => {
       const entries = await timetableService.listEntries(tenantId);
-      return createSuccessResponse({ entries });
+      return createSuccessResponse(entries);
     })
   )
 );

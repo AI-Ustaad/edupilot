@@ -36,9 +36,11 @@ export const safeArray = <T = any>(data: any): T[] => {
   if (unwrapped && typeof unwrapped === "object") {
     if (Array.isArray(unwrapped.data)) return unwrapped.data as T[];
     if (Array.isArray(unwrapped.items)) return unwrapped.items as T[];
+    if (Array.isArray(unwrapped.entries)) return unwrapped.entries as T[];
     if (unwrapped.data && typeof unwrapped.data === "object") {
       if (Array.isArray(unwrapped.data.items)) return unwrapped.data.items as T[];
       if (Array.isArray(unwrapped.data.data)) return unwrapped.data.data as T[];
+      if (Array.isArray(unwrapped.data.entries)) return unwrapped.data.entries as T[];
     }
   }
 

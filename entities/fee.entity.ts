@@ -8,6 +8,7 @@ export interface FeeEntity {
   };
   financial: {
     classGrade?: string;
+    section?: string;
     feeMonth: string;
     amountPaid: number;
     paymentMethod: string;
@@ -37,6 +38,7 @@ export interface FeeEntity {
   rollNumber?: number;
   email?: string;
   classGrade?: string;
+  section?: string;
   feeMonth?: string;
   amountPaid?: number;
   amountDue?: number;

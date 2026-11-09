@@ -89,24 +89,31 @@ export default function ClassesManagementPage() {
       return;
     }
 
+    const normGrade = newClass.trim().replace(/^Class\s+/i, "Class ");
+    const finalGrade = normGrade.startsWith("Class ") ? normGrade : `Class ${normGrade}`;
+    const finalSection = newSection.trim().replace(/^Section\s+/i, "").toUpperCase();
+
     // 🛡️ Duplicate Prevention
-    const exists = sections.some((s: any) => 
-      String(s.classGrade).toLowerCase() === newClass.toLowerCase() && 
-      String(s.sectionName || s.section).toLowerCase() === newSection.toLowerCase()
-    );
+    const exists = sections.some((s: any) => {
+      const sCls = String(s.classGrade || s.name || "").replace(/^Class\s+/i, "").trim().toLowerCase();
+      const sSec = String(s.sectionName || s.section || "").replace(/^Section\s+/i, "").trim().toLowerCase();
+      const targetCls = finalGrade.replace(/^Class\s+/i, "").trim().toLowerCase();
+      const targetSec = finalSection.toLowerCase();
+      return sCls === targetCls && sSec === targetSec;
+    });
 
     if (exists) {
-      setError(`Section ${newSection} for ${newClass} already exists.`);
+      setError(`Section ${finalSection} for ${finalGrade} already exists.`);
       showToast("Section already exists!", "error");
       return;
     }
 
     setError("");
     createMutation.mutate(
-      { classGrade: newClass, sectionName: newSection },
+      { classGrade: finalGrade, sectionName: finalSection },
       {
         onSuccess: () => {
-          showToast("Section added successfully!", "success");
+          showToast(`Section ${finalSection} added to ${finalGrade} successfully!`, "success");
           setNewClass("");
           setNewSection("");
         },

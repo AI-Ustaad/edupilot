@@ -236,7 +236,7 @@ export default function DashboardPage() {
             <div className="h-40 flex items-center justify-center text-gray-400">No department data</div>
           ) : (
             <div className="space-y-3">
-              {Object.entries(staffAnalytics.byDepartment).slice(0, 6).map(([dept, count]) => (
+              {Object.entries(staffAnalytics.byDepartment).map(([dept, count]) => (
                 <div key={dept}>
                   <div className="flex justify-between text-sm mb-1">
                     <span className="text-gray-700 font-medium">{dept}</span>

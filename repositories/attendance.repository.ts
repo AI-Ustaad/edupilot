@@ -28,20 +28,6 @@ export class AttendanceRepository extends BaseRepository<AttendanceDocument> imp
     if (filters?.date) {
       query = query.where("date", "==", filters.date);
     }
-    if (filters?.classGrade) {
-      const cls = filters.classGrade.trim();
-      const stripped = cls.replace(/^Class\s*/i, "");
-      const withPrefix = `Class ${stripped}`;
-      const candidates = Array.from(new Set([cls, stripped, withPrefix])).filter(Boolean);
-      if (candidates.length === 1) {
-        query = query.where("classGrade", "==", candidates[0]);
-      } else {
-        query = query.where("classGrade", "in", candidates);
-      }
-    }
-    if (filters?.section) {
-      query = query.where("section", "==", filters.section);
-    }
     if (filters?.studentId) {
       query = query.where("studentId", "==", filters.studentId);
     }
@@ -50,7 +36,25 @@ export class AttendanceRepository extends BaseRepository<AttendanceDocument> imp
     }
 
     const snapshot = await query.get();
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as AttendanceDocument));
+    let docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as AttendanceDocument));
+
+    if (filters?.classGrade) {
+      const targetCls = filters.classGrade.replace(/^Class\s*/i, "").trim().toLowerCase();
+      docs = docs.filter(d => {
+        const dCls = String(d.classGrade || "").replace(/^Class\s*/i, "").trim().toLowerCase();
+        return dCls === targetCls;
+      });
+    }
+
+    if (filters?.section) {
+      const targetSec = filters.section.replace(/^Section\s*/i, "").trim().toLowerCase();
+      docs = docs.filter(d => {
+        const dSec = String(d.section || "").replace(/^Section\s*/i, "").trim().toLowerCase();
+        return dSec === targetSec;
+      });
+    }
+
+    return docs;
   }
 
   async findByStudentId(tenantId: string, studentId: string): Promise<(AttendanceDocument & { id: string })[]> {
@@ -105,11 +109,12 @@ export class AttendanceRepository extends BaseRepository<AttendanceDocument> imp
     if (documents.length === 0) return [];
     const batch = this.db.batch();
     const ids: string[] = [];
+    const now = new Date().toISOString();
     for (const doc of documents) {
       const docRef = doc.id 
         ? this.db.collection(this.collectionName).doc(doc.id)
         : this.db.collection(this.collectionName).doc();
-      batch.set(docRef, { ...doc, tenantId });
+      batch.set(docRef, { ...doc, tenantId, updatedAt: now }, { merge: true });
       ids.push(docRef.id);
     }
     await batch.commit();
@@ -118,11 +123,17 @@ export class AttendanceRepository extends BaseRepository<AttendanceDocument> imp
 
   async save(document: AttendanceDocument, tenantId: string): Promise<AttendanceDocument> {
     try {
+      const now = new Date().toISOString();
       if (document.id) {
-        await this.update(document.id, document, tenantId);
+        const docRef = this.db.collection(this.collectionName).doc(document.id);
+        await docRef.set({
+          ...document,
+          tenantId,
+          updatedAt: now,
+          createdAt: document.createdAt || now,
+        }, { merge: true });
         const updated = await this.findById(document.id, tenantId);
-        if (!updated) throw new Error("Attendance record not found after update.");
-        return updated;
+        return updated || ({ id: document.id, ...document } as AttendanceDocument);
       } else {
         const newId = await this.create(document, tenantId);
         const created = await this.findById(newId, tenantId);
