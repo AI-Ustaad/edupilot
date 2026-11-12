@@ -35,6 +35,8 @@ export const CreateStaffSchema = z.object({
     confirmationDate: z.string().optional(),
     experience: z.string().optional(),
     qualification: z.string().optional(),
+    campus: z.string().optional(),
+    category: z.string().optional(),
   }),
   payroll: z.object({
     basicSalary: z.number().min(0).optional(),
@@ -78,6 +80,8 @@ export const CreateStaffSchema = z.object({
     trainingHistory: z.array(z.string()).optional(),
   }).optional(),
   status: z.enum(["active", "terminated", "resigned", "suspended", "on-leave", "archived"]).default("active"),
+  campus: z.string().optional(),
+  category: z.string().optional(),
   statusHistory: z.array(z.object({
     fromStatus: z.string(),
     toStatus: z.string(),

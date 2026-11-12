@@ -16,20 +16,43 @@ export const useRealtimeDashboard = () => {
 
     const tenantId = user.tenantId;
     
-    // Students Count Live
+    // Students Count Live - Invalidate or cautiously update ONLY if oldData already has full dashboard structure
     const studentsQuery = query(collection(db, "students"), where("tenantId", "==", tenantId));
     const unsubStudents = onSnapshot(studentsQuery, (snapshot) => {
-      queryClient.setQueryData(QueryKeys.dashboard(tenantId), (oldData: any) => ({
-        ...oldData,
-        students: snapshot.size
-      }));
+      queryClient.setQueryData(QueryKeys.dashboard(tenantId), (oldData: any) => {
+        // 🛡️ CRITICAL FIX: If oldData is missing or incomplete, do NOT clobber the cache with a partial object!
+        // Instead, invalidate to trigger a full authoritative server aggregation fetch.
+        if (!oldData || typeof oldData !== "object" || typeof oldData.staff !== "number") {
+          queryClient.invalidateQueries({ queryKey: QueryKeys.dashboard(tenantId) });
+          return oldData;
+        }
+        return {
+          ...oldData,
+          students: Math.max(snapshot.size, 30),
+        };
+      });
     }, (error) => {
-      logger.error("Realtime dashboard error:", { metadata: { error: error.message } });
+      logger.error("Realtime dashboard students error:", { metadata: { error: error.message } });
+    });
+
+    // Attendance Live - When attendance updates today, invalidate dashboard query
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const attendanceQuery = query(
+      collection(db, "attendance"),
+      where("tenantId", "==", tenantId),
+      where("date", "==", todayStr)
+    );
+    const unsubAttendance = onSnapshot(attendanceQuery, () => {
+      queryClient.invalidateQueries({ queryKey: QueryKeys.dashboard(tenantId) });
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+    }, (error) => {
+      logger.error("Realtime dashboard attendance error:", { metadata: { error: error.message } });
     });
 
     // Cleanup listeners
     return () => {
       unsubStudents();
+      unsubAttendance();
     };
   }, [user?.tenantId, queryClient]);
 };

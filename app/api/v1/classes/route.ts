@@ -18,7 +18,7 @@ export const GET = withErrorHandler(
     withTenant(
       withPermission(PERMISSIONS.students.view)(async (req: Request, { tenantId }: TenantContext) => {
         const sectionRepo = new SectionRepository();
-        const sections = await sectionRepo.findAllActive(tenantId);
+        const sections = await sectionRepo.reconcileSectionMatrix(tenantId);
         return createSuccessResponse(sections);
       })
     )

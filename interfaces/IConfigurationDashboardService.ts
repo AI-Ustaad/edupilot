@@ -25,6 +25,7 @@ export interface ConfigurationDashboardMetrics {
   missingConfigurations: string[];
   totalCount: number;
   completedCount: number;
+  outOfScopeModules?: { module: string; reason: string }[];
 }
 
 export interface IConfigurationDashboardService {

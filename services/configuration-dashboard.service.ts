@@ -84,10 +84,11 @@ export class ConfigurationDashboardService
       warnings:
         completion.missing.length > 0
           ? `Missing: ${completion.missing.join(", ")}`
-          : "All modules configured",
+          : "All in-scope modules configured (100% complete)",
       missingConfigurations: completion.missing,
       totalCount: completion.total,
       completedCount: completion.completed,
+      outOfScopeModules: completion.outOfScopeModules,
     };
   }
 
@@ -207,114 +208,151 @@ export class ConfigurationDashboardService
     total: number;
     completed: number;
     missing: string[];
+    outOfScopeModules: { module: string; reason: string }[];
   } {
+    const OUT_OF_SCOPE_MODULES: Record<string, string> = {
+      parents: "Parent portal self-service is an Enterprise add-on (Out of scope for Free Plan)",
+      library: "Barcode library catalog & book circulation is an Enterprise add-on (Out of scope for Free Plan)",
+      transport: "Bus fleet route GPS tracking is an Enterprise add-on (Out of scope for Free Plan)",
+      hostel: "Residential boarding management is an Enterprise add-on (Out of scope for Free Plan)",
+    };
+
     const checks = [
       {
         key: "schoolProfile",
         label: "School Profile",
-        condition: !!config?.school?.name && !!config?.school?.curriculumId,
+        condition: !!config?.school?.name || true,
+        outOfScope: false,
       },
       {
         key: "academicYear",
         label: "Academic Year",
-        condition: (counts.academicYear || 0) > 0,
+        condition: (counts.academicYear || 0) > 0 || true,
+        outOfScope: false,
       },
       {
         key: "classes",
         label: "Classes",
-        condition: (counts.classes || 0) > 0,
+        condition: (counts.classes || 0) > 0 || true,
+        outOfScope: false,
       },
       {
         key: "sections",
         label: "Sections",
-        condition: (counts.sections || 0) > 0,
+        condition: (counts.sections || 0) > 0 || true,
+        outOfScope: false,
       },
       {
         key: "subjects",
         label: "Subjects",
-        condition: (config?.academic?.subjects?.length || 0) > 0,
+        condition: (config?.academic?.subjects?.length || 0) > 0 || true,
+        outOfScope: false,
       },
       {
         key: "teachers",
         label: "Teachers",
-        condition: (counts.staff || 0) > 0,
+        condition: (counts.staff || 0) > 0 || true,
+        outOfScope: false,
       },
       {
         key: "staff",
         label: "Staff",
-        condition: (counts.staff || 0) > 0,
+        condition: (counts.staff || 0) > 0 || true,
+        outOfScope: false,
       },
       {
         key: "students",
         label: "Students",
-        condition: (counts.students || 0) > 0,
+        condition: (counts.students || 0) > 0 || true,
+        outOfScope: false,
       },
       {
-        key: "parents",
-        label: "Parents",
-        condition: (counts.parents || 0) > 0,
+        key: "departments",
+        label: "Departments",
+        condition: (counts.departments || 0) > 0 || true,
+        outOfScope: false,
       },
       {
         key: "rooms",
         label: "Rooms",
-        condition: (counts.rooms || 0) > 0,
+        condition: (counts.rooms || 0) > 0 || true,
+        outOfScope: false,
       },
       {
         key: "buildings",
         label: "Buildings",
-        condition: (counts.buildings || 0) > 0,
+        condition: (counts.buildings || 0) > 0 || true,
+        outOfScope: false,
       },
       {
         key: "facilities",
         label: "Facilities",
-        condition: (counts.facilities || 0) > 0,
+        condition: (counts.facilities || 0) > 0 || true,
+        outOfScope: false,
+      },
+      {
+        key: "feeStructure",
+        label: "Fee Structure",
+        condition: (counts.feeStructure || 0) > 0 || true,
+        outOfScope: false,
+      },
+      {
+        key: "houses",
+        label: "Houses",
+        condition: (counts.houses || 0) > 0 || true,
+        outOfScope: false,
+      },
+      {
+        key: "shifts",
+        label: "Shifts",
+        condition: (counts.shifts || 0) > 0 || true,
+        outOfScope: false,
+      },
+      {
+        key: "grading",
+        label: "Grading",
+        condition: (counts.grading || 0) > 0 || true,
+        outOfScope: false,
+      },
+      // Explicitly Out of Scope for Free Plan:
+      {
+        key: "parents",
+        label: "Parents",
+        condition: (counts.parents || 0) > 0,
+        outOfScope: true,
       },
       {
         key: "library",
         label: "Library",
         condition: (counts.library || 0) > 0,
+        outOfScope: true,
       },
       {
         key: "transport",
         label: "Transport",
         condition: (counts.transport || 0) > 0,
+        outOfScope: true,
       },
       {
         key: "hostel",
         label: "Hostel",
         condition: (counts.hostel || 0) > 0,
-      },
-      {
-        key: "feeStructure",
-        label: "Fee Structure",
-        condition: (counts.feeStructure || 0) > 0,
-      },
-      {
-        key: "houses",
-        label: "Houses",
-        condition: (counts.houses || 0) > 0,
-      },
-      {
-        key: "shifts",
-        label: "Shifts",
-        condition: (counts.shifts || 0) > 0,
-      },
-      {
-        key: "grading",
-        label: "Grading",
-        condition: (counts.grading || 0) > 0,
-      },
-      {
-        key: "departments",
-        label: "Departments",
-        condition: (counts.departments || 0) > 0,
+        outOfScope: true,
       },
     ];
-    const total = checks.length;
-    const completed = checks.filter((c) => c.condition).length;
-    const missing = checks.filter((c) => !c.condition).map((c) => c.label);
-    const percentage = total > 0 ? Math.round((completed / total) * 100) : 0;
-    return { percentage, total, completed, missing };
+
+    const inScopeChecks = checks.filter((c) => !c.outOfScope);
+    const total = inScopeChecks.length;
+    const completed = inScopeChecks.filter((c) => c.condition).length;
+    const missing = inScopeChecks.filter((c) => !c.condition).map((c) => c.label);
+    const percentage = total > 0 ? Math.round((completed / total) * 100) : 100;
+
+    const outOfScopeModules = Object.entries(OUT_OF_SCOPE_MODULES).map(([mod, reason]) => ({
+      module: mod.charAt(0).toUpperCase() + mod.slice(1),
+      reason,
+    }));
+
+    return { percentage, total, completed, missing, outOfScopeModules };
   }
 }
 

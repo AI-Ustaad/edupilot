@@ -5,7 +5,7 @@ import { useStaff } from "@/hooks/useStaff";
 import { useToast } from "@/components/ToastProvider";
 import apiClient from "@/lib/api/client";
 
-type AttendanceStatus = "present" | "absent" | "late" | "leave";
+type AttendanceStatus = "present" | "absent" | "late" | "leave" | "not_marked";
 
 export default function StaffAttendancePage() {
   const { data: staffList = [], isLoading: loadingStaff } = useStaff();
@@ -59,9 +59,9 @@ export default function StaffAttendancePage() {
     return (staffList as any[]).filter(s => (s.status || "active").toLowerCase() === "active");
   }, [staffList]);
 
-  // Fallback status is 'present'
+  // Fallback status is 'not_marked'
   const getStatus = (staffId: string): AttendanceStatus => {
-    return entries[staffId]?.status || "present";
+    return entries[staffId]?.status || "not_marked";
   };
 
   const setStaffStatus = (staffId: string, status: AttendanceStatus) => {
@@ -260,6 +260,11 @@ export default function StaffAttendancePage() {
                       </td>
                       <td className="p-4">
                         <div className="flex items-center justify-center gap-2">
+                          {currentStatus === "not_marked" && (
+                            <span className="text-xs bg-slate-100 text-slate-500 font-bold px-2 py-1 rounded-lg">
+                              Not Marked
+                            </span>
+                          )}
                           <button
                             type="button"
                             onClick={() => setStaffStatus(sid, "present")}

@@ -167,7 +167,7 @@ export default function AttendancePage() {
           <div className="divide-y divide-gray-100">
             {students.map((student: any) => {
               const existing = attendanceRecords.find((a: any) => a.studentId === student.id);
-              const currentStatus = entries[student.id] || existing?.status || "Absent";
+              const currentStatus = entries[student.id] || existing?.status || "Not Marked";
               
               return (
                 <div key={student.id} className="px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition">
@@ -180,22 +180,27 @@ export default function AttendancePage() {
                       <p className="text-xs text-gray-400 uppercase">Roll #{student.rollNumber || "N/A"}</p>
                     </div>
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex items-center gap-2">
+                    {currentStatus === "Not Marked" && (
+                      <span className="text-xs bg-gray-100 text-gray-500 font-bold px-2.5 py-1 rounded-lg">
+                        Not Marked
+                      </span>
+                    )}
                     <button 
                       onClick={() => handleMarkStatus(student, "Present")}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${currentStatus === "Present" ? "bg-green-600 text-white" : "bg-gray-100 text-gray-600 hover:bg-green-50 hover:text-green-700"}`}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${currentStatus === "Present" ? "bg-green-600 text-white shadow-sm" : "bg-gray-100 text-gray-600 hover:bg-green-50 hover:text-green-700"}`}
                     >
                       <CheckCircle2 size={14} className="inline mr-1"/> Present
                     </button>
                     <button 
                       onClick={() => handleMarkStatus(student, "Absent")}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${currentStatus === "Absent" ? "bg-red-600 text-white" : "bg-gray-100 text-gray-600 hover:bg-red-50 hover:text-red-700"}`}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${currentStatus === "Absent" ? "bg-red-600 text-white shadow-sm" : "bg-gray-100 text-gray-600 hover:bg-red-50 hover:text-red-700"}`}
                     >
                       <XCircle size={14} className="inline mr-1"/> Absent
                     </button>
                     <button 
                       onClick={() => handleMarkStatus(student, "Late")}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${currentStatus === "Late" ? "bg-amber-500 text-white" : "bg-gray-100 text-gray-600 hover:bg-amber-50 hover:text-amber-700"}`}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${currentStatus === "Late" ? "bg-amber-500 text-white shadow-sm" : "bg-gray-100 text-gray-600 hover:bg-amber-50 hover:text-amber-700"}`}
                     >
                       <Clock size={14} className="inline mr-1"/> Late
                     </button>

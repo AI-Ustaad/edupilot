@@ -174,7 +174,7 @@ function EditStaffContent() {
             <Input label="Employee ID" value={form.professional.employeeId} onChange={e => handleChange("professional", "employeeId", e.target.value)} />
             <Input label="Designation *" value={form.professional.designation} onChange={e => handleChange("professional", "designation", e.target.value)} required />
             <Input label="Department" value={form.professional.department} onChange={e => handleChange("professional", "department", e.target.value)} />
-            <Select label="Employment Type" value={form.professional.employmentType} onChange={e => handleChange("professional", "employmentType", e.target.value)} options={["", "Permanent", "Contract", "Temporary"]} />
+            <Select label="Employment Type" value={form.professional.employmentType || "Permanent"} onChange={e => handleChange("professional", "employmentType", e.target.value)} options={["Permanent", "Contract", "Temporary", "Full-time", "Part-time", "Visiting"]} />
             <Input label="Joining Date" type="date" value={form.professional.joiningDate} onChange={e => handleChange("professional", "joiningDate", e.target.value)} />
             <Input label="Confirmation Date" type="date" value={form.professional.confirmationDate || ""} onChange={e => handleChange("professional", "confirmationDate", e.target.value)} />
             <Input label="Qualification" value={form.professional.qualification} onChange={e => handleChange("professional", "qualification", e.target.value)} />

@@ -59,6 +59,7 @@ export class TimetableService implements ITimetableService {
       const err: any = new Error(message);
       err.statusCode = 409;
       err.status = 409;
+      err.code = "TIMETABLE_CONFLICT";
       throw err;
     }
 

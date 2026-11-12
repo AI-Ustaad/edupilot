@@ -35,8 +35,9 @@ export const useCreateTimetableEntry = () => {
       queryClient.invalidateQueries({ queryKey: ["timetable", tenantId] });
       showToast("Timetable entry added successfully!", "success");
     },
-    onError: () => {
-      showToast("Failed to add timetable entry.", "error");
+    onError: (error: any) => {
+      const msg = error?.response?.data?.message || error?.response?.data?.error || error?.message || "Failed to add timetable entry.";
+      showToast(msg, "error");
     },
   });
 };

@@ -25,3 +25,4 @@ export function cleanSectionName(raw: string | undefined | null): string {
   const str = String(raw).trim().replace(/^(section\s*)+/gi, "").trim().toUpperCase();
   return str || "A";
 }
+

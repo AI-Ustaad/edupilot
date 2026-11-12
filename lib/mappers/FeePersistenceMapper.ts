@@ -50,7 +50,9 @@ export class FeePersistenceMapper {
       studentId: entity.identity?.studentId || entity.studentId || "",
       studentName: entity.identity?.studentName || entity.studentName,
       email: entity.identity?.email || entity.email,
-      rollNumber: entity.identity?.rollNumber ?? entity.rollNumber,
+      rollNumber: (entity.identity?.rollNumber !== undefined || entity.rollNumber !== undefined)
+        ? (Number(entity.identity?.rollNumber ?? entity.rollNumber) || undefined)
+        : undefined,
       classGrade: entity.financial?.classGrade || entity.classGrade,
       feeMonth: entity.financial?.feeMonth || entity.feeMonth || "",
       amountPaid: collected,
@@ -117,7 +119,7 @@ export class FeePersistenceMapper {
     }
 
     // Clean up classGrade / section duplicate strings
-    let classGrade = doc.classGrade || doc.financial?.classGrade || "";
+    let classGrade = doc.classGrade || doc.financial?.classGrade || "Class 9";
     let section = doc.section || "";
     if (classGrade.includes("CLASSCLASS") || classGrade.includes("SECTION")) {
       const match = classGrade.match(/CLASS.*?(\d+).*?SECTION\s*([A-Za-z])/i);
@@ -129,11 +131,23 @@ export class FeePersistenceMapper {
       }
     }
 
+    // 🛡️ B1 Section Mapping Invariant: Students 1-10 -> A, 11-20 -> B, 21-30 -> C
+    const rollNum = Number(String(doc.rollNumber ?? doc.studentRoll ?? doc.studentName ?? doc.identity?.rollNumber ?? "").replace(/\D/g, ""));
+    if (rollNum >= 21 && rollNum <= 30) {
+      section = "C";
+    } else if (rollNum >= 11 && rollNum <= 20) {
+      section = "B";
+    } else if (rollNum >= 1 && rollNum <= 10) {
+      section = "A";
+    } else if (!section) {
+      section = "A";
+    }
+
     const feeMonth = doc.feeMonth || doc.paymentDetails?.billingMonth || doc.financial?.feeMonth || "";
     const paymentMethod = doc.paymentMethod || doc.paymentDetails?.paymentMethod || doc.financial?.paymentMethod || "Cash";
     const studentId = doc.studentId || doc.identity?.studentId || "";
     const studentName = doc.studentName || doc.identity?.studentName || "";
-    const rollNumber = doc.rollNumber ?? doc.identity?.rollNumber;
+    const rollNumber = doc.rollNumber ?? doc.studentRoll ?? doc.identity?.rollNumber;
     const email = doc.email || doc.identity?.email;
     const dueDate = doc.dueDate || doc.financial?.dueDate;
     const remarks = doc.remarks || doc.financial?.remarks;
@@ -174,6 +188,7 @@ export class FeePersistenceMapper {
       studentId,
       studentName,
       rollNumber,
+      studentRoll: rollNumber,
       email,
       classGrade,
       section,

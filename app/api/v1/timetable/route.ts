@@ -26,8 +26,8 @@ export const POST = withErrorHandler(
           const id = await timetableService.createEntry(body, tenantId, user.uid);
           return createApiResponse(201, { id });
         } catch (err: any) {
-          if (err.statusCode === 409 || err.status === 409 || (err.message && err.message.includes("Schedule conflict"))) {
-            return createErrorResponse(409, err.message || "Schedule conflict: Teacher or Class/Section is already booked for this period.");
+          if (err.statusCode === 409 || err.status === 409 || err.code === "TIMETABLE_CONFLICT" || (err.message && err.message.toLowerCase().includes("conflict"))) {
+            return createErrorResponse(409, err.message || "Schedule conflict: Teacher or Class/Section is already booked for this period.", undefined, { meta: { code: "TIMETABLE_CONFLICT" } });
           }
           throw err;
         }

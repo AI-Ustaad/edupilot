@@ -3,7 +3,8 @@ export interface FeeEntity {
   identity: {
     studentId: string;
     studentName?: string;
-    rollNumber?: number;
+    rollNumber?: number | string;
+  studentRoll?: string | number;
     email?: string;
   };
   financial: {
@@ -35,7 +36,8 @@ export interface FeeEntity {
   // Flat Compatibility Fields
   studentId?: string;
   studentName?: string;
-  rollNumber?: number;
+  rollNumber?: number | string;
+  studentRoll?: string | number;
   email?: string;
   classGrade?: string;
   section?: string;

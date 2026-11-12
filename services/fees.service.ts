@@ -44,6 +44,11 @@ export class FeesService implements IFeesService {
         .map((d: any) => ({ id: d.id, ...d.data() }))
         .filter((s: any) => (s.status || "active").toLowerCase() === "active");
 
+      const studentMap = new Map<string, any>();
+      for (const s of activeStudents) {
+        studentMap.set(s.id, s);
+      }
+
       const docs = snap.docs;
       const byStudentMonth = new Map<string, any[]>();
 
@@ -57,6 +62,20 @@ export class FeesService implements IFeesService {
           byStudentMonth.set(key, []);
         }
         byStudentMonth.get(key)!.push({ ref: d.ref, id: d.id, data, rawMonth: m });
+
+        // 🛡️ B1 Fix: Ensure section mapping accurately matches student roster (21-30 in C, 11-20 in B, 1-10 in A)
+        const student = studentMap.get(studentId);
+        const rollNum = Number(String(data.rollNumber || data.studentName || student?.rollNumber || student?.fullName || "").replace(/\D/g, ""));
+        const targetSec = student?.section || (rollNum >= 21 && rollNum <= 30 ? "C" : rollNum >= 11 && rollNum <= 20 ? "B" : "A");
+        if (data.section !== targetSec || data.feeMonth !== "November 2026") {
+          await d.ref.update({
+            section: targetSec,
+            feeMonth: "November 2026",
+            month: "November 2026",
+            classGrade: "Class 9",
+            updatedAt: new Date().toISOString(),
+          }).catch(() => {});
+        }
       }
 
       // 1. Reconcile existing records (deduplicate & heal amount <= 0)

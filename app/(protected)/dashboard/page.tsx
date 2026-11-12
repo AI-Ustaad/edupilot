@@ -77,7 +77,7 @@ export default function DashboardPage() {
         <KpiCard title="Total Students" value={data.students || 0} icon={<Users size={24} className="text-blue-600" />} color="blue" />
         <KpiCard title="Total Staff" value={data.staff || 0} icon={<Briefcase size={24} className="text-purple-600" />} color="purple" />
         <KpiCard title="Revenue (Month)" value={"Rs " + (data.revenue || 0).toLocaleString()} icon={<DollarSign size={24} className="text-green-600" />} color="green" />
-        <KpiCard title="Today Attendance" value={attendancePercent + "%"} subtitle={(data.todayAttendance?.present || 0) + "P / " + (data.todayAttendance?.absent || 0) + "A"} icon={<Activity size={24} className="text-cyan-600" />} color="cyan" />
+        <KpiCard title="Today Attendance" value={attendancePercent + "%"} subtitle={(data.todayAttendance?.date || new Date().toISOString().slice(0, 10)) + " • " + (data.todayAttendance?.present || 0) + "P / " + (data.todayAttendance?.absent || 0) + "A"} icon={<Activity size={24} className="text-cyan-600" />} color="cyan" />
       </motion.div>
 
       {riskStudents.length > 0 && (
@@ -138,9 +138,10 @@ export default function DashboardPage() {
             <CreditCard size={20} className="text-green-600" /> Fee Collection (Current Month)
           </h3>
           <div className="mb-6">
-            <div className="flex justify-between text-sm mb-2">
+            <div className="flex justify-between items-center text-sm mb-2">
+              <span className="text-gray-900 font-bold">Gross: <span className="text-blue-600">Rs {feeMonth.total.toLocaleString()}</span></span>
               <span className="text-gray-600 font-medium">Collected: <span className="font-bold text-green-600">Rs {feeMonth.collected.toLocaleString()}</span></span>
-              <span className="text-gray-500">Pending: <span className="font-bold text-orange-500">Rs {feeMonth.pending.toLocaleString()}</span></span>
+              <span className="text-gray-500 font-medium">Pending: <span className="font-bold text-orange-500">Rs {feeMonth.pending.toLocaleString()}</span></span>
             </div>
             <div className="w-full bg-gray-100 rounded-full h-3">
               <div className="bg-gradient-to-r from-green-400 to-green-600 h-3 rounded-full" style={{ width: ((feeMonth.collected / (feeMonth.total || 1)) * 100) + "%" }} />
@@ -150,9 +151,11 @@ export default function DashboardPage() {
           <div className="space-y-3">
             {classFeeSummary.map((c: any) => (
               <div key={c.class}>
-                <div className="flex justify-between text-sm mb-1">
+                <div className="flex justify-between items-center text-sm mb-1">
                   <span className="text-gray-700 font-medium">{c.class}</span>
-                  <span className="text-gray-500">Rs {(c.collected || 0).toLocaleString()}</span>
+                  <span className="text-gray-500 text-xs">
+                    Collected: <span className="font-bold text-green-600">Rs {(c.collected || 0).toLocaleString()}</span> | Pending: <span className="font-bold text-orange-500">Rs {(c.pending || 0).toLocaleString()}</span> | Total: <span className="font-bold text-blue-600">Rs {(c.total || ((c.collected || 0) + (c.pending || 0))).toLocaleString()}</span>
+                  </span>
                 </div>
                 <div className="w-full bg-gray-100 rounded-full h-2">
                   <div className="bg-blue-500 h-2 rounded-full" style={{ width: ((c.collected / (c.total || 1)) * 100) + "%" }} />

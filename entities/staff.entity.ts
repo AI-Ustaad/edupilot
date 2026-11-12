@@ -40,6 +40,8 @@ export interface StaffEntity {
     confirmationDate?: string;
     experience?: string;
     qualification?: string;
+    campus?: string;
+    category?: string;
   };
   payroll?: {
     basicSalary?: number;

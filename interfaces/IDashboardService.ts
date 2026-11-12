@@ -4,6 +4,7 @@ export interface DashboardData {
   staff: number;
   revenue: number;
   todayAttendance: {
+    date?: string;
     present: number;
     absent: number;
     late: number;

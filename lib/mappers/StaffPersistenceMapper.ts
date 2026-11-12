@@ -3,6 +3,25 @@ import type { StaffStatus } from "@/entities/staff.entity";
 import type { StaffEntity } from "@/entities/staff.entity";
 import type { StaffDocument } from "@/documents/StaffDocument";
 
+export function resolveStaffCategory(designation = "", department = "", rawCategory = ""): string {
+  const normCat = (rawCategory || "").trim().toLowerCase();
+  if (normCat === "administration" || normCat === "finance" || normCat === "support" || normCat === "teaching") {
+    return rawCategory.charAt(0).toUpperCase() + rawCategory.slice(1).toLowerCase();
+  }
+
+  const combined = `${designation} ${department}`.toLowerCase();
+  if (combined.includes("principal") || combined.includes("head") || combined.includes("admin") || combined.includes("director")) {
+    return "Administration";
+  }
+  if (combined.includes("accountant") || combined.includes("finance") || combined.includes("bursar") || combined.includes("cashier")) {
+    return "Finance";
+  }
+  if (combined.includes("librarian") || combined.includes("library") || combined.includes("support") || combined.includes("security") || combined.includes("driver") || combined.includes("peon") || combined.includes("janitor") || combined.includes("clerk") || combined.includes("assistant")) {
+    return "Support";
+  }
+  return "Teaching";
+}
+
 export class StaffPersistenceMapper {
   static fromDTO(dto: Partial<CreateStaffDTO>): Partial<StaffEntity> {
     return {
@@ -35,8 +54,8 @@ export class StaffPersistenceMapper {
       } : undefined,
       performance: dto.performance,
       status: 'active' as const,
-      campus: dto.professional?.department,
-      category: dto.professional?.employmentType,
+      campus: dto.campus || dto.professional?.campus || "Main Campus",
+      category: dto.category || dto.professional?.category || resolveStaffCategory(dto.professional?.designation || "", dto.professional?.department || ""),
       metadata: {
         version: dto.metadata?.version || 1,
         source: dto.metadata?.source,
@@ -159,7 +178,12 @@ export class StaffPersistenceMapper {
     const numMatch = fullName.match(/\d+/);
     const deterministicEmpId = identityRaw.employeeId || professionalRaw.employeeId || raw.employeeId || (numMatch ? `STF-${String(numMatch[0]).padStart(2, "0")}` : "STF-01");
     const deterministicJoining = professionalRaw.joiningDate || raw.joiningDate || (raw.createdAt ? String(raw.createdAt).slice(0, 10) : "2026-01-15");
-    const deterministicConf = professionalRaw.confirmationDate || raw.confirmationDate || "2026-04-15";
+    let deterministicConf = professionalRaw.confirmationDate || raw.confirmationDate;
+    if (!deterministicConf || deterministicConf < deterministicJoining) {
+      const jDate = new Date(deterministicJoining);
+      jDate.setMonth(jDate.getMonth() + 3);
+      deterministicConf = jDate.toISOString().slice(0, 10);
+    }
     const deterministicQual = professionalRaw.qualification || raw.qualification || "M.Sc / B.Ed";
     const deterministicExp = professionalRaw.experience || raw.experience || "5 Years";
     const deterministicSubs = (academicRaw.subjects && academicRaw.subjects.length > 0) ? academicRaw.subjects : (raw.subjects && raw.subjects.length > 0 ? raw.subjects : ["Mathematics", "Science"]);
@@ -232,6 +256,10 @@ export class StaffPersistenceMapper {
         confirmationDate: deterministicConf,
         experience: deterministicExp,
         qualification: deterministicQual,
+        campus: (raw.campus && !["Science", "Mathematics", "English", "Urdu", "General", "Administration", "Finance", "Library", "Support"].includes(raw.campus))
+          ? raw.campus
+          : "Main Campus",
+        category: resolveStaffCategory(designation, department, raw.category || professionalRaw.category),
       },
       payroll: {
         basicSalary,
@@ -274,8 +302,10 @@ export class StaffPersistenceMapper {
       },
       emergency: raw.emergency,
       performance: raw.performance,
-      campus: professionalRaw.campus || raw.campus || "Main Campus",
-      category: professionalRaw.employmentType || raw.category || "Teaching",
+      campus: (raw.campus && !["Science", "Mathematics", "English", "Urdu", "General", "Administration", "Finance", "Library", "Support"].includes(raw.campus))
+        ? raw.campus
+        : (professionalRaw.campus && !["Science", "Mathematics", "English", "Urdu", "General", "Administration", "Finance", "Library", "Support"].includes(professionalRaw.campus) ? professionalRaw.campus : "Main Campus"),
+      category: resolveStaffCategory(designation, department, raw.category || professionalRaw.category),
       statusHistory: raw.statusHistory || [],
       metadata: {
         version: raw.metadata?.version ?? 1,
