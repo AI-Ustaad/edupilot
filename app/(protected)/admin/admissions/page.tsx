@@ -4,6 +4,7 @@ import RequirePermission from "@/components/RequirePermission";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 import { usePendingAdmissions, useUpdateAdmissionStatus } from "@/hooks/useAdmissions";
 import { TableSkeleton } from "@/components/Skeletons";
+import { formatClassLabel } from "@/lib/utils/formatClassLabel";
 
 export default function AdmissionsPage() {
   const { data: students = [], isLoading } = usePendingAdmissions();
@@ -50,7 +51,7 @@ export default function AdmissionsPage() {
                   }`}
                 >
                   <td className="p-4 font-bold text-gray-900">{s.fullName || s.name}</td>
-                  <td className="p-4 text-gray-700 font-medium">{s.classGrade}</td>
+                  <td className="p-4 text-gray-700 font-medium">{formatClassLabel(s.classGrade)}</td>
                   <td className="p-4 text-gray-700 font-medium">{s.rollNumber || "N/A"}</td>
                   <td className="p-4 text-right space-x-2">
                     <RequirePermission permissions={[PERMISSIONS.students.update]}>

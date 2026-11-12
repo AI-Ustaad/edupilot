@@ -23,7 +23,7 @@ export default function AddStaffPage() {
   const [form, setForm] = useState<StaffFormData>({
     personal: { fullName: "", fatherName: "", cnic: "", dob: "", gender: "Male", bloodGroup: "", nationality: "", religion: "", maritalStatus: "Single", photo: "" },
     contact: { mobile: "", whatsapp: "", email: "", currentAddress: "", permanentAddress: "", city: "", province: "", country: "", postalCode: "" },
-    professional: { personnelNo: "", employeeId: "", designation: "", department: "", role: "", employmentType: "", joiningDate: "", confirmationDate: "", experience: "", qualification: "" },
+    professional: { personnelNo: "", employeeId: "", designation: "", department: "", role: "Teaching", category: "Teaching", employmentType: "Permanent", joiningDate: "", confirmationDate: "", experience: "", qualification: "" },
     payroll: { basicSalary: 0, allowances: [], deductions: [], grossSalary: 0, bankName: "", accountNumber: "", iban: "", salaryPaymentMethod: "" },
     academic: { subjects: [], classesAssigned: [], timetable: "", sectionAssignment: "", classTeacher: false },
     emergency: { name: "", relation: "", phone: "", alternatePhone: "" },
@@ -80,7 +80,12 @@ export default function AddStaffPage() {
       return;
     }
     setError("");
-    const payload = { ...form, tenantId: user?.tenantId, createdBy: user?.uid };
+    const payload = { 
+      ...form, 
+      category: form.professional.category || form.professional.role || "Teaching",
+      tenantId: user?.tenantId, 
+      createdBy: user?.uid 
+    };
     logger.info("[AddStaff] Submitting payload", {
       metadata: { payroll: payload.payroll, allowances: payload.payroll?.allowances, deductions: payload.payroll?.deductions },
     });
@@ -163,6 +168,15 @@ export default function AddStaffPage() {
           <Section title="Professional Information">
             <Input label="Personnel No *" value={form.professional.personnelNo} onChange={e => handleChange("professional", "personnelNo", e.target.value)} required />
             <Input label="Designation *" value={form.professional.designation} onChange={e => handleChange("professional", "designation", e.target.value)} required />
+            <Select 
+              label="Staff Category *" 
+              value={form.professional.category || form.professional.role || "Teaching"} 
+              onChange={e => {
+                handleChange("professional", "category", e.target.value);
+                handleChange("professional", "role", e.target.value);
+              }} 
+              options={["Teaching", "Administration", "Finance", "Support"]} 
+            />
             <Input label="Department" value={form.professional.department} onChange={e => handleChange("professional", "department", e.target.value)} />
             <Input label="Joining Date" type="date" value={form.professional.joiningDate} onChange={e => handleChange("professional", "joiningDate", e.target.value)} />
           </Section>

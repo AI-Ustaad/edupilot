@@ -10,6 +10,7 @@ import { useSettings } from "@/hooks/useSettings";
 import { useStaff } from "@/hooks/useStaff";
 import { useTimetable, useCreateTimetableEntry, useDeleteTimetableEntry } from "@/hooks/useTimetable";
 import { TableSkeleton } from "@/components/Skeletons";
+import { formatClassLabel, cleanSectionName } from "@/lib/utils/formatClassLabel";
 
 const FALLBACK_SUBJECTS = [
   "English", 
@@ -115,7 +116,7 @@ export default function TimetablePage() {
             
             <select value={form.classGrade} onChange={e => setForm({...form, classGrade: e.target.value})} className="bg-gray-50 border border-gray-300 rounded-xl p-3 text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none" required>
               <option value="">Select Class</option>
-              {uniqueClasses.map((clsName: string) => <option key={clsName} value={clsName}>{clsName}</option>)}
+              {uniqueClasses.map((clsName: string) => <option key={clsName} value={clsName}>{formatClassLabel(clsName)}</option>)}
             </select>
 
             <select 
@@ -161,19 +162,21 @@ export default function TimetablePage() {
                 <th className="p-4 text-gray-600 font-bold">Period</th>
                 <th className="p-4 text-gray-600 font-bold">Subject</th>
                 <th className="p-4 text-gray-600 font-bold">Class</th>
+                <th className="p-4 text-gray-600 font-bold">Section</th>
                 <th className="p-4 text-gray-600 font-bold">Teacher</th>
                 <th className="p-4 text-gray-600 font-bold">Meeting</th>
                 <th className="p-4 text-gray-600 font-bold text-right">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {entries.length === 0 ? <tr><td colSpan={7} className="p-6 text-center text-gray-400 font-medium">No entries yet.</td></tr> :
+              {entries.length === 0 ? <tr><td colSpan={8} className="p-6 text-center text-gray-400 font-medium">No entries yet.</td></tr> :
               entries.map((e: any) => (
                 <tr key={e.id} className="hover:bg-gray-50 transition-colors">
                   <td className="p-4 font-bold text-gray-900">{e.day}</td>
                   <td className="p-4 font-medium text-gray-700">{e.period}</td>
                   <td className="p-4 text-gray-700">{e.subject}</td>
-                  <td className="p-4 font-medium text-blue-600">{e.classGrade || e.class}{e.section ? ` (${e.section})` : ""}</td>
+                  <td className="p-4 font-medium text-blue-600">{formatClassLabel(e.classGrade || e.class)}</td>
+                  <td className="p-4 font-bold text-gray-800">{cleanSectionName(e.section)}</td>
                   <td className="p-4 text-gray-700">{e.teacher}</td>
                   <td className="p-4">
                     {e.meetingLink ? <a href={e.meetingLink} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:bg-blue-50 px-3 py-1.5 rounded-lg inline-flex items-center gap-1 text-sm font-bold transition"><Video size={16} /> Join</a> : <span className="text-gray-400">—</span>}

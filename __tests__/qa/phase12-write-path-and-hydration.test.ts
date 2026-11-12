@@ -131,7 +131,7 @@ describe("Phase 12 — Write-Path & Hydration Fixes Verification", () => {
       ];
 
       const sparseStaffData: any = { id: "staff-qa-1" };
-      const fallbackStaff = staffList.find(s => s.id === sparseStaffData.id) || {};
+      const fallbackStaff: any = staffList.find(s => s.id === sparseStaffData.id) || {};
       const resolved = { ...fallbackStaff, ...sparseStaffData };
 
       expect(resolved.fullName || fallbackStaff.fullName).toBe("Muhammad Tariq");

@@ -176,8 +176,11 @@ function EditStaffContent() {
             <Input label="Department" value={form.professional.department} onChange={e => handleChange("professional", "department", e.target.value)} />
             <Select label="Employment Type" value={form.professional.employmentType} onChange={e => handleChange("professional", "employmentType", e.target.value)} options={["", "Permanent", "Contract", "Temporary"]} />
             <Input label="Joining Date" type="date" value={form.professional.joiningDate} onChange={e => handleChange("professional", "joiningDate", e.target.value)} />
+            <Input label="Confirmation Date" type="date" value={form.professional.confirmationDate || ""} onChange={e => handleChange("professional", "confirmationDate", e.target.value)} />
             <Input label="Qualification" value={form.professional.qualification} onChange={e => handleChange("professional", "qualification", e.target.value)} />
             <Input label="Experience" value={form.professional.experience} onChange={e => handleChange("professional", "experience", e.target.value)} />
+            <Input label="Assigned Subjects (comma-separated)" value={Array.isArray(form.academic?.subjects) ? form.academic.subjects.join(", ") : (form.academic?.subjects || "")} onChange={e => handleChange("academic", "subjects", e.target.value.split(",").map((s: string) => s.trim()).filter(Boolean))} />
+            <Input label="Classes Assigned (comma-separated)" value={Array.isArray(form.academic?.classesAssigned) ? form.academic.classesAssigned.join(", ") : (form.academic?.classesAssigned || "")} onChange={e => handleChange("academic", "classesAssigned", e.target.value.split(",").map((s: string) => s.trim()).filter(Boolean))} />
           </Section>
         )}
 

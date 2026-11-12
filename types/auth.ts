@@ -6,6 +6,11 @@ export interface SessionUser {
   role: Role;
   tenantId: string | null;
   onboardingRequired: boolean;
+  name?: string;
+  displayName?: string;
+  status?: string;
+  lastLogin?: string;
+  lastLoginAt?: string;
 }
 
 export interface LoginResponseDto {

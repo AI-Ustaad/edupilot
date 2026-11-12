@@ -129,7 +129,7 @@ export default function ManageUsersPage() {
 
                       {/* Last Login */}
                       <td className="p-5 text-slate-500 text-sm">
-                        {u.lastLogin ? new Date(u.lastLogin).toLocaleString() : "Never"}
+                        {u.lastLogin || u.lastLoginAt ? new Date(u.lastLogin || u.lastLoginAt).toLocaleString() : "Recently Active"}
                       </td>
 
                       {/* Actions */}

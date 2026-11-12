@@ -21,9 +21,16 @@ export const POST = withErrorHandler(
   withAuth(
     withTenant(
       withPermission(PERMISSIONS.timetable.create)(async (req: Request, { tenantId, user }: TenantContext) => {
-        const body = await req.json();
-        const id = await timetableService.createEntry(body, tenantId, user.uid);
-        return createApiResponse(201, { id });
+        try {
+          const body = await req.json();
+          const id = await timetableService.createEntry(body, tenantId, user.uid);
+          return createApiResponse(201, { id });
+        } catch (err: any) {
+          if (err.statusCode === 409 || err.status === 409 || (err.message && err.message.includes("Schedule conflict"))) {
+            return createErrorResponse(409, err.message || "Schedule conflict: Teacher or Class/Section is already booked for this period.");
+          }
+          throw err;
+        }
       })
     )
   )

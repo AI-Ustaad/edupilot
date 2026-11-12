@@ -12,6 +12,7 @@ import { PERMISSIONS } from "@/lib/auth/permissions";
 import { useClasses } from "@/hooks/useClasses";
 import { useStudents } from "@/hooks/useStudents";
 import { useFees, useSaveFee, useDeleteFee } from "@/hooks/useFees";
+import { formatClassLabel } from "@/lib/utils/formatClassLabel";
 
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
@@ -182,7 +183,7 @@ export default function FeesPage() {
           <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 block">Class</label>
           <select value={selectedClass} onChange={(e) => { setSelectedClass(e.target.value); setSelectedSection(""); }} className="w-full border border-gray-300 rounded-lg px-3 py-2 font-medium">
             <option value="">All Classes</option>
-            {availableClasses.map((c: string) => <option key={c} value={c}>Class {c}</option>)}
+            {availableClasses.map((c: string) => <option key={c} value={c}>{formatClassLabel(c)}</option>)}
           </select>
         </div>
         <div className="flex-1 min-w-[150px]">

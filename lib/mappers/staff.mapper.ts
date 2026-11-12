@@ -45,6 +45,7 @@ export interface StaffFormProfessional {
   designation: string;
   department: string;
   role: string;
+  category?: string;
   employmentType: string;
   joiningDate: string;
   confirmationDate: string;

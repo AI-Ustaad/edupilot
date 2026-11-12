@@ -30,6 +30,38 @@ export class TimetableService implements ITimetableService {
     }
     const parsed = validation.data;
 
+    // Conflict Detection: Teacher OR Class/Section already booked for day + period
+    const existingEntries = await this.repo.findAll(tenantId);
+    const normDay = (parsed.day || "").trim().toLowerCase();
+    const normPeriod = (parsed.period || "").trim().toLowerCase();
+    const normTeacher = (parsed.teacher || "").trim().toLowerCase();
+    const normClass = (parsed.classGrade || "").trim().toLowerCase();
+    const normSection = (parsed.section || "A").trim().toLowerCase();
+
+    const conflict = existingEntries.find((e: any) => {
+      if ((e.day || "").trim().toLowerCase() !== normDay) return false;
+      if ((e.period || "").trim().toLowerCase() !== normPeriod) return false;
+
+      const sameTeacher = Boolean(normTeacher && (e.teacher || "").trim().toLowerCase() === normTeacher);
+      const sameClassSection = Boolean(
+        (e.classGrade || "").trim().toLowerCase() === normClass &&
+        (e.section || "A").trim().toLowerCase() === normSection
+      );
+
+      return sameTeacher || sameClassSection;
+    });
+
+    if (conflict) {
+      const isTeacherConflict = Boolean(normTeacher && (conflict.teacher || "").trim().toLowerCase() === normTeacher);
+      const message = isTeacherConflict
+        ? `Conflict: Teacher ${parsed.teacher} is already assigned during period ${parsed.period} on ${parsed.day}.`
+        : `Conflict: Class ${parsed.classGrade} (${parsed.section || "A"}) already has ${conflict.subject || "a class"} scheduled during period ${parsed.period} on ${parsed.day}.`;
+      const err: any = new Error(message);
+      err.statusCode = 409;
+      err.status = 409;
+      throw err;
+    }
+
     const entryData = {
       ...parsed,
       tenantId,

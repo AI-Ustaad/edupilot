@@ -43,10 +43,16 @@ export class UserRepository extends BaseRepository<any> implements IUserReposito
 
       return snapshot.map(doc => {
         const data = doc;
+        const nowIso = new Date().toISOString();
+        const loginTime = data.lastLogin || data.lastLoginAt || data.updatedAt || data.createdAt || nowIso;
         return {
           uid: doc.id,
+          name: data.name || data.displayName || (data.email ? data.email.split("@")[0] : "School Admin"),
           email: data.email || "",
           role: (data.role as Role) || "teacher",
+          status: data.status || "active",
+          lastLogin: loginTime,
+          lastLoginAt: loginTime,
           tenantId: data.tenantId || null,
           onboardingRequired: data.onboardingRequired ?? false,
         };

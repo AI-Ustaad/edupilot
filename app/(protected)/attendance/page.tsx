@@ -11,6 +11,7 @@ import { useStudents } from "@/hooks/useStudents";
 import { useRealtimeAttendance } from "@/hooks/useRealtimeAttendance"; // Live Hook
 import { useAttendance, useSaveAttendance } from "@/hooks/useAttendance"; // Save Mutation & Server Query
 import { useToast } from "@/components/ToastProvider";
+import { formatClassLabel } from "@/lib/utils/formatClassLabel";
 
 export default function AttendancePage() {
   const { user } = useAuth();
@@ -130,10 +131,9 @@ export default function AttendancePage() {
           className="border border-gray-300 rounded-lg px-3 py-2 font-medium"
         >
           <option value="">Select Class</option>
-          {availableClasses.map((c: string) => {
-            const label = c.toLowerCase().startsWith("class ") ? c : `Class ${c}`;
-            return <option key={c} value={c}>{label}</option>;
-          })}
+          {availableClasses.map((c: string) => (
+            <option key={c} value={c}>{formatClassLabel(c)}</option>
+          ))}
         </select>
         <select 
           value={selectedSection} 

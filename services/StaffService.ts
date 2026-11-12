@@ -107,7 +107,29 @@ export class StaffService implements IStaffService {
   async getById(tenantId: string, id: string): Promise<StaffEntity> {
     const doc = await this.repository.findById(id, tenantId);
     if (!doc) throw new NotFoundException("Staff member not found");
-    return StaffPersistenceMapper.fromFirestore(doc);
+    const entity = StaffPersistenceMapper.fromFirestore(doc);
+    if (!doc.employeeId || !doc.joiningDate || !doc.confirmationDate || !doc.qualification) {
+      this.repository.update(id, {
+        employeeId: entity.employeeId,
+        joiningDate: entity.joiningDate,
+        confirmationDate: entity.confirmationDate,
+        qualification: entity.qualification,
+        experience: entity.experience,
+        subjects: entity.subjects,
+        classesAssigned: entity.classesAssigned,
+        professional: {
+          ...((doc as any).professional || {}),
+          employeeId: entity.employeeId,
+          joiningDate: entity.joiningDate,
+          confirmationDate: entity.confirmationDate,
+          qualification: entity.qualification,
+          experience: entity.experience,
+        }
+      } as any, tenantId).catch(err => {
+        logger.warn("[StaffService] Non-blocking backfill persistence failed:", err);
+      });
+    }
+    return entity;
   }
 
   async create(data: CreateStaffDTO, tenantId: string, userId: string): Promise<string> {

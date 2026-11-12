@@ -8,6 +8,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import apiClient from "@/lib/api/client";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/components/ToastProvider";
+import { formatClassLabel } from "@/lib/utils/formatClassLabel";
 
 const CLASS_OPTIONS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"];
 const SECTION_OPTIONS = ["A", "B", "C", "D", "E"];
@@ -125,14 +126,14 @@ export default function PromoteStudentsPage() {
             <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">From Class</label>
             <select value={fromClass} onChange={e => { setFromClass(e.target.value); setSelectedIds(new Set()); setResult(null); }} className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
               <option value="">Select class</option>
-              {availableClasses.map(c => <option key={c} value={c}>{c.startsWith("Class ") ? c : `Class ${c}`}</option>)}
+              {availableClasses.map(c => <option key={c} value={c}>{formatClassLabel(c)}</option>)}
             </select>
           </div>
           <div>
             <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">To Class</label>
             <select value={toClass} onChange={e => setToClass(e.target.value)} className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
               <option value="">Select class</option>
-              {availableClasses.map(c => <option key={c} value={c}>{c.startsWith("Class ") ? c : `Class ${c}`}</option>)}
+              {availableClasses.map(c => <option key={c} value={c}>{formatClassLabel(c)}</option>)}
             </select>
           </div>
           <div>
@@ -154,7 +155,7 @@ export default function PromoteStudentsPage() {
           <div className="p-4 border-b border-gray-100 flex items-center justify-between">
             <div>
               <h3 className="font-bold text-gray-800">Eligible Students ({eligibleStudents.length})</h3>
-              <p className="text-sm text-gray-500">Class {fromClass} - Active students</p>
+              <p className="text-sm text-gray-500">{formatClassLabel(fromClass)} - Active students</p>
             </div>
             {eligibleStudents.length > 0 && (
               <button onClick={toggleAll} className="text-sm text-blue-600 font-bold hover:underline">

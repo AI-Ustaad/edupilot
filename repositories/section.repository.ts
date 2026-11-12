@@ -20,7 +20,78 @@ export class SectionRepository extends BaseRepository<Section> implements ISecti
     super("sections");
   }
 
+  async reconcileSectionMatrix(tenantId: string): Promise<(Section & { id: string })[]> {
+    try {
+      const snapshot = await this.db
+        .collection(this.collectionName)
+        .where("tenantId", "==", tenantId)
+        .get();
+
+      const existing = snapshot.docs
+        .map(doc => ({ id: doc.id, ...doc.data() } as Section & { id: string }))
+        .filter(s => !s.deleted);
+
+      const existingKeys = new Set(
+        existing.map(s => `${(s.classGrade || "").trim().toLowerCase()}__${(s.sectionName || "").trim().toUpperCase()}`)
+      );
+
+      const batch = this.db.batch();
+      let hasWrites = false;
+      const addedSections: (Section & { id: string })[] = [];
+      const CANONICAL_SECTIONS = ["A", "B", "C"];
+
+      for (let c = 1; c <= 10; c++) {
+        const classGrade = `Class ${c}`;
+        for (const sectionName of CANONICAL_SECTIONS) {
+          const key = `${classGrade.toLowerCase()}__${sectionName}`;
+          if (!existingKeys.has(key)) {
+            const docId = sectionDocId(tenantId, classGrade, sectionName);
+            const docRef = this.db.collection(this.collectionName).doc(docId);
+            const newSection: Section = {
+              classGrade,
+              sectionName,
+              tenantId,
+              deleted: false,
+              subjects: { core: ["English", "Mathematics", "Science", "Urdu"], electives: [] },
+            };
+            batch.set(docRef, {
+              ...newSection,
+              id: docId,
+              createdAt: dbTimestamp,
+              updatedAt: dbTimestamp,
+            }, { merge: true });
+
+            addedSections.push({ ...newSection, id: docId });
+            hasWrites = true;
+            existingKeys.add(key);
+          }
+        }
+      }
+
+      if (hasWrites) {
+        await batch.commit().catch(() => {});
+      }
+
+      const all = [...existing, ...addedSections];
+      const naturalSort = (a: any, b: any) => {
+        const numA = parseInt(String(a.classGrade || "").replace(/[^0-9]/g, ""), 10) || 0;
+        const numB = parseInt(String(b.classGrade || "").replace(/[^0-9]/g, ""), 10) || 0;
+        if (numA !== numB) return numA - numB;
+        const secA = String(a.sectionName || a.section || "").toUpperCase();
+        const secB = String(b.sectionName || b.section || "").toUpperCase();
+        return secA.localeCompare(secB);
+      };
+
+      return all.sort(naturalSort);
+    } catch {
+      return [];
+    }
+  }
+
   async findAllActive(tenantId: string): Promise<(Section & { id: string })[]> {
+    const reconciled = await this.reconcileSectionMatrix(tenantId);
+    if (reconciled && reconciled.length > 0) return reconciled;
+
     const snapshot = await this.db
       .collection(this.collectionName)
       .where("tenantId", "==", tenantId)

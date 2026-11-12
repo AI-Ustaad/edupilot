@@ -6,6 +6,7 @@ import { GraduationCap, Search, Loader2, AlertCircle, FileText, Award, Users, Pr
 import RequirePermission from "@/components/RequirePermission";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 import { useClasses } from "@/hooks/useClasses";
+import { formatClassLabel } from "@/lib/utils/formatClassLabel";
 import apiClient from "@/lib/api/client";
 import { safeArray } from "@/lib/api/safeResponse";
 import html2canvas from "html2canvas";
@@ -74,8 +75,7 @@ export default function ResultsPage() {
           <option value="">Select Class</option>
           {availableClasses.map((c: string) => {
             if (!c) return null;
-            const cleanLabel = c.toLowerCase().startsWith("class ") ? c : `Class ${c}`;
-            return <option key={c} value={c}>{cleanLabel}</option>;
+            return <option key={c} value={c}>{formatClassLabel(c)}</option>;
           })}
         </select>
         <select value={selectedSection} onChange={e => setSelectedSection(e.target.value)} disabled={!selectedClass} className="w-full md:w-64 border border-gray-300 rounded-lg px-3 py-2 font-medium disabled:bg-gray-100">
