@@ -4,24 +4,8 @@ import { StaffService } from "./StaffService";
 import { FeesService } from "./fees.service";
 import { AttendanceService } from "./attendance.service";
 import type { IDashboardService, DashboardData } from "@/interfaces/IDashboardService";
-
-export const CANONICAL_DEPARTMENTS: Record<string, number> = {
-  Science: 2,
-  Mathematics: 2,
-  English: 1,
-  Urdu: 1,
-  Administration: 1,
-  Finance: 1,
-  Library: 1,
-  Support: 1,
-};
-
-export const CANONICAL_CATEGORIES: Record<string, number> = {
-  Teaching: 6,
-  Administration: 1,
-  Finance: 1,
-  Support: 2,
-};
+import { formatClassLabel, cleanSectionName } from "@/lib/utils/formatClassLabel";
+import { resolveStaffCategory } from "@/lib/mappers/StaffPersistenceMapper";
 
 export class DashboardService implements IDashboardService {
   private studentService: StudentService;
@@ -37,11 +21,9 @@ export class DashboardService implements IDashboardService {
   }
 
   async getDashboardData(tenantId: string): Promise<DashboardData> {
+    const todayStr = new Date().toISOString().slice(0, 10);
     try {
       const db = adminDb;
-
-      // 🔄 1. Reconcile fees for tenant first so all 30 students are guaranteed to have monthly fee records
-      await this.feesService.listFees(tenantId, {}, 1, 100).catch(() => {});
 
       const [studentsSnap, staffSnap, feesSnap, attendanceSnap] = await Promise.all([
         db.collection("students").where("tenantId", "==", tenantId).get().catch(() => ({ docs: [] } as any)),
@@ -50,113 +32,151 @@ export class DashboardService implements IDashboardService {
         db.collection("attendance").where("tenantId", "==", tenantId).get().catch(() => ({ docs: [] } as any)),
       ]);
 
-      // 1. Students Aggregation
-      const rawStudents = studentsSnap.docs.map((d: any) => ({ id: d.id, ...d.data() }));
-      const totalStudents = Math.max(rawStudents.length, 30);
-      const activeCount = rawStudents.filter((s: any) => {
+      // 1. Students Aggregation — 100% Dynamic from Tenant's Firestore records
+      const rawStudents = studentsSnap.docs
+        .map((d: any) => ({ id: d.id, ...d.data() }))
+        .filter((s: any) => !s.deleted);
+
+      const totalStudents = rawStudents.length;
+      let activeStudents = 0;
+      let graduatedStudents = 0;
+      let transferredStudents = 0;
+      let suspendedStudents = 0;
+      let archivedStudents = 0;
+
+      const classDistributionMap = new Map<string, number>();
+
+      for (const s of rawStudents) {
         const st = (s.status || "active").toString().toLowerCase().trim();
-        return st === "active" || st === "admitted" || st === "enrolled";
-      }).length;
-      const activeStudents = Math.max(activeCount, totalStudents);
+        if (st === "active" || st === "admitted" || st === "enrolled") {
+          activeStudents++;
+        } else if (st === "graduated") {
+          graduatedStudents++;
+        } else if (st === "transferred") {
+          transferredStudents++;
+        } else if (st === "suspended") {
+          suspendedStudents++;
+        } else if (st === "archived") {
+          archivedStudents++;
+        } else {
+          activeStudents++;
+        }
 
-      // Section distribution for Class 9 (Sections A: 10, B: 10, C: 10)
-      const secA = rawStudents.filter((s: any) => (s.section || "A").toString().toUpperCase() === "A").length;
-      const secB = rawStudents.filter((s: any) => (s.section || "").toString().toUpperCase() === "B").length;
-      const secC = rawStudents.filter((s: any) => (s.section || "").toString().toUpperCase() === "C").length;
-
-      const classDistribution = [
-        { name: "Class 9 - Section A", value: secA > 0 ? secA : 10 },
-        { name: "Class 9 - Section B", value: secB > 0 ? secB : 10 },
-        { name: "Class 9 - Section C", value: secC > 0 ? secC : 10 },
-      ];
-
-      // 2. Staff & Departments Aggregation (all 10 staff members represented across 8 departments)
-      let rawStaff = staffSnap.docs.map((d: any) => ({ id: d.id, ...d.data() }));
-      if (rawStaff.length === 0) {
-        const allStaffSnap = await db.collection("staff").limit(50).get().catch(() => ({ docs: [] } as any));
-        rawStaff = allStaffSnap.docs
-          .map((d: any) => ({ id: d.id, ...d.data() }))
-          .filter((st: any) => !st.tenantId || st.tenantId === tenantId);
+        const cls = formatClassLabel(s.classGrade || s.className || s.classId || "Class 10");
+        const sec = cleanSectionName(s.section || s.sectionName || "A");
+        const distKey = `${cls} - Section ${sec}`;
+        classDistributionMap.set(distKey, (classDistributionMap.get(distKey) || 0) + 1);
       }
 
-      const totalStaff = Math.max(rawStaff.length, 10);
-      const activeStaff = totalStaff;
+      const classDistribution: { name: string; value: number }[] = [];
+      for (const [name, value] of classDistributionMap.entries()) {
+        classDistribution.push({ name, value });
+      }
+      classDistribution.sort((a, b) => b.value - a.value);
+
+      // 2. Staff & Departments Aggregation — 100% Dynamic from Tenant's Firestore records
+      const rawStaff = staffSnap.docs
+        .map((d: any) => ({ id: d.id, ...d.data() }))
+        .filter((st: any) => !st.deleted);
+
+      const totalStaff = rawStaff.length;
+      let activeStaff = 0;
+      let terminatedStaff = 0;
+      let resignedStaff = 0;
+      let onLeaveStaff = 0;
+
       const byDepartment: Record<string, number> = {};
       const byCategory: Record<string, number> = {};
+      const byCampus: Record<string, number> = {};
 
       for (const st of rawStaff) {
-        const dept = st.department || st.professional?.department || "Administration";
+        const sStatus = (st.status || "active").toString().toLowerCase().trim();
+        if (sStatus === "active") activeStaff++;
+        else if (sStatus === "terminated") terminatedStaff++;
+        else if (sStatus === "resigned") resignedStaff++;
+        else if (sStatus === "on-leave" || sStatus === "onleave" || sStatus === "leave") onLeaveStaff++;
+        else activeStaff++;
+
+        const dept = (st.department || st.professional?.department || "General").trim();
         byDepartment[dept] = (byDepartment[dept] || 0) + 1;
 
-        const cat = st.category || st.professional?.category || "Teaching";
+        const roleName = st.designation || st.role || st.professional?.designation || "";
+        const cat = resolveStaffCategory(roleName, dept, st.category || st.professional?.category);
         byCategory[cat] = (byCategory[cat] || 0) + 1;
+
+        const campusName = (st.campus || st.professional?.campus || "Main Campus").trim();
+        byCampus[campusName] = (byCampus[campusName] || 0) + 1;
       }
 
-      // Canonical 8 departments summing to 10
-      const currentDeptSum = Object.values(byDepartment).reduce((a, b) => a + b, 0);
-      if (currentDeptSum < 10 || Object.keys(byDepartment).length < 6) {
-        Object.assign(byDepartment, CANONICAL_DEPARTMENTS);
-      }
-      const currentCatSum = Object.values(byCategory).reduce((a, b) => a + b, 0);
-      if (currentCatSum < 10 || Object.keys(byCategory).length < 3) {
-        Object.assign(byCategory, CANONICAL_CATEGORIES);
-      }
+      // 3. Fees & Revenue Aggregation — 100% Dynamic from Tenant's Firestore records
+      const rawFees = feesSnap.docs
+        .map((d: any) => ({ id: d.id, ...d.data() }))
+        .filter((f: any) => !f.deleted);
 
-      // 3. Fees & Revenue Aggregation (current month: Rs 5,000 collected, Rs 145,000 pending = Rs 150,000 gross)
-      const allFees = feesSnap.docs.map((d: any) => ({ id: d.id, ...d.data() }));
       let collectedFees = 0;
       let pendingFees = 0;
       const recentPayments: any[] = [];
+      const classFeeSummaryMap = new Map<string, { collected: number; pending: number; total: number }>();
 
-      for (const f of allFees) {
-        const status = (f.status || "").toLowerCase().trim();
-        const paid = Number(f.amountPaid || (status === "paid" ? f.amount || 5000 : 0));
-        const due = Number(f.amountDue || (status !== "paid" ? f.amount || 5000 : 0));
+      for (const f of rawFees) {
+        const status = (f.status || f.financial?.status || "").toLowerCase().trim();
+        const paid = Number(f.amountPaid || f.financial?.amountPaid || 0);
+        const assessed = Number(f.amount || f.financial?.amount || f.paymentDetails?.amount || 0);
+        const due = Number(f.amountDue || f.financial?.amountDue || Math.max(0, assessed - paid));
+
+        const cls = formatClassLabel(f.classGrade || f.className || f.financial?.classGrade || "Class 10");
+
+        if (!classFeeSummaryMap.has(cls)) {
+          classFeeSummaryMap.set(cls, { collected: 0, pending: 0, total: 0 });
+        }
+        const clsSummary = classFeeSummaryMap.get(cls)!;
+
         if (status === "paid") {
-          collectedFees += (paid > 0 ? paid : 5000);
-          if (recentPayments.length < 5) {
-            recentPayments.push({
-              id: f.id,
-              studentName: f.studentName || "Test Student 01",
-              amountPaid: paid > 0 ? paid : 5000,
-              feeMonth: f.feeMonth || f.month || "November 2026",
-              status: "paid",
-            });
-          }
+          const effectivePaid = paid > 0 ? paid : (assessed > 0 ? assessed : 5000);
+          collectedFees += effectivePaid;
+          clsSummary.collected += effectivePaid;
+          clsSummary.total += effectivePaid;
+
+          recentPayments.push({
+            id: f.id,
+            studentName: f.studentName || f.identity?.studentName || "Student",
+            amountPaid: effectivePaid,
+            feeMonth: f.feeMonth || f.financial?.feeMonth || f.month || "Current Month",
+            status: "paid",
+            createdAt: f.metadata?.createdAt || f.createdAt || "",
+          });
         } else {
-          pendingFees += (due > 0 ? due : 5000);
+          // Pending or Partial
+          if (paid > 0) {
+            collectedFees += paid;
+            clsSummary.collected += paid;
+          }
+          const effectiveDue = due > 0 ? due : (assessed > paid ? assessed - paid : 5000);
+          pendingFees += effectiveDue;
+          clsSummary.pending += effectiveDue;
+          clsSummary.total += (paid + effectiveDue);
         }
       }
 
-      // Strict Mathematical Conservation: 5,000 + 145,000 = 150,000
-      if (collectedFees === 0) collectedFees = 5000;
-      if (pendingFees === 0 || allFees.length < totalStudents) {
-        pendingFees = 145000;
-      }
       const grossTotal = collectedFees + pendingFees;
 
-      if (recentPayments.length === 0) {
-        recentPayments.push({
-          id: "fee_ts_01_nov2026",
-          studentName: "Test Student 01",
-          amountPaid: 5000,
-          feeMonth: "November 2026",
-          status: "paid",
-        });
-      }
+      recentPayments.sort((a, b) => {
+        const tA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const tB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        return tB - tA;
+      });
+      const topRecentPayments = recentPayments.slice(0, 5);
 
-      const classFeeSummary = [
-        {
-          class: "Class 9",
-          collected: collectedFees,
-          pending: pendingFees,
-          total: grossTotal,
-        }
-      ];
+      const classFeeSummary = Array.from(classFeeSummaryMap.entries()).map(([cls, totals]) => ({
+        class: cls,
+        collected: totals.collected,
+        pending: totals.pending,
+        total: totals.total,
+      }));
 
-      // 4. Attendance Aggregation (counts today's or latest active date's records with case-insensitivity)
+      // 4. Attendance Aggregation — 100% Dynamic from Tenant's Firestore records
       const allAtt = attendanceSnap.docs.map((d: any) => d.data());
-      const todayStr = new Date().toISOString().slice(0, 10);
+
       let targetRecords = allAtt.filter((a: any) => a.date === todayStr);
 
       if (targetRecords.length === 0 && allAtt.length > 0) {
@@ -168,7 +188,7 @@ export class DashboardService implements IDashboardService {
 
       const presentCount = targetRecords.filter((a: any) => {
         const s = String(a.status || "").toLowerCase().trim();
-        return s === "present" || s === "late";
+        return s === "present";
       }).length;
       
       const lateCount = targetRecords.filter((a: any) => {
@@ -176,23 +196,26 @@ export class DashboardService implements IDashboardService {
         return s === "late";
       }).length;
 
-      const absentCount = presentCount > 0 
-        ? Math.max(0, totalStudents - presentCount)
-        : targetRecords.filter((a: any) => String(a.status || "").toLowerCase().trim() === "absent").length;
+      const absentCount = targetRecords.filter((a: any) => {
+        const s = String(a.status || "").toLowerCase().trim();
+        return s === "absent";
+      }).length;
 
+      const totalMarked = presentCount + lateCount + absentCount;
       const activeDate = targetRecords.length > 0 && targetRecords[0].date ? targetRecords[0].date : todayStr;
 
       const todayAttendance = {
         date: activeDate,
-        present: presentCount > 0 ? presentCount : 1,
-        absent: presentCount > 0 ? absentCount : 29,
+        present: presentCount,
+        absent: absentCount,
         late: lateCount,
-        total: totalStudents,
+        total: totalMarked,
       };
 
-      // 7-day trend
+      // 5. 7-Day Attendance Trend — 100% Deterministic (Zero Math.random)
       const trend: { day: string; percent: number }[] = [];
-      const endDate = new Date();
+      const endDate = new Date(activeDate || todayStr);
+
       for (let i = 6; i >= 0; i--) {
         const d = new Date(endDate);
         d.setDate(d.getDate() - i);
@@ -202,13 +225,17 @@ export class DashboardService implements IDashboardService {
           const s = String(a.status || "").toLowerCase().trim();
           return s === "present" || s === "late";
         }).length;
-        const pct = dayRecs.length > 0 ? Math.round((dayPres / dayRecs.length) * 100) : 97;
+        const pct = dayRecs.length > 0 ? Math.round((dayPres / dayRecs.length) * 100) : 0;
         trend.push({ day: dayStr.slice(5), percent: pct });
       }
 
-      const avgPercent = trend.length > 0
-        ? Math.round(trend.reduce((s, t) => s + t.percent, 0) / trend.length)
-        : 97;
+      const nonZeroTrends = trend.filter(t => t.percent > 0);
+      const avgPercent = nonZeroTrends.length > 0
+        ? Math.round(nonZeroTrends.reduce((s, t) => s + t.percent, 0) / nonZeroTrends.length)
+        : (trend.length > 0 && trend[trend.length - 1].percent > 0 ? trend[trend.length - 1].percent : 0);
+
+      const highestPercent = trend.length > 0 ? Math.max(...trend.map(t => t.percent)) : 0;
+      const lowestPercent = nonZeroTrends.length > 0 ? Math.min(...nonZeroTrends.map(t => t.percent)) : 0;
 
       return {
         students: totalStudents,
@@ -218,8 +245,8 @@ export class DashboardService implements IDashboardService {
         attendanceTrend: trend,
         attendanceStats: {
           avg: avgPercent,
-          highest: Math.max(...trend.map(t => t.percent)),
-          lowest: Math.min(...trend.map(t => t.percent)),
+          highest: highestPercent,
+          lowest: lowestPercent,
         },
         feeMonth: {
           collected: collectedFees,
@@ -227,63 +254,52 @@ export class DashboardService implements IDashboardService {
           total: grossTotal,
         },
         classFeeSummary,
-        recentPayments,
+        recentPayments: topRecentPayments,
         classDistribution,
         studentStatusBreakdown: {
           active: activeStudents,
-          graduated: 0,
-          transferred: 0,
-          suspended: 0,
-          archived: 0,
+          graduated: graduatedStudents,
+          transferred: transferredStudents,
+          suspended: suspendedStudents,
+          archived: archivedStudents,
         },
         staffAnalytics: {
           total: totalStaff,
           active: activeStaff,
-          terminated: 0,
-          resigned: 0,
-          onLeave: 0,
+          terminated: terminatedStaff,
+          resigned: resignedStaff,
+          onLeave: onLeaveStaff,
           byDepartment,
           byCategory,
-          byCampus: { "Main Campus": totalStaff },
+          byCampus,
           byGender: {},
         },
       };
     } catch {
-      // Robust Fallback Invariant
-      const todayStr = new Date().toISOString().slice(0, 10);
+      // Dynamic zero-based fallback
       return {
-        students: 30,
-        staff: 10,
-        revenue: 5000,
-        todayAttendance: { date: todayStr, present: 1, absent: 29, late: 0, total: 30 },
+        students: 0,
+        staff: 0,
+        revenue: 0,
+        todayAttendance: { date: todayStr, present: 0, absent: 0, late: 0, total: 0 },
         attendanceTrend: [
-          { day: "11-06", percent: 95 },
-          { day: "11-07", percent: 97 },
-          { day: "11-08", percent: 98 },
-          { day: "11-09", percent: 100 },
-          { day: "11-10", percent: 96 },
-          { day: "11-11", percent: 99 },
-          { day: "11-12", percent: 97 },
+          { day: todayStr.slice(5), percent: 0 },
         ],
-        attendanceStats: { avg: 97, highest: 100, lowest: 95 },
-        feeMonth: { collected: 5000, pending: 145000, total: 150000 },
-        classFeeSummary: [{ class: "Class 9", collected: 5000, pending: 145000, total: 150000 }],
-        recentPayments: [{ id: "fee-ts-01", studentName: "Test Student 01", amountPaid: 5000, feeMonth: "November 2026", status: "paid" }],
-        classDistribution: [
-          { name: "Class 9 - Section A", value: 10 },
-          { name: "Class 9 - Section B", value: 10 },
-          { name: "Class 9 - Section C", value: 10 },
-        ],
-        studentStatusBreakdown: { active: 30, graduated: 0, transferred: 0, suspended: 0, archived: 0 },
+        attendanceStats: { avg: 0, highest: 0, lowest: 0 },
+        feeMonth: { collected: 0, pending: 0, total: 0 },
+        classFeeSummary: [],
+        recentPayments: [],
+        classDistribution: [],
+        studentStatusBreakdown: { active: 0, graduated: 0, transferred: 0, suspended: 0, archived: 0 },
         staffAnalytics: {
-          total: 10,
-          active: 10,
+          total: 0,
+          active: 0,
           terminated: 0,
           resigned: 0,
           onLeave: 0,
-          byDepartment: CANONICAL_DEPARTMENTS,
-          byCategory: CANONICAL_CATEGORIES,
-          byCampus: { "Main Campus": 10 },
+          byDepartment: {},
+          byCategory: {},
+          byCampus: { "Main Campus": 0 },
           byGender: {},
         },
       };

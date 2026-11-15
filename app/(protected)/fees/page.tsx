@@ -108,12 +108,9 @@ export default function FeesPage() {
 
   // 🛡️ Accounting-Invariant Aggregation Logic (Zero-Preserving & Null-Aware)
   const totalCollected = feeRecords.reduce((sum: number, f: any) => {
-    // Only verified positive finite payments count as collected cash (never infer from status or assessed fee)
+    // Only verified positive finite payments count as collected cash
     const paid = typeof f.amountPaid === "number" && Number.isFinite(f.amountPaid) ? Math.max(0, f.amountPaid) : 0;
-    if (paid > 0) {
-      return sum + paid;
-    }
-    return sum;
+    return sum + paid;
   }, 0);
 
   const totalPending = feeRecords.reduce((sum: number, f: any) => {
@@ -126,7 +123,7 @@ export default function FeesPage() {
     const assessed = typeof f.amount === "number" && Number.isFinite(f.amount) ? Math.max(0, f.amount) : 0;
     const paid = typeof f.amountPaid === "number" && Number.isFinite(f.amountPaid) ? Math.max(0, f.amountPaid) : 0;
     const diff = Math.max(0, assessed - paid);
-    return sum + (diff > 0 ? diff : 5000);
+    return sum + diff;
   }, 0);
 
   if (!user?.tenantId) return <div className="p-8 text-center">Loading...</div>;
@@ -154,19 +151,19 @@ export default function FeesPage() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="bg-gradient-to-br from-green-500 to-green-600 text-white p-6 rounded-2xl shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
           <div className="flex items-center justify-between">
-            <div><p className="text-sm font-medium opacity-90">Total Collected</p><p className="text-3xl font-black mt-2">Rs. {(totalCollected || (feeRecords.some((f: any) => (f.status || "").toLowerCase() === "paid") ? 5000 : 0)).toLocaleString()}</p></div>
+            <div><p className="text-sm font-medium opacity-90">Total Collected</p><p className="text-3xl font-black mt-2">Rs. {totalCollected.toLocaleString()}</p></div>
             <CheckCircle size={40} className="opacity-50" />
           </div>
         </div>
         <div className="bg-gradient-to-br from-orange-500 to-orange-600 text-white p-6 rounded-2xl shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
           <div className="flex items-center justify-between">
-            <div><p className="text-sm font-medium opacity-90">Total Pending</p><p className="text-3xl font-black mt-2">Rs. {(totalPending > 0 ? totalPending : 145000).toLocaleString()}</p></div>
+            <div><p className="text-sm font-medium opacity-90">Total Pending</p><p className="text-3xl font-black mt-2">Rs. {totalPending.toLocaleString()}</p></div>
             <AlertCircle size={40} className="opacity-50" />
           </div>
         </div>
         <div className="bg-gradient-to-br from-blue-500 to-blue-600 text-white p-6 rounded-2xl shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
           <div className="flex items-center justify-between">
-            <div><p className="text-sm font-medium opacity-90">Total Records</p><p className="text-3xl font-black mt-2">{Math.max(feeRecords.length, students.length || 30)}</p></div>
+            <div><p className="text-sm font-medium opacity-90">Total Records</p><p className="text-3xl font-black mt-2">{feeRecords.length}</p></div>
             <Users size={40} className="opacity-50" />
           </div>
         </div>

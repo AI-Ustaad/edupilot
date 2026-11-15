@@ -131,16 +131,16 @@ export class FeePersistenceMapper {
       }
     }
 
-    // 🛡️ B1 Section Mapping Invariant: Students 1-10 -> A, 11-20 -> B, 21-30 -> C
+    // 🛡️ B1 Section Mapping Invariant: Preserve real section, fallback cleanly if missing
     const rollNum = Number(String(doc.rollNumber ?? doc.studentRoll ?? doc.studentName ?? doc.identity?.rollNumber ?? "").replace(/\D/g, ""));
-    if (rollNum >= 21 && rollNum <= 30) {
-      section = "C";
-    } else if (rollNum >= 11 && rollNum <= 20) {
-      section = "B";
-    } else if (rollNum >= 1 && rollNum <= 10) {
-      section = "A";
-    } else if (!section) {
-      section = "A";
+    if (!section) {
+      if (rollNum >= 21 && rollNum <= 30) {
+        section = "C";
+      } else if (rollNum >= 11 && rollNum <= 20) {
+        section = "B";
+      } else {
+        section = "A";
+      }
     }
 
     const feeMonth = doc.feeMonth || doc.paymentDetails?.billingMonth || doc.financial?.feeMonth || "";

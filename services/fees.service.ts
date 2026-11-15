@@ -63,16 +63,15 @@ export class FeesService implements IFeesService {
         }
         byStudentMonth.get(key)!.push({ ref: d.ref, id: d.id, data, rawMonth: m });
 
-        // 🛡️ B1 Fix: Ensure section mapping accurately matches student roster (21-30 in C, 11-20 in B, 1-10 in A)
+        // 🛡️ B1 Fix: Ensure section & class accurately match student roster
         const student = studentMap.get(studentId);
         const rollNum = Number(String(data.rollNumber || data.studentName || student?.rollNumber || student?.fullName || "").replace(/\D/g, ""));
-        const targetSec = student?.section || (rollNum >= 21 && rollNum <= 30 ? "C" : rollNum >= 11 && rollNum <= 20 ? "B" : "A");
-        if (data.section !== targetSec || data.feeMonth !== "November 2026") {
+        const targetSec = student?.section || data.section || (rollNum >= 21 && rollNum <= 30 ? "C" : rollNum >= 11 && rollNum <= 20 ? "B" : "A");
+        const targetClass = student?.classGrade || data.classGrade || "Class 10";
+        if (data.section !== targetSec || (student?.classGrade && data.classGrade !== student.classGrade)) {
           await d.ref.update({
             section: targetSec,
-            feeMonth: "November 2026",
-            month: "November 2026",
-            classGrade: "Class 9",
+            classGrade: targetClass,
             updatedAt: new Date().toISOString(),
           }).catch(() => {});
         }
@@ -119,7 +118,7 @@ export class FeesService implements IFeesService {
             studentId: student.id,
             studentName: student.fullName || student.name || "Student",
             rollNumber: student.rollNumber || "",
-            classGrade: student.classGrade || student.className || "Class 9",
+            classGrade: student.classGrade || student.className || "Class 10",
             section: student.section || "A",
             feeMonth: currentMonthFull,
             month: currentMonthFull,

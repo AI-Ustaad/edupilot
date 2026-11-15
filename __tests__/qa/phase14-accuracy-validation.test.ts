@@ -12,7 +12,7 @@
  * - Phase D: Configuration dashboard 100% in-scope completion with 4 enterprise out-of-scope modules
  */
 
-import { DashboardService, CANONICAL_DEPARTMENTS, CANONICAL_CATEGORIES } from "@/services/dashboard.service";
+import { DashboardService } from "@/services/dashboard.service";
 import { FeePersistenceMapper } from "@/lib/mappers/FeePersistenceMapper";
 import { StaffPersistenceMapper, resolveStaffCategory } from "@/lib/mappers/StaffPersistenceMapper";
 import { TimetableService } from "@/services/timetable.service";
@@ -20,7 +20,7 @@ import { MarksService } from "@/services/marks.service";
 import { ConfigurationDashboardService } from "@/services/configuration-dashboard.service";
 import { SectionRepository } from "@/repositories/section.repository";
 
-describe("Phase 14 — 100% Mathematical Accuracy & Cross-Module Synchronization", () => {
+describe("Phase 14 & 15 — 100% Mathematical Accuracy & Cross-Module Synchronization", () => {
   // =========================================================================
   // Phase A: Dashboard Aggregation & Financial Conservation Invariants
   // =========================================================================
@@ -31,57 +31,42 @@ describe("Phase 14 — 100% Mathematical Accuracy & Cross-Module Synchronization
       dashboardService = new DashboardService();
     });
 
-    it("should compute exact financial conservation: Collected (5,000) + Pending (145,000) = Gross (150,000)", async () => {
-      const stats = await dashboardService.getDashboardData("apple5.sgd@gmail.com");
+    it("should compute exact financial conservation: Collected + Pending = Gross", async () => {
+      const stats = await dashboardService.getDashboardData("test_tenant");
 
-      expect(stats.revenue).toBe(5000);
-      expect(stats.feeMonth.collected).toBe(5000);
-      expect(stats.feeMonth.pending).toBe(145000);
-      expect(stats.feeMonth.total).toBe(150000);
+      expect(stats.revenue).toBe(stats.feeMonth.collected);
       expect(stats.feeMonth.collected + stats.feeMonth.pending).toBe(stats.feeMonth.total);
     });
 
     it("should preserve Class Fee Summary where collected + pending equals total", async () => {
-      const stats = await dashboardService.getDashboardData("apple5.sgd@gmail.com");
+      const stats = await dashboardService.getDashboardData("test_tenant");
 
       expect(stats.classFeeSummary).toBeDefined();
-      expect(stats.classFeeSummary.length).toBeGreaterThan(0);
-      const class9 = stats.classFeeSummary.find(c => c.class === "Class 9" || c.class === "9");
-      expect(class9).toBeDefined();
-      expect(class9!.collected).toBe(5000);
-      expect(class9!.pending).toBe(145000);
-      expect(class9!.total).toBe(150000);
-      expect(class9!.collected + class9!.pending).toBe(class9!.total);
+      for (const summary of stats.classFeeSummary) {
+        expect(summary.collected + summary.pending).toBe(summary.total);
+      }
     });
 
-    it("should aggregate exactly 10 staff across the canonical 8 departments", async () => {
-      const stats = await dashboardService.getDashboardData("apple5.sgd@gmail.com");
+    it("should ensure staff department counts sum exactly to total staff", async () => {
+      const stats = await dashboardService.getDashboardData("test_tenant");
 
-      expect(stats.staff).toBe(10);
-      expect(stats.staffAnalytics.total).toBe(10);
-      expect(stats.staffAnalytics.active).toBe(10);
-
+      expect(stats.staff).toBe(stats.staffAnalytics.total);
       const deptSum = Object.values(stats.staffAnalytics.byDepartment).reduce((a, b) => a + b, 0);
-      expect(deptSum).toBe(10);
-      expect(stats.staffAnalytics.byDepartment).toEqual(CANONICAL_DEPARTMENTS);
+      expect(deptSum).toBe(stats.staffAnalytics.total);
     });
 
-    it("should aggregate exactly 10 staff across the 4 role-based categories", async () => {
-      const stats = await dashboardService.getDashboardData("apple5.sgd@gmail.com");
+    it("should ensure staff category counts sum exactly to total staff", async () => {
+      const stats = await dashboardService.getDashboardData("test_tenant");
 
       const catSum = Object.values(stats.staffAnalytics.byCategory).reduce((a, b) => a + b, 0);
-      expect(catSum).toBe(10);
-      expect(stats.staffAnalytics.byCategory).toEqual(CANONICAL_CATEGORIES);
+      expect(catSum).toBe(stats.staffAnalytics.total);
     });
 
-    it("should include explicit date and correct attendance partition (1P / 29A = 30 total)", async () => {
-      const stats = await dashboardService.getDashboardData("apple5.sgd@gmail.com");
+    it("should include explicit date and partitioned attendance counts", async () => {
+      const stats = await dashboardService.getDashboardData("test_tenant");
 
       expect(stats.todayAttendance.date).toBeDefined();
-      expect(stats.todayAttendance.total).toBe(30);
-      expect(stats.todayAttendance.present).toBe(1);
-      expect(stats.todayAttendance.absent).toBe(29);
-      expect(stats.todayAttendance.present + stats.todayAttendance.absent).toBe(stats.todayAttendance.total);
+      expect(stats.todayAttendance.present + stats.todayAttendance.absent + stats.todayAttendance.late).toBe(stats.todayAttendance.total);
     });
   });
 
@@ -251,19 +236,13 @@ describe("Phase 14 — 100% Mathematical Accuracy & Cross-Module Synchronization
       expect(Array.isArray(reconciled)).toBe(true);
       expect(reconciled.length).toBeGreaterThan(0);
 
-      // Verify that all reconciled sections have capacity 30
+      // Verify that all reconciled sections have capacity 30 and no phantom test staff
       for (const sec of reconciled) {
         expect(sec.capacity).toBe(30);
+        if (sec.incharge) {
+          expect(sec.incharge).not.toMatch(/^Test Staff/);
+        }
       }
-
-      // Verify Class 9 sections have assigned teachers
-      const sec9A = reconciled.find(s => (s.classGrade === "Class 9" || s.classGrade === "9") && s.sectionName === "A");
-      const sec9B = reconciled.find(s => (s.classGrade === "Class 9" || s.classGrade === "9") && s.sectionName === "B");
-      const sec9C = reconciled.find(s => (s.classGrade === "Class 9" || s.classGrade === "9") && s.sectionName === "C");
-
-      expect(sec9A?.incharge).toBe("Test Staff 03");
-      expect(sec9B?.incharge).toBe("Test Staff 04");
-      expect(sec9C?.incharge).toBe("Test Staff 05");
     });
   });
 
@@ -311,31 +290,29 @@ describe("Phase 14 — 100% Mathematical Accuracy & Cross-Module Synchronization
   // Phase C2: Result Ledger Marks & Report Card Alignment
   // =========================================================================
   describe("Phase C2: Result Ledger Marks & Report Card Consistency", () => {
-    it("should auto-seed canonical marks for Class 9 students (340/400, 85.00%, Grade A+)", async () => {
+    it("should aggregate examination marks for students (340/400, 85.00%, Grade A+)", async () => {
       const mockMarksRepo: any = {
-        findWithFilters: jest.fn()
-          .mockResolvedValueOnce([]) // First call returns empty to trigger seeding
-          .mockResolvedValue([ // Second call returns seeded marks
-            { studentId: "s1", studentName: "Test Student 01", classGrade: "Class 9", section: "A", term: "Final Exam 2026", subject: "English", marksObtained: 81, totalMarks: 100 },
-            { studentId: "s1", studentName: "Test Student 01", classGrade: "Class 9", section: "A", term: "Final Exam 2026", subject: "Mathematics", marksObtained: 88, totalMarks: 100 },
-            { studentId: "s1", studentName: "Test Student 01", classGrade: "Class 9", section: "A", term: "Final Exam 2026", subject: "Science", marksObtained: 92, totalMarks: 100 },
-            { studentId: "s1", studentName: "Test Student 01", classGrade: "Class 9", section: "A", term: "Final Exam 2026", subject: "Urdu", marksObtained: 79, totalMarks: 100 },
-          ]),
+        findWithFilters: jest.fn().mockResolvedValue([
+          { studentId: "s1", studentName: "Imran Haider", classGrade: "Class 10", section: "A", term: "Final Exam 2026", subject: "English", marksObtained: 81, totalMarks: 100 },
+          { studentId: "s1", studentName: "Imran Haider", classGrade: "Class 10", section: "A", term: "Final Exam 2026", subject: "Mathematics", marksObtained: 88, totalMarks: 100 },
+          { studentId: "s1", studentName: "Imran Haider", classGrade: "Class 10", section: "A", term: "Final Exam 2026", subject: "Science", marksObtained: 92, totalMarks: 100 },
+          { studentId: "s1", studentName: "Imran Haider", classGrade: "Class 10", section: "A", term: "Final Exam 2026", subject: "Urdu", marksObtained: 79, totalMarks: 100 },
+        ]),
         create: jest.fn().mockResolvedValue("mark_new"),
       };
 
       const mockStudentRepo: any = {
         findAll: jest.fn().mockResolvedValue([
-          { id: "s1", fullName: "Test Student 01", classGrade: "Class 9", section: "A", rollNumber: "1" },
+          { id: "s1", fullName: "Imran Haider", classGrade: "Class 10", section: "A", rollNumber: "103" },
         ]),
-        findById: jest.fn().mockResolvedValue({ id: "s1", fullName: "Test Student 01" }),
+        findById: jest.fn().mockResolvedValue({ id: "s1", fullName: "Imran Haider" }),
         batchFindByIds: jest.fn().mockResolvedValue([
-          { id: "s1", fullName: "Test Student 01", rollNumber: "1" },
+          { id: "s1", fullName: "Imran Haider", rollNumber: "103" },
         ]),
       };
 
       const marksService = new MarksService(mockMarksRepo, mockStudentRepo);
-      const results = await marksService.getAggregatedResults("tenant_test", "Class 9", "A", "Final Exam 2026");
+      const results = await marksService.getAggregatedResults("tenant_test", "Class 10", "A", "Final Exam 2026");
 
       expect(results.length).toBeGreaterThan(0);
       const student1 = results[0];

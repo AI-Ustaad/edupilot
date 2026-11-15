@@ -50,13 +50,10 @@ export class SectionRepository extends BaseRepository<Section> implements ISecti
           updates.capacity = 30;
           needsUpdate = true;
         }
-        if (s.classGrade === "Class 9") {
-          const targetIncharge = s.sectionName === "A" ? "Test Staff 03" : s.sectionName === "B" ? "Test Staff 04" : "Test Staff 05";
-          if (!s.incharge || s.incharge === "Not Assigned") {
-            s.incharge = targetIncharge;
-            updates.incharge = targetIncharge;
-            needsUpdate = true;
-          }
+        if (s.incharge && s.incharge.startsWith("Test Staff")) {
+          s.incharge = "Not Assigned";
+          updates.incharge = "Not Assigned";
+          needsUpdate = true;
         }
         if (needsUpdate) {
           const docRef = this.db.collection(this.collectionName).doc(s.id);
@@ -72,9 +69,7 @@ export class SectionRepository extends BaseRepository<Section> implements ISecti
           if (!existingKeys.has(key)) {
             const docId = sectionDocId(tenantId, classGrade, sectionName);
             const docRef = this.db.collection(this.collectionName).doc(docId);
-            const incharge = classGrade === "Class 9"
-              ? (sectionName === "A" ? "Test Staff 03" : sectionName === "B" ? "Test Staff 04" : "Test Staff 05")
-              : "Test Staff 03";
+            const incharge = "Not Assigned";
 
             const newSection: Section = {
               classGrade,

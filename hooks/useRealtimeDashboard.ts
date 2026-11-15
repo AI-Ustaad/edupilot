@@ -28,7 +28,7 @@ export const useRealtimeDashboard = () => {
         }
         return {
           ...oldData,
-          students: Math.max(snapshot.size, 30),
+          students: snapshot.size,
         };
       });
     }, (error) => {
