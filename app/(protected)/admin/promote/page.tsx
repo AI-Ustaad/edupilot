@@ -103,7 +103,7 @@ export default function PromoteStudentsPage() {
       showToast("Select target class.", "error");
       return;
     }
-    if (!confirm(`Promote ${selectedIds.size} students to Class ${toClass} Section ${toSection}?`)) return;
+    if (!confirm(`Promote ${selectedIds.size} students to ${formatClassLabel(toClass)} Section ${toSection}?`)) return;
     promoteMutation.mutate({
       studentIds: Array.from(selectedIds),
       newClassGrade: toClass,
@@ -169,7 +169,7 @@ export default function PromoteStudentsPage() {
           ) : eligibleStudents.length === 0 ? (
             <div className="p-8 text-center text-gray-400">
               <Users className="mx-auto mb-2 text-gray-300" size={32} />
-              <p>No active students found in Class {fromClass}</p>
+              <p>No active students found in {formatClassLabel(fromClass)}</p>
             </div>
           ) : (
             <div className="max-h-96 overflow-y-auto">

@@ -55,6 +55,23 @@ export const useCreateClass = () => {
   });
 };
 
+// ✏️ Update Section / Assign Teacher
+export const useUpdateClass = () => {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const tenantId = user?.tenantId || "unknown";
+
+  return useMutation({
+    mutationFn: async (data: { id: string; classTeacherId?: string | null; classTeacherName?: string; incharge?: string }) => {
+      return apiClient.put("/classes", data);
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: QueryKeys.classes(tenantId) });
+    },
+  });
+};
+
+
 // 🗑️ Delete Class (With Optimistic Update)
 export const useDeleteClass = () => {
   const queryClient = useQueryClient();
@@ -86,3 +103,4 @@ export const useDeleteClass = () => {
     },
   });
 };
+

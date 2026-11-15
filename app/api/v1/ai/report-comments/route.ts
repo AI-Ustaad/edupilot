@@ -4,6 +4,7 @@ import { createSuccessResponse, createErrorResponse } from "@/lib/api/response";
 import { agentRegistry } from "@/lib/ai/agents/AgentRegistry";
 import { enforceAiQuota, createAiErrorResponse, recordAiTelemetry } from "@/lib/ai/ai-quota-guard";
 import type { TenantContext } from "@/types/api";
+import { formatClassLabel } from "@/lib/utils/formatClassLabel";
 
 export const POST = withErrorHandler(
   withAuth(
@@ -19,7 +20,8 @@ export const POST = withErrorHandler(
         return createErrorResponse(400, "Missing required fields (studentName, subject)");
       }
 
-      const query = `Write a personalized report card comment for ${body.studentName} (Class ${body.grade || "N/A"}, Subject ${body.subject}). Marks: ${body.marks || "N/A"}%, Attendance: ${body.attendance || "N/A"}%.`;
+      const gradeLabel = formatClassLabel(body.grade || "N/A");
+      const query = `Write a personalized report card comment for ${body.studentName} (${gradeLabel}, Subject ${body.subject}). Marks: ${body.marks || "N/A"}%, Attendance: ${body.attendance || "N/A"}%.`;
 
       const startTime = Date.now();
       try {

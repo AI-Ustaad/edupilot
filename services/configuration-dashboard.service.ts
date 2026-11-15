@@ -20,6 +20,7 @@ import { HouseRepository } from "@/repositories/house.repository";
 import { ShiftRepository } from "@/repositories/shift.repository";
 import { GradingRepository } from "@/repositories/grading.repository";
 import { DepartmentRepository } from "@/repositories/department.repository";
+import { formatClassLabel } from "@/lib/utils/formatClassLabel";
 import type {
   IConfigurationDashboardService,
   ConfigurationDashboardMetrics,
@@ -161,7 +162,7 @@ export class ConfigurationDashboardService
       // canonical `sections` collection. A class is therefore a distinct
       // classGrade, while a section is a document in that collection.
       classes: Array.isArray(classes)
-        ? new Set(classes.map((record) => record.classGrade.trim().toLocaleLowerCase())).size
+        ? new Set(classes.map((record) => formatClassLabel(record.classGrade).toLowerCase())).size
         : 0,
       sections: Array.isArray(sections) ? sections.length : 0,
       students,

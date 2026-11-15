@@ -10,7 +10,7 @@ export class UserAdminService {
     this.repository = repository ?? new UserRepository();
   }
 
-  async findAllByTenant(tenantId: string): Promise<SessionUser[]> {
-    return this.repository.findAllByTenant(tenantId);
+  async findAllByTenant(tenantId: string, currentUser?: SessionUser | any): Promise<SessionUser[]> {
+    return this.repository.findAllByTenant(tenantId, currentUser);
   }
 }

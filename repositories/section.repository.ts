@@ -2,11 +2,14 @@ import { BaseRepository } from "./base.repository";
 import { adminDb, dbTimestamp } from "@/lib/firebase-admin";
 import type { ISectionRepository } from "@/interfaces/ISectionRepository";
 import { normalizeNaturalKey, sectionNaturalKey, sectionDocId } from "@/lib/utils/normalization";
+import { formatClassLabel, cleanSectionName } from "@/lib/utils/formatClassLabel";
 
 export interface Section {
   classGrade: string;
   sectionName: string;
   incharge?: string;
+  classTeacherName?: string;
+  classTeacherId?: string | null;
   capacity?: number;
   subjects?: { core: string[]; electives: string[] };
   tenantId: string;
@@ -23,82 +26,209 @@ export class SectionRepository extends BaseRepository<Section> implements ISecti
 
   async reconcileSectionMatrix(tenantId: string): Promise<(Section & { id: string })[]> {
     try {
-      const snapshot = await this.db
-        .collection(this.collectionName)
-        .where("tenantId", "==", tenantId)
-        .get();
+      const [snapshot, staffSnapshot] = await Promise.all([
+        this.db.collection(this.collectionName).where("tenantId", "==", tenantId).get(),
+        this.db.collection("staff").where("tenantId", "==", tenantId).get().catch(() => null),
+      ]);
 
-      const existing = snapshot.docs
-        .map(doc => ({ id: doc.id, ...doc.data() } as Section & { id: string }))
-        .filter(s => !s.deleted);
+      // Identify real staff members for this tenant (e.g. ghzandar Ali)
+      const validStaff = (staffSnapshot ? staffSnapshot.docs : [])
+        .map(doc => ({ id: doc.id, ...(doc.data() as any) }))
+        .filter((st: any) => !st.deleted);
 
-      const existingKeys = new Set(
-        existing.map(s => `${(s.classGrade || "").trim().toLowerCase()}__${(s.sectionName || "").trim().toUpperCase()}`)
-      );
+      const realStaffMap = new Map<string, { id: string; name: string }>();
+      validStaff.forEach((st: any) => {
+        const fullName = (st.name || st.fullName || `${st.firstName || ""} ${st.lastName || ""}`.trim()).trim();
+        if (fullName) {
+          realStaffMap.set(fullName.toLowerCase(), { id: st.id, name: fullName });
+          realStaffMap.set(st.id.toLowerCase(), { id: st.id, name: fullName });
+        }
+      });
 
+      const existingDocs = snapshot.docs;
       const batch = this.db.batch();
       let hasWrites = false;
-      const addedSections: (Section & { id: string })[] = [];
-      const CANONICAL_SECTIONS = ["A", "B", "C"];
 
-      // 🛡️ B4 Self-Healing: Backfill capacity 30 and Class 9 teacher assignments onto existing records
-      for (const s of existing) {
-        let needsUpdate = false;
-        const updates: Partial<Section> = {};
-        if (!s.capacity || s.capacity <= 0) {
-          s.capacity = 30;
-          updates.capacity = 30;
-          needsUpdate = true;
+      // Group existing docs by canonical key: "class 1__a"
+      const canonicalMap = new Map<string, Section & { id: string; docRef: any }>();
+      const duplicatesToDelete: any[] = [];
+
+      for (const doc of existingDocs) {
+        const data = doc.data() as Section;
+        if (data.deleted) continue;
+
+        const canonicalGrade = formatClassLabel(data.classGrade);
+        const canonicalSec = cleanSectionName(data.sectionName || (data as any).section || "A");
+        const key = `${canonicalGrade.toLowerCase()}__${canonicalSec.toUpperCase()}`;
+
+        // If duplicate or non-canonical duplicate
+        if (canonicalMap.has(key)) {
+          const existingOne = canonicalMap.get(key)!;
+          const currentHasTeacher = data.incharge && data.incharge !== "Unassigned" && data.incharge !== "Not Assigned" && !data.incharge.startsWith("Test Staff");
+          const existingHasTeacher = existingOne.incharge && existingOne.incharge !== "Unassigned" && existingOne.incharge !== "Not Assigned" && !existingOne.incharge.startsWith("Test Staff");
+
+          if (currentHasTeacher && !existingHasTeacher) {
+            duplicatesToDelete.push(existingOne.docRef);
+            canonicalMap.set(key, {
+              id: doc.id,
+              docRef: doc.ref,
+              ...data,
+              classGrade: canonicalGrade,
+              sectionName: canonicalSec,
+            });
+          } else {
+            duplicatesToDelete.push(doc.ref);
+          }
+          continue;
         }
-        if (s.incharge && s.incharge.startsWith("Test Staff")) {
-          s.incharge = "Not Assigned";
-          updates.incharge = "Not Assigned";
-          needsUpdate = true;
-        }
-        if (needsUpdate) {
-          const docRef = this.db.collection(this.collectionName).doc(s.id);
-          batch.set(docRef, updates, { merge: true });
-          hasWrites = true;
-        }
+
+        canonicalMap.set(key, {
+          id: doc.id,
+          docRef: doc.ref,
+          ...data,
+          classGrade: canonicalGrade,
+          sectionName: canonicalSec,
+        });
       }
 
+      for (const ref of duplicatesToDelete) {
+        batch.delete(ref);
+        hasWrites = true;
+      }
+
+      const CANONICAL_SECTIONS = ["A", "B", "C"];
+      const finalSections: (Section & { id: string })[] = [];
+
+      // Reconcile all 10 canonical classes and 3 canonical sections (A, B, C)
       for (let c = 1; c <= 10; c++) {
         const classGrade = `Class ${c}`;
-        for (const sectionName of CANONICAL_SECTIONS) {
-          const key = `${classGrade.toLowerCase()}__${sectionName}`;
-          if (!existingKeys.has(key)) {
-            const docId = sectionDocId(tenantId, classGrade, sectionName);
-            const docRef = this.db.collection(this.collectionName).doc(docId);
-            const incharge = "Not Assigned";
+        for (const sec of CANONICAL_SECTIONS) {
+          const key = `${classGrade.toLowerCase()}__${sec}`;
+          const existingSection = canonicalMap.get(key);
 
-            const newSection: Section = {
+          if (existingSection) {
+            let needsUpdate = false;
+            const updates: Record<string, any> = {};
+
+            const rawData = existingDocs.find(d => d.id === existingSection.id)?.data();
+            if (rawData?.classGrade !== classGrade || rawData?.sectionName !== sec) {
+              updates.classGrade = classGrade;
+              updates.sectionName = sec;
+              needsUpdate = true;
+            }
+
+            // Purge phantom teachers: only allow real staff from staff collection
+            const currentIncharge = (existingSection.incharge || existingSection.classTeacherName || "").trim();
+            const staffMatch = currentIncharge ? realStaffMap.get(currentIncharge.toLowerCase()) : null;
+
+            if (staffMatch) {
+              if (existingSection.incharge !== staffMatch.name || existingSection.classTeacherId !== staffMatch.id) {
+                updates.incharge = staffMatch.name;
+                updates.classTeacherName = staffMatch.name;
+                updates.classTeacherId = staffMatch.id;
+                existingSection.incharge = staffMatch.name;
+                existingSection.classTeacherName = staffMatch.name;
+                existingSection.classTeacherId = staffMatch.id;
+                needsUpdate = true;
+              }
+            } else {
+              // Unassigned / Phantom teacher (e.g. "Test Staff 03", "Not Assigned")
+              if (existingSection.incharge !== "Unassigned" || existingSection.classTeacherName !== "Unassigned" || existingSection.classTeacherId) {
+                updates.incharge = "Unassigned";
+                updates.classTeacherName = "Unassigned";
+                updates.classTeacherId = null;
+                existingSection.incharge = "Unassigned";
+                existingSection.classTeacherName = "Unassigned";
+                existingSection.classTeacherId = null;
+                needsUpdate = true;
+              }
+            }
+
+            if (!existingSection.capacity || existingSection.capacity <= 0) {
+              updates.capacity = 30;
+              existingSection.capacity = 30;
+              needsUpdate = true;
+            }
+
+            if (needsUpdate) {
+              batch.set(existingSection.docRef, updates, { merge: true });
+              hasWrites = true;
+            }
+
+            finalSections.push({
+              id: existingSection.id,
               classGrade,
-              sectionName,
+              sectionName: sec,
+              incharge: existingSection.incharge || "Unassigned",
+              classTeacherName: existingSection.classTeacherName || "Unassigned",
+              classTeacherId: existingSection.classTeacherId || null,
+              capacity: existingSection.capacity || 30,
+              tenantId,
+              deleted: false,
+              subjects: existingSection.subjects || { core: ["English", "Mathematics", "Science", "Urdu"], electives: [] },
+            });
+          } else {
+            // Missing canonical section: create it
+            const docId = sectionDocId(tenantId, classGrade, sec);
+            const docRef = this.db.collection(this.collectionName).doc(docId);
+            const newSec: Section = {
+              classGrade,
+              sectionName: sec,
               tenantId,
               deleted: false,
               capacity: 30,
-              incharge,
+              incharge: "Unassigned",
+              classTeacherName: "Unassigned",
+              classTeacherId: null,
               subjects: { core: ["English", "Mathematics", "Science", "Urdu"], electives: [] },
             };
             batch.set(docRef, {
-              ...newSection,
+              ...newSec,
               id: docId,
               createdAt: dbTimestamp,
               updatedAt: dbTimestamp,
             }, { merge: true });
-
-            addedSections.push({ ...newSection, id: docId });
             hasWrites = true;
-            existingKeys.add(key);
+
+            finalSections.push({
+              id: docId,
+              ...newSec,
+            });
           }
         }
+      }
+
+      // Self-heal students & fees class references for this tenant
+      try {
+        const studentSnap = await this.db.collection("students").where("tenantId", "==", tenantId).get();
+        for (const stDoc of studentSnap.docs) {
+          const stData = stDoc.data();
+          const normClass = formatClassLabel(stData.classGrade || stData.className);
+          const normSec = cleanSectionName(stData.section || stData.sectionName || "A");
+          if (stData.classGrade !== normClass || stData.section !== normSec) {
+            batch.set(stDoc.ref, { classGrade: normClass, className: normClass, section: normSec, sectionName: normSec }, { merge: true });
+            hasWrites = true;
+          }
+        }
+
+        const feeSnap = await this.db.collection("fees").where("tenantId", "==", tenantId).get();
+        for (const feeDoc of feeSnap.docs) {
+          const feeData = feeDoc.data();
+          const normClass = formatClassLabel(feeData.classGrade || feeData.className);
+          const normSec = cleanSectionName(feeData.section || feeData.sectionName || "A");
+          if (feeData.classGrade !== normClass || feeData.section !== normSec) {
+            batch.set(feeDoc.ref, { classGrade: normClass, className: normClass, section: normSec }, { merge: true });
+            hasWrites = true;
+          }
+        }
+      } catch (err) {
+        // Safe ignore
       }
 
       if (hasWrites) {
         await batch.commit().catch(() => {});
       }
 
-      const all = [...existing, ...addedSections];
       const naturalSort = (a: any, b: any) => {
         const numA = parseInt(String(a.classGrade || "").replace(/[^0-9]/g, ""), 10) || 0;
         const numB = parseInt(String(b.classGrade || "").replace(/[^0-9]/g, ""), 10) || 0;
@@ -108,20 +238,14 @@ export class SectionRepository extends BaseRepository<Section> implements ISecti
         return secA.localeCompare(secB);
       };
 
-      return all.sort(naturalSort);
+      return finalSections.sort(naturalSort);
     } catch {
       return [];
     }
   }
 
   async findAllActive(tenantId: string): Promise<(Section & { id: string })[]> {
-    const snapshot = await this.db
-      .collection(this.collectionName)
-      .where("tenantId", "==", tenantId)
-      .get();
-    return snapshot.docs
-      .map(doc => ({ id: doc.id, ...doc.data() } as Section & { id: string }))
-      .filter(s => !s.deleted);
+    return this.reconcileSectionMatrix(tenantId);
   }
 
   async findAllIncludingDeleted(tenantId: string): Promise<(Section & { id: string })[]> {

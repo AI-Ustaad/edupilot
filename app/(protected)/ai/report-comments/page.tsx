@@ -8,6 +8,7 @@ import { useStudents } from "@/hooks/useStudents";
 import { useGenerateReportComments } from "@/hooks/useAI";
 import { useToast } from "@/components/ToastProvider";
 import apiClient from "@/lib/api/client";
+import { formatClassLabel } from "@/lib/utils/formatClassLabel";
 
 export default function ReportCommentsPage() {
   const { data: students = [] } = useStudents();
@@ -99,7 +100,7 @@ export default function ReportCommentsPage() {
           <label className="text-sm font-bold text-gray-700 block mb-1">Select Student *</label>
           <select value={selectedStudentId} onChange={e => setSelectedStudentId(e.target.value)} className="w-full border border-gray-300 rounded-xl p-3 bg-gray-50" required>
             <option value="">Select a student...</option>
-            {students.map((s: any) => <option key={s.id} value={s.id}>{s.fullName} (Class {s.classGrade})</option>)}
+            {students.map((s: any) => <option key={s.id} value={s.id}>{s.fullName} ({formatClassLabel(s.classGrade)})</option>)}
           </select>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

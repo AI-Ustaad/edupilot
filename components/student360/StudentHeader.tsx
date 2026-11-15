@@ -3,6 +3,7 @@
 "use client";
 
 import { User, Phone, MapPin, Calendar, CheckCircle2, AlertCircle } from "lucide-react";
+import { formatClassLabel } from "@/lib/utils/formatClassLabel";
 
 interface StudentHeaderProps {
   student: {
@@ -60,7 +61,7 @@ export default function StudentHeader({ student, healthScore }: StudentHeaderPro
                 </span>
               </h1>
               <p className="text-slate-500 mt-1 flex items-center gap-2 font-medium">
-                <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded border border-blue-100">Class {student.class} - {student.section}</span>
+                <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded border border-blue-100">{formatClassLabel(student.class)} - {student.section}</span>
                 <span className="text-slate-300">•</span>
                 <span>Admitted: {student.admissionDate}</span>
               </p>

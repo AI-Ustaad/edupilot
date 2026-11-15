@@ -7,6 +7,7 @@ import { useStaff } from "@/hooks/useStaff";
 import { useToast } from "@/components/ToastProvider";
 import { Plus, Trash2, UserCheck, Layers, BookOpen, Users, Loader2 } from "lucide-react";
 import apiClient from "@/lib/api/client";
+import { formatClassLabel } from "@/lib/utils/formatClassLabel";
 
 const TABS = ["Class Overview", "Section Management", "Teacher Allocation"];
 
@@ -42,7 +43,7 @@ export default function SectionsPage() {
         classGrade: selectedClass,
         sectionName: newSectionName.toUpperCase().trim(),
       });
-      showToast(`Section ${newSectionName.toUpperCase()} added to Class ${selectedClass}!`, "success");
+      showToast(`Section ${newSectionName.toUpperCase()} added to ${formatClassLabel(selectedClass)}!`, "success");
       setNewSectionName("");
     } catch (err: any) {
       showToast(err?.message || "Failed to add section.", "error");

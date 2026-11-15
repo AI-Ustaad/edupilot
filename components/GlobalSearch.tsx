@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { Search, X, Users, School } from "lucide-react";
 import { useStudents } from "@/hooks/useStudents";
 import { useClasses } from "@/hooks/useClasses";
+import { formatClassLabel } from "@/lib/utils/formatClassLabel";
 
 export default function GlobalSearch() {
   const [isOpen, setIsOpen] = useState(false);
@@ -84,7 +85,7 @@ export default function GlobalSearch() {
                       </div>
                       <div>
                         <p className="font-bold text-gray-900 text-sm">{s.fullName || s.name}</p>
-                        <p className="text-xs text-gray-500">Class {s.classGrade} | Roll #{s.rollNumber}</p>
+                        <p className="text-xs text-gray-500">{formatClassLabel(s.classGrade)} | Roll #{s.rollNumber}</p>
                       </div>
                     </button>
                   ))}
@@ -108,7 +109,7 @@ export default function GlobalSearch() {
                         <School size={16} />
                       </div>
                       <div>
-                        <p className="font-bold text-gray-900 text-sm">Class {c.classGrade}</p>
+                        <p className="font-bold text-gray-900 text-sm">{formatClassLabel(c.classGrade)}</p>
                         <p className="text-xs text-gray-500">Section: {c.sectionName || c.section}</p>
                       </div>
                     </button>

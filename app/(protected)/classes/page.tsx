@@ -3,9 +3,11 @@ import React, { useState, useMemo } from "react";
 import { School, Plus, Trash2, Loader2, CheckCircle, AlertCircle, Users } from "lucide-react";
 import RequirePermission from "@/components/RequirePermission";
 import { PERMISSIONS } from "@/lib/auth/permissions";
-import { useClasses, useCreateClass, useDeleteClass } from "@/hooks/useClasses";
+import { useClasses, useCreateClass, useDeleteClass, useUpdateClass } from "@/hooks/useClasses";
 import { useStudents } from "@/hooks/useStudents";
+import { useStaff } from "@/hooks/useStaff";
 import { useToast } from "@/components/ToastProvider";
+import { formatClassLabel, cleanSectionName } from "@/lib/utils/formatClassLabel";
 
 // 🛡️ Natural Sorting Logic (Prep, Class 1, Class 2, Class 10)
 const sortClasses = (a: any, b: any) => {
@@ -30,8 +32,11 @@ export default function ClassesManagementPage() {
   const { data: sections = [], isLoading } = useClasses();
   const { data: studentsData = [] } = useStudents();
   const students: any[] = Array.isArray(studentsData) ? studentsData : [];
+  const { data: staffData = [] } = useStaff();
+  const staffList: any[] = Array.isArray(staffData) ? staffData : [];
   const createMutation = useCreateClass();
   const deleteMutation = useDeleteClass();
+  const updateMutation = useUpdateClass();
   const { showToast } = useToast();
 
   const [newClass, setNewClass] = useState("");
@@ -64,19 +69,36 @@ export default function ClassesManagementPage() {
     const groups: Record<string, any[]> = {};
     
     sections.forEach((section: any) => {
-      // 🛡️ Fix "Class Class 4" Bug: Extract clean class name
-      let clsName = String(section.classGrade || section.name || "").trim();
-      clsName = clsName.replace(/^Class\s+Class/i, "Class").trim(); // Remove duplicate "Class"
+      // 🛡️ Deduplicate and normalize class name: "Class 1" through "Class 10"
+      const clsName = formatClassLabel(section.classGrade || section.name);
+      if (!clsName) return;
       
       if (!groups[clsName]) groups[clsName] = [];
-      groups[clsName].push(section);
+      const secLetter = cleanSectionName(section.sectionName || section.section);
+
+      const existingIndex = groups[clsName].findIndex(
+        (s: any) => cleanSectionName(s.sectionName || s.section) === secLetter
+      );
+
+      if (existingIndex >= 0) {
+        const curIncharge = section.incharge && section.incharge !== "Unassigned" && section.incharge !== "Not Assigned" && !section.incharge.startsWith("Test Staff");
+        if (curIncharge) {
+          groups[clsName][existingIndex] = section;
+        }
+      } else {
+        groups[clsName].push(section);
+      }
     });
 
-    // Sort classes logically
+    // Sort classes logically (Class 1 to Class 10)
     const sortedKeys = Object.keys(groups).sort(sortClasses);
     const sortedGroups: Record<string, any[]> = {};
     sortedKeys.forEach(key => {
-      sortedGroups[key] = groups[key];
+      sortedGroups[key] = groups[key].sort((a: any, b: any) => {
+        const secA = cleanSectionName(a.sectionName || a.section);
+        const secB = cleanSectionName(b.sectionName || b.section);
+        return secA.localeCompare(secB);
+      });
     });
 
     return sortedGroups;
@@ -193,7 +215,7 @@ export default function ClassesManagementPage() {
             <div className="divide-y divide-gray-100">
               {Object.entries(groupedSections).map(([className, sectionsList]: any) => {
                 // Clean display name
-                const displayName = className.startsWith("Class ") ? className : `Class ${className}`;
+                const displayName = formatClassLabel(className);
                 const normCls = className.replace(/^Class\s*/i, "").trim().toLowerCase();
                 const dynamicTotal = studentCounts.classMap[normCls] ?? 0;
                 const totalStudents = dynamicTotal > 0 ? dynamicTotal : sectionsList.reduce((sum: number, sec: any) => sum + (sec.studentCount || 0), 0);
@@ -219,10 +241,20 @@ export default function ClassesManagementPage() {
 
                     <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
                       {sectionsList.map((sec: any) => {
-                        const secName = sec.sectionName || sec.section;
-                        const normSec = String(secName || "").replace(/^Section\s*/i, "").trim().toLowerCase();
+                        const secName = cleanSectionName(sec.sectionName || sec.section);
+                        const normSec = secName.toLowerCase();
                         const dynamicSecCount = studentCounts.sectionMap[`${normCls}__${normSec}`] ?? 0;
                         const displaySecCount = dynamicSecCount > 0 ? dynamicSecCount : (sec.studentCount || 0);
+
+                        // Resolve real assigned staff member (e.g. ghzandar Ali)
+                        const rawIncharge = (sec.incharge || sec.classTeacherName || "").trim();
+                        const matchedStaff = staffList.find((st: any) => {
+                          if (st.deleted) return false;
+                          if (sec.classTeacherId && st.id === sec.classTeacherId) return true;
+                          const sName = (st.name || st.fullName || `${st.firstName || ""} ${st.lastName || ""}`.trim()).trim().toLowerCase();
+                          return Boolean(rawIncharge && rawIncharge.toLowerCase() === sName && !rawIncharge.startsWith("Test Staff"));
+                        });
+                        const isAssigned = Boolean(matchedStaff);
 
                         return (
                           <div 
@@ -241,9 +273,60 @@ export default function ClassesManagementPage() {
                                 </button>
                               </RequirePermission>
                             </div>
-                            <div className="text-xs text-gray-500 space-y-1">
+                            <div className="text-xs text-gray-500 space-y-1.5">
                               <p>Students: <span className="font-bold text-blue-600">{displaySecCount}</span></p>
-                              <p>Teacher: <span className="font-medium text-gray-600">{sec.incharge || (normSec === "a" ? "Test Staff 03" : normSec === "b" ? "Test Staff 04" : normSec === "c" ? "Test Staff 05" : "Test Staff 03")}</span></p>
+                              <div className="flex items-center justify-between gap-1 flex-wrap">
+                                <span className="text-gray-500">Teacher:</span>
+                                {isAssigned ? (
+                                  <a 
+                                    href={`/staff-profile?id=${sec.classTeacherId || matchedStaff?.id}`}
+                                    className="text-blue-600 hover:underline font-bold truncate max-w-[110px]"
+                                    title={matchedStaff?.name || sec.incharge}
+                                  >
+                                    {matchedStaff?.name || sec.incharge}
+                                  </a>
+                                ) : (
+                                  <span className="text-amber-600 font-semibold">Unassigned</span>
+                                )}
+                              </div>
+                              <div className="flex items-center justify-between gap-1 pt-1 border-t border-gray-100">
+                                <span className="text-[11px] text-gray-400">Assign:</span>
+                                <select
+                                  value={matchedStaff ? matchedStaff.id : ""}
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    if (!val || val === "__unassign__") {
+                                      updateMutation.mutate({
+                                        id: sec.id,
+                                        incharge: "Unassigned",
+                                        classTeacherName: "Unassigned",
+                                        classTeacherId: null,
+                                      });
+                                    } else {
+                                      const st = staffList.find((s: any) => s.id === val);
+                                      if (st) {
+                                        const stName = st.name || st.fullName || `${st.firstName || ""} ${st.lastName || ""}`.trim();
+                                        updateMutation.mutate({
+                                          id: sec.id,
+                                          incharge: stName,
+                                          classTeacherName: stName,
+                                          classTeacherId: st.id,
+                                        });
+                                      }
+                                    }
+                                  }}
+                                  disabled={updateMutation.isPending}
+                                  className="text-[11px] bg-white border border-gray-200 rounded px-1 py-0.5 font-medium text-gray-700 outline-none hover:border-blue-400 transition"
+                                  title="Assign Faculty Incharge"
+                                >
+                                  <option value="">{isAssigned ? "Change..." : "Select..."}</option>
+                                  {staffList.filter((s: any) => !s.deleted).map((s: any) => {
+                                    const sName = s.name || s.fullName || `${s.firstName || ""} ${s.lastName || ""}`.trim();
+                                    return <option key={s.id} value={s.id}>{sName}</option>;
+                                  })}
+                                  {isAssigned && <option value="__unassign__">Unassign</option>}
+                                </select>
+                              </div>
                               <p>Capacity: <span className="font-medium text-gray-600">{sec.capacity || 30}</span></p>
                             </div>
                           </div>

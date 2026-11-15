@@ -20,6 +20,7 @@ import RequirePermission from "@/components/RequirePermission";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 import EditStudentModal from "@/components/students/EditStudentModal";
 import { useToast } from "@/components/ToastProvider";
+import { formatClassLabel } from "@/lib/utils/formatClassLabel";
 
 export default function StudentsPage() {
   const { user, loading: authLoading } = useAuth();
@@ -199,7 +200,7 @@ export default function StudentsPage() {
             >
               <option value="ALL">All Classes</option>
               {availableClasses.map((c) => (
-                <option key={c} value={c}>{c.startsWith("Class ") ? c : `Class ${c}`}</option>
+                <option key={c} value={c}>{formatClassLabel(c)}</option>
               ))}
             </select>
           </div>

@@ -161,7 +161,7 @@ export default function AttendancePage() {
           </div>
         ) : students.length === 0 ? (
           <div className="p-8 text-center text-gray-400 font-bold">
-            No students found in Class {selectedClass} - Section {selectedSection}.
+            No students found in {formatClassLabel(selectedClass)} - Section {selectedSection}.
           </div>
         ) : (
           <div className="divide-y divide-gray-100">

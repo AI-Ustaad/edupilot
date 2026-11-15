@@ -2,6 +2,7 @@
 import { BaseRepository } from "./base.repository";
 import { adminDb, dbTimestamp } from "@/lib/firebase-admin";
 import type { IClassRepository } from "@/interfaces/IClassRepository";
+import { sectionRepository } from "./section.repository";
 
 export interface ClassRecord {
   classGrade: string;
@@ -21,13 +22,8 @@ export class ClassRepository extends BaseRepository<ClassRecord> implements ICla
   }
 
   async getAll(tenantId: string): Promise<(ClassRecord & { id: string })[]> {
-    const snapshot = await this.db
-      .collection(this.collectionName)
-      .where("tenantId", "==", tenantId)
-      .get();
-    return snapshot.docs
-      .map(doc => ({ id: doc.id, ...doc.data() } as ClassRecord & { id: string }))
-      .filter(r => !r.deleted);
+    const sections = await sectionRepository.reconcileSectionMatrix(tenantId);
+    return sections as any;
   }
 
   async createClass(data: { classGrade: string; sectionName: string; subjects?: { core: string[]; electives: string[] }; createdBy?: string }, tenantId: string): Promise<string> {

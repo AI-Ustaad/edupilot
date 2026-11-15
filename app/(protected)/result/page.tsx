@@ -6,7 +6,7 @@ import { GraduationCap, Search, Loader2, AlertCircle, FileText, Award, Users, Pr
 import RequirePermission from "@/components/RequirePermission";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 import { useClasses } from "@/hooks/useClasses";
-import { formatClassLabel } from "@/lib/utils/formatClassLabel";
+import { formatClassLabel, cleanSectionName } from "@/lib/utils/formatClassLabel";
 import apiClient from "@/lib/api/client";
 import { safeArray } from "@/lib/api/safeResponse";
 import html2canvas from "html2canvas";
@@ -29,8 +29,26 @@ export default function ResultsPage() {
   const reportRef = useRef<HTMLDivElement>(null);
 
   const { data: classesData = [] } = useClasses();
-  const availableClasses = useMemo(() => Array.from(new Set(classesData.map((c: any) => c.classGrade))), [classesData]);
-  const availableSections = useMemo(() => classesData.filter((c: any) => c.classGrade === selectedClass).map((c: any) => c.sectionName || c.section), [classesData, selectedClass]);
+  const availableClasses = useMemo(
+    () =>
+      Array.from(new Set(classesData.map((c: any) => formatClassLabel(c.classGrade))))
+        .filter(Boolean)
+        .sort((a: any, b: any) => (parseInt(a.replace(/[^0-9]/g, ""), 10) || 0) - (parseInt(b.replace(/[^0-9]/g, ""), 10) || 0)),
+    [classesData]
+  );
+  const availableSections = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          classesData
+            .filter((c: any) => formatClassLabel(c.classGrade) === formatClassLabel(selectedClass))
+            .map((c: any) => cleanSectionName(c.sectionName || c.section))
+        )
+      )
+        .filter(Boolean)
+        .sort(),
+    [classesData, selectedClass]
+  );
 
   const { data: results = [], isLoading, error } = useQuery({
     queryKey: ["results", user?.tenantId, selectedClass, selectedSection, selectedTerm],
@@ -165,7 +183,7 @@ export default function ResultsPage() {
 
                 <div className="grid grid-cols-2 gap-4 mb-8">
                   <div><p className="text-xs text-gray-500 uppercase">Student Name</p><p className="text-lg font-bold text-gray-900">{activeReport.studentName}</p></div>
-                  <div><p className="text-xs text-gray-500 uppercase">Class & Section</p><p className="text-lg font-bold text-gray-900">{selectedClass} - {selectedSection}</p></div>
+                  <div><p className="text-xs text-gray-500 uppercase">Class & Section</p><p className="text-lg font-bold text-gray-900">{formatClassLabel(selectedClass)} - Section {cleanSectionName(selectedSection)}</p></div>
                 </div>
 
                 <table className="w-full text-left text-sm mb-8 border border-gray-200">

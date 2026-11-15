@@ -12,14 +12,13 @@ import { PERMISSIONS } from "@/lib/auth/permissions";
 import { useClasses } from "@/hooks/useClasses";
 import { useStudents } from "@/hooks/useStudents";
 import { useFees, useSaveFee, useDeleteFee } from "@/hooks/useFees";
-import { formatClassLabel } from "@/lib/utils/formatClassLabel";
+import { formatClassLabel, cleanSectionName } from "@/lib/utils/formatClassLabel";
 
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
 function formatClassSection(cls?: string, sec?: string): string {
-  let c = (cls || "Class 9").trim();
+  let c = (cls || "").trim();
   let s = (sec || "").trim();
-  c = c.replace(/CLASSCLASS/ig, "Class ").replace(/CLASS/ig, "Class ").replace(/Class\s+Class/ig, "Class ").trim();
   if (c.toUpperCase().includes("SECTION")) {
     const parts = c.split(/-\s*SECTION/i);
     if (parts.length > 1) {
@@ -27,12 +26,9 @@ function formatClassSection(cls?: string, sec?: string): string {
       if (!s) s = parts[1].trim();
     }
   }
-  const match = c.match(/\d+/);
-  const gradeNum = match ? match[0] : "";
-  const finalClass = gradeNum ? `Class ${gradeNum}` : c;
-  const cleanSec = s.replace(/^Section\s*/i, "").trim().toUpperCase();
-  const finalSection = cleanSec ? `Section ${cleanSec}` : "";
-  return finalSection ? `${finalClass} - ${finalSection}` : finalClass;
+  const finalClass = formatClassLabel(c);
+  const cleanSec = cleanSectionName(s);
+  return cleanSec ? `${finalClass} - Section ${cleanSec}` : finalClass;
 }
 
 export default function FeesPage() {

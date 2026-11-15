@@ -30,13 +30,14 @@ Identity, credentials, and organizational role assignments.
 ### 2.2. `classes` & `sections` (The Canonical 30-Section Matrix)
 The academic structure mandates that all school tenants maintain an exhaustive 30-section grid:
 - **Scope:** Classes 1 through 10 $\times$ Sections A, B, C ($10 \times 3 = 30$ active sections).
-- **Document ID Pattern:** `sec_${tenantId}_class_${classGrade}_sec_${section}`.
+- **Document ID Pattern:** `sec_${tenantId}_class_${classGrade}_sec_${section}` or `${tenantId}__${classGrade}__${section}`.
 - **Fields:**
   - `id` (`string`): Unique deterministic section ID.
   - `tenantId` (`string`): Owning school tenant.
   - `classGrade` (`string`): Canonical grade label (`"Class 1"`, ..., `"Class 10"`).
   - `sectionName` (`string`): Canonical single letter (`"A"`, `"B"`, `"C"`).
-  - `incharge` (`string`): Assigned faculty incharge (e.g., "Test Staff 03", "Test Staff 04", "Test Staff 05").
+  - `incharge` / `classTeacherName` (`string`): Assigned faculty incharge (e.g., "ghzandar Ali" or "Unassigned"). Zero phantom fallback.
+  - `classTeacherId` (`string | null`): Unique ID of assigned faculty member.
   - `capacity` (`number`): Standard capacity of 30 students per section.
   - `studentCount` (`number`): Dynamic synchronized count of active enrolled students.
   - `status` (`string`): `"active"`.
@@ -47,13 +48,13 @@ Student enrollment and academic lifecycle records.
 - **Fields:**
   - `id` (`string`): Student document identifier.
   - `tenantId` (`string`): Tenant school key.
-  - `fullName` (`string`): Student full name.
-  - `rollNumber` (`string`): Class roll number (numerically sortable: 1, 2, ..., 10).
-  - `classGrade` (`string`): Enrolled grade (`"Class 9"`).
-  - `section` (`string`): Assigned section (`"A"` for rolls 1–10, `"B"` for rolls 11–20, `"C"` for rolls 21–30).
+  - `fullName` (`string`): Student full name (e.g., `"Imran Haider"`).
+  - `rollNumber` (`string`): Class roll number (e.g., `103`).
+  - `classGrade` (`string`): Enrolled grade (`"Class 10"`).
+  - `section` (`string`): Assigned section (`"A"`).
   - `status` (`string`): `"active"` | `"inactive"` | `"graduated"` | `"transferred"`.
   - `guardian` (`object`): Parent/Guardian contact details (`fatherName`, `phone`, `cnic`).
-  - `feeStatus` (`string`): Synchronized billing status (`"paid"` | `"unpaid"` | `"partial"`).
+  - `feeStatus` (`string`): Synchronized billing status (`"paid"` | `"unpaid"` | `"pending"`).
   - `admissionDate` (`string` ISO-8601).
 
 ### 2.4. `staff`

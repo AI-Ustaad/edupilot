@@ -6,6 +6,7 @@ import { PERMISSIONS } from "@/lib/auth/permissions";
 import { useClasses } from "@/hooks/useClasses";
 import { useSettings } from "@/hooks/useSettings";
 import { useSyllabus, useCreateSyllabus, useDeleteSyllabus } from "@/hooks/useSyllabus";
+import { formatClassLabel } from "@/lib/utils/formatClassLabel";
 
 export default function AdminSyllabusPage() {
   const [form, setForm] = useState({ classGrade: "", subject: "", title: "", description: "", type: "pdf", fileUrl: "", linkUrl: "" });
@@ -77,7 +78,7 @@ export default function AdminSyllabusPage() {
                 <div key={m.id} className="border rounded-xl p-4 flex justify-between items-center bg-gray-50">
                   <div>
                     <p className="font-bold flex items-center gap-2 text-gray-900">{getTypeIcon(m.type)} {m.title}</p>
-                    <p className="text-xs text-slate-500 mt-1">Class {m.classGrade} - {m.subject}</p>
+                    <p className="text-xs text-slate-500 mt-1">{formatClassLabel(m.classGrade)} - {m.subject}</p>
                   </div>
                   <div className="flex gap-2">
                     <a href={m.fileUrl || m.linkUrl} target="_blank" rel="noopener noreferrer" className="bg-blue-50 text-blue-600 p-2 rounded-lg"><Eye size={18} /></a>

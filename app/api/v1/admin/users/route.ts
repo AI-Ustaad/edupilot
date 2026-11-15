@@ -11,10 +11,10 @@ export const runtime = 'nodejs';
 export const GET = withErrorHandler(
   withAuth(
     withTenant(async (req: Request, context: any) => {
-      const { tenantId } = context || {};
+      const { tenantId, user } = context || {};
       
       const service = new UserAdminService();
-      const users = await service.findAllByTenant(tenantId);
+      const users = await service.findAllByTenant(tenantId, user);
 
       return createSuccessResponse(users);
     })

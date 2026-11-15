@@ -6,6 +6,7 @@ import { AuditService } from "@/services/AuditService";
 import { SectionRepository } from "@/repositories/section.repository";
 import { classService } from "@/services/class.service";
 import type { TenantContext } from "@/types/api";
+import { formatClassLabel, cleanSectionName } from "@/lib/utils/formatClassLabel";
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -39,9 +40,8 @@ export const POST = withErrorHandler(
           return createErrorResponse(400, "Class and Section name required");
         }
 
-        const normGrade = classGrade.toString().trim().replace(/^Class\s+/i, "Class ");
-        const finalGrade = normGrade.startsWith("Class ") ? normGrade : `Class ${normGrade}`;
-        const finalSection = sectionName.toString().trim().replace(/^Section\s+/i, "").toUpperCase();
+        const finalGrade = formatClassLabel(classGrade);
+        const finalSection = cleanSectionName(sectionName);
 
         const id = await classService.createClass({ 
           classGrade: finalGrade, 
