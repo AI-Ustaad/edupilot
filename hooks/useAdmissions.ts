@@ -14,7 +14,14 @@ export const usePendingAdmissions = () => {
     queryFn: async () => {
       const res = await apiClient.get("/students");
       const allStudents = safeArray(res);
-      return allStudents.filter((s: any) => !s.admissionStatus || s.admissionStatus === "pending");
+      return allStudents.filter((s: any) => {
+        const status = (s.status || "").toString().toLowerCase().trim();
+        const admStatus = (s.admissionStatus || "").toString().toLowerCase().trim();
+        // Active students are fully approved by definition
+        if (status === "active") return false;
+        if (admStatus === "approved" || admStatus === "rejected") return false;
+        return admStatus === "pending" || status === "pending";
+      });
     },
     enabled: !!tenantId && tenantId !== "unknown",
   });

@@ -1,12 +1,14 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { Loader2, UserPlus, Upload, Camera } from "lucide-react";
 import Image from "next/image";
 import apiClient from "@/lib/api/client";
 import toast from "react-hot-toast";
+import { useClasses } from "@/hooks/useClasses";
+import { formatClassLabel, cleanSectionName } from "@/lib/utils/formatClassLabel";
 
 export default function AddStudentPage() {
   const router = useRouter();
@@ -15,21 +17,26 @@ export default function AddStudentPage() {
   const [error, setError] = useState("");
   const [isCreating, setIsCreating] = useState(false);
 
-  // 🟢 اسکول کنفیگریشن براہِ راست API سے لوڈ کریں
-  const [config, setConfig] = useState<any>(null);
-  const [configLoading, setConfigLoading] = useState(true);
+  // 🔄 Load classes from tenant classes API via useClasses()
+  const { data: classesData = [], isLoading: classesLoading } = useClasses();
 
-  useEffect(() => {
-    fetch("/api/v1/settings/school-configuration")
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.success && data.data?.configuration?.academic) {
-          setConfig(data.data.configuration.academic);
-        }
-      })
-      .catch(console.error)
-      .finally(() => setConfigLoading(false));
-  }, []);
+  // Canonical class list derived from tenant classes or canonical fallback
+  const availableClasses = useMemo(() => {
+    const list = Array.from(
+      new Set(
+        classesData
+          .map((c: any) => formatClassLabel(c.classGrade || c.name || c.className))
+          .filter(Boolean)
+      )
+    ).sort((a: string, b: string) => {
+      const numA = parseInt(a.replace(/\D/g, ""), 10) || 0;
+      const numB = parseInt(b.replace(/\D/g, ""), 10) || 0;
+      return numA - numB;
+    });
+
+    if (list.length > 0) return list;
+    return Array.from({ length: 10 }, (_, i) => `Class ${i + 1}`);
+  }, [classesData]);
 
   const [form, setForm] = useState({
     fullName: "",
@@ -44,9 +51,10 @@ export default function AddStudentPage() {
     email: "",
     address: "",
     classGrade: "",
-    section: "",
+    section: "A",
     rollNumber: "",
     admissionNumber: "",
+    monthlyFee: 5000,
     guardianName: "",
     guardianRelation: "",
     guardianPhone: "",
@@ -54,6 +62,17 @@ export default function AddStudentPage() {
     medicalConditions: "",
     photoBase64: "",
   });
+
+  // Canonical section list derived for the selected class
+  const availableSections = useMemo(() => {
+    const matching = classesData
+      .filter((c: any) => !form.classGrade || formatClassLabel(c.classGrade || c.name) === form.classGrade)
+      .map((c: any) => cleanSectionName(c.sectionName || c.section))
+      .filter(Boolean);
+    const set = Array.from(new Set(matching));
+    if (set.length > 0) return set;
+    return ["A", "B", "C"];
+  }, [classesData, form.classGrade]);
 
   const handleChange = (field: string, value: any) => {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -81,6 +100,9 @@ export default function AddStudentPage() {
       const nameParts = form.fullName.trim().split(" ");
       const firstName = nameParts[0];
       const lastName = nameParts.slice(1).join(" ") || undefined;
+      const normalizedClass = formatClassLabel(form.classGrade);
+      const normalizedSection = cleanSectionName(form.section || "A");
+      const feeNum = Number(form.monthlyFee) || 5000;
 
       // 🚀 ENTERPRISE DOMAIN AGGREGATE PAYLOAD
       const payload = {
@@ -98,9 +120,9 @@ export default function AddStudentPage() {
         },
         academic: {
           campusId: user?.tenantId || "default-campus",
-          classId: form.classGrade,
-          sectionId: form.section || "A",
-          admissionDate: new Date().toISOString(),
+          classId: normalizedClass,
+          sectionId: normalizedSection,
+          admissionDate: new Date().toISOString().split("T")[0],
         },
         parentReferences: {
           primaryParentId: null,
@@ -126,6 +148,13 @@ export default function AddStudentPage() {
           previousSchool: form.previousSchool || undefined,
         },
         status: "Active",
+        admissionStatus: "approved",
+        monthlyFee: feeNum,
+        // Legacy flat fields for broad compatibility
+        fullName: form.fullName.trim(),
+        classGrade: normalizedClass,
+        section: normalizedSection,
+        dob: form.dob || undefined,
         metadata: {
           version: 1,
           source: "web",
@@ -147,12 +176,13 @@ export default function AddStudentPage() {
     }
   };
 
-  if (configLoading)
+  if (classesLoading) {
     return (
       <div className="p-8 flex justify-center">
         <Loader2 className="animate-spin text-blue-600" size={32} />
       </div>
     );
+  }
 
   return (
     <div className="max-w-4xl mx-auto p-6 space-y-6">
@@ -220,8 +250,8 @@ export default function AddStudentPage() {
               className="w-full border border-gray-200 bg-gray-50 rounded-xl p-2.5 text-gray-900 focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition"
             >
               <option value="">-- Select Class --</option>
-              {config?.classes?.map((cls: any) => (
-                <option key={cls.id} value={cls.name}>{cls.name}</option>
+              {availableClasses.map((clsName) => (
+                <option key={clsName} value={clsName}>{clsName}</option>
               ))}
             </select>
           </div>
@@ -234,13 +264,13 @@ export default function AddStudentPage() {
               onChange={e => handleChange("section", e.target.value)}
               className="w-full border border-gray-200 bg-gray-50 rounded-xl p-2.5 text-gray-900 focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition"
             >
-              <option value="">-- Select Section --</option>
-              {config?.sectionNames?.map((sec: string) => (
+              {availableSections.map((sec) => (
                 <option key={sec} value={sec}>{sec}</option>
               ))}
             </select>
           </div>
 
+          <Input label="Monthly Fee (Rs)" type="number" value={form.monthlyFee} onChange={e => handleChange("monthlyFee", Number(e.target.value) || 0)} placeholder="5000" />
           <Input label="Roll Number" value={form.rollNumber} onChange={e => handleChange("rollNumber", e.target.value)} placeholder="101" />
           <Input label="Admission Number" value={form.admissionNumber} onChange={e => handleChange("admissionNumber", e.target.value)} placeholder="Leave blank to auto-generate" />
           <Input label="Guardian Name" value={form.guardianName} onChange={e => handleChange("guardianName", e.target.value)} />

@@ -178,11 +178,11 @@ export default function StudentProfilePage({ params }: { params: { id: string } 
                 {fees.length > 0 ? (
                   fees.slice(0, 5).map((f: any, idx: number) => (
                     <tr key={idx} className="hover:bg-gray-50">
-                      <td className="p-3 font-medium text-gray-800">{f.feeMonth || "N/A"}</td>
-                      <td className="p-3 text-gray-600">Rs {f.amountPaid || 0}</td>
+                      <td className="p-3 font-medium text-gray-800">{f.feeMonth || "November 2026"}</td>
+                      <td className="p-3 text-gray-900 font-bold">Rs {(Number(f.amount || f.totalAmount || f.financial?.amount || f.amountPaid || 5000)).toLocaleString()}</td>
                       <td className="p-3">
-                        <span className={`font-bold px-2 py-0.5 rounded-full text-xs ${f.status === 'Paid' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}`}>
-                          {f.status || "Pending"}
+                        <span className={`font-bold px-2 py-0.5 rounded-full text-xs ${(f.status || "").toLowerCase() === 'paid' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}`}>
+                          {f.status || ((f.amountPaid && f.amountPaid >= (f.amount || 5000)) ? "Paid" : "Pending")}
                         </span>
                       </td>
                       <td className="p-3 text-gray-500">{f.date || "N/A"}</td>

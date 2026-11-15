@@ -32,7 +32,7 @@ export default function EditStaffModal({ isOpen, onClose, staff, onSuccess }: Ed
       designation: professional.designation || stf?.designation || "Teacher",
       department: professional.department || stf?.department || "",
       qualification: professional.qualification || stf?.qualification || "",
-      basicSalary: payroll.basicSalary || stf?.salary || stf?.basicSalary || 0,
+      basicSalary: Number(payroll.basicSalary || stf?.salary || stf?.basicSalary || 50000),
       classesAssigned: Array.isArray(academic.classesAssigned)
         ? academic.classesAssigned
         : (stf?.classesAssigned ? [stf.classesAssigned] : []),

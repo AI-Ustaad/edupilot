@@ -3,6 +3,7 @@ import { FieldValue } from "firebase-admin/firestore";
 import type { StudentDocument } from "@/documents/StudentDocument";
 import type { StudentEntity, StudentStatus } from "@/entities/student.entity";
 import type { CreateStudentDTO } from "@/dto/CreateStudentDTO";
+import { formatClassLabel, cleanSectionName } from "@/lib/utils/formatClassLabel";
 
 export class StudentPersistenceMapper {
   
@@ -59,8 +60,8 @@ export class StudentPersistenceMapper {
       dob: entity.personal?.dateOfBirth || "",
       photoBase64: entity.personal?.avatarUrl || "",
       
-      classGrade: entity.academic?.classId,
-      section: entity.academic?.sectionId || "A",
+      classGrade: formatClassLabel(entity.academic?.classId || (entity as any).classGrade),
+      section: cleanSectionName(entity.academic?.sectionId || (entity as any).section || "A"),
       admissionDate: entity.academic?.admissionDate,
       
       phone: entity.contacts?.phone || "",
@@ -79,7 +80,8 @@ export class StudentPersistenceMapper {
       nationality: entity.demographics?.nationality || "",
       previousSchool: entity.demographics?.previousSchool || "",
       
-      status: entity.status,
+      status: entity.status || "Active",
+      admissionStatus: (entity as any).admissionStatus || ((entity.status?.toLowerCase() === "active" || !entity.status) ? "approved" : "pending"),
       primaryParentId: entity.parentReferences?.primaryParentId || null,
       
       metadata: {
@@ -99,6 +101,11 @@ export class StudentPersistenceMapper {
   static fromFirestore(doc: StudentDocument): StudentEntity {
     const firstName = doc.fullName?.split(" ")[0] || "";
     const lastName = doc.fullName?.split(" ").slice(1).join(" ") || "";
+    const rawStatus = (doc.status as StudentStatus) || "Active";
+    const normStatus = (String(rawStatus).toLowerCase() === "active" || !doc.status) ? "Active" : rawStatus;
+    const admissionStatus = (doc as any).admissionStatus || (normStatus.toLowerCase() === "active" ? "approved" : "pending");
+    const classGrade = formatClassLabel(doc.classGrade);
+    const section = cleanSectionName(doc.section || "A");
 
     return {
       studentId: doc.id || "",
@@ -118,8 +125,8 @@ export class StudentPersistenceMapper {
       },
       academic: {
         campusId: doc.tenantId || "",
-        classId: doc.classGrade || "",
-        sectionId: doc.section || "",
+        classId: classGrade,
+        sectionId: section,
         admissionDate: doc.admissionDate || "",
       },
       parentReferences: {
@@ -145,7 +152,8 @@ export class StudentPersistenceMapper {
         nationality: doc.nationality,
         previousSchool: doc.previousSchool,
       },
-      status: (doc.status as StudentStatus) || "Active",
+      status: normStatus,
+      admissionStatus,
       
       runtimeRelations: {
         activeFeeInvoices: [],
@@ -166,8 +174,8 @@ export class StudentPersistenceMapper {
       // Legacy Compatibility Fields
       fullName: doc.fullName || `${firstName} ${lastName}`.trim(),
       fatherName: doc.guardianName || "",
-      classGrade: doc.classGrade || "",
-      section: doc.section || "",
+      classGrade: classGrade,
+      section: section,
       phone: doc.phone || "",
       email: doc.email || "",
       address: doc.address || "",

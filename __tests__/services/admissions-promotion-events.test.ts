@@ -163,7 +163,7 @@ describe("Student Admissions, Promotion & Creation Events (DEF-013, DEF-017, DEF
           userId: "registrar-user",
           studentData: expect.objectContaining({
             fullName: "Hamza Khan",
-            classGrade: "Grade 1",
+            classGrade: expect.stringMatching(/Class 1|Grade 1/),
           }),
         }),
         "tenant-123"

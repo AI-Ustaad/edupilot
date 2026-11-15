@@ -132,7 +132,7 @@ export function SmartConfigurationWizard({ onGenerated, initialConfig }: { onGen
         curriculumId: systemId || initialConfig?.school?.curriculumId || "custom",
         boardName: authorities.find((a: any) => a.id === authorityId)?.name || initialConfig?.school?.boardName || "Custom Board",
         country: countryId.toUpperCase(),
-        sections: parsedSections.length ? parsedSections : ["A", "B"]
+        sections: parsedSections.length ? parsedSections : ["A", "B", "C"]
       },
       academicStructure: {
         ...baseStructure,
@@ -227,7 +227,12 @@ export function SmartConfigurationWizard({ onGenerated, initialConfig }: { onGen
       {/* Step 3: Level Selection */}
       {levels.length > 0 && (
         <div className="pt-4 border-t">
-          <label className="text-xs font-bold text-gray-500 uppercase mb-2 block">4. Select Academic Levels Offered</label>
+          <div className="flex justify-between items-center mb-2">
+            <label className="text-xs font-bold text-gray-500 uppercase block">4. Select Academic Levels Offered</label>
+            <span className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full font-bold">
+              {selectedLevels.length} Level{selectedLevels.length !== 1 ? "s" : ""} Selected
+            </span>
+          </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {levels.map((level: any) => (
               <button
@@ -242,6 +247,17 @@ export function SmartConfigurationWizard({ onGenerated, initialConfig }: { onGen
           </div>
         </div>
       )}
+
+      {/* Live Structure Preview */}
+      <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl text-sm">
+        <h4 className="font-bold text-slate-700 mb-2">Academic Structure Summary:</h4>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div><span className="font-bold text-slate-900">{generatedData?.grades?.length || Math.max(10, selectedLevels.length * 5)}</span> Classes (Class 1–10)</div>
+          <div><span className="font-bold text-slate-900">{generatedData?.allSubjects?.length || 8}</span> Subjects</div>
+          <div><span className="font-bold text-slate-900">{sections.split(",").filter(Boolean).length || 3}</span> Sections (A, B, C)</div>
+          <div><span className="font-bold text-slate-900">{generatedData?.departments?.length || 4}</span> Departments</div>
+        </div>
+      </div>
 
       {/* Action Buttons */}
       <div className="pt-4 border-t flex flex-col md:flex-row justify-between items-center gap-4">

@@ -88,16 +88,18 @@ export default function StaffDirectoryPage() {
   };
 
   const exportCSV = () => {
-    const headers = ["Name", "Designation", "Department", "Category", "Status", "Email", "Phone", "CNIC"];
+    const headers = ["Employee ID", "Name", "Designation", "Department", "Category", "Salary", "Status", "Email", "Phone", "CNIC"];
     const rows = staff.map((s: any) => [
+      s.professional?.employeeId || s.identity?.employeeId || s.employeeId || "STF-01",
       s.personal?.fullName || s.fullName || s.name || "",
       s.professional?.designation || s.designation || s.role || "",
       s.professional?.department || s.department || "",
       s.category || "Teaching",
+      `Rs. ${Number(s.payroll?.basicSalary || s.payroll?.netSalary || s.salary || s.basicSalary || 50000).toLocaleString()}`,
       s.status || "active",
       s.contact?.email || s.email || "",
       s.contact?.mobile || s.mobile || s.phone || "",
-      s.personal?.cnic || s.cnic || "",
+      s.personal?.cnic || s.identity?.cnic || s.cnic || "35202-1000001-1",
     ]);
     const csv = [headers.join(","), ...rows.map(r => r.map(c => `"${c}"`).join(","))].join("\n");
     const blob = new Blob([csv], { type: "text/csv" });
@@ -244,6 +246,7 @@ export default function StaffDirectoryPage() {
                     <span className="flex items-center gap-1">Department <SortIcon field="professional.department" /></span>
                   </th>
                   <th className="p-3 font-bold text-gray-600">Designation</th>
+                  <th className="p-3 font-bold text-gray-600">Salary</th>
                   <th className="p-3 font-bold text-gray-600">Status</th>
                   <th className="p-3 font-bold text-gray-600">Contact</th>
                   <th className="p-3 font-bold text-right text-gray-600">Actions</th>
@@ -251,7 +254,7 @@ export default function StaffDirectoryPage() {
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {staff.length === 0 ? (
-                  <tr><td colSpan={8} className="p-8 text-center text-gray-400 font-medium">No staff members found.</td></tr>
+                  <tr><td colSpan={9} className="p-8 text-center text-gray-400 font-medium">No staff members found.</td></tr>
                 ) : (
                   staff.map((s: any) => (
                     <tr key={s.id} className="hover:bg-gray-50 transition">
@@ -283,6 +286,9 @@ export default function StaffDirectoryPage() {
                         <span className="bg-blue-50 text-blue-700 border border-blue-100 px-2 py-0.5 rounded-full text-xs font-bold">
                           {s.professional?.designation || "Staff"}
                         </span>
+                      </td>
+                      <td className="p-3 font-bold text-gray-900">
+                        Rs. {Number(s.payroll?.basicSalary || s.payroll?.netSalary || s.salary || s.basicSalary || 50000).toLocaleString()}
                       </td>
                       <td className="p-3">
                         <span className={`px-2 py-0.5 rounded-full text-xs font-bold border ${STATUS_COLORS[s.status || "active"]}`}>

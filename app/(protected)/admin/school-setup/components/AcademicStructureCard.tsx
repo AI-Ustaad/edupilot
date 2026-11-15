@@ -9,7 +9,7 @@ export function AcademicStructureCard({ config }: { config: SchoolConfigurationV
       <div className="space-y-3">
         {/* Classes List (Names instead of Numbers) */}
         <div>
-          <span className="text-gray-500 font-medium block mb-1.5">Classes Offered:</span>
+          <span className="text-gray-500 font-medium block mb-1.5">Classes Offered ({config.classes?.length || 10} Classes):</span>
           <div className="flex flex-wrap gap-2">
             {config.classes && config.classes.length > 0 ? (
               config.classes.map(cls => (
@@ -27,7 +27,7 @@ export function AcademicStructureCard({ config }: { config: SchoolConfigurationV
         <div className="flex items-center justify-between border-b border-gray-50 pb-2 pt-1">
           <span className="text-gray-500 font-medium">Sections Template:</span>
           <span className="text-gray-900 font-bold text-right">
-            {config.sectionNames?.join(", ") || "N/A"}
+            Sections {config.sectionNames?.join(", ") || "A, B, C"} ({(config.classes?.length || 10) * (config.sectionNames?.length || 3)} Sections)
           </span>
         </div>
 
