@@ -10,7 +10,9 @@ export interface DashboardData {
     late: number;
     total: number;
   };
-  attendanceTrend: { day: string; percent: number; date?: string; isMarked?: boolean; markedCount?: number }[];
+  attendanceTrend: { day: string; percent: number; date?: string; isMarked?: boolean; markedCount?: number; label?: string; percentage?: number }[];
+  markedTrendSeries?: { day: string; percent: number; date: string; label: string; percentage: number; present: number; absent: number; late: number; totalMarked: number; marked: boolean; isMarked: boolean }[];
+  calendarSlots?: { day: string; percent: number | null; date: string; label: string; percentage: number | null; present: number; absent: number; late: number; totalMarked: number; marked: boolean; isMarked: boolean }[];
   attendanceStats: {
     avg: number;
     highest: number;

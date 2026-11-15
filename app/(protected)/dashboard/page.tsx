@@ -51,8 +51,13 @@ export default function DashboardPage() {
   const total = (data.todayAttendance?.present || 0) + (data.todayAttendance?.absent || 0);
   const attendancePercent = total > 0 ? ((data.todayAttendance.present / total) * 100).toFixed(0) : "0";
   
-  const attendanceTrend = data.attendanceTrend || [];
-  const attendanceStats = data.attendanceStats || { avg: 0, highest: 0, lowest: 0 };
+  // Option A (Honest Semantics): Plot ONLY marked days.
+  // Unmarked days (totalMarked === 0) are "no data", NEVER 0% attendance.
+  const rawTrend = data.markedTrendSeries || data.attendanceTrend || [];
+  const attendanceTrend = (rawTrend as any[]).filter((t: any) => 
+    (t.isMarked === true || t.marked === true || t.totalMarked > 0) && t.percent !== null && t.percentage !== null
+  );
+  const attendanceStats = data.attendanceStats || { avg: 0, highest: 0, lowest: 0, markedDaysCount: attendanceTrend.length };
   const feeMonth = data.feeMonth || { collected: 0, pending: 0, total: 0 };
   const classFeeSummary = data.classFeeSummary || [];
   const recentPayments = data.recentPayments || [];
@@ -119,36 +124,39 @@ export default function DashboardPage() {
               </p>
             </div>
           </div>
-          <ResponsiveContainer width="100%" height={260}>
-            <AreaChart data={attendanceTrend}>
-              <defs>
-                <linearGradient id="colorPercent" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.8} />
-                  <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <XAxis dataKey="day" stroke="#9ca3af" fontSize={12} />
-              <YAxis domain={[0, 100]} stroke="#9ca3af" fontSize={12} />
-              <Tooltip 
-                formatter={(val: any, _name: any, item: any) => {
-                  if (item?.payload?.isMarked === false && item?.payload?.percent === null) {
-                    return ["No attendance recorded", "Status"];
-                  }
-                  return [`${val}%`, "Attendance"];
-                }}
-                contentStyle={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: "12px" }} 
-              />
-              <Area 
-                type="monotone" 
-                dataKey="percent" 
-                stroke="#3b82f6" 
-                strokeWidth={3} 
-                fillOpacity={1} 
-                fill="url(#colorPercent)" 
-                connectNulls={true}
-              />
-            </AreaChart>
-          </ResponsiveContainer>
+          {attendanceTrend.length === 0 ? (
+            <div className="h-[260px] flex flex-col items-center justify-center text-gray-400">
+              <CalendarDays size={32} className="mb-2 opacity-50" />
+              <p className="text-sm font-medium">No attendance recorded in the last 7 days</p>
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height={260}>
+              <AreaChart data={attendanceTrend}>
+                <defs>
+                  <linearGradient id="colorPercent" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.8} />
+                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <XAxis dataKey="day" stroke="#9ca3af" fontSize={12} />
+                <YAxis domain={[0, 100]} stroke="#9ca3af" fontSize={12} />
+                <Tooltip 
+                  formatter={(val: any) => [`${val}%`, "Attendance"]}
+                  contentStyle={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: "12px" }} 
+                />
+                <Area 
+                  type="monotone" 
+                  dataKey="percent" 
+                  stroke="#3b82f6" 
+                  strokeWidth={3} 
+                  fillOpacity={1} 
+                  fill="url(#colorPercent)" 
+                  dot={{ r: 5, fill: "#3b82f6", strokeWidth: 2, stroke: "#ffffff" }}
+                  activeDot={{ r: 7 }}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          )}
           <div className="grid grid-cols-3 gap-4 mt-4 text-center">
             <div><p className="text-gray-500 text-xs">Average</p><p className="text-xl font-black text-gray-900">{attendanceStats.avg}%</p></div>
             <div><p className="text-gray-500 text-xs">Highest</p><p className="text-xl font-black text-green-600">{attendanceStats.highest}%</p></div>

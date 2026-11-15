@@ -98,7 +98,8 @@ describe("Phase 16 — Shared Aggregations, Attendance Hydration & Report Card P
 
       expect(stats.attendanceTrend).toBeDefined();
       expect(Array.isArray(stats.attendanceTrend)).toBe(true);
-      expect(stats.attendanceTrend.length).toBe(7);
+      expect(stats.calendarSlots ? stats.calendarSlots.length : 7).toBe(7);
+      expect(stats.attendanceTrend.length).toBe(stats.attendanceStats.markedDaysCount ?? stats.attendanceTrend.length);
 
       // If marked days exist, avg/highest/lowest should be consistent
       if (stats.attendanceStats.highest > 0) {

@@ -30,7 +30,8 @@ EduPilot provides an enterprise cloud-native, multi-tenant school-management ERP
   - Mathematical Conservation: $\text{Collected } (0) + \text{Pending } (5,000) \equiv \text{Gross } (5,000)$ ($100.00\%$ reconciled, error $\epsilon = 0.00$)
 - **Daily Attendance Invariant (2026-11-15):** $1\text{P} + 0\text{A} = 1$ ($100\%$ accounted for; Imran Haider Present; fresh dates default to "Not Marked").
 - **Section Capacity & Faculty Allocation:** Every section has `Capacity: 30`. Sections assigned to real staff link directly to `/staff-profile?id=...`, while unassigned sections display `Unassigned` with an interactive "Assign Teacher" control.
-- **Examination Ledger & Report Cards:** Real marks entered for Imran Haider in Class 10 / Section A: Mathematics (90/100), English (85/100), Science (88/100) — Total 263/300, 87.67%, Grade A+, matching the printable A4 Report Card.
+- **Examination Ledger & Report Cards:** Real marks entered for Imran Haider in Class 10 / Section A: Mathematics (90/100, A+), English (85/100, A), Science (88/100, A) — Total 263/300, 87.67%, Grade A, matching the printable A4 Report Card and PDF export.
+- **Weekly Attendance Trend (Option A — Honest Semantics):** Marked Days: 1 (2026-11-15, 100%). Plotted series contains only marked days, exactly matching printed stats (Average: 100%, Highest: 100%, Lowest: 100%).
 - **Timetable Conflict Invariant:** Hard 409 conflict rejection on double-booking with descriptive human message.
 - **Configuration Dashboard:** 100% completion of all 16 in-scope configuration modules, with 4 out-of-scope Enterprise modules clearly defined and documented.
 
@@ -120,6 +121,23 @@ $$|P| + |A| = 1 + 0 = 1 \equiv |U|$$
 $$\text{Attendance Rate} = \frac{|P|}{|U|} \times 100\% = \frac{1}{1} \times 100\% = 100\%$$
 $$\text{Dashboard Metric} = 100\% \text{ (1P / 0A on 2026-11-15)}$$
 $\blacksquare$ **Daily Attendance Partition Q.E.D.**
+
+### Proof 4: Weekly Attendance Trend (Option A) Statistical Consistency Invariant
+Let $W = \{d_1, d_2, \dots, d_7\}$ be the 7-day rolling window (`11-09` to `11-15`).
+Let $M \subseteq W$ be the subset of dates where attendance was actively marked:
+$$M = \{d \in W \mid \text{totalMarked}(d) > 0\} = \{\text{"2026-11-15"}\}, \quad |M| = 1$$
+For $d = \text{"2026-11-15"}$, $\text{percentage}(d) = \frac{1\text{P}}{1\text{ total}} \times 100\% = 100\%$.
+For all $d \in W \setminus M$ (`11-09` to `11-14`), $\text{totalMarked}(d) = 0 \implies \text{status}(d) = \text{"no data"} \implies \text{percentage}(d) = \text{null}$.
+
+The plotted series contains exclusively $M$:
+$$\text{Plotted Series} = [100\%]$$
+Computing summary metrics directly from $M$:
+$$\text{Average} = \frac{100\%}{1} = 100\%$$
+$$\text{Highest} = \max(\{100\%\}) = 100\%$$
+$$\text{Lowest} = \min(\{100\%\}) = 100\%$$
+$$\text{Marked Days Count} = |M| = 1$$
+$$\therefore \text{Plotted Chart Point (100\%)} \equiv \text{Printed Stats (Avg: 100\%, High: 100\%, Low: 100\%, Marked: 1)}$$
+$\blacksquare$ **Weekly Attendance Trend Consistency Q.E.D.**
 
 ---
 

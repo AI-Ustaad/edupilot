@@ -129,6 +129,8 @@ export default function FeesPage() {
 
   const feeSummary = useMemo(() => computeFeeSummary(activeRecords), [activeRecords]);
 
+  const isSummaryLoading = feesLoading || (Boolean(selectedClass && selectedSection) && studentsLoading);
+
   if (!user?.tenantId) return <div className="p-8 text-center">Loading...</div>;
 
   return (
@@ -154,19 +156,49 @@ export default function FeesPage() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="bg-gradient-to-br from-green-500 to-green-600 text-white p-6 rounded-2xl shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
           <div className="flex items-center justify-between">
-            <div><p className="text-sm font-medium opacity-90">Total Collected</p><p className="text-3xl font-black mt-2">Rs. {feeSummary.totalCollected.toLocaleString()}</p></div>
+            <div>
+              <p className="text-sm font-medium opacity-90">Total Collected</p>
+              {isSummaryLoading ? (
+                <div className="flex items-center gap-2 mt-2 h-9">
+                  <Loader2 className="animate-spin text-white/80" size={22} />
+                  <span className="text-xl font-bold animate-pulse text-white/90">Loading...</span>
+                </div>
+              ) : (
+                <p className="text-3xl font-black mt-2">Rs. {feeSummary.totalCollected.toLocaleString()}</p>
+              )}
+            </div>
             <CheckCircle size={40} className="opacity-50" />
           </div>
         </div>
         <div className="bg-gradient-to-br from-orange-500 to-orange-600 text-white p-6 rounded-2xl shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
           <div className="flex items-center justify-between">
-            <div><p className="text-sm font-medium opacity-90">Total Pending</p><p className="text-3xl font-black mt-2">Rs. {feeSummary.totalPending.toLocaleString()}</p></div>
+            <div>
+              <p className="text-sm font-medium opacity-90">Total Pending</p>
+              {isSummaryLoading ? (
+                <div className="flex items-center gap-2 mt-2 h-9">
+                  <Loader2 className="animate-spin text-white/80" size={22} />
+                  <span className="text-xl font-bold animate-pulse text-white/90">Loading...</span>
+                </div>
+              ) : (
+                <p className="text-3xl font-black mt-2">Rs. {feeSummary.totalPending.toLocaleString()}</p>
+              )}
+            </div>
             <AlertCircle size={40} className="opacity-50" />
           </div>
         </div>
         <div className="bg-gradient-to-br from-blue-500 to-blue-600 text-white p-6 rounded-2xl shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
           <div className="flex items-center justify-between">
-            <div><p className="text-sm font-medium opacity-90">Total Records</p><p className="text-3xl font-black mt-2">{feeSummary.totalRecords}</p></div>
+            <div>
+              <p className="text-sm font-medium opacity-90">Total Records</p>
+              {isSummaryLoading ? (
+                <div className="flex items-center gap-2 mt-2 h-9">
+                  <Loader2 className="animate-spin text-white/80" size={22} />
+                  <span className="text-xl font-bold animate-pulse text-white/90">Loading...</span>
+                </div>
+              ) : (
+                <p className="text-3xl font-black mt-2">{feeSummary.totalRecords}</p>
+              )}
+            </div>
             <Users size={40} className="opacity-50" />
           </div>
         </div>

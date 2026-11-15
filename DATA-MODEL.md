@@ -131,6 +131,37 @@ Multi-module configuration and operational boundaries.
 - **Completion Formula:**
   $$\text{Configuration Completion} = \frac{\text{Configured In-Scope Modules}}{\text{Total In-Scope Modules}} \times 100\% = \frac{16}{16} \times 100\% = 100\%$$
 
+### 2.11. Weekly Attendance Trend Data Model (Option A — Honest Semantics)
+Weekly attendance aggregation guarantees 100% mathematical consistency between the visual trend chart and printed statistical indicators (`Average`, `Highest`, `Lowest`, `Marked Days`):
+- **Core Principle:** Unmarked calendar dates (`totalMarked === 0`) represent `"no data"` / non-school days, NEVER `0%` attendance.
+- **Canonical Model (`markedTrendSeries`):**
+  - Contains strictly dates within the 7-day rolling window where at least one attendance record was marked (`totalMarked > 0`).
+  - Schema:
+    ```typescript
+    interface MarkedDayTrendPoint {
+      date: string;         // "YYYY-MM-DD"
+      day: string;          // "MM-DD" label for X-axis
+      label: string;        // "MM-DD"
+      percentage: number;   // Math.round(((present + late) / totalMarked) * 100)
+      percent: number;      // Canonical alias
+      present: number;      // Count of Present students
+      absent: number;       // Count of Absent students
+      late: number;         // Count of Late students
+      totalMarked: number;  // present + absent + late
+      marked: true;
+      isMarked: true;
+    }
+    ```
+- **Calendar Reference Slots (`calendarSlots`):**
+  - Preserves all 7 rolling calendar days for reference. Unmarked days explicitly set `percentage: null` and `marked: false`.
+- **Statistical Invariants:**
+  - `Average`, `Highest`, and `Lowest` metrics are computed directly and exclusively from `markedTrendSeries`:
+    $$\text{Average} = \text{round}\left(\frac{\sum_{p \in \text{markedTrendSeries}} p.\text{percentage}}{|\text{markedTrendSeries}|}\right)$$
+    $$\text{Highest} = \max_{p \in \text{markedTrendSeries}} p.\text{percentage}, \quad \text{Lowest} = \min_{p \in \text{markedTrendSeries}} p.\text{percentage}$$
+  - When exactly 1 day is marked at 100% (e.g. `2026-11-15`), `markedTrendSeries` has 1 entry $[100\%]$, and the printed stats are identically:
+    $$\text{Average: 100\%}, \quad \text{Highest: 100\%}, \quad \text{Lowest: 100\%}, \quad \text{Marked Days: 1}$$
+    The UI chart plots only `markedTrendSeries`, completely eliminating phantom 0% dips for unmarked days.
+
 ---
 
 ## 3. Cross-Module Synchronization Rules

@@ -6,6 +6,7 @@ import { AttendanceService } from "./attendance.service";
 import type { IDashboardService, DashboardData } from "@/interfaces/IDashboardService";
 import { formatClassLabel, cleanSectionName } from "@/lib/utils/formatClassLabel";
 import { resolveStaffCategory } from "@/lib/mappers/StaffPersistenceMapper";
+import { computeAttendanceTrend } from "@/lib/aggregations/shared-metrics";
 
 export class DashboardService implements IDashboardService {
   private studentService: StudentService;
@@ -212,51 +213,18 @@ export class DashboardService implements IDashboardService {
         total: totalMarked,
       };
 
-      // 5. 7-Day Attendance Trend — 100% Deterministic (Zero Math.random)
-      const trend: { day: string; date: string; percent: number; displayPercent: number; markedCount: number; isMarked: boolean }[] = [];
-      const endDate = new Date(activeDate || todayStr);
-
-      for (let i = 6; i >= 0; i--) {
-        const d = new Date(endDate);
-        d.setDate(d.getDate() - i);
-        const dayStr = d.toISOString().slice(0, 10);
-        const dayRecs = allAtt.filter((a: any) => a.date === dayStr);
-        const isMarked = dayRecs.length > 0;
-        const dayPres = dayRecs.filter((a: any) => {
-          const s = String(a.status || "").toLowerCase().trim();
-          return s === "present" || s === "late";
-        }).length;
-        const pct = isMarked ? Math.round((dayPres / dayRecs.length) * 100) : null;
-        trend.push({
-          day: dayStr.slice(5),
-          date: dayStr,
-          percent: pct !== null ? pct : 0,
-          displayPercent: pct ?? 0,
-          markedCount: dayRecs.length,
-          isMarked,
-        });
-      }
-
-      const markedDays = trend.filter(t => t.isMarked);
-      const avgPercent = markedDays.length > 0
-        ? Math.round(markedDays.reduce((s, t) => s + (t.percent || 0), 0) / markedDays.length)
-        : (todayAttendance.total > 0 ? Math.round(((todayAttendance.present + todayAttendance.late) / todayAttendance.total) * 100) : 0);
-
-      const highestPercent = markedDays.length > 0 ? Math.max(...markedDays.map(t => t.percent || 0)) : (todayAttendance.total > 0 ? 100 : 0);
-      const lowestPercent = markedDays.length > 0 ? Math.min(...markedDays.map(t => t.percent || 0)) : (todayAttendance.total > 0 ? 100 : 0);
+      // 5. 7-Day Attendance Trend — Single Source of Truth (Option A — Honest Semantics)
+      const { markedTrendSeries, calendarSlots, attendanceStats } = computeAttendanceTrend(allAtt, activeDate || todayStr);
 
       return {
         students: totalStudents,
         staff: totalStaff,
         revenue: collectedFees,
         todayAttendance,
-        attendanceTrend: trend,
-        attendanceStats: {
-          avg: avgPercent,
-          highest: highestPercent,
-          lowest: lowestPercent,
-          markedDaysCount: markedDays.length,
-        },
+        attendanceTrend: markedTrendSeries,
+        markedTrendSeries,
+        calendarSlots,
+        attendanceStats,
         feeMonth: {
           collected: collectedFees,
           pending: pendingFees,
@@ -291,12 +259,27 @@ export class DashboardService implements IDashboardService {
         staff: 0,
         revenue: 0,
         todayAttendance: { date: todayStr, present: 0, absent: 0, late: 0, total: 0 },
-        attendanceTrend: Array.from({ length: 7 }, (_, idx) => {
+        attendanceTrend: [],
+        markedTrendSeries: [],
+        calendarSlots: Array.from({ length: 7 }, (_, idx) => {
           const d = new Date();
           d.setDate(d.getDate() - (6 - idx));
-          return { day: d.toISOString().slice(5, 10), percent: 0 };
+          const dateStr = d.toISOString().slice(0, 10);
+          return {
+            date: dateStr,
+            day: dateStr.slice(5),
+            label: dateStr.slice(5),
+            percentage: null,
+            percent: null,
+            present: 0,
+            absent: 0,
+            late: 0,
+            totalMarked: 0,
+            marked: false,
+            isMarked: false,
+          };
         }),
-        attendanceStats: { avg: 0, highest: 0, lowest: 0 },
+        attendanceStats: { avg: 0, highest: 0, lowest: 0, markedDaysCount: 0 },
         feeMonth: { collected: 0, pending: 0, total: 0 },
         classFeeSummary: [],
         recentPayments: [],
