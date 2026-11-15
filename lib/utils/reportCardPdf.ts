@@ -247,3 +247,4 @@ export function downloadAllStudentsReportPDF(
   const sec = cleanSectionName(options?.section || "A");
   doc.save(`Report_Cards_${cls}_Section_${sec}.pdf`);
 }
+

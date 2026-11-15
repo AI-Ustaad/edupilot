@@ -44,3 +44,4 @@ export function getGradeBadgeClasses(grade: string): string {
       return "bg-gray-100 text-gray-700 border-gray-200";
   }
 }
+
