@@ -9,6 +9,7 @@ import RequirePermission from "@/components/RequirePermission";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 import apiClient from "@/lib/api/client";
 import type { Mark } from "@/types/marks";
+import { calculateGrade } from "@/lib/utils/grading";
 
 const EXAM_TERMS = ["1st Term", "2nd Term", "Final Exams", "Monthly Test", "Mock Exams", "SBA"];
 const norm = (str?: string) => (str || "").trim().toLowerCase();
@@ -72,7 +73,7 @@ export default function ExamsAndMarksPage() {
     return sCls === targetCls && norm(s.section) === norm(sec);
   });
 
-  const grade = (o: number, t: number) => { if (!t || !o) return "-"; const p = (o / t) * 100; if (p >= 90) return "A++"; if (p >= 80) return "A+"; if (p >= 70) return "A"; if (p >= 60) return "B"; if (p >= 50) return "C"; if (p >= 40) return "D"; return "U"; };
+  const grade = (o: number, t: number) => { if (!t || !o) return "-"; return calculateGrade((o / t) * 100); };
 
   const getVal = (sid: string, f: "obtained" | "total") => {
     if (entry[sid]?.[f] !== undefined) return entry[sid][f];

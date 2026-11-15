@@ -319,7 +319,7 @@ describe("Phase 14 & 15 — 100% Mathematical Accuracy & Cross-Module Synchroniz
       expect(student1.totalMax).toBe(400);
       expect(student1.totalObtained).toBe(340);
       expect(student1.percentage).toBe("85.00");
-      expect(student1.grade).toBe("A+");
+      expect(student1.grade).toBe("A"); // Unified Grading Scale (85% = A, >=90% = A+)
       expect(student1.marks.length).toBe(4);
     });
   });

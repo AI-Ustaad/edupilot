@@ -5,6 +5,7 @@ import type { AttendanceEntity } from "@/entities/attendance.entity";
 import type { IAttendanceRepository } from "@/interfaces/IAttendanceRepository";
 import type { PaginatedResult } from "@/types/api";
 import { RepositoryException } from "@/errors/AppError";
+import { formatClassLabel, cleanSectionName } from "@/lib/utils/formatClassLabel";
 
 export class AttendanceRepository extends BaseRepository<AttendanceDocument> implements IAttendanceRepository {
   constructor() {
@@ -39,17 +40,17 @@ export class AttendanceRepository extends BaseRepository<AttendanceDocument> imp
     let docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as AttendanceDocument));
 
     if (filters?.classGrade) {
-      const targetCls = filters.classGrade.replace(/^Class\s*/i, "").trim().toLowerCase();
+      const targetCls = formatClassLabel(filters.classGrade).toLowerCase();
       docs = docs.filter(d => {
-        const dCls = String(d.classGrade || "").replace(/^Class\s*/i, "").trim().toLowerCase();
+        const dCls = formatClassLabel(d.classGrade).toLowerCase();
         return dCls === targetCls;
       });
     }
 
     if (filters?.section) {
-      const targetSec = filters.section.replace(/^Section\s*/i, "").trim().toLowerCase();
+      const targetSec = cleanSectionName(filters.section).toLowerCase();
       docs = docs.filter(d => {
-        const dSec = String(d.section || "").replace(/^Section\s*/i, "").trim().toLowerCase();
+        const dSec = cleanSectionName(d.section).toLowerCase();
         return dSec === targetSec;
       });
     }

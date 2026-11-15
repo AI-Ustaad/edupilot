@@ -11,6 +11,7 @@ import { useStudents } from "@/hooks/useStudents";
 import { useSettings } from "@/hooks/useSettings";
 import { useMarks, useSaveMarks } from "@/hooks/useExams";
 import { useToast } from "@/components/ToastProvider";
+import { calculateGrade as getUnifiedGrade } from "@/lib/utils/grading";
 
 const EXAM_TERMS = ["1st Term", "2nd Term", "Final Exams"];
 const norm = (str?: string) => (str || "").trim().toLowerCase();
@@ -49,14 +50,7 @@ export default function ExamsAndMarksPage() {
 
   const calculateGrade = (obtained: number, total: number) => {
     if (!total || !obtained || total === 0) return "-";
-    const percent = (obtained / total) * 100;
-    if (percent >= 90) return "A++";
-    if (percent >= 80) return "A+";
-    if (percent >= 70) return "A";
-    if (percent >= 60) return "B";
-    if (percent >= 50) return "C";
-    if (percent >= 40) return "D"; 
-    return "U";
+    return getUnifiedGrade((obtained / total) * 100);
   };
 
   const getInputValue = (studentId: string, field: "obtained" | "total") => {

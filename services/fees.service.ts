@@ -14,6 +14,8 @@ import type { FeeDocument } from "@/documents/FeeDocument";
 import type { CreateFeeDTO, UpdateFeeDTO } from "@/dto";
 import type { PaginatedResult } from "@/types/api";
 import { FeePersistenceMapper } from "@/lib/mappers/FeePersistenceMapper";
+import { formatClassLabel, cleanSectionName } from "@/lib/utils/formatClassLabel";
+import { computeFeeSummary } from "@/lib/aggregations/shared-metrics";
 
 import { adminDb } from "@/lib/firebase-admin";
 
@@ -240,13 +242,26 @@ export class FeesService implements IFeesService {
     }
 
     if (filters.month) {
-      fees = fees.filter(f => f.feeMonth === filters.month || f.paymentDetails?.billingMonth === filters.month);
+      const targetMonth = filters.month.trim().toLowerCase();
+      const monthPrefix = targetMonth.slice(0, 3);
+      fees = fees.filter(f => {
+        const m = (f.feeMonth || f.paymentDetails?.billingMonth || f.financial?.feeMonth || "").toString().trim().toLowerCase();
+        return m === targetMonth || m.includes(monthPrefix) || targetMonth.includes(m.slice(0, 3));
+      });
     }
     if (filters.classGrade) {
-      fees = fees.filter(f => f.classGrade === filters.classGrade || f.studentInfo?.classId === filters.classGrade);
+      const normTarget = formatClassLabel(filters.classGrade).toLowerCase();
+      fees = fees.filter(f => {
+        const cg = formatClassLabel(f.classGrade || f.studentInfo?.classId || f.financial?.classGrade || "").toLowerCase();
+        return cg === normTarget;
+      });
     }
     if (filters.section) {
-      fees = fees.filter(f => f.section === filters.section || f.studentInfo?.sectionId === filters.section);
+      const normSec = cleanSectionName(filters.section).toLowerCase();
+      fees = fees.filter(f => {
+        const sec = cleanSectionName(f.section || f.studentInfo?.sectionId || f.financial?.section || "").toLowerCase();
+        return sec === normSec;
+      });
     }
 
     fees.sort((a, b) => {

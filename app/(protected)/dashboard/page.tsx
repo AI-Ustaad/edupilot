@@ -109,10 +109,17 @@ export default function DashboardPage() {
 
       <div className="grid lg:grid-cols-2 gap-6">
         <motion.div variants={fadeInUp} className="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm">
-          <h3 className="text-lg font-bold flex items-center gap-2 mb-4 text-gray-900">
-            <TrendingUp size={20} className="text-blue-600" /> Weekly Attendance Trend
-          </h3>
-          <ResponsiveContainer width="100%" height={280}>
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="text-lg font-bold flex items-center gap-2 text-gray-900">
+                <TrendingUp size={20} className="text-blue-600" /> Weekly Attendance Trend
+              </h3>
+              <p className="text-xs text-gray-500 mt-0.5">
+                Marked Days: {attendanceStats?.markedDaysCount ?? (attendanceTrend.filter((t: any) => t.isMarked || t.percent > 0).length)} | Avg: {attendanceStats.avg}%
+              </p>
+            </div>
+          </div>
+          <ResponsiveContainer width="100%" height={260}>
             <AreaChart data={attendanceTrend}>
               <defs>
                 <linearGradient id="colorPercent" x1="0" y1="0" x2="0" y2="1">
@@ -122,14 +129,30 @@ export default function DashboardPage() {
               </defs>
               <XAxis dataKey="day" stroke="#9ca3af" fontSize={12} />
               <YAxis domain={[0, 100]} stroke="#9ca3af" fontSize={12} />
-              <Tooltip contentStyle={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: "12px" }} />
-              <Area type="monotone" dataKey="percent" stroke="#3b82f6" strokeWidth={3} fillOpacity={1} fill="url(#colorPercent)" />
+              <Tooltip 
+                formatter={(val: any, _name: any, item: any) => {
+                  if (item?.payload?.isMarked === false && item?.payload?.percent === null) {
+                    return ["No attendance recorded", "Status"];
+                  }
+                  return [`${val}%`, "Attendance"];
+                }}
+                contentStyle={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: "12px" }} 
+              />
+              <Area 
+                type="monotone" 
+                dataKey="percent" 
+                stroke="#3b82f6" 
+                strokeWidth={3} 
+                fillOpacity={1} 
+                fill="url(#colorPercent)" 
+                connectNulls={true}
+              />
             </AreaChart>
           </ResponsiveContainer>
           <div className="grid grid-cols-3 gap-4 mt-4 text-center">
             <div><p className="text-gray-500 text-xs">Average</p><p className="text-xl font-black text-gray-900">{attendanceStats.avg}%</p></div>
             <div><p className="text-gray-500 text-xs">Highest</p><p className="text-xl font-black text-green-600">{attendanceStats.highest}%</p></div>
-            <div><p className="text-gray-500 text-xs">Lowest</p><p className="text-xl font-black text-red-500">{attendanceStats.lowest}%</p></div>
+            <div><p className="text-gray-500 text-xs">Lowest</p><p className={`text-xl font-black ${attendanceStats.lowest >= 75 ? "text-green-600" : "text-amber-500"}`}>{attendanceStats.lowest}%</p></div>
           </div>
         </motion.div>
 

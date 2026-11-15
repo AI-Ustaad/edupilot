@@ -13,6 +13,7 @@ import { useClasses } from "@/hooks/useClasses";
 import { useStudents } from "@/hooks/useStudents";
 import { useFees, useSaveFee, useDeleteFee } from "@/hooks/useFees";
 import { formatClassLabel, cleanSectionName } from "@/lib/utils/formatClassLabel";
+import { computeFeeSummary } from "@/lib/aggregations/shared-metrics";
 
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
@@ -43,8 +44,16 @@ export default function FeesPage() {
 
   // 1. Fetch Live Classes
   const { data: classesData = [] } = useClasses();
-  const availableClasses = useMemo(() => Array.from(new Set(classesData.map((c: any) => c.classGrade))), [classesData]);
-  const availableSections = useMemo(() => classesData.filter((c: any) => c.classGrade === selectedClass).map((c: any) => c.sectionName || c.section), [classesData, selectedClass]);
+  const availableClasses = useMemo(() => Array.from(new Set(classesData.map((c: any) => formatClassLabel(c.classGrade)).filter(Boolean))), [classesData]);
+  const availableSections = useMemo(() => {
+    if (!selectedClass) return [];
+    return Array.from(new Set(
+      classesData
+        .filter((c: any) => formatClassLabel(c.classGrade) === formatClassLabel(selectedClass))
+        .map((c: any) => cleanSectionName(c.sectionName || c.section))
+        .filter(Boolean)
+    ));
+  }, [classesData, selectedClass]);
 
   // 2. Fetch Live Students
   const { data: students = [], isLoading: studentsLoading } = useStudents(
@@ -59,7 +68,8 @@ export default function FeesPage() {
   const deleteMutation = useDeleteFee();
 
   const filteredStudents = students.filter(
-    (s: any) => (!selectedClass || s.classGrade === selectedClass) && (!selectedSection || s.section === selectedSection)
+    (s: any) => (!selectedClass || formatClassLabel(s.classGrade) === formatClassLabel(selectedClass)) && 
+                (!selectedSection || cleanSectionName(s.section) === cleanSectionName(selectedSection))
   );
 
   const handleSaveAll = async () => {
@@ -102,25 +112,22 @@ export default function FeesPage() {
     }
   };
 
-  // 🛡️ Accounting-Invariant Aggregation Logic (Zero-Preserving & Null-Aware)
-  const totalCollected = feeRecords.reduce((sum: number, f: any) => {
-    // Only verified positive finite payments count as collected cash
-    const paid = typeof f.amountPaid === "number" && Number.isFinite(f.amountPaid) ? Math.max(0, f.amountPaid) : 0;
-    return sum + paid;
-  }, 0);
+  // 🛡️ Accounting-Invariant Aggregation Logic (Zero-Preserving & Null-Aware via Single-Source computeFeeSummary)
+  const activeRecords = useMemo(() => {
+    if (feeRecords.length > 0) return feeRecords;
+    return filteredStudents.map((s: any) => ({
+      studentId: s.id,
+      studentName: s.fullName || s.name,
+      classGrade: s.classGrade,
+      section: s.section,
+      amount: 5000,
+      amountPaid: 0,
+      amountDue: 5000,
+      status: "pending",
+    }));
+  }, [feeRecords, filteredStudents]);
 
-  const totalPending = feeRecords.reduce((sum: number, f: any) => {
-    const status = f.status?.toLowerCase()?.trim();
-    if (status === "paid") return sum;
-    const explicitDue = typeof f.amountDue === "number" && Number.isFinite(f.amountDue) ? Math.max(0, f.amountDue) : null;
-    if (explicitDue !== null && explicitDue > 0) {
-      return sum + explicitDue;
-    }
-    const assessed = typeof f.amount === "number" && Number.isFinite(f.amount) ? Math.max(0, f.amount) : 0;
-    const paid = typeof f.amountPaid === "number" && Number.isFinite(f.amountPaid) ? Math.max(0, f.amountPaid) : 0;
-    const diff = Math.max(0, assessed - paid);
-    return sum + diff;
-  }, 0);
+  const feeSummary = useMemo(() => computeFeeSummary(activeRecords), [activeRecords]);
 
   if (!user?.tenantId) return <div className="p-8 text-center">Loading...</div>;
 
@@ -147,19 +154,19 @@ export default function FeesPage() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="bg-gradient-to-br from-green-500 to-green-600 text-white p-6 rounded-2xl shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
           <div className="flex items-center justify-between">
-            <div><p className="text-sm font-medium opacity-90">Total Collected</p><p className="text-3xl font-black mt-2">Rs. {totalCollected.toLocaleString()}</p></div>
+            <div><p className="text-sm font-medium opacity-90">Total Collected</p><p className="text-3xl font-black mt-2">Rs. {feeSummary.totalCollected.toLocaleString()}</p></div>
             <CheckCircle size={40} className="opacity-50" />
           </div>
         </div>
         <div className="bg-gradient-to-br from-orange-500 to-orange-600 text-white p-6 rounded-2xl shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
           <div className="flex items-center justify-between">
-            <div><p className="text-sm font-medium opacity-90">Total Pending</p><p className="text-3xl font-black mt-2">Rs. {totalPending.toLocaleString()}</p></div>
+            <div><p className="text-sm font-medium opacity-90">Total Pending</p><p className="text-3xl font-black mt-2">Rs. {feeSummary.totalPending.toLocaleString()}</p></div>
             <AlertCircle size={40} className="opacity-50" />
           </div>
         </div>
         <div className="bg-gradient-to-br from-blue-500 to-blue-600 text-white p-6 rounded-2xl shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
           <div className="flex items-center justify-between">
-            <div><p className="text-sm font-medium opacity-90">Total Records</p><p className="text-3xl font-black mt-2">{feeRecords.length}</p></div>
+            <div><p className="text-sm font-medium opacity-90">Total Records</p><p className="text-3xl font-black mt-2">{feeSummary.totalRecords}</p></div>
             <Users size={40} className="opacity-50" />
           </div>
         </div>

@@ -10,11 +10,12 @@ export interface DashboardData {
     late: number;
     total: number;
   };
-  attendanceTrend: { day: string; percent: number }[];
+  attendanceTrend: { day: string; percent: number; date?: string; isMarked?: boolean; markedCount?: number }[];
   attendanceStats: {
     avg: number;
     highest: number;
     lowest: number;
+    markedDaysCount?: number;
   };
   feeMonth: {
     collected: number;

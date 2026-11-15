@@ -15,6 +15,7 @@ import type { Mark } from "@/types/marks";
 import type { IMarksService } from "@/interfaces/IMarksService";
 import { NotFoundException, BusinessError } from "@/errors/AppError";
 import { formatClassLabel, cleanSectionName } from "@/lib/utils/formatClassLabel";
+import { calculateGrade } from "@/lib/utils/grading";
 
 export class MarksService implements IMarksService {
   private audit: AuditService;
@@ -192,13 +193,23 @@ export class MarksService implements IMarksService {
       const student = studentMap.get(studentId);
       const studentName = student?.fullName || student?.firstName || studentMarks[0]?.studentName || "Unknown";
       const rollNumber = student?.rollNumber ?? (studentMarks[0] as any)?.rollNumber ?? "-";
-      const totalObtained = studentMarks.reduce((sum, m) => sum + (Number(m.marksObtained) || 0), 0);
-      const totalMax = studentMarks.reduce((sum, m) => sum + (Number(m.totalMarks) || 0), 0);
+      
+      // Standardize per-subject grade using canonical calculateGrade
+      const normalizedMarks = studentMarks.map(m => {
+        const markPct = m.percentage ?? (Number(m.totalMarks) > 0 ? (Number(m.marksObtained) / Number(m.totalMarks)) * 100 : 0);
+        return {
+          ...m,
+          grade: calculateGrade(markPct),
+          percentage: Number(markPct),
+        };
+      });
+
+      const totalObtained = normalizedMarks.reduce((sum, m) => sum + (Number(m.marksObtained) || 0), 0);
+      const totalMax = normalizedMarks.reduce((sum, m) => sum + (Number(m.totalMarks) || 0), 0);
       const pct = totalMax > 0 ? ((totalObtained / totalMax) * 100) : 0;
       const percentage = pct.toFixed(2);
-      let grade = "U";
-      if (pct >= 90) grade = "A++"; else if (pct >= 80) grade = "A+"; else if (pct >= 70) grade = "A"; else if (pct >= 60) grade = "B"; else if (pct >= 50) grade = "C"; else if (pct >= 40) grade = "D";
-      results.push({ studentId, studentName, rollNumber, marks: studentMarks, totalObtained, totalMax, percentage, grade });
+      const grade = calculateGrade(pct);
+      results.push({ studentId, studentName, rollNumber, marks: normalizedMarks, totalObtained, totalMax, percentage, grade });
     }
     results.sort((a, b) => parseFloat(b.percentage) - parseFloat(a.percentage));
     return results;

@@ -213,7 +213,7 @@ export class DashboardService implements IDashboardService {
       };
 
       // 5. 7-Day Attendance Trend — 100% Deterministic (Zero Math.random)
-      const trend: { day: string; percent: number }[] = [];
+      const trend: { day: string; date: string; percent: number; displayPercent: number; markedCount: number; isMarked: boolean }[] = [];
       const endDate = new Date(activeDate || todayStr);
 
       for (let i = 6; i >= 0; i--) {
@@ -221,21 +221,29 @@ export class DashboardService implements IDashboardService {
         d.setDate(d.getDate() - i);
         const dayStr = d.toISOString().slice(0, 10);
         const dayRecs = allAtt.filter((a: any) => a.date === dayStr);
+        const isMarked = dayRecs.length > 0;
         const dayPres = dayRecs.filter((a: any) => {
           const s = String(a.status || "").toLowerCase().trim();
           return s === "present" || s === "late";
         }).length;
-        const pct = dayRecs.length > 0 ? Math.round((dayPres / dayRecs.length) * 100) : 0;
-        trend.push({ day: dayStr.slice(5), percent: pct });
+        const pct = isMarked ? Math.round((dayPres / dayRecs.length) * 100) : null;
+        trend.push({
+          day: dayStr.slice(5),
+          date: dayStr,
+          percent: pct !== null ? pct : 0,
+          displayPercent: pct ?? 0,
+          markedCount: dayRecs.length,
+          isMarked,
+        });
       }
 
-      const nonZeroTrends = trend.filter(t => t.percent > 0);
-      const avgPercent = nonZeroTrends.length > 0
-        ? Math.round(nonZeroTrends.reduce((s, t) => s + t.percent, 0) / nonZeroTrends.length)
-        : (trend.length > 0 && trend[trend.length - 1].percent > 0 ? trend[trend.length - 1].percent : 0);
+      const markedDays = trend.filter(t => t.isMarked);
+      const avgPercent = markedDays.length > 0
+        ? Math.round(markedDays.reduce((s, t) => s + (t.percent || 0), 0) / markedDays.length)
+        : (todayAttendance.total > 0 ? Math.round(((todayAttendance.present + todayAttendance.late) / todayAttendance.total) * 100) : 0);
 
-      const highestPercent = trend.length > 0 ? Math.max(...trend.map(t => t.percent)) : 0;
-      const lowestPercent = nonZeroTrends.length > 0 ? Math.min(...nonZeroTrends.map(t => t.percent)) : 0;
+      const highestPercent = markedDays.length > 0 ? Math.max(...markedDays.map(t => t.percent || 0)) : (todayAttendance.total > 0 ? 100 : 0);
+      const lowestPercent = markedDays.length > 0 ? Math.min(...markedDays.map(t => t.percent || 0)) : (todayAttendance.total > 0 ? 100 : 0);
 
       return {
         students: totalStudents,
@@ -247,6 +255,7 @@ export class DashboardService implements IDashboardService {
           avg: avgPercent,
           highest: highestPercent,
           lowest: lowestPercent,
+          markedDaysCount: markedDays.length,
         },
         feeMonth: {
           collected: collectedFees,
@@ -282,9 +291,11 @@ export class DashboardService implements IDashboardService {
         staff: 0,
         revenue: 0,
         todayAttendance: { date: todayStr, present: 0, absent: 0, late: 0, total: 0 },
-        attendanceTrend: [
-          { day: todayStr.slice(5), percent: 0 },
-        ],
+        attendanceTrend: Array.from({ length: 7 }, (_, idx) => {
+          const d = new Date();
+          d.setDate(d.getDate() - (6 - idx));
+          return { day: d.toISOString().slice(5, 10), percent: 0 };
+        }),
         attendanceStats: { avg: 0, highest: 0, lowest: 0 },
         feeMonth: { collected: 0, pending: 0, total: 0 },
         classFeeSummary: [],

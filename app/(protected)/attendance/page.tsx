@@ -11,7 +11,7 @@ import { useStudents } from "@/hooks/useStudents";
 import { useRealtimeAttendance } from "@/hooks/useRealtimeAttendance"; // Live Hook
 import { useAttendance, useSaveAttendance } from "@/hooks/useAttendance"; // Save Mutation & Server Query
 import { useToast } from "@/components/ToastProvider";
-import { formatClassLabel } from "@/lib/utils/formatClassLabel";
+import { formatClassLabel, cleanSectionName } from "@/lib/utils/formatClassLabel";
 
 export default function AttendancePage() {
   const { user } = useAuth();
@@ -161,13 +161,24 @@ export default function AttendancePage() {
           </div>
         ) : students.length === 0 ? (
           <div className="p-8 text-center text-gray-400 font-bold">
-            No students found in {formatClassLabel(selectedClass)} - Section {selectedSection}.
+            No students found in {formatClassLabel(selectedClass)} - Section {cleanSectionName(selectedSection)}.
           </div>
         ) : (
           <div className="divide-y divide-gray-100">
             {students.map((student: any) => {
               const existing = attendanceRecords.find((a: any) => a.studentId === student.id);
-              const currentStatus = entries[student.id] || existing?.status || "Not Marked";
+              const rawStatus = entries[student.id] || existing?.status;
+              let currentStatus = "Not Marked";
+              if (rawStatus) {
+                const s = String(rawStatus).toLowerCase();
+                if (s === "present") currentStatus = "Present";
+                else if (s === "absent") currentStatus = "Absent";
+                else if (s === "late") currentStatus = "Late";
+                else if (s === "leave") currentStatus = "Leave";
+                else if (s === "halfday") currentStatus = "HalfDay";
+                else if (s === "holiday") currentStatus = "Holiday";
+                else currentStatus = rawStatus;
+              }
               
               return (
                 <div key={student.id} className="px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition">
