@@ -21,8 +21,8 @@ export class DashboardService implements IDashboardService {
     this.attendanceService = new AttendanceService();
   }
 
-  async getDashboardData(tenantId: string): Promise<DashboardData> {
-    const todayStr = new Date().toISOString().slice(0, 10);
+  async getDashboardData(tenantId: string, clientDate?: string): Promise<DashboardData> {
+    const todayStr = clientDate || new Date().toISOString().slice(0, 10);
     try {
       const db = adminDb;
 
@@ -178,14 +178,9 @@ export class DashboardService implements IDashboardService {
       // 4. Attendance Aggregation — 100% Dynamic from Tenant's Firestore records
       const allAtt = attendanceSnap.docs.map((d: any) => d.data());
 
-      let targetRecords = allAtt.filter((a: any) => a.date === todayStr);
-
-      if (targetRecords.length === 0 && allAtt.length > 0) {
-        const dates = Array.from(new Set(allAtt.map((a: any) => a.date).filter(Boolean))).sort().reverse();
-        if (dates.length > 0) {
-          targetRecords = allAtt.filter((a: any) => a.date === dates[0]);
-        }
-      }
+      // Query and display viewer's current date (matching /attendance default date)
+      // DO NOT fall back to historical dates (e.g. 2026-11-15) when today is unmarked!
+      const targetRecords = allAtt.filter((a: any) => a.date === todayStr);
 
       const presentCount = targetRecords.filter((a: any) => {
         const s = String(a.status || "").toLowerCase().trim();
@@ -203,10 +198,9 @@ export class DashboardService implements IDashboardService {
       }).length;
 
       const totalMarked = presentCount + lateCount + absentCount;
-      const activeDate = targetRecords.length > 0 && targetRecords[0].date ? targetRecords[0].date : todayStr;
 
       const todayAttendance = {
-        date: activeDate,
+        date: todayStr,
         present: presentCount,
         absent: absentCount,
         late: lateCount,
@@ -214,7 +208,8 @@ export class DashboardService implements IDashboardService {
       };
 
       // 5. 7-Day Attendance Trend — Single Source of Truth (Option A — Honest Semantics)
-      const { markedTrendSeries, calendarSlots, attendanceStats } = computeAttendanceTrend(allAtt, activeDate || todayStr);
+      // Preserves historical marked days (e.g. 11-15 at 100%) in the 7-day window ending today
+      const { markedTrendSeries, calendarSlots, attendanceStats } = computeAttendanceTrend(allAtt, todayStr);
 
       return {
         students: totalStudents,

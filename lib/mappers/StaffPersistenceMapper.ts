@@ -3,6 +3,22 @@ import type { StaffStatus } from "@/entities/staff.entity";
 import type { StaffEntity } from "@/entities/staff.entity";
 import type { StaffDocument } from "@/documents/StaffDocument";
 
+export function getStaffSalary(staff: any): number {
+  if (!staff) return 0;
+  const rawSalary = 
+    staff.payroll?.basicSalary ??
+    staff.basicSalary ??
+    staff.payroll?.salary ??
+    staff.salary ??
+    staff.payroll?.netSalary ??
+    staff.netSalary ??
+    staff.payroll?.grossSalary ??
+    staff.grossSalary ??
+    0;
+  const num = Number(rawSalary);
+  return isNaN(num) || num <= 0 ? 0 : num;
+}
+
 export function resolveStaffCategory(designation = "", department = "", rawCategory = ""): string {
   const normCat = (rawCategory || "").trim().toLowerCase();
   if (normCat === "administration" || normCat === "finance" || normCat === "support" || normCat === "teaching") {
@@ -166,8 +182,7 @@ export class StaffPersistenceMapper {
     const firstName = nameParts[0] || "";
     const lastName = nameParts.slice(1).join(" ") || "";
 
-    const rawSalaryNum = Number(payrollRaw.basicSalary ?? raw.basicSalary ?? payrollRaw.salary ?? raw.salary ?? payrollRaw.netSalary ?? raw.netSalary ?? 0);
-    const basicSalary = rawSalaryNum > 0 ? rawSalaryNum : 50000;
+    const basicSalary = getStaffSalary(raw);
     const deterministicCnic = identityRaw.cnic || personalRaw.cnic || raw.cnic || "35202-1000001-1";
     const bankName = payrollRaw.bankName || raw.bankName || "Test Bank";
     const accountNumber = payrollRaw.accountNumber || raw.accountNumber || payrollRaw.bankAccount || raw.bankAccount || "";

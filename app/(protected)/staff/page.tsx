@@ -10,6 +10,7 @@ import { PERMISSIONS } from "@/lib/auth/permissions";
 import { useStaffDirectory, useDeleteStaff, useStaffAnalytics } from "@/hooks/useStaff";
 import { TableSkeleton } from "@/components/Skeletons";
 import EditStaffModal from "@/components/staff/EditStaffModal";
+import { getStaffSalary } from "@/lib/mappers/StaffPersistenceMapper";
 
 const STATUS_COLORS: Record<string, string> = {
   active: "bg-green-50 text-green-700 border-green-200",
@@ -95,7 +96,7 @@ export default function StaffDirectoryPage() {
       s.professional?.designation || s.designation || s.role || "",
       s.professional?.department || s.department || "",
       s.category || "Teaching",
-      `Rs. ${Number(s.payroll?.basicSalary || s.payroll?.netSalary || s.salary || s.basicSalary || 50000).toLocaleString()}`,
+      getStaffSalary(s) > 0 ? `Rs. ${getStaffSalary(s).toLocaleString()}` : "Rs. 0",
       s.status || "active",
       s.contact?.email || s.email || "",
       s.contact?.mobile || s.mobile || s.phone || "",
@@ -288,7 +289,7 @@ export default function StaffDirectoryPage() {
                         </span>
                       </td>
                       <td className="p-3 font-bold text-gray-900">
-                        Rs. {Number(s.payroll?.basicSalary || s.payroll?.netSalary || s.salary || s.basicSalary || 50000).toLocaleString()}
+                        {getStaffSalary(s) > 0 ? `Rs. ${getStaffSalary(s).toLocaleString()}` : "Rs. 0"}
                       </td>
                       <td className="p-3">
                         <span className={`px-2 py-0.5 rounded-full text-xs font-bold border ${STATUS_COLORS[s.status || "active"]}`}>

@@ -82,7 +82,7 @@ export default function DashboardPage() {
         <KpiCard title="Total Students" value={data.students || 0} icon={<Users size={24} className="text-blue-600" />} color="blue" />
         <KpiCard title="Total Staff" value={data.staff || 0} icon={<Briefcase size={24} className="text-purple-600" />} color="purple" />
         <KpiCard title="Revenue (Month)" value={"Rs " + (data.revenue || 0).toLocaleString()} icon={<DollarSign size={24} className="text-green-600" />} color="green" />
-        <KpiCard title="Today Attendance" value={attendancePercent + "%"} subtitle={(data.todayAttendance?.date || new Date().toISOString().slice(0, 10)) + " • " + (data.todayAttendance?.present || 0) + "P / " + (data.todayAttendance?.absent || 0) + "A"} icon={<Activity size={24} className="text-cyan-600" />} color="cyan" />
+        <KpiCard title="Today Attendance" value={total > 0 ? attendancePercent + "%" : "0%"} subtitle={(data.todayAttendance?.date || new Date().toISOString().slice(0, 10)) + " • " + (data.todayAttendance?.present || 0) + "P / " + (data.todayAttendance?.absent || 0) + "A"} icon={<Activity size={24} className="text-cyan-600" />} color="cyan" />
       </motion.div>
 
       {riskStudents.length > 0 && (

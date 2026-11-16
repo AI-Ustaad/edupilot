@@ -9,11 +9,13 @@ import { useAuth } from "@/context/AuthContext";
 export const useDashboardMetrics = () => {
   const { user } = useAuth();
   const tenantId = user?.tenantId || "unknown";
+  const clientDate = typeof window !== "undefined" ? new Date().toISOString().slice(0, 10) : "";
 
   return useQuery({
-    queryKey: QueryKeys.dashboard(tenantId),
+    queryKey: [...QueryKeys.dashboard(tenantId), clientDate],
     queryFn: async () => {
-      const res = await apiClient.get("/dashboard");
+      const url = clientDate ? `/dashboard?date=${clientDate}` : "/dashboard";
+      const res = await apiClient.get(url);
       return safeObject(res);
     },
     enabled: !!tenantId && tenantId !== "unknown",

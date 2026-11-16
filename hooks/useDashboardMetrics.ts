@@ -8,10 +8,14 @@ import { useAuth } from "@/context/AuthContext";
 export const useDashboardMetrics = () => {
   const { user } = useAuth();
   const tenantId = user?.tenantId || "unknown";
+  const clientDate = typeof window !== "undefined" ? new Date().toISOString().slice(0, 10) : "";
 
   return useQuery({
-    queryKey: QueryKeys.dashboard(tenantId),
-    queryFn: async () => safeObject(await apiClient.get("/dashboard")),
+    queryKey: [...QueryKeys.dashboard(tenantId), clientDate],
+    queryFn: async () => {
+      const url = clientDate ? `/dashboard?date=${clientDate}` : "/dashboard";
+      return safeObject(await apiClient.get(url));
+    },
     enabled: !!tenantId && tenantId !== "unknown",
   });
 };

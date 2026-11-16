@@ -13,10 +13,12 @@ export const GET = withErrorHandler(
     withRateLimit(standardRateLimit)(
       withTenant(
         withPermission(PERMISSIONS.analytics.view)(
-          async (_req: Request, context: TenantContext) => {
+          async (req: Request, context: TenantContext) => {
             const tenantId = context?.tenantId || (context as any)?.user?.tenantId || "default";
+            const url = new URL(req.url);
+            const clientDate = url.searchParams.get("date") || undefined;
             const service = new DashboardService();
-            const data = await service.getDashboardData(tenantId);
+            const data = await service.getDashboardData(tenantId, clientDate);
             return createSuccessResponse(data);
           }
         )

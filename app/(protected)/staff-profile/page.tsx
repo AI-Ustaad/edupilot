@@ -12,6 +12,7 @@ import {
 import { useStaffMember, useStaffTimeline, useStaff } from "@/hooks/useStaff";
 import type { Staff } from "@/types/staff";
 import { formatClassLabel } from "@/lib/utils/formatClassLabel";
+import { getStaffSalary } from "@/lib/mappers/StaffPersistenceMapper";
 
 function StaffProfileContent() {
   const searchParams = useSearchParams();
@@ -97,7 +98,7 @@ function StaffProfileContent() {
   ];
 
   const calcNetSalary = () => {
-    const basic = Number(payroll?.basicSalary || (staff as any).basicSalary || (staff as any).salary || 50000);
+    const basic = getStaffSalary(staff);
     const allowances = (payroll?.allowances || []).reduce((s, a) => s + (a.amount || 0), 0);
     const deductions = (payroll?.deductions || []).reduce((s, d) => s + (d.amount || 0), 0);
     return basic + allowances - deductions;
@@ -365,7 +366,7 @@ function StaffProfileContent() {
                   <div className="divide-y divide-slate-100 bg-white">
                     <div className="px-4 py-2 flex justify-between">
                       <span className="text-sm font-bold text-slate-600">Basic Salary</span>
-                      <span className="text-sm font-black">Rs. {(payroll?.basicSalary || (staff as any).basicSalary || (staff as any).salary || 50000).toLocaleString()}</span>
+                      <span className="text-sm font-black">Rs. {getStaffSalary(staff).toLocaleString()}</span>
                     </div>
                     {(payroll?.allowances || []).length > 0 ? payroll!.allowances!.map((a, i) => (
                       <div key={i} className="px-4 py-2 flex justify-between"><span className="text-sm font-bold text-slate-600">{a.name}</span><span className="text-sm font-black">Rs. {(a.amount || 0).toLocaleString()}</span></div>

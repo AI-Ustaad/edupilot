@@ -48,6 +48,6 @@ export interface DashboardData {
 }
 
 export interface IDashboardService {
-  getDashboardData(tenantId: string): Promise<DashboardData>;
+  getDashboardData(tenantId: string, clientDate?: string): Promise<DashboardData>;
   rebuildStats(tenantId: string): Promise<{ students: number; staff: number; revenue: number }>;
 }

@@ -6,6 +6,7 @@ import { useStaffMember, useUpdateStaff, useStaff } from "@/hooks/useStaff";
 import { logger } from "@/lib/logger/logger";
 import { Input, Select, Section } from "@/components/staff/form-primitives";
 import type { StaffFormData } from "@/lib/mappers/staff.mapper";
+import { getStaffSalary } from "@/lib/mappers/StaffPersistenceMapper";
 
 function EditStaffContent() {
   const searchParams = useSearchParams();
@@ -63,10 +64,10 @@ function EditStaffContent() {
           qualification: s.professional?.qualification || s.qualification || fallback?.qualification || "M.Sc Mathematics",
         },
         payroll: {
-          basicSalary: Number(s.payroll?.basicSalary || s.basicSalary || s.salary || fallback?.basicSalary || fallback?.salary || 50000),
+          basicSalary: getStaffSalary(s) || getStaffSalary(fallback),
           allowances: s.payroll?.allowances || s.allowances || fallback?.allowances || [],
           deductions: s.payroll?.deductions || s.deductions || fallback?.deductions || [],
-          grossSalary: Number(s.payroll?.grossSalary || s.grossSalary || s.basicSalary || s.salary || fallback?.salary || 50000),
+          grossSalary: Number(s.payroll?.grossSalary || s.grossSalary || getStaffSalary(s) || getStaffSalary(fallback)),
           bankName: s.payroll?.bankName || s.bankName || fallback?.bankName || "Test Bank",
           accountNumber: s.payroll?.accountNumber || s.accountNumber || s.bankAccount || fallback?.accountNumber || "1000000001",
           iban: s.payroll?.iban || s.iban || fallback?.iban || "PK36TEST0000001000000001",

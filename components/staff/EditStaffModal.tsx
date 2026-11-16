@@ -5,6 +5,7 @@ import { X, Save, Loader2, Briefcase, Mail, Phone, DollarSign, Award, BookOpen, 
 import { useUpdateStaff } from "@/hooks/useStaff";
 import { useClasses } from "@/hooks/useClasses";
 import { useToast } from "@/components/ToastProvider";
+import { getStaffSalary } from "@/lib/mappers/StaffPersistenceMapper";
 
 interface EditStaffModalProps {
   isOpen: boolean;
@@ -32,7 +33,7 @@ export default function EditStaffModal({ isOpen, onClose, staff, onSuccess }: Ed
       designation: professional.designation || stf?.designation || "Teacher",
       department: professional.department || stf?.department || "",
       qualification: professional.qualification || stf?.qualification || "",
-      basicSalary: Number(payroll.basicSalary || stf?.salary || stf?.basicSalary || 50000),
+      basicSalary: getStaffSalary(stf),
       classesAssigned: Array.isArray(academic.classesAssigned)
         ? academic.classesAssigned
         : (stf?.classesAssigned ? [stf.classesAssigned] : []),

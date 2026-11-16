@@ -12,10 +12,12 @@
  */
 
 import { StudentPersistenceMapper } from "@/lib/mappers/StudentPersistenceMapper";
-import { StaffPersistenceMapper } from "@/lib/mappers/StaffPersistenceMapper";
+import { StaffPersistenceMapper, getStaffSalary } from "@/lib/mappers/StaffPersistenceMapper";
 import { formatClassLabel, cleanSectionName } from "@/lib/utils/formatClassLabel";
 import { StudentService } from "@/services/StudentService";
 import { ConfigurationService } from "@/services/configuration.service";
+import { DashboardService } from "@/services/dashboard.service";
+import { computeAttendanceTrend } from "@/lib/aggregations/shared-metrics";
 
 describe("Phase 18 — Six Live Defects & Full Compliance Suite", () => {
   const TENANT_ID = "ghs_sahiwal_tenant";
@@ -184,29 +186,89 @@ describe("Phase 18 — Six Live Defects & Full Compliance Suite", () => {
       expect(vm!.sectionNames).toEqual(["A", "B", "C"]);
       expect(vm!.sectionCount).toBe(3);
     });
+
+    it("should bind active version to Version 5 and completionLabel to November 15, 2026 without stray August 24", async () => {
+      const configService = new ConfigurationService();
+      const vm = await configService.getConfigurationViewModel(TENANT_ID);
+
+      expect(vm).not.toBeNull();
+      expect(vm!.versionNumber).toBeGreaterThanOrEqual(5);
+      expect(vm!.versionLabel).toBe("Version 5");
+      expect(vm!.completionLabel).toContain("November 15, 2026");
+      expect(vm!.completionLabel).not.toContain("August 24");
+    });
+  });
+
+  // =========================================================================
+  // Defect 2: Dashboard Today Attendance & Weekly Trend Option A Invariants
+  // =========================================================================
+  describe("Defect 2 (§4A / §4B): Dashboard Today Attendance vs Weekly Trend Invariants", () => {
+    it("should display today's date and 0P / 0A when today is unmarked, without falling back to yesterday", async () => {
+      const dashboardService = new DashboardService();
+      // Query with explicit date where no records exist
+      const stats = await dashboardService.getDashboardData(TENANT_ID, "2026-11-16");
+
+      expect(stats.todayAttendance.date).toBe("2026-11-16");
+      expect(stats.todayAttendance.present).toBe(0);
+      expect(stats.todayAttendance.absent).toBe(0);
+      expect(stats.todayAttendance.total).toBe(0);
+    });
+
+    it("should preserve historical marked days in 7-day trend even when today is unmarked", () => {
+      const allAttendance = [
+        { date: "2026-11-15", status: "present", studentId: "st_103", tenantId: TENANT_ID },
+      ];
+
+      const { markedTrendSeries, attendanceStats } = computeAttendanceTrend(allAttendance, "2026-11-16");
+
+      // Trend only plots marked days (Option A)
+      expect(markedTrendSeries).toHaveLength(1);
+      expect(markedTrendSeries[0].date).toBe("2026-11-15");
+      expect(markedTrendSeries[0].percent).toBe(100);
+      expect(attendanceStats.markedDaysCount).toBe(1);
+      expect(attendanceStats.avg).toBe(100);
+      expect(attendanceStats.highest).toBe(100);
+      expect(attendanceStats.lowest).toBe(100);
+    });
   });
 
   // =========================================================================
   // Fix 5 & Fix 6: Staff Directory Salary (Rs 50,000) & CNIC Column Populated
   // =========================================================================
   describe("Fix 5 & Fix 6 (§4H): Staff Salary Unification & CNIC CSV Export", () => {
-    it("should resolve basicSalary to 50000 when missing or 0 in raw Firestore doc", () => {
-      const rawStaffDoc = {
+    it("should read real stored salary via getStaffSalary without 50000 hardcoded fallback", () => {
+      // 1. Staff member with real stored salary 50,000 (ghzandar Ali)
+      const ghzandarDoc = {
         id: "stf_01",
         fullName: "ghzandar Ali",
         designation: "SST",
         department: "Science",
         category: "Teaching",
-        // No basicSalary provided in raw doc
+        basicSalary: 50000,
       };
+      const entity1 = StaffPersistenceMapper.fromFirestore(ghzandarDoc as any);
+      expect(entity1.basicSalary).toBe(50000);
+      expect(getStaffSalary(entity1)).toBe(50000);
 
-      const entity = StaffPersistenceMapper.fromFirestore(rawStaffDoc as any);
+      // 2. Staff member with a different stored salary (e.g. 75,000)
+      const otherDoc = {
+        id: "stf_02",
+        fullName: "Fatima Noor",
+        designation: "Principal",
+        payroll: { basicSalary: 75000 },
+      };
+      const entity2 = StaffPersistenceMapper.fromFirestore(otherDoc as any);
+      expect(entity2.basicSalary).toBe(75000);
+      expect(getStaffSalary(entity2)).toBe(75000);
 
-      expect(entity.basicSalary).toBe(50000);
-      expect(entity.salary).toBe(50000);
-      expect(entity.netSalary).toBe(50000);
-      expect(entity.payroll?.basicSalary).toBe(50000);
-      expect(entity.payroll?.netSalary).toBe(50000);
+      // 3. Staff member with missing/zero salary defaults to 0, NOT 50,000
+      const unconfiguredDoc = {
+        id: "stf_03",
+        fullName: "Tariq Mehmood",
+      };
+      const entity3 = StaffPersistenceMapper.fromFirestore(unconfiguredDoc as any);
+      expect(entity3.basicSalary).toBe(0);
+      expect(getStaffSalary(entity3)).toBe(0);
     });
 
     it("should populate cnic in top-level, personal, and identity objects for ghzandar Ali", () => {
@@ -215,6 +277,7 @@ describe("Phase 18 — Six Live Defects & Full Compliance Suite", () => {
         fullName: "ghzandar Ali",
         designation: "SST",
         department: "Science",
+        basicSalary: 50000,
       };
 
       const entity = StaffPersistenceMapper.fromFirestore(rawStaffDoc as any);
@@ -224,7 +287,7 @@ describe("Phase 18 — Six Live Defects & Full Compliance Suite", () => {
       expect((entity.personal as any).cnic).toBe("35202-1000001-1");
     });
 
-    it("should generate CSV export rows with non-empty Salary and CNIC columns", () => {
+    it("should generate CSV export rows with non-empty Salary and CNIC columns using getStaffSalary", () => {
       const staffList = [
         StaffPersistenceMapper.fromFirestore({
           id: "stf_01",
@@ -235,6 +298,18 @@ describe("Phase 18 — Six Live Defects & Full Compliance Suite", () => {
           status: "active",
           email: "ghzandar.ali@school.pk",
           mobile: "0300-1234567",
+          basicSalary: 50000,
+        } as any),
+        StaffPersistenceMapper.fromFirestore({
+          id: "stf_02",
+          fullName: "Zahid Ahmed",
+          designation: "Lecturer",
+          department: "Arts",
+          category: "Teaching",
+          status: "active",
+          email: "zahid@school.pk",
+          mobile: "0301-1234567",
+          payroll: { basicSalary: 60000 },
         } as any),
       ];
 
@@ -245,7 +320,7 @@ describe("Phase 18 — Six Live Defects & Full Compliance Suite", () => {
         s.professional?.designation || s.designation || s.role || "",
         s.professional?.department || s.department || "",
         s.category || "Teaching",
-        `Rs. ${Number(s.payroll?.basicSalary || s.payroll?.netSalary || s.salary || s.basicSalary || 50000).toLocaleString()}`,
+        getStaffSalary(s) > 0 ? `Rs. ${getStaffSalary(s).toLocaleString()}` : "Rs. 0",
         s.status || "active",
         s.contact?.email || s.email || "",
         s.contact?.mobile || s.mobile || s.phone || "",
@@ -256,6 +331,9 @@ describe("Phase 18 — Six Live Defects & Full Compliance Suite", () => {
       expect(rows[0][1]).toBe("ghzandar Ali");
       expect(rows[0][5]).toBe("Rs. 50,000");
       expect(rows[0][9]).toBe("35202-1000001-1");
+
+      expect(rows[1][1]).toBe("Zahid Ahmed");
+      expect(rows[1][5]).toBe("Rs. 60,000");
     });
   });
 });
