@@ -1,11 +1,12 @@
 "use client";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
 import { Loader2, Sparkles, Download } from "lucide-react";
 import RequirePermission from "@/components/RequirePermission";
 import { useClasses } from "@/hooks/useClasses";
 import { useSettings } from "@/hooks/useSettings";
 import { useGenerateTimetable } from "@/hooks/useAI";
+import { extractUniqueClasses } from "@/lib/utils/formatClassLabel";
 
 export default function AITimetablePage() {
   const [classes, setClasses] = useState<string[]>([]);
@@ -20,6 +21,7 @@ export default function AITimetablePage() {
   const { data: classesData = [] } = useClasses();
   const { data: settings } = useSettings();
   const subjectsList = settings?.subjects || [];
+  const uniqueClasses = useMemo(() => extractUniqueClasses(classesData), [classesData]);
 
   // 2. AI Mutation Hook
   const generateMutation = useGenerateTimetable();
@@ -66,15 +68,15 @@ export default function AITimetablePage() {
         <div>
           <label className="text-sm font-bold text-slate-700">Select Classes</label>
           <div className="flex flex-wrap gap-2 mt-2">
-            {classesData.map((c: any) => (
+            {uniqueClasses.map((cls: string) => (
               <button
-                key={c.id}
-                onClick={() => setClasses((prev) => prev.includes(c.classGrade) ? prev.filter((x) => x !== c.classGrade) : [...prev, c.classGrade])}
+                key={cls}
+                onClick={() => setClasses((prev) => prev.includes(cls) ? prev.filter((x) => x !== cls) : [...prev, cls])}
                 className={`px-3 py-1.5 rounded-full text-sm font-bold border transition ${
-                  classes.includes(c.classGrade) ? "bg-blue-600 text-white border-blue-600" : "bg-gray-50 text-gray-600 hover:bg-gray-100"
+                  classes.includes(cls) ? "bg-blue-600 text-white border-blue-600" : "bg-gray-50 text-gray-600 hover:bg-gray-100"
                 }`}
               >
-                {c.classGrade}
+                {cls}
               </button>
             ))}
           </div>

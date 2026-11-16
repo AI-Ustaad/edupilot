@@ -1,11 +1,12 @@
 "use client";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Loader2, Upload, Film } from "lucide-react";
 import RequirePermission from "@/components/RequirePermission";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 import { useClasses } from "@/hooks/useClasses";
 import { useSettings } from "@/hooks/useSettings";
 import { useVideos, useUploadVideo } from "@/hooks/useVideos";
+import { extractUniqueClasses } from "@/lib/utils/formatClassLabel";
 
 export default function TeacherVideoLecturesPage() {
   const [form, setForm] = useState({ title: "", description: "", classGrade: "", subject: "", file: null as File | null });
@@ -13,6 +14,7 @@ export default function TeacherVideoLecturesPage() {
   const { data: classes = [] } = useClasses();
   const { data: settings } = useSettings();
   const subjects = settings?.subjects || [];
+  const uniqueClasses = useMemo(() => extractUniqueClasses(classes), [classes]);
   
   const { data: videos = [], isLoading } = useVideos();
   const uploadMutation = useUploadVideo();
@@ -46,7 +48,7 @@ export default function TeacherVideoLecturesPage() {
             <input type="text" placeholder="Description" value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} className="bg-gray-50 border rounded-xl p-3" />
             <select value={form.classGrade} onChange={e => setForm({ ...form, classGrade: e.target.value })} className="bg-gray-50 border rounded-xl p-3" required>
               <option value="">Select Class</option>
-              {classes.map((c: any) => <option key={c.id} value={c.classGrade}>{c.classGrade}</option>)}
+              {uniqueClasses.map((cls: string) => <option key={cls} value={cls}>{cls}</option>)}
             </select>
             <select value={form.subject} onChange={e => setForm({ ...form, subject: e.target.value })} className="bg-gray-50 border rounded-xl p-3" required>
               <option value="">Select Subject</option>

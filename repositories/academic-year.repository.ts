@@ -18,12 +18,24 @@ export class AcademicYearRepository extends BaseRepository<AcademicYear> impleme
   }
 
   async findAllByTenant(tenantId: string): Promise<(AcademicYear & { id: string })[]> {
-    const snapshot = await this.db
-      .collection(this.collectionName)
-      .where("tenantId", "==", tenantId)
-      .orderBy("startDate", "desc")
-      .get();
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as AcademicYear & { id: string }));
+    try {
+      const snapshot = await this.db
+        .collection(this.collectionName)
+        .where("tenantId", "==", tenantId)
+        .orderBy("startDate", "desc")
+        .get();
+      return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as AcademicYear & { id: string }));
+    } catch {
+      try {
+        const snapshot = await this.db
+          .collection(this.collectionName)
+          .where("tenantId", "==", tenantId)
+          .get();
+        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as AcademicYear & { id: string }));
+      } catch {
+        return [];
+      }
+    }
   }
 
   async createIfAbsentByName(

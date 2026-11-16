@@ -1,4 +1,5 @@
 // hooks/useClasses.ts
+import { useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import apiClient from "@/lib/api/client";
 import { safeArray } from "@/lib/api/safeResponse";
@@ -6,6 +7,9 @@ import { QueryKeys } from "@/lib/api/queryKeys";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/components/ToastProvider";
 import { logger } from "@/lib/logger/logger";
+import { extractUniqueClasses } from "@/lib/utils/formatClassLabel";
+
+export { extractUniqueClasses };
 
 // 🔄 Fetch All Classes
 export const useClasses = () => {
@@ -20,6 +24,16 @@ export const useClasses = () => {
     },
     enabled: !!tenantId && tenantId !== "unknown",
   });
+};
+
+// 🎯 Fetch Unique Classes (Deduplicated 1..10 in natural order)
+export const useUniqueClasses = () => {
+  const query = useClasses();
+  const uniqueClasses = useMemo(() => extractUniqueClasses(query.data), [query.data]);
+  return {
+    ...query,
+    uniqueClasses,
+  };
 };
 
 // ✨ Create Class (With Optimistic Update)

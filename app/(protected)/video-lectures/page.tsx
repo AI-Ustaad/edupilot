@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Loader2, Film, AlertCircle } from "lucide-react";
 import RequirePermission from "@/components/RequirePermission";
 import { PERMISSIONS } from "@/lib/auth/permissions";
@@ -7,6 +7,7 @@ import { useClasses } from "@/hooks/useClasses";
 import { useSettings } from "@/hooks/useSettings";
 import { useVideos } from "@/hooks/useVideos";
 import { TableSkeleton } from "@/components/Skeletons";
+import { extractUniqueClasses } from "@/lib/utils/formatClassLabel";
 
 export default function VideoLecturesPage() {
   const [filterClass, setFilterClass] = useState("");
@@ -15,6 +16,7 @@ export default function VideoLecturesPage() {
   const { data: classesData = [] } = useClasses();
   const { data: settings } = useSettings();
   const subjects = settings?.subjects || [];
+  const uniqueClasses = useMemo(() => extractUniqueClasses(classesData), [classesData]);
 
   const { data: videos = [], isLoading, isError } = useVideos(filterClass, filterSubject);
 
@@ -52,8 +54,8 @@ export default function VideoLecturesPage() {
             className="bg-white border border-gray-300 rounded-xl p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
           >
             <option value="">All Classes</option>
-            {classesData.map((c: any) => (
-              <option key={c.id} value={c.classGrade}>{c.classGrade}</option>
+            {uniqueClasses.map((cls: string) => (
+              <option key={cls} value={cls}>{cls}</option>
             ))}
           </select>
           

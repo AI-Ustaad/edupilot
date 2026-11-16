@@ -25,6 +25,7 @@ export const GET = withErrorHandler(
           levelsOffered: config.levels,
           classes: config.classes || [],
           subjects: config.subjects || [],
+          sectionNames: config.sectionNames || ["A", "B", "C"],
         });
       })
     )

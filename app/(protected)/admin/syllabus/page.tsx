@@ -1,12 +1,12 @@
 "use client";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Loader2, Plus, Trash2, Eye, FileText, Video, Image as ImageIcon, Link as LinkIcon, BookOpen } from "lucide-react";
 import RequirePermission from "@/components/RequirePermission";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 import { useClasses } from "@/hooks/useClasses";
 import { useSettings } from "@/hooks/useSettings";
 import { useSyllabus, useCreateSyllabus, useDeleteSyllabus } from "@/hooks/useSyllabus";
-import { formatClassLabel } from "@/lib/utils/formatClassLabel";
+import { formatClassLabel, extractUniqueClasses } from "@/lib/utils/formatClassLabel";
 
 export default function AdminSyllabusPage() {
   const [form, setForm] = useState({ classGrade: "", subject: "", title: "", description: "", type: "pdf", fileUrl: "", linkUrl: "" });
@@ -14,6 +14,7 @@ export default function AdminSyllabusPage() {
   const { data: classes = [] } = useClasses();
   const { data: settings } = useSettings();
   const subjects = settings?.subjects || [];
+  const uniqueClasses = useMemo(() => extractUniqueClasses(classes), [classes]);
   
   const { data: materials = [], isLoading } = useSyllabus();
   const createMutation = useCreateSyllabus();
@@ -45,7 +46,7 @@ export default function AdminSyllabusPage() {
             <form onSubmit={handleSubmit} className="space-y-3">
               <select required value={form.classGrade} onChange={e => setForm({ ...form, classGrade: e.target.value })} className="w-full border rounded-xl p-3 bg-gray-50">
                 <option value="">Select Class</option>
-                {classes.map((c: any) => <option key={c.id} value={c.classGrade}>{c.classGrade}</option>)}
+                {uniqueClasses.map((cls: string) => <option key={cls} value={cls}>{cls}</option>)}
               </select>
               <select required value={form.subject} onChange={e => setForm({ ...form, subject: e.target.value })} className="w-full border rounded-xl p-3 bg-gray-50">
                 <option value="">Select Subject</option>

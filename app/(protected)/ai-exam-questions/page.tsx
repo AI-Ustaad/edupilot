@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
 import { Loader2, Sparkles, Clipboard, Check } from "lucide-react";
 import RequirePermission from "@/components/RequirePermission";
@@ -9,6 +9,7 @@ import { PERMISSIONS } from "@/lib/auth/permissions";
 import { useClasses } from "@/hooks/useClasses";
 import { useSettings } from "@/hooks/useSettings";
 import { useGenerateExamQuestions } from "@/hooks/useAI";
+import { extractUniqueClasses } from "@/lib/utils/formatClassLabel";
 
 export default function AIExamQuestionsPage() {
   const [className, setClassName] = useState("");
@@ -23,6 +24,7 @@ export default function AIExamQuestionsPage() {
   const { data: classesData = [] } = useClasses();
   const { data: settings } = useSettings();
   const subjects = settings?.subjects || [];
+  const uniqueClasses = useMemo(() => extractUniqueClasses(classesData), [classesData]);
 
   // 2. AI Mutation Hook
   const generateExamMutation = useGenerateExamQuestions();
@@ -85,7 +87,7 @@ export default function AIExamQuestionsPage() {
           <label className="text-sm font-bold text-gray-700 mb-1 block">Class</label>
           <select value={className} onChange={e => setClassName(e.target.value)} className={inputClass} required>
             <option value="">Select Class</option>
-            {classesData.map((c: any) => <option key={c.id} value={c.classGrade}>{c.classGrade}</option>)}
+            {uniqueClasses.map((cls: string) => <option key={cls} value={cls}>{cls}</option>)}
           </select>
         </div>
         <div>

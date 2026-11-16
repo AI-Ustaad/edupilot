@@ -218,8 +218,8 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
     return { ...group, items: filteredItems };
   }).filter((group) => group.items.length > 0);
 
-  const toggleGroup = (key: string) => {
-    setOpenGroups((prev) => ({ ...prev, [key]: !prev[key] }));
+  const toggleGroup = (key: string, currentlyOpen: boolean) => {
+    setOpenGroups((prev) => ({ ...prev, [key]: !currentlyOpen }));
   };
 
   const handleLogout = async () => {
@@ -267,14 +267,14 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
 
         <div className="flex-1 overflow-y-auto py-4 px-3 custom-scrollbar">
           {visibleGroups.map((group) => {
-            const isOpen = openGroups[group.key] ?? false;
             const isActive = group.items.some((item) => pathname === item.path || pathname.startsWith(item.path + "/"));
+            const isOpen = openGroups[group.key] ?? isActive;
 
             return (
               <div key={group.key} className="mb-1">
                 <div
                   className="flex items-center justify-between px-3 py-2.5 rounded-xl text-gray-600 hover:bg-gray-50 cursor-pointer transition-colors"
-                  onClick={() => toggleGroup(group.key)}
+                  onClick={() => toggleGroup(group.key, isOpen)}
                 >
                   <div className="flex items-center gap-3">
                     <group.icon size={18} className={isActive ? "text-blue-600" : "text-gray-400"} />

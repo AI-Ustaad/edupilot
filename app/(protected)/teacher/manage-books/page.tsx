@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Loader2, Plus, Upload, Film } from "lucide-react";
 import RequirePermission from "@/components/RequirePermission";
 import { PERMISSIONS } from "@/lib/auth/permissions";
@@ -7,12 +7,14 @@ import { useClasses } from "@/hooks/useClasses";
 import { useSettings } from "@/hooks/useSettings";
 import { useBooks, useCreateBook } from "@/hooks/useTeacher";
 import { TableSkeleton } from "@/components/Skeletons";
+import { extractUniqueClasses } from "@/lib/utils/formatClassLabel";
 
 export default function ManageBooksPage() {
   const { data: books = [], isLoading } = useBooks();
   const { data: classes = [] } = useClasses();
   const { data: settings } = useSettings();
   const subjects = settings?.subjects || [];
+  const uniqueClasses = useMemo(() => extractUniqueClasses(classes), [classes]);
   const createMutation = useCreateBook();
 
   const [form, setForm] = useState({ title: "", classGrade: "", subject: "", fileUrl: "" });
@@ -35,7 +37,7 @@ export default function ManageBooksPage() {
             <input type="text" placeholder="Book Title" value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} className="bg-gray-50 border rounded-xl p-3" required />
             <select value={form.classGrade} onChange={e => setForm({ ...form, classGrade: e.target.value })} className="bg-gray-50 border rounded-xl p-3" required>
               <option value="">Select Class</option>
-              {classes.map((c: any) => <option key={c.id} value={c.classGrade}>{c.classGrade}</option>)}
+              {uniqueClasses.map((cls: string) => <option key={cls} value={cls}>{cls}</option>)}
             </select>
             <select value={form.subject} onChange={e => setForm({ ...form, subject: e.target.value })} className="bg-gray-50 border rounded-xl p-3" required>
               <option value="">Select Subject</option>

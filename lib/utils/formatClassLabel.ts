@@ -36,3 +36,29 @@ export function cleanSectionName(raw: string | undefined | null): string {
   if (match) return match[0];
   return str || "A";
 }
+
+/**
+ * Deduplicate and sort class items in natural numeric order (Class 1, Class 2, ... Class 10).
+ */
+export function extractUniqueClasses(items: any[] | undefined | null): string[] {
+  if (!items || !Array.isArray(items)) return [];
+  const set = new Set<string>();
+  for (const item of items) {
+    const raw = typeof item === "string"
+      ? item
+      : (item?.classGrade || item?.className || item?.name || item?.class || "");
+    const formatted = formatClassLabel(raw);
+    if (formatted) {
+      set.add(formatted);
+    }
+  }
+
+  return Array.from(set).sort((a, b) => {
+    const numA = parseInt(a.replace(/\D/g, ""), 10);
+    const numB = parseInt(b.replace(/\D/g, ""), 10);
+    if (!isNaN(numA) && !isNaN(numB)) {
+      return numA - numB;
+    }
+    return a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" });
+  });
+}

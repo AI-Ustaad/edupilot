@@ -1,10 +1,11 @@
 "use client";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Loader2, BookOpen, FileText, Video, ExternalLink } from "lucide-react";
 import RequirePermission from "@/components/RequirePermission";
 import { useClasses } from "@/hooks/useClasses";
 import { useSettings } from "@/hooks/useSettings";
 import { useSyllabus } from "@/hooks/useSyllabus";
+import { extractUniqueClasses } from "@/lib/utils/formatClassLabel";
 
 export default function StudentSyllabusPage() {
   const [filterClass, setFilterClass] = useState("");
@@ -12,6 +13,7 @@ export default function StudentSyllabusPage() {
   const { data: classesData = [] } = useClasses();
   const { data: settings } = useSettings();
   const subjects = settings?.subjects || [];
+  const uniqueClasses = useMemo(() => extractUniqueClasses(classesData), [classesData]);
 
   const { data: materials = [], isLoading } = useSyllabus(filterClass);
 
@@ -33,7 +35,7 @@ export default function StudentSyllabusPage() {
             className="bg-gray-50 border border-gray-300 rounded-xl p-2 text-gray-900 flex-1 outline-none focus:ring-2 focus:ring-blue-500"
           >
             <option value="">All Classes</option>
-            {classesData.map((c: any) => (<option key={c.id} value={c.classGrade}>{c.classGrade}</option>))}
+            {uniqueClasses.map((cls: string) => (<option key={cls} value={cls}>{cls}</option>))}
           </select>
         </div>
 

@@ -1,12 +1,13 @@
 "use client";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Loader2, UserCheck, Star } from "lucide-react";
 import RequirePermission from "@/components/RequirePermission";
 import { useClasses } from "@/hooks/useClasses";
 import { useStudents } from "@/hooks/useStudents";
 import { useRecordBehavior } from "@/hooks/useTeacher";
+import { formatClassLabel, cleanSectionName, extractUniqueClasses } from "@/lib/utils/formatClassLabel";
 
-export default function BehaviorPage() { // Keeping file name same as before if it was behavior, but logic is skills
+export default function SkillsPage() {
   const { data: classesData = [] } = useClasses();
   const [classGrade, setClassGrade] = useState("");
   const [section, setSection] = useState("");
@@ -14,13 +15,25 @@ export default function BehaviorPage() { // Keeping file name same as before if 
   const [points, setPoints] = useState(0);
   const [reason, setReason] = useState("");
 
+  const uniqueClasses = useMemo(() => extractUniqueClasses(classesData), [classesData]);
+
   const { data: students = [] } = useStudents(
     classGrade && section ? { classGrade, section } : undefined
   );
   
-  const recordMutation = useRecordBehavior(); // Assuming this hook handles skills/behavior
+  const recordMutation = useRecordBehavior();
 
-  const availableSections = classesData.filter((c: any) => c.classGrade === classGrade).map((c: any) => c.sectionName || c.section);
+  const availableSections = useMemo(() => {
+    if (!classGrade) return [];
+    const norm = formatClassLabel(classGrade);
+    const matched = classesData.filter((c: any) => formatClassLabel(c.classGrade || c.name) === norm);
+    const set = new Set<string>();
+    matched.forEach((c: any) => {
+      const s = cleanSectionName(c.sectionName || c.section);
+      if (s) set.add(s);
+    });
+    return set.size > 0 ? Array.from(set).sort() : ["A", "B", "C"];
+  }, [classesData, classGrade]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -46,7 +59,7 @@ export default function BehaviorPage() { // Keeping file name same as before if 
               <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Class</label>
               <select value={classGrade} onChange={e => { setClassGrade(e.target.value); setSection(""); setStudentId(""); }} className="w-full bg-gray-50 border rounded-xl p-3" required>
                 <option value="">Select Class</option>
-                {classesData.map((c: any) => <option key={c.id} value={c.classGrade}>{c.classGrade}</option>)}
+                {uniqueClasses.map((cls: string) => <option key={cls} value={cls}>{cls}</option>)}
               </select>
             </div>
             <div>

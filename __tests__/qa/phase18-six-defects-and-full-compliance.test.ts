@@ -13,7 +13,7 @@
 
 import { StudentPersistenceMapper } from "@/lib/mappers/StudentPersistenceMapper";
 import { StaffPersistenceMapper, getStaffSalary } from "@/lib/mappers/StaffPersistenceMapper";
-import { formatClassLabel, cleanSectionName } from "@/lib/utils/formatClassLabel";
+import { formatClassLabel, cleanSectionName, extractUniqueClasses } from "@/lib/utils/formatClassLabel";
 import { StudentService } from "@/services/StudentService";
 import { ConfigurationService } from "@/services/configuration.service";
 import { DashboardService } from "@/services/dashboard.service";
@@ -334,6 +334,103 @@ describe("Phase 18 — Six Live Defects & Full Compliance Suite", () => {
 
       expect(rows[1][1]).toBe("Zahid Ahmed");
       expect(rows[1][5]).toBe("Rs. 60,000");
+    });
+  });
+
+  // =========================================================================
+  // Phase 2: Class Deduplication, Curriculum Master Classes & Academic Year Unification
+  // =========================================================================
+  describe("Phase 2: Canonical Class Deduplication, Curriculum Settings & Academic Year", () => {
+    it("Defect 1: extractUniqueClasses should deduplicate 30 sections down to 10 unique classes in natural order 1..10", () => {
+      const rawSections = [];
+      // Generate 10 classes x 3 sections (A, B, C) = 30 sections
+      for (let i = 1; i <= 10; i++) {
+        for (const sec of ["A", "B", "C"]) {
+          rawSections.push({
+            id: `sec_${i}_${sec}`,
+            classGrade: `Class ${i}`,
+            sectionName: sec,
+          });
+        }
+      }
+
+      expect(rawSections).toHaveLength(30);
+
+      const uniqueClasses = extractUniqueClasses(rawSections);
+
+      expect(uniqueClasses).toHaveLength(10);
+      expect(uniqueClasses).toEqual([
+        "Class 1",
+        "Class 2",
+        "Class 3",
+        "Class 4",
+        "Class 5",
+        "Class 6",
+        "Class 7",
+        "Class 8",
+        "Class 9",
+        "Class 10",
+      ]);
+    });
+
+    it("Defect 1: extractUniqueClasses handles irregular prefixes and maintains natural sort", () => {
+      const irregularItems = [
+        { classGrade: "Grade 10" },
+        { classGrade: "Class 2" },
+        { classGrade: "Class Class 1" },
+        { classGrade: "Class 9" },
+        { classGrade: "Class Grade 6" },
+        { classGrade: "Class 3 - Section A" },
+      ];
+
+      const unique = extractUniqueClasses(irregularItems);
+      expect(unique).toEqual([
+        "Class 1",
+        "Class 2",
+        "Class 3",
+        "Class 6",
+        "Class 9",
+        "Class 10",
+      ]);
+    });
+
+    it("Defect 2: mapAcademic should include 3 sections (A, B, C) for all 10 master classes", async () => {
+      const { mapAcademic } = await import("@/lib/mappers/academic.mapper");
+      const configMock: any = {
+        academic: {
+          levels: ["Primary", "Middle", "Secondary"],
+          classes: Array.from({ length: 10 }, (_, i) => ({ id: `cls_${i + 1}`, name: `Class ${i + 1}` })),
+          sectionNames: ["A", "B", "C"],
+          subjects: ["English", "Mathematics", "Science"],
+        },
+      };
+
+      const academicVM = mapAcademic(configMock);
+
+      expect(academicVM.classes).toHaveLength(10);
+      expect(academicVM.classes[0].name).toBe("Class 1");
+      expect(academicVM.classes[0].sections).toEqual(["A", "B", "C"]);
+      expect(academicVM.classes[9].name).toBe("Class 10");
+      expect(academicVM.classes[9].sections).toEqual(["A", "B", "C"]);
+
+      const totalSections = academicVM.classes.reduce((acc: number, c: any) => acc + (c.sections?.length || 0), 0);
+      expect(totalSections).toBe(30);
+    });
+
+    it("Defect 3: AcademicYearService should auto-reconcile canonical active year 2025-2026", async () => {
+      const { AcademicYearService } = await import("@/services/academic-year.service");
+      const mockRepo: any = {
+        findAllByTenant: async () => [],
+      };
+      const service = new AcademicYearService(mockRepo);
+
+      const years = await service.findAll(TENANT_ID);
+
+      expect(years).toHaveLength(1);
+      expect(years[0].name).toBe("2025-2026");
+      expect(years[0].isCurrent).toBe(true);
+      expect(years[0].startDate).toBe("2025-08-01");
+      expect(years[0].endDate).toBe("2026-06-30");
     });
   });
 });

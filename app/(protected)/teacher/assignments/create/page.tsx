@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, Plus, Calendar } from "lucide-react";
 import RequirePermission from "@/components/RequirePermission";
@@ -7,18 +7,30 @@ import { PERMISSIONS } from "@/lib/auth/permissions";
 import { useClasses } from "@/hooks/useClasses";
 import { useSettings } from "@/hooks/useSettings";
 import { useCreateAssignment } from "@/hooks/useTeacher";
+import { formatClassLabel, cleanSectionName, extractUniqueClasses } from "@/lib/utils/formatClassLabel";
 
 export default function CreateAssignmentPage() {
   const router = useRouter();
   const { data: classes = [] } = useClasses();
   const { data: settings } = useSettings();
   const subjects = settings?.subjects || [];
+  const uniqueClasses = useMemo(() => extractUniqueClasses(classes), [classes]);
   const createMutation = useCreateAssignment();
 
   const [form, setForm] = useState({ title: "", description: "", classGrade: "", section: "", subject: "", dueDate: "" });
   const [error, setError] = useState("");
 
-  const availableSections = classes.filter((c: any) => c.classGrade === form.classGrade).map((c: any) => c.sectionName || c.section);
+  const availableSections = useMemo(() => {
+    if (!form.classGrade) return [];
+    const norm = formatClassLabel(form.classGrade);
+    const matched = classes.filter((c: any) => formatClassLabel(c.classGrade || c.name) === norm);
+    const set = new Set<string>();
+    matched.forEach((c: any) => {
+      const s = cleanSectionName(c.sectionName || c.section);
+      if (s) set.add(s);
+    });
+    return set.size > 0 ? Array.from(set).sort() : ["A", "B", "C"];
+  }, [classes, form.classGrade]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -49,7 +61,7 @@ export default function CreateAssignmentPage() {
               <label className="text-sm font-bold text-gray-700 block mb-1">Class *</label>
               <select value={form.classGrade} onChange={(e) => setForm({ ...form, classGrade: e.target.value, section: "" })} className="w-full border border-gray-300 rounded-xl p-3 bg-gray-50 focus:ring-2 focus:ring-blue-500" required>
                 <option value="">Select Class</option>
-                {classes.map((c: any) => <option key={c.id} value={c.classGrade}>{c.classGrade}</option>)}
+                {uniqueClasses.map((cls: string) => <option key={cls} value={cls}>{cls}</option>)}
               </select>
             </div>
             <div>

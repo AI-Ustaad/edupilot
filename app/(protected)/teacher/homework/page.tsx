@@ -1,11 +1,12 @@
 "use client";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Loader2, Send, Calendar, CheckCircle, Trash2 } from "lucide-react";
 import RequirePermission from "@/components/RequirePermission";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 import { useClasses } from "@/hooks/useClasses";
 import { useSettings } from "@/hooks/useSettings";
 import { useHomework, useCreateHomework, useDeleteHomework } from "@/hooks/useHomework";
+import { formatClassLabel, cleanSectionName, extractUniqueClasses } from "@/lib/utils/formatClassLabel";
 
 export default function TeacherHomeworkPage() {
   const [title, setTitle] = useState("");
@@ -20,11 +21,22 @@ export default function TeacherHomeworkPage() {
   const { data: settings } = useSettings();
   const subjects = settings?.subjects || [];
   
+  const uniqueClasses = useMemo(() => extractUniqueClasses(classes), [classes]);
+  const availableSections = useMemo(() => {
+    if (!classGrade) return [];
+    const norm = formatClassLabel(classGrade);
+    const matched = classes.filter((c: any) => formatClassLabel(c.classGrade || c.name) === norm);
+    const set = new Set<string>();
+    matched.forEach((c: any) => {
+      const s = cleanSectionName(c.sectionName || c.section);
+      if (s) set.add(s);
+    });
+    return set.size > 0 ? Array.from(set).sort() : ["A", "B", "C"];
+  }, [classes, classGrade]);
+
   const { data: assignments = [], isLoading: listLoading } = useHomework();
   const createMutation = useCreateHomework();
   const deleteMutation = useDeleteHomework(); // 🚀 Delete Hook
-
-  const availableSections = classes.filter((c: any) => c.classGrade === classGrade).map((c: any) => c.sectionName || c.section);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -59,7 +71,7 @@ export default function TeacherHomeworkPage() {
             <datalist id="subject-list">{subjects.map(s => <option key={s} value={s} />)}</datalist>
             <select value={classGrade} onChange={e => { setClassGrade(e.target.value); setSection(""); }} className="bg-gray-50 border rounded-xl p-3" required>
               <option value="">Select Class</option>
-              {classes.map((c: any) => <option key={c.id} value={c.classGrade}>{c.classGrade}</option>)}
+              {uniqueClasses.map((cls: string) => <option key={cls} value={cls}>{cls}</option>)}
             </select>
             <select value={section} onChange={e => setSection(e.target.value)} className="bg-gray-50 border rounded-xl p-3 disabled:opacity-50" required disabled={!classGrade}>
               <option value="">Select Section</option>

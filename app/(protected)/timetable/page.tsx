@@ -10,7 +10,7 @@ import { useSettings } from "@/hooks/useSettings";
 import { useStaff } from "@/hooks/useStaff";
 import { useTimetable, useCreateTimetableEntry, useDeleteTimetableEntry } from "@/hooks/useTimetable";
 import { TableSkeleton } from "@/components/Skeletons";
-import { formatClassLabel, cleanSectionName } from "@/lib/utils/formatClassLabel";
+import { formatClassLabel, cleanSectionName, extractUniqueClasses } from "@/lib/utils/formatClassLabel";
 
 const FALLBACK_SUBJECTS = [
   "English", 
@@ -42,29 +42,24 @@ export default function TimetablePage() {
     return FALLBACK_SUBJECTS;
   }, [settings?.subjects]);
 
-  // Unique classes
+  // Unique classes (canonical deduplication 1..10 in natural order)
   const uniqueClasses = useMemo(() => {
-    const set = new Set<string>();
-    classes.forEach((c: any) => {
-      const cls = c.classGrade || c.name;
-      if (cls) set.add(cls);
-    });
-    if (set.size === 0) {
-      ["Class 1", "Class 2", "Class 3", "Class 4", "Class 5", "Class 6", "Class 7", "Class 8", "Class 9", "Class 10"].forEach(c => set.add(c));
-    }
-    return Array.from(set);
+    const extracted = extractUniqueClasses(classes);
+    if (extracted.length > 0) return extracted;
+    return ["Class 1", "Class 2", "Class 3", "Class 4", "Class 5", "Class 6", "Class 7", "Class 8", "Class 9", "Class 10"];
   }, [classes]);
 
   // Available sections based on selected class
   const availableSections = useMemo(() => {
     if (!form.classGrade) return ["A", "B", "C"];
-    const matched = classes.filter((c: any) => (c.classGrade || c.name) === form.classGrade);
+    const normTarget = formatClassLabel(form.classGrade);
+    const matched = classes.filter((c: any) => formatClassLabel(c.classGrade || c.name) === normTarget);
     const secs = new Set<string>();
     matched.forEach((c: any) => {
-      const s = c.sectionName || c.section;
+      const s = cleanSectionName(c.sectionName || c.section);
       if (s) secs.add(s);
     });
-    return secs.size > 0 ? Array.from(secs) : ["A", "B", "C"];
+    return secs.size > 0 ? Array.from(secs).sort() : ["A", "B", "C"];
   }, [classes, form.classGrade]);
 
   // Teachers list from staff

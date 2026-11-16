@@ -47,7 +47,7 @@ export function buildStudentReportCardDoc(
 ): jsPDF {
   const doc = options?.doc || new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
   const schoolName = options?.schoolName || "Government High School Sahiwal";
-  const subtitle = options?.subtitle || "Punjab Government (PCTB) • Academic Session 2026-27";
+  const subtitle = options?.subtitle || "Punjab Government (PCTB) • Academic Session 2025-2026";
   const term = options?.term || data.term || "Final Exams";
   const cls = formatClassLabel(options?.classGrade || data.classGrade || "Class 10");
   const sec = cleanSectionName(options?.section || data.section || "A");

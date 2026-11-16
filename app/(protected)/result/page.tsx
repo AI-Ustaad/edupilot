@@ -29,7 +29,7 @@ export default function ResultsPage() {
 
   const { data: settings } = useSettings();
   const schoolName = settings?.schoolName || (settings as any)?.school?.name || (user as any)?.schoolName || "Government High School Sahiwal";
-  const subtitle = settings?.affiliation || "Punjab Government (PCTB) • Academic Session 2026-27";
+  const subtitle = settings?.affiliation || "Punjab Government (PCTB) • Academic Session 2025-2026";
 
   const { data: classesData = [] } = useClasses();
   const availableClasses = useMemo(
@@ -302,7 +302,7 @@ export default function ResultsPage() {
                     <span className="inline-block bg-indigo-50 text-indigo-700 border border-indigo-200 text-xs font-black uppercase px-3 py-1 rounded-full mb-1">
                       {selectedTerm}
                     </span>
-                    <p className="text-xs text-gray-400 font-mono">Academic Session 2026-27</p>
+                    <p className="text-xs text-gray-400 font-mono">Academic Session 2025-2026</p>
                   </div>
                 </div>
 

@@ -1,9 +1,10 @@
 "use client";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Users, ArrowUpRight, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 import RequirePermission from "@/components/RequirePermission";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 import { useStudents } from "@/hooks/useStudents";
+import { useAcademicYears } from "@/hooks/useAdmin";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import apiClient from "@/lib/api/client";
 import { useAuth } from "@/context/AuthContext";
@@ -19,13 +20,25 @@ export default function PromoteStudentsPage() {
   const { showToast } = useToast();
   const queryClient = useQueryClient();
 
-  // Form state
+  const { data: years = [] } = useAcademicYears();
+  const activeYearName = useMemo(() => {
+    const current = (years as any[]).find((y: any) => y.isCurrent);
+    return current?.name || "2025-2026";
+  }, [years]);
+
+  // Form state - unified canonical active academic year
   const [fromClass, setFromClass] = useState("");
   const [toClass, setToClass] = useState("");
   const [toSection, setToSection] = useState("A");
-  const [academicYear, setAcademicYear] = useState(new Date().getFullYear().toString());
+  const [academicYear, setAcademicYear] = useState("2025-2026");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [result, setResult] = useState<{ promoted: number; errors: string[] } | null>(null);
+
+  useEffect(() => {
+    if (activeYearName) {
+      setAcademicYear(activeYearName);
+    }
+  }, [activeYearName]);
 
   // Fetch students
   const { data: studentsData, isLoading } = useStudents();

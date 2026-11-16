@@ -29,13 +29,52 @@ export default function AcademicYearPage() {
             <CalendarDays size={20} className="text-blue-600" /> Add New Academic Year
           </h2>
           <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <input placeholder="Year Name (e.g., 2024-2025)" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="border border-gray-300 rounded-xl p-3 focus:ring-2 focus:ring-blue-500" required />
-            <input type="date" value={form.startDate} onChange={(e) => setForm({ ...form, startDate: e.target.value })} className="border border-gray-300 rounded-xl p-3 focus:ring-2 focus:ring-blue-500" required />
-            <input type="date" value={form.endDate} onChange={(e) => setForm({ ...form, endDate: e.target.value })} className="border border-gray-300 rounded-xl p-3 focus:ring-2 focus:ring-blue-500" required />
-            <label className="flex items-center gap-2 font-bold text-gray-700">
-              <input type="checkbox" checked={form.isCurrent} onChange={(e) => setForm({ ...form, isCurrent: e.target.checked })} className="w-4 h-4 text-blue-600" /> Set as Current Year
-            </label>
-            <button type="submit" disabled={saveMutation.isPending} className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl py-3 font-bold col-span-2 flex items-center justify-center gap-2 transition disabled:opacity-50">
+            <div>
+              <label htmlFor="ay-name" className="block text-xs font-bold text-slate-700 uppercase mb-1">Academic Year</label>
+              <input 
+                id="ay-name" 
+                placeholder="Year Name (e.g., 2025-2026)" 
+                value={form.name} 
+                onChange={(e) => setForm({ ...form, name: e.target.value })} 
+                className="w-full border border-gray-300 rounded-xl p-3 focus:ring-2 focus:ring-blue-500" 
+                required 
+              />
+            </div>
+            <div>
+              <label htmlFor="ay-start" className="block text-xs font-bold text-slate-700 uppercase mb-1">Start Date</label>
+              <input 
+                id="ay-start" 
+                type="date" 
+                aria-label="Start Date" 
+                value={form.startDate} 
+                onChange={(e) => setForm({ ...form, startDate: e.target.value })} 
+                className="w-full border border-gray-300 rounded-xl p-3 focus:ring-2 focus:ring-blue-500" 
+                required 
+              />
+            </div>
+            <div>
+              <label htmlFor="ay-end" className="block text-xs font-bold text-slate-700 uppercase mb-1">End Date</label>
+              <input 
+                id="ay-end" 
+                type="date" 
+                aria-label="End Date" 
+                value={form.endDate} 
+                onChange={(e) => setForm({ ...form, endDate: e.target.value })} 
+                className="w-full border border-gray-300 rounded-xl p-3 focus:ring-2 focus:ring-blue-500" 
+                required 
+              />
+            </div>
+            <div className="flex items-center pt-5">
+              <label className="flex items-center gap-2 font-bold text-gray-700 cursor-pointer">
+                <input 
+                  type="checkbox" 
+                  checked={form.isCurrent} 
+                  onChange={(e) => setForm({ ...form, isCurrent: e.target.checked })} 
+                  className="w-4 h-4 text-blue-600 rounded" 
+                /> Set as Current Year
+              </label>
+            </div>
+            <button type="submit" disabled={saveMutation.isPending} className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl py-3 font-bold col-span-full flex items-center justify-center gap-2 transition disabled:opacity-50">
               {saveMutation.isPending ? <Loader2 className="animate-spin" size={18} /> : <Plus size={18} />} Add Year
             </button>
           </form>

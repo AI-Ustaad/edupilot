@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Loader2, Plus, Eye, CheckCircle } from "lucide-react";
 import Link from "next/link";
 import RequirePermission from "@/components/RequirePermission";
@@ -12,6 +12,7 @@ import apiClient from "@/lib/api/client";
 import { safeArray } from "@/lib/api/safeResponse";
 import { useAuth } from "@/context/AuthContext";
 import { TableSkeleton } from "@/components/Skeletons";
+import { formatClassLabel, cleanSectionName, extractUniqueClasses } from "@/lib/utils/formatClassLabel";
 
 interface Question { question: string; options: string[]; correct: string; }
 
@@ -29,6 +30,8 @@ export default function TeacherQuizzesPage() {
   const { data: classesData = [] } = useClasses();
   const { data: settings } = useSettings();
   const subjects = settings?.subjects || [];
+  
+  const uniqueClasses = useMemo(() => extractUniqueClasses(classesData), [classesData]);
 
   const [title, setTitle] = useState("");
   const [classGrade, setClassGrade] = useState("");
@@ -47,7 +50,17 @@ export default function TeacherQuizzesPage() {
     onError: () => showToast("Failed to create quiz.", "error"),
   });
 
-  const availableSections = classesData.filter((c: any) => c.classGrade === classGrade).map((c: any) => c.sectionName || c.section);
+  const availableSections = useMemo(() => {
+    if (!classGrade) return [];
+    const norm = formatClassLabel(classGrade);
+    const matched = classesData.filter((c: any) => formatClassLabel(c.classGrade || c.name) === norm);
+    const set = new Set<string>();
+    matched.forEach((c: any) => {
+      const s = cleanSectionName(c.sectionName || c.section);
+      if (s) set.add(s);
+    });
+    return set.size > 0 ? Array.from(set).sort() : ["A", "B", "C"];
+  }, [classesData, classGrade]);
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
@@ -69,7 +82,7 @@ export default function TeacherQuizzesPage() {
               <input placeholder="Quiz Title" value={title} onChange={e => setTitle(e.target.value)} className="border bg-gray-50 rounded-xl p-3" required />
               <select value={classGrade} onChange={e => { setClassGrade(e.target.value); setSection(""); }} className="border bg-gray-50 rounded-xl p-3" required>
                 <option value="">Select Class</option>
-                {classesData.map((c: any) => <option key={c.id} value={c.classGrade}>{c.classGrade}</option>)}
+                {uniqueClasses.map((cls: string) => <option key={cls} value={cls}>{cls}</option>)}
               </select>
               <select value={section} onChange={e => setSection(e.target.value)} className="border bg-gray-50 rounded-xl p-3 disabled:opacity-50" required disabled={!classGrade}>
                 <option value="">Select Section</option>
