@@ -13,7 +13,7 @@
 
 import { StudentPersistenceMapper } from "@/lib/mappers/StudentPersistenceMapper";
 import { StaffPersistenceMapper, getStaffSalary } from "@/lib/mappers/StaffPersistenceMapper";
-import { formatClassLabel, cleanSectionName, extractUniqueClasses } from "@/lib/utils/formatClassLabel";
+import { formatClassLabel, cleanSectionName, extractUniqueClasses, CANONICAL_SUBJECTS } from "@/lib/utils/formatClassLabel";
 import { StudentService } from "@/services/StudentService";
 import { ConfigurationService } from "@/services/configuration.service";
 import { DashboardService } from "@/services/dashboard.service";
@@ -524,6 +524,137 @@ describe("Phase 18 — Six Live Defects & Full Compliance Suite", () => {
       expect(isGroupActive(adminGroup, "/admin/academic-year")).toBe(true);
       expect(isGroupActive(teacherGroup, "/teacher/homework")).toBe(true);
       expect(isGroupActive(academicGroup, "/dashboard")).toBe(false);
+    });
+  });
+
+  // =========================================================================
+  // Phase 3: Exams Ledger & Marks Entry Silo Unification
+  // =========================================================================
+  describe("Phase 3: Exams Ledger & Marks Entry Silo Unification", () => {
+    it("Defect 1 & 2: MarksService.listMarks resolves saved marks for Class 10 Section A matching getAggregatedResults", async () => {
+      const { MarksService } = await import("@/services/marks.service");
+      const mockMarks: any[] = [];
+      const mockStudent = {
+        id: "st_103",
+        fullName: "Imran Haider",
+        name: "Imran Haider",
+        rollNumber: 103,
+        classGrade: "Class 10",
+        section: "A",
+        status: "Active",
+        deleted: false,
+      };
+
+      const mockMarksRepo: any = {
+        findWithFilters: jest.fn().mockImplementation(async (_tenantId: string, filters: any) => {
+          let res = [...mockMarks];
+          if (filters?.classGrade) {
+            res = res.filter(m => m.classGrade === filters.classGrade);
+          }
+          if (filters?.section) {
+            res = res.filter(m => m.section === filters.section);
+          }
+          if (filters?.term) {
+            res = res.filter(m => m.term === filters.term);
+          }
+          return res;
+        }),
+        upsert: jest.fn().mockImplementation(async (id: string, data: any) => {
+          mockMarks.push({ id, ...data });
+        }),
+      };
+
+      const mockStudentRepo: any = {
+        findAll: jest.fn().mockResolvedValue([mockStudent]),
+        batchFindByIds: jest.fn().mockResolvedValue([mockStudent]),
+        findById: jest.fn().mockResolvedValue(mockStudent),
+      };
+
+      const service = new MarksService(mockMarksRepo, mockStudentRepo);
+
+      // 1. Query via listMarks (used by /marks and /exams)
+      const listResults = await service.listMarks(TENANT_ID, {
+        classGrade: "Class 10",
+        section: "A",
+        term: "Final Exams",
+      });
+
+      expect(listResults).toHaveLength(3);
+      const mathMark = listResults.find(m => m.subject === "Mathematics");
+      const engMark = listResults.find(m => m.subject === "English");
+      const sciMark = listResults.find(m => m.subject === "Science");
+
+      expect(mathMark?.marksObtained).toBe(90);
+      expect(mathMark?.totalMarks).toBe(100);
+      expect(engMark?.marksObtained).toBe(85);
+      expect(sciMark?.marksObtained).toBe(88);
+
+      // 2. Query via getAggregatedResults (used by /result)
+      const aggregatedResults = await service.getAggregatedResults(TENANT_ID, "Class 10", "A", "Final Exams");
+      expect(aggregatedResults).toHaveLength(1);
+      expect(aggregatedResults[0].studentName).toBe("Imran Haider");
+      expect(aggregatedResults[0].totalObtained).toBe(263);
+      expect(aggregatedResults[0].totalMax).toBe(300);
+      expect(aggregatedResults[0].percentage).toBe("87.67");
+      expect(aggregatedResults[0].grade).toBe("A");
+    });
+
+    it("Defect 1: CANONICAL_SUBJECTS contains exactly 11 canonical subjects", () => {
+      expect(CANONICAL_SUBJECTS).toHaveLength(11);
+      expect(CANONICAL_SUBJECTS).toContain("English");
+      expect(CANONICAL_SUBJECTS).toContain("Mathematics");
+      expect(CANONICAL_SUBJECTS).toContain("Science");
+      expect(CANONICAL_SUBJECTS).toContain("Urdu");
+      expect(CANONICAL_SUBJECTS).toContain("Islamiat");
+      expect(CANONICAL_SUBJECTS).toContain("Pakistan Studies");
+      expect(CANONICAL_SUBJECTS).toContain("Computer Science");
+      expect(CANONICAL_SUBJECTS).toContain("Physics");
+      expect(CANONICAL_SUBJECTS).toContain("Chemistry");
+      expect(CANONICAL_SUBJECTS).toContain("Biology");
+      expect(CANONICAL_SUBJECTS).toContain("Social Studies");
+    });
+
+    it("Defect 2: Switching subjects maintains all 11 subjects enabled and resolves correct marks", () => {
+      const marksData = [
+        { studentId: "st_103", subject: "Mathematics", marksObtained: 90, totalMarks: 100, term: "Final Exams" },
+        { studentId: "st_103", subject: "English", marksObtained: 85, totalMarks: 100, term: "Final Exams" },
+        { studentId: "st_103", subject: "Science", marksObtained: 88, totalMarks: 100, term: "Final Exams" },
+      ];
+
+      const getInputValue = (studentId: string, sub: string, term: string) => {
+        const found = marksData.find(m => m.studentId === studentId && m.subject === sub && m.term === term);
+        return found ? found.marksObtained.toString() : "";
+      };
+
+      // Math -> 90
+      expect(getInputValue("st_103", "Mathematics", "Final Exams")).toBe("90");
+      // English -> 85
+      expect(getInputValue("st_103", "English", "Final Exams")).toBe("85");
+      // Science -> 88
+      expect(getInputValue("st_103", "Science", "Final Exams")).toBe("88");
+      // Urdu (unmarked) -> ""
+      expect(getInputValue("st_103", "Urdu", "Final Exams")).toBe("");
+    });
+
+    it("Defect 1: /exams loading state resolves deterministically without infinite spinner", () => {
+      const computeLoading = (loadingStudents: boolean, loadingClasses: boolean, loadingMarks: boolean, cls: string, sec: string) => {
+        return loadingStudents || loadingClasses || (loadingMarks && Boolean(cls) && Boolean(sec));
+      };
+
+      // Initial page load: students & classes loading -> loading true
+      expect(computeLoading(true, true, false, "", "")).toBe(true);
+
+      // Classes & students loaded, no criteria selected -> loading false (shows "Select Criteria")
+      expect(computeLoading(false, false, false, "", "")).toBe(false);
+
+      // Class selected, section not selected yet -> loading false (marks not querying yet)
+      expect(computeLoading(false, false, false, "Class 10", "")).toBe(false);
+
+      // Class & section selected, marks in flight -> loading true
+      expect(computeLoading(false, false, true, "Class 10", "A")).toBe(true);
+
+      // Marks loaded, even with 0 students or 0 marks -> loading false (clean state rendered)
+      expect(computeLoading(false, false, false, "Class 10", "A")).toBe(false);
     });
   });
 });

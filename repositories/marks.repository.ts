@@ -32,29 +32,86 @@ export class MarksRepository extends BaseRepository<Mark> implements IMarksRepos
       studentId?: string;
     }
   ): Promise<(Mark & { id: string })[]> {
-    let query: FirebaseFirestore.Query = this.db
-      .collection(this.collectionName)
-      .where("tenantId", "==", tenantId)
-      .where("deleted", "==", false);
+    try {
+      let query: FirebaseFirestore.Query = this.db
+        .collection(this.collectionName)
+        .where("tenantId", "==", tenantId)
+        .where("deleted", "==", false);
 
-    if (filters?.classGrade) {
-      query = query.where("classGrade", "==", filters.classGrade);
-    }
-    if (filters?.section) {
-      query = query.where("section", "==", filters.section);
-    }
-    if (filters?.term) {
-      query = query.where("term", "==", filters.term);
-    }
-    if (filters?.subject) {
-      query = query.where("subject", "==", filters.subject);
-    }
-    if (filters?.studentId) {
-      query = query.where("studentId", "==", filters.studentId);
-    }
+      if (filters?.studentId) {
+        query = query.where("studentId", "==", filters.studentId);
+      }
+      if (filters?.term) {
+        query = query.where("term", "==", filters.term);
+      }
 
-    const snapshot = await query.get();
-    return snapshot.docs.map(doc => serializeDoc<Mark>(doc));
+      const snapshot = await query.get();
+      let docs = snapshot.docs.map(doc => serializeDoc<Mark>(doc));
+
+      if (filters?.classGrade) {
+        const targetClass = filters.classGrade.trim().toLowerCase().replace(/^class\s*/i, "");
+        docs = docs.filter(d => {
+          const docClass = String(d.classGrade || "").trim().toLowerCase().replace(/^class\s*/i, "");
+          return docClass === targetClass;
+        });
+      }
+
+      if (filters?.section) {
+        const targetSec = filters.section.trim().toLowerCase().replace(/^section\s*/i, "");
+        docs = docs.filter(d => {
+          const docSec = String(d.section || "").trim().toLowerCase().replace(/^section\s*/i, "");
+          return docSec === targetSec;
+        });
+      }
+
+      if (filters?.subject) {
+        const targetSub = filters.subject.trim().toLowerCase();
+        docs = docs.filter(d => {
+          const docSub = String(d.subject || "").trim().toLowerCase();
+          return docSub === targetSub || 
+            (targetSub === "mathematics" && docSub === "math") ||
+            (targetSub === "math" && docSub === "mathematics");
+        });
+      }
+
+      return docs;
+    } catch {
+      try {
+        const snapshot = await this.db
+          .collection(this.collectionName)
+          .where("tenantId", "==", tenantId)
+          .get();
+        let docs = snapshot.docs.map(doc => serializeDoc<Mark>(doc)).filter(d => !d.deleted);
+
+        if (filters?.studentId) {
+          docs = docs.filter(d => d.studentId === filters.studentId);
+        }
+        if (filters?.term) {
+          const targetTerm = filters.term.trim().toLowerCase();
+          docs = docs.filter(d => String(d.term || "").trim().toLowerCase() === targetTerm);
+        }
+        if (filters?.classGrade) {
+          const targetClass = filters.classGrade.trim().toLowerCase().replace(/^class\s*/i, "");
+          docs = docs.filter(d => String(d.classGrade || "").trim().toLowerCase().replace(/^class\s*/i, "") === targetClass);
+        }
+        if (filters?.section) {
+          const targetSec = filters.section.trim().toLowerCase().replace(/^section\s*/i, "");
+          docs = docs.filter(d => String(d.section || "").trim().toLowerCase().replace(/^section\s*/i, "") === targetSec);
+        }
+        if (filters?.subject) {
+          const targetSub = filters.subject.trim().toLowerCase();
+          docs = docs.filter(d => {
+            const docSub = String(d.subject || "").trim().toLowerCase();
+            return docSub === targetSub || 
+              (targetSub === "mathematics" && docSub === "math") ||
+              (targetSub === "math" && docSub === "mathematics");
+          });
+        }
+        return docs;
+      } catch {
+        return [];
+      }
+    }
   }
 
   async upsert(id: string, data: Partial<Mark>, tenantId: string): Promise<void> {

@@ -5,18 +5,20 @@ import { safeArray } from "@/lib/api/safeResponse";
 import { useAuth } from "@/context/AuthContext";
 import type { SaveMarkInput } from "@/validators/marks";
 
-// Fetch Marks by Class, Section, Term, Subject
-export const useMarks = (classGrade: string, section: string, term: string, subject: string) => {
+// Fetch Marks by Class, Section, Term, (Optional) Subject
+export const useMarks = (classGrade: string, section: string, term: string, subject?: string) => {
   const { user } = useAuth();
   const tenantId = user?.tenantId || "unknown";
   return useQuery({
-    queryKey: ["marks", tenantId, classGrade, section, term, subject],
+    queryKey: ["marks", tenantId, classGrade, section, term, subject || "all"],
     queryFn: async () => {
-      if (!classGrade || !section || !term || !subject) return [];
-      const res = await apiClient.get("/marks", { params: { classGrade, section, term, subject } });
+      if (!classGrade || !section || !term) return [];
+      const params: Record<string, string> = { classGrade, section, term };
+      if (subject) params.subject = subject;
+      const res = await apiClient.get("/marks", { params });
       return safeArray(res);
     },
-    enabled: !!tenantId && !!classGrade && !!section && !!term && !!subject,
+    enabled: !!tenantId && !!classGrade && !!section && !!term,
   });
 };
 

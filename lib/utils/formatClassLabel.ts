@@ -62,3 +62,21 @@ export function extractUniqueClasses(items: any[] | undefined | null): string[] 
     return a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" });
   });
 }
+
+/**
+ * Canonical 11 subjects for Pakistan PCTB / SNC school curriculum.
+ */
+export const CANONICAL_SUBJECTS = [
+  "English",
+  "Mathematics",
+  "Science",
+  "Urdu",
+  "Islamiat",
+  "Pakistan Studies",
+  "Computer Science",
+  "Physics",
+  "Chemistry",
+  "Biology",
+  "Social Studies"
+];
+
