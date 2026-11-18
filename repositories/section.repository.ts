@@ -245,7 +245,13 @@ export class SectionRepository extends BaseRepository<Section> implements ISecti
   }
 
   async findAllActive(tenantId: string): Promise<(Section & { id: string })[]> {
-    return this.reconcileSectionMatrix(tenantId);
+    const snapshot = await this.db
+      .collection(this.collectionName)
+      .where("tenantId", "==", tenantId)
+      .get();
+    return snapshot.docs
+      .map(doc => ({ id: doc.id, ...doc.data() } as Section & { id: string }))
+      .filter(s => !s.deleted);
   }
 
   async findAllIncludingDeleted(tenantId: string): Promise<(Section & { id: string })[]> {

@@ -22,8 +22,13 @@ export class ClassRepository extends BaseRepository<ClassRecord> implements ICla
   }
 
   async getAll(tenantId: string): Promise<(ClassRecord & { id: string })[]> {
-    const sections = await sectionRepository.reconcileSectionMatrix(tenantId);
-    return sections as any;
+    const snapshot = await this.db
+      .collection(this.collectionName)
+      .where("tenantId", "==", tenantId)
+      .get();
+    return snapshot.docs
+      .map(doc => ({ id: doc.id, ...doc.data() } as ClassRecord & { id: string }))
+      .filter(r => !r.deleted);
   }
 
   async createClass(data: { classGrade: string; sectionName: string; subjects?: { core: string[]; electives: string[] }; createdBy?: string }, tenantId: string): Promise<string> {
