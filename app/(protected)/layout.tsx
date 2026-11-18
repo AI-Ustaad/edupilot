@@ -41,15 +41,14 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
   useRealtimeNotifications();
   useRealtimeDashboard();
 
-  // Initialize open groups
-  useEffect(() => {
-    const initialOpenGroups: Record<string, boolean> = {};
-    ["Command Center", "Students", "Academics"].forEach(key => {
-      initialOpenGroups[key] = true;
+  // Helper to determine if a group contains the current active route
+  const isGroupActive = (group: any) => {
+    return group.items?.some((item: any) => {
+      const p = item.path || item.href;
+      if (!p) return false;
+      return pathname === p || pathname.startsWith(p + "/");
     });
-    setOpenGroups(initialOpenGroups);
-    setIsLoaded(true);
-  }, []);
+  };
 
   // Fetch feature flags using Axios (Enterprise Pattern)
   useEffect(() => {
@@ -67,11 +66,28 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
   // Get user permissions
   const userPermissions = ROLE_PERMISSIONS[role as keyof typeof ROLE_PERMISSIONS] || [];
   
-  // 🚀 FIX: Passing 'role' as the first parameter to prevent TS Error
-  const visibleGroups = isLoaded ? getFilteredMenu(role, userPermissions as string[], featureFlags) : [];
+  // 🚀 Menu groups list
+  const visibleGroups = getFilteredMenu(role, userPermissions as string[], featureFlags);
 
-  const toggleGroup = (title: string) => {
-    setOpenGroups((prev) => ({ ...prev, [title]: !prev[title] }));
+  // Sync open groups on initial mount & route navigation so active group is ALWAYS open
+  useEffect(() => {
+    if (!visibleGroups || visibleGroups.length === 0) return;
+    visibleGroups.forEach((group: any) => {
+      if (isGroupActive(group)) {
+        const key = group.title || group.key;
+        setOpenGroups((prev) => {
+          if (prev[key] !== true) {
+            return { ...prev, [key]: true };
+          }
+          return prev;
+        });
+      }
+    });
+    setIsLoaded(true);
+  }, [pathname, visibleGroups]);
+
+  const toggleGroup = (key: string, currentlyOpen: boolean) => {
+    setOpenGroups((prev) => ({ ...prev, [key]: !currentlyOpen }));
   };
 
   const handleLogout = async () => {
@@ -161,57 +177,63 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
 
             {/* Navigation Menu */}
             <nav className="flex-1 overflow-y-auto py-4 px-3 custom-scrollbar">
-              {visibleGroups.map((group: any) => (
-                <div key={group.title || group.key} className="mb-2">
-                  <button
-                    onClick={() => toggleGroup(group.title || group.key)}
-                    className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-gray-600 hover:bg-gray-50 transition-colors group"
-                  >
-                    <div className="flex items-center gap-3">
-                      <group.icon size={18} className="text-blue-500 group-hover:text-blue-600 transition" />
-                      <span className="text-xs font-bold uppercase tracking-wider">{group.title}</span>
-                    </div>
-                    {openGroups[group.title || group.key] ? (
-                      <ChevronDown size={16} className="text-gray-400 transition" />
-                    ) : (
-                      <ChevronRight size={16} className="text-gray-400 transition" />
-                    )}
-                  </button>
+              {visibleGroups.map((group: any) => {
+                const groupKey = group.title || group.key;
+                const isActive = isGroupActive(group);
+                const isOpen = openGroups[groupKey] ?? isActive;
+                return (
+                  <div key={groupKey} className="mb-2">
+                    <button
+                      onClick={() => toggleGroup(groupKey, isOpen)}
+                      aria-expanded={isOpen}
+                      className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-gray-600 hover:bg-gray-50 transition-colors group"
+                    >
+                      <div className="flex items-center gap-3">
+                        <group.icon size={18} className="text-blue-500 group-hover:text-blue-600 transition" />
+                        <span className="text-xs font-bold uppercase tracking-wider">{group.title}</span>
+                      </div>
+                      {isOpen ? (
+                        <ChevronDown size={16} className="text-gray-400 transition" />
+                      ) : (
+                        <ChevronRight size={16} className="text-gray-400 transition" />
+                      )}
+                    </button>
 
-                  <AnimatePresence initial={false}>
-                    {openGroups[group.title || group.key] && (
-                      <motion.div
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: "auto", opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }}
-                        transition={{ duration: 0.2 }}
-                        className="ml-2 mt-1 space-y-1 overflow-hidden border-l-2 border-gray-100 pl-2"
-                      >
-                        {group.items.map((item: any) => {
-                          const isActive = pathname === item.path || pathname.startsWith(item.path + "/");
-                          return (
-                            <button
-                              key={item.id}
-                              onClick={() => {
-                                router.push(item.path);
-                                setIsMobileMenuOpen(false);
-                              }}
-                              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
-                                isActive
-                                  ? "bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700 shadow-sm border border-blue-100"
-                                  : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-                              }`}
-                            >
-                              <item.icon size={18} className={isActive ? "text-blue-600" : "text-gray-400"} />
-                              <span className="flex-1 text-left">{item.name}</span>
-                            </button>
-                          );
-                        })}
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
-              ))}
+                    <AnimatePresence initial={false}>
+                      {isOpen && (
+                        <motion.div
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: "auto", opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          transition={{ duration: 0.2 }}
+                          className="ml-2 mt-1 space-y-1 overflow-hidden border-l-2 border-gray-100 pl-2"
+                        >
+                          {group.items.map((item: any) => {
+                            const isItemActive = pathname === item.path || pathname.startsWith(item.path + "/");
+                            return (
+                              <button
+                                key={item.id}
+                                onClick={() => {
+                                  router.push(item.path);
+                                  setIsMobileMenuOpen(false);
+                                }}
+                                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
+                                  isItemActive
+                                    ? "bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700 shadow-sm border border-blue-100"
+                                    : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                                }`}
+                              >
+                                <item.icon size={18} className={isItemActive ? "text-blue-600" : "text-gray-400"} />
+                                <span className="flex-1 text-left">{item.name}</span>
+                              </button>
+                            );
+                          })}
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                );
+              })}
             </nav>
 
             {/* Logout Section */}

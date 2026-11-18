@@ -12,23 +12,58 @@ export class AcademicYearService {
 
   async findAll(tenantId: string): Promise<(AcademicYear & { id: string })[]> {
     const records = await this.repository.findAllByTenant(tenantId);
-    if (!records || records.length === 0) {
+    let ayList = records ? [...records] : [];
+
+    const existing2025 = ayList.find((r) => r.name === "2025-2026");
+    if (!existing2025) {
       const canonicalAY: AcademicYear & { id: string } = {
         id: `ay_2025_2026_${tenantId}`,
         name: "2025-2026",
-        startDate: "2025-08-01",
-        endDate: "2026-06-30",
+        startDate: "2025-04-01",
+        endDate: "2026-03-31",
         isCurrent: true,
         tenantId,
         createdBy: "system",
       };
-      return [canonicalAY];
+      if (typeof this.repository.createIfAbsentByName === "function") {
+        this.repository.createIfAbsentByName(
+          "2025-2026",
+          {
+            startDate: "2025-04-01",
+            endDate: "2026-03-31",
+            isCurrent: true,
+            tenantId,
+            createdBy: "system",
+          },
+          tenantId
+        ).catch(() => {});
+      }
+      ayList.unshift(canonicalAY);
     }
-    const hasCurrent = records.some((r) => r.isCurrent);
-    if (!hasCurrent && records.length > 0) {
-      records[0].isCurrent = true;
-    }
-    return records;
+
+    // Canonical active academic year is 2025-2026 (2025-04-01 to 2026-03-31)
+    ayList = ayList.map((ay) => {
+      if (ay.name === "2025-2026") {
+        return {
+          ...ay,
+          startDate: "2025-04-01",
+          endDate: "2026-03-31",
+          isCurrent: true,
+        };
+      }
+      return {
+        ...ay,
+        isCurrent: false,
+      };
+    });
+
+    ayList.sort((a, b) => {
+      if (a.isCurrent && !b.isCurrent) return -1;
+      if (!a.isCurrent && b.isCurrent) return 1;
+      return (b.startDate || "").localeCompare(a.startDate || "");
+    });
+
+    return ayList;
   }
 
   async findById(id: string, tenantId: string): Promise<(AcademicYear & { id: string }) | null> {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { signOut } from "firebase/auth";
@@ -217,6 +217,21 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
     );
     return { ...group, items: filteredItems };
   }).filter((group) => group.items.length > 0);
+
+  // Sync open groups on initial mount & route navigation so active group is ALWAYS open
+  useEffect(() => {
+    visibleGroups.forEach((group) => {
+      const isActive = group.items.some((item) => pathname === item.path || pathname.startsWith(item.path + "/"));
+      if (isActive) {
+        setOpenGroups((prev) => {
+          if (prev[group.key] !== true) {
+            return { ...prev, [group.key]: true };
+          }
+          return prev;
+        });
+      }
+    });
+  }, [pathname]);
 
   const toggleGroup = (key: string, currentlyOpen: boolean) => {
     setOpenGroups((prev) => ({ ...prev, [key]: !currentlyOpen }));

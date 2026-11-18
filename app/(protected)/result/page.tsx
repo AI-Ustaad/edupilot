@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { GraduationCap, Search, Loader2, AlertCircle, FileText, Award, Users, Printer, X, Download } from "lucide-react";
 import { useClasses } from "@/hooks/useClasses";
 import { useSettings } from "@/hooks/useSettings";
+import { useAcademicYears } from "@/hooks/useAdmin";
 import { formatClassLabel, cleanSectionName } from "@/lib/utils/formatClassLabel";
 import { calculateGrade, getGradeBadgeClasses } from "@/lib/utils/grading";
 import { downloadStudentReportPDF, downloadAllStudentsReportPDF } from "@/lib/utils/reportCardPdf";
@@ -28,8 +29,14 @@ export default function ResultsPage() {
   const reportRef = useRef<HTMLDivElement>(null);
 
   const { data: settings } = useSettings();
+  const { data: academicYears = [] } = useAcademicYears();
+  const activeAcademicYear = useMemo(() => {
+    const current = (academicYears as any[]).find((ay: any) => ay.isCurrent);
+    return current?.name || "2025-2026";
+  }, [academicYears]);
+
   const schoolName = settings?.schoolName || (settings as any)?.school?.name || (user as any)?.schoolName || "Government High School Sahiwal";
-  const subtitle = settings?.affiliation || "Punjab Government (PCTB) • Academic Session 2025-2026";
+  const subtitle = settings?.affiliation || `Punjab Government (PCTB) • Academic Session ${activeAcademicYear}`;
 
   const { data: classesData = [] } = useClasses();
   const availableClasses = useMemo(
@@ -105,21 +112,27 @@ export default function ResultsPage() {
 
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6 animate-fade-in">
-      <div>
-        <h1 className="text-2xl font-black text-gray-900 flex items-center gap-3">
-          <GraduationCap className="text-indigo-600"/> Examination Results
-        </h1>
-        <p className="text-sm text-gray-500 mt-1">
-          View, analyze, and generate official A4 PDF report cards.
-        </p>
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-black text-gray-900 flex items-center gap-3">
+            <GraduationCap className="text-indigo-600"/> Examination Results
+          </h1>
+          <p className="text-sm text-gray-500 mt-1">
+            View, analyze, and generate official A4 PDF report cards.
+          </p>
+        </div>
+        <div className="inline-flex items-center gap-2 bg-indigo-50 border border-indigo-200 px-3.5 py-1.5 rounded-xl text-xs font-bold text-indigo-700 shadow-sm">
+          <span>Academic Year:</span>
+          <span className="font-extrabold">{activeAcademicYear}</span>
+        </div>
       </div>
 
       {/* Filter Bar */}
-      <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm flex flex-wrap gap-4">
+      <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm flex flex-wrap items-center gap-4">
         <select 
           value={selectedClass} 
           onChange={e => { setSelectedClass(e.target.value); setSelectedSection(""); }} 
-          className="w-full md:w-64 border border-gray-300 rounded-lg px-3 py-2 font-medium"
+          className="w-full md:w-56 border border-gray-300 rounded-lg px-3 py-2 font-medium"
         >
           <option value="">Select Class</option>
           {availableClasses.map((c: string) => (
@@ -130,7 +143,7 @@ export default function ResultsPage() {
           value={selectedSection} 
           onChange={e => setSelectedSection(e.target.value)} 
           disabled={!selectedClass} 
-          className="w-full md:w-64 border border-gray-300 rounded-lg px-3 py-2 font-medium disabled:bg-gray-100"
+          className="w-full md:w-56 border border-gray-300 rounded-lg px-3 py-2 font-medium disabled:bg-gray-100"
         >
           <option value="">Select Section</option>
           {availableSections.map((s: string) => (
@@ -140,10 +153,14 @@ export default function ResultsPage() {
         <select 
           value={selectedTerm} 
           onChange={e => setSelectedTerm(e.target.value)} 
-          className="w-full md:w-64 border border-gray-300 rounded-lg px-3 py-2 font-medium"
+          className="w-full md:w-56 border border-gray-300 rounded-lg px-3 py-2 font-medium"
         >
           {TERMS.map(t => <option key={t} value={t}>{t}</option>)}
         </select>
+        <div className="ml-auto inline-flex items-center gap-2 text-xs font-semibold text-gray-600 bg-gray-50 px-3 py-2 rounded-lg border border-gray-200">
+          <span className="text-gray-400">Academic Year:</span>
+          <span className="font-bold text-indigo-700">{activeAcademicYear}</span>
+        </div>
       </div>
 
       {/* Result Ledger Table */}
@@ -151,6 +168,9 @@ export default function ResultsPage() {
         <div className="px-6 py-4 bg-gray-50 border-b border-gray-200 font-bold text-gray-700 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <span className="flex items-center gap-2"><Award size={18}/> Result Ledger</span>
+            <span className="text-xs font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2.5 py-0.5 rounded-full">
+              Academic Year: {activeAcademicYear}
+            </span>
             {results.length > 0 && (
               <span className="text-xs font-medium text-gray-500 bg-white px-3 py-1 rounded-full border flex items-center gap-1">
                 <Users size={14}/> {results.length} Students
@@ -183,11 +203,13 @@ export default function ResultsPage() {
           <div className="p-12 flex flex-col items-center justify-center text-gray-400">
             <Search size={32} className="mb-3"/>
             <p className="font-medium">Select Class and Section above to view results.</p>
+            <p className="text-xs text-gray-400 mt-1">Academic Year: <span className="font-semibold text-indigo-600">{activeAcademicYear}</span></p>
           </div>
         ) : results.length === 0 ? (
           <div className="p-12 flex flex-col items-center justify-center text-gray-400">
             <Search size={32} className="mb-3"/>
             <p className="font-medium">No results found for {formatClassLabel(selectedClass)} - Section {cleanSectionName(selectedSection)}.</p>
+            <p className="text-xs text-gray-400 mt-1">Academic Year: <span className="font-semibold text-indigo-600">{activeAcademicYear}</span></p>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -302,7 +324,7 @@ export default function ResultsPage() {
                     <span className="inline-block bg-indigo-50 text-indigo-700 border border-indigo-200 text-xs font-black uppercase px-3 py-1 rounded-full mb-1">
                       {selectedTerm}
                     </span>
-                    <p className="text-xs text-gray-400 font-mono">Academic Session 2025-2026</p>
+                    <p className="text-xs text-gray-400 font-mono">Academic Year: {activeAcademicYear}</p>
                   </div>
                 </div>
 

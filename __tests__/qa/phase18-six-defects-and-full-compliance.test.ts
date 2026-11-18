@@ -342,7 +342,7 @@ describe("Phase 18 — Six Live Defects & Full Compliance Suite", () => {
   // =========================================================================
   describe("Phase 2: Canonical Class Deduplication, Curriculum Settings & Academic Year", () => {
     it("Defect 1: extractUniqueClasses should deduplicate 30 sections down to 10 unique classes in natural order 1..10", () => {
-      const rawSections = [];
+      const rawSections: any[] = [];
       // Generate 10 classes x 3 sections (A, B, C) = 30 sections
       for (let i = 1; i <= 10; i++) {
         for (const sec of ["A", "B", "C"]) {
@@ -417,7 +417,7 @@ describe("Phase 18 — Six Live Defects & Full Compliance Suite", () => {
       expect(totalSections).toBe(30);
     });
 
-    it("Defect 3: AcademicYearService should auto-reconcile canonical active year 2025-2026", async () => {
+    it("Defect 3: AcademicYearService should auto-reconcile canonical active year 2025-2026 with 2025-04-01 to 2026-03-31", async () => {
       const { AcademicYearService } = await import("@/services/academic-year.service");
       const mockRepo: any = {
         findAllByTenant: async () => [],
@@ -429,8 +429,101 @@ describe("Phase 18 — Six Live Defects & Full Compliance Suite", () => {
       expect(years).toHaveLength(1);
       expect(years[0].name).toBe("2025-2026");
       expect(years[0].isCurrent).toBe(true);
-      expect(years[0].startDate).toBe("2025-08-01");
-      expect(years[0].endDate).toBe("2026-06-30");
+      expect(years[0].startDate).toBe("2025-04-01");
+      expect(years[0].endDate).toBe("2026-03-31");
+    });
+
+    it("Defect 3: AcademicYearService ensures 2025-2026 is current even when 2026-2027 is in database", async () => {
+      const { AcademicYearService } = await import("@/services/academic-year.service");
+      const mockRepo: any = {
+        findAllByTenant: async () => [
+          {
+            id: "ay_2026_2027",
+            name: "2026-2027",
+            startDate: "2026-04-01",
+            endDate: "2027-03-31",
+            isCurrent: true,
+            tenantId: TENANT_ID,
+          },
+        ],
+      };
+      const service = new AcademicYearService(mockRepo);
+
+      const years = await service.findAll(TENANT_ID);
+
+      expect(years).toHaveLength(2);
+      const currentYear = years.find((y) => y.isCurrent);
+      expect(currentYear?.name).toBe("2025-2026");
+      expect(currentYear?.startDate).toBe("2025-04-01");
+      expect(currentYear?.endDate).toBe("2026-03-31");
+
+      const otherYear = years.find((y) => y.name === "2026-2027");
+      expect(otherYear?.isCurrent).toBe(false);
+    });
+
+    it("Phase 2 Hotfix: Promote classes dropdown must strictly exclude Class 11 and Class 12", () => {
+      const mockClasses = [
+        { classGrade: "Class 1", section: "A" },
+        { classGrade: "Class 2", section: "A" },
+        { classGrade: "Class 10", section: "A" },
+        { classGrade: "Class 11", section: "A" },
+        { classGrade: "Class 12", section: "A" },
+      ];
+      const extracted = extractUniqueClasses(mockClasses);
+      const filtered = extracted
+        .map((c) => c.replace(/\D/g, ""))
+        .filter((c) => {
+          const num = parseInt(c, 10);
+          return !isNaN(num) && num >= 1 && num <= 10;
+        })
+        .sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
+
+      expect(filtered).toEqual(["1", "2", "10"]);
+      expect(filtered).not.toContain("11");
+      expect(filtered).not.toContain("12");
+    });
+
+    it("Phase 2 Hotfix: Sidebar active group identification matches deep routes on fresh page load", () => {
+      const isGroupActive = (group: any, currentPath: string) => {
+        return group.items?.some((item: any) => {
+          const p = item.path || item.href;
+          if (!p) return false;
+          return currentPath === p || currentPath.startsWith(p + "/");
+        });
+      };
+
+      const academicGroup = {
+        title: "Academic",
+        key: "academic",
+        items: [
+          { name: "Timetable", path: "/timetable" },
+          { name: "Syllabus", path: "/syllabus" },
+        ],
+      };
+
+      const adminGroup = {
+        title: "Admin Tools",
+        key: "admin_tools",
+        items: [
+          { name: "School Setup", path: "/admin/school-setup" },
+          { name: "Academic Year", path: "/admin/academic-year" },
+        ],
+      };
+
+      const teacherGroup = {
+        title: "Teacher Tools",
+        key: "teaching",
+        items: [
+          { name: "Homework", path: "/teacher/homework" },
+          { name: "Quizzes", path: "/teacher/quizzes" },
+        ],
+      };
+
+      expect(isGroupActive(academicGroup, "/timetable")).toBe(true);
+      expect(isGroupActive(adminGroup, "/admin/school-setup")).toBe(true);
+      expect(isGroupActive(adminGroup, "/admin/academic-year")).toBe(true);
+      expect(isGroupActive(teacherGroup, "/teacher/homework")).toBe(true);
+      expect(isGroupActive(academicGroup, "/dashboard")).toBe(false);
     });
   });
 });

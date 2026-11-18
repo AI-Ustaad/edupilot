@@ -4,14 +4,15 @@ import { Users, ArrowUpRight, Loader2, CheckCircle2, AlertCircle } from "lucide-
 import RequirePermission from "@/components/RequirePermission";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 import { useStudents } from "@/hooks/useStudents";
+import { useClasses } from "@/hooks/useClasses";
 import { useAcademicYears } from "@/hooks/useAdmin";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import apiClient from "@/lib/api/client";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/components/ToastProvider";
-import { formatClassLabel } from "@/lib/utils/formatClassLabel";
+import { formatClassLabel, extractUniqueClasses } from "@/lib/utils/formatClassLabel";
 
-const CLASS_OPTIONS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"];
+const CANONICAL_CLASSES = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"];
 const SECTION_OPTIONS = ["A", "B", "C", "D", "E"];
 
 export default function PromoteStudentsPage() {
@@ -40,27 +41,28 @@ export default function PromoteStudentsPage() {
     }
   }, [activeYearName]);
 
-  // Fetch students
+  // Fetch classes & students
+  const { data: classesData = [] } = useClasses();
   const { data: studentsData, isLoading } = useStudents();
   const students: any[] = Array.isArray(studentsData) ? studentsData : [];
 
   const normClass = (c: any) => String(c || "").replace(/^Class\s*/i, "").trim().toLowerCase();
 
-  // Dynamic Class Options derived from students and base options
+  // Dynamic Class Options strictly restricted to canonical 1..10
   const availableClasses = useMemo(() => {
-    const set = new Set<string>();
-    CLASS_OPTIONS.forEach(c => set.add(c));
-    students.forEach((s: any) => {
-      const c = String(s.classGrade || s.class || "").replace(/^Class\s*/i, "").trim();
-      if (c) set.add(c);
-    });
-    return Array.from(set).sort((a, b) => {
-      const numA = parseInt(a, 10);
-      const numB = parseInt(b, 10);
-      if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
-      return a.localeCompare(b);
-    });
-  }, [students]);
+    const extracted = extractUniqueClasses(classesData);
+    if (extracted && extracted.length > 0) {
+      const filtered = extracted
+        .map(c => c.replace(/\D/g, ""))
+        .filter(c => {
+          const num = parseInt(c, 10);
+          return !isNaN(num) && num >= 1 && num <= 10;
+        })
+        .sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
+      if (filtered.length > 0) return filtered;
+    }
+    return CANONICAL_CLASSES;
+  }, [classesData]);
 
   // Filter students by fromClass (normalized and sorted numerically by roll number)
   const eligibleStudents = useMemo(() => {
@@ -119,7 +121,7 @@ export default function PromoteStudentsPage() {
     if (!confirm(`Promote ${selectedIds.size} students to ${formatClassLabel(toClass)} Section ${toSection}?`)) return;
     promoteMutation.mutate({
       studentIds: Array.from(selectedIds),
-      newClassGrade: toClass,
+      newClassGrade: formatClassLabel(toClass),
       newSection: toSection,
       academicYear,
     });
