@@ -12,6 +12,23 @@ import * as XLSX from 'xlsx';
 
 const subscriptionService = new SubscriptionService();
 
+function getRowValue(row: Record<string, any>, aliases: string[]): string {
+  const normalizedRowKeys = Object.keys(row).map(k => ({
+    raw: k,
+    clean: k.toLowerCase().replace(/[^a-z0-9]/g, "")
+  }));
+
+  for (const alias of aliases) {
+    const cleanAlias = alias.toLowerCase().replace(/[^a-z0-9]/g, "");
+    const match = normalizedRowKeys.find(k => k.clean === cleanAlias);
+    if (match && row[match.raw] !== undefined && row[match.raw] !== null) {
+      const val = String(row[match.raw]).trim();
+      if (val) return val;
+    }
+  }
+  return "";
+}
+
 export const POST = withErrorHandler(
   withAuth(
     withTenant(
@@ -23,7 +40,6 @@ export const POST = withErrorHandler(
           return NextResponse.json({ success: false, message: "No file provided" }, { status: 400 });
         }
 
-        // Parse Excel
         const arrayBuffer = await file.arrayBuffer();
         const buffer = Buffer.from(arrayBuffer);
         const workbook = XLSX.read(buffer, { type: 'buffer' });
@@ -31,40 +47,55 @@ export const POST = withErrorHandler(
         const worksheet = workbook.Sheets[sheetName];
         const jsonData = XLSX.utils.sheet_to_json(worksheet);
 
-        // Map rows to student data
         const studentsToAdd: any[] = [];
         const errors: string[] = [];
 
-        jsonData.forEach((row: any, index: number) => {
-          const fullName = row['Name'] || row['Full Name'] || row['fullName'];
-          const fatherName = row['Father Name'] || row['fatherName'];
-          const classGrade = row['Class'] || row['classGrade'];
-          const section = row['Section'] || row['section'];
-          const rollNumber = row['Roll No'] || row['rollNumber'];
+        (jsonData as any[]).forEach((row: any, index: number) => {
+          const fullName = getRowValue(row, ["Full Name", "fullName", "Name", "Student Name", "Student"]);
+          const fatherName = getRowValue(row, ["Father Name", "fatherName", "Father"]);
+          const guardianName = getRowValue(row, ["Guardian Name", "guardianName", "Guardian"]) || fatherName;
+          const classGrade = getRowValue(row, ["Class", "classGrade", "Grade", "Class / Grade", "class"]);
+          const section = getRowValue(row, ["Section", "section", "Sec"]);
+          const rollNumber = getRowValue(row, ["Roll No", "rollNumber", "Roll Number", "RollNo", "Roll"]);
+          const gender = getRowValue(row, ["Gender", "gender", "Sex"]);
+          const dob = getRowValue(row, ["DOB", "dob", "Date of Birth", "Birth Date"]);
+          const guardianRelation = getRowValue(row, ["Guardian Relation", "guardianRelation", "Relation"]);
+          const guardianPhone = getRowValue(row, ["Guardian Phone", "guardianPhone", "Phone", "Mobile", "Contact"]);
+          const monthlyFee = getRowValue(row, ["Monthly Fee", "monthlyFee", "Fee", "Tuition Fee"]);
 
-          if (!fullName || !classGrade) {
-            errors.push(`Row ${index + 2}: Name and Class are required`);
+          if (!fullName || fullName.length < 2) {
+            errors.push(`Row ${index + 2}: Full Name is required`);
+            return;
+          }
+
+          if (!classGrade) {
+            errors.push(`Row ${index + 2} ("${fullName}"): Class is required`);
             return;
           }
 
           studentsToAdd.push({
             fullName,
-            fatherName: fatherName || "N/A",
+            fatherName: fatherName || guardianName || "N/A",
+            guardianName: guardianName || fatherName || "N/A",
             classGrade,
             section: section || "A",
             rollNumber: rollNumber || undefined,
+            gender: (gender === "Female" || gender === "Other") ? gender : "Male",
+            dob: dob || undefined,
+            guardianRelation: guardianRelation || "Guardian",
+            guardianPhone: guardianPhone || undefined,
+            monthlyFee: monthlyFee ? Number(monthlyFee) : 5000,
           });
         });
 
-        if (errors.length > 0) {
-          return NextResponse.json({ success: false, message: "Validation errors", errors }, { status: 400 });
-        }
-
         if (studentsToAdd.length === 0) {
-          return NextResponse.json({ success: false, message: "No valid student records found" }, { status: 400 });
+          return NextResponse.json({
+            success: false,
+            message: errors.length > 0 ? "Validation errors in rows" : "No valid student records found",
+            errors,
+          }, { status: 400 });
         }
 
-        // Delegate to service
         const service = new StudentService();
         const limits = await subscriptionService.getPlanLimits(tenantId);
         await service.checkSubscriptionLimit(tenantId, limits.maxStudents, studentsToAdd.length);
@@ -75,9 +106,12 @@ export const POST = withErrorHandler(
           success: true,
           message: `Successfully imported ${result.created} students`,
           count: result.created,
+          imported: result.created,
+          failed: result.failed,
+          results: result.results,
+          errors,
         });
       })
     )
   )
 );
-

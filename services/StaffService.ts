@@ -108,22 +108,12 @@ export class StaffService implements IStaffService {
     const doc = await this.repository.findById(id, tenantId);
     if (!doc) throw new NotFoundException("Staff member not found");
     const entity = StaffPersistenceMapper.fromFirestore(doc);
-    if (!doc.employeeId || !doc.joiningDate || !doc.confirmationDate || !doc.qualification) {
+    if (!doc.employeeId && entity.employeeId) {
       this.repository.update(id, {
         employeeId: entity.employeeId,
-        joiningDate: entity.joiningDate,
-        confirmationDate: entity.confirmationDate,
-        qualification: entity.qualification,
-        experience: entity.experience,
-        subjects: entity.subjects,
-        classesAssigned: entity.classesAssigned,
         professional: {
           ...((doc as any).professional || {}),
           employeeId: entity.employeeId,
-          joiningDate: entity.joiningDate,
-          confirmationDate: entity.confirmationDate,
-          qualification: entity.qualification,
-          experience: entity.experience,
         }
       } as any, tenantId).catch(err => {
         logger.warn("[StaffService] Non-blocking backfill persistence failed:", err);
@@ -133,10 +123,30 @@ export class StaffService implements IStaffService {
   }
 
   async create(data: CreateStaffDTO, tenantId: string, userId: string): Promise<string> {
-    const validation = this.validation.validate(CreateStaffSchema, data);
+    const preparedData: any = {
+      ...data,
+      professional: { ...(data?.professional || {}) },
+      personal: { ...(data?.personal || {}) },
+      contact: { ...(data?.contact || {}) },
+    };
+
+    if (!preparedData.professional.personnelNo && !preparedData.professional.employeeId) {
+      const nextId = await this.getNextEmployeeId(tenantId);
+      preparedData.professional.personnelNo = nextId;
+      preparedData.professional.employeeId = nextId;
+    } else if (!preparedData.professional.personnelNo && preparedData.professional.employeeId) {
+      preparedData.professional.personnelNo = preparedData.professional.employeeId;
+    } else if (preparedData.professional.personnelNo && !preparedData.professional.employeeId) {
+      preparedData.professional.employeeId = preparedData.professional.personnelNo;
+    }
+    if (!preparedData.professional.designation) {
+      preparedData.professional.designation = "Teacher";
+    }
+
+    const validation = this.validation.validate(CreateStaffSchema, preparedData);
     if (!validation.success) {
       logger.warn("[StaffService] Validation failed", {
-        metadata: { errors: validation.errors, payload: data },
+        metadata: { errors: validation.errors, payload: preparedData },
       });
       throw new ValidationError("Validation failed", validation.errors);
     }
@@ -388,13 +398,38 @@ export class StaffService implements IStaffService {
 
   async checkSubscriptionLimit(
     tenantId: string,
-    maxStaff: number
+    maxStaff: number,
+    addingCount: number = 1
   ): Promise<void> {
     const currentCount = await this.count(tenantId);
-    if (currentCount >= maxStaff) {
+    if (currentCount + addingCount > maxStaff) {
       throw new SubscriptionLimitException(
         `Staff limit reached (${maxStaff}). Please upgrade your plan.`
       );
+    }
+  }
+
+  async getNextEmployeeId(tenantId: string): Promise<string> {
+    try {
+      const allStaff = await this.repository.findAll(tenantId);
+      let maxNum = 0;
+      for (const s of allStaff) {
+        const idStr = s.employeeId || s.personnelNo || s.identity?.employeeId || (s as any).professional?.employeeId || "";
+        const match = idStr.match(/\d+/);
+        if (match) {
+          const num = parseInt(match[0], 10);
+          if (!isNaN(num) && num > maxNum) {
+            maxNum = num;
+          }
+        }
+      }
+      if (maxNum === 0 && allStaff.length > 0) {
+        maxNum = allStaff.length;
+      }
+      const nextNum = maxNum + 1;
+      return `STF-${String(nextNum).padStart(3, "0")}`;
+    } catch {
+      return `STF-${Date.now().toString().slice(-6)}`;
     }
   }
 
@@ -719,9 +754,39 @@ Keep response concise and structured.`;
 
   async bulkCreate(tenantId: string, staff: CreateStaffDTO[], userId: string) {
     const results: any[] = [];
-    for (const studentData of staff) {
+    let nextIdNum: number | null = null;
+
+    for (const staffData of staff) {
       try {
-        const created = await this.create(studentData, tenantId, userId);
+        const prepared: any = {
+          ...staffData,
+          professional: { ...(staffData.professional || {}) },
+          personal: { ...(staffData.personal || {}) },
+          contact: { ...(staffData.contact || {}) },
+        };
+
+        if (!prepared.professional.personnelNo && !prepared.professional.employeeId) {
+          if (nextIdNum === null) {
+            const allStaff = await this.repository.findAll(tenantId);
+            let maxNum = 0;
+            for (const s of allStaff) {
+              const idStr = s.employeeId || s.personnelNo || s.identity?.employeeId || (s as any).professional?.employeeId || "";
+              const match = idStr.match(/\d+/);
+              if (match) {
+                const num = parseInt(match[0], 10);
+                if (!isNaN(num) && num > maxNum) maxNum = num;
+              }
+            }
+            if (maxNum === 0 && allStaff.length > 0) maxNum = allStaff.length;
+            nextIdNum = maxNum;
+          }
+          nextIdNum++;
+          const autoId = `STF-${String(nextIdNum).padStart(3, "0")}`;
+          prepared.professional.personnelNo = autoId;
+          prepared.professional.employeeId = autoId;
+        }
+
+        const created = await this.create(prepared, tenantId, userId);
         results.push({ success: true, id: created });
       } catch (error: unknown) {
         const message = error instanceof Error ? error.message : "Unknown error";

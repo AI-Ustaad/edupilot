@@ -64,9 +64,24 @@ export default function EnterpriseBillingPage() {
   const currentPlanId = (subData as any)?.planId || "free";
   const currentPlan = BILLING_PLANS.find(p => p.id === currentPlanId) || BILLING_PLANS[0];
 
-  const studentsUsed = Number((dashboardData as any)?.totalStudents ?? 0);
-  const staffUsed = Number((dashboardData as any)?.totalStaff ?? 0);
-  const aiUsed = Number((subData as any)?.aiUsageCount ?? (dashboardData as any)?.aiUsageCount ?? 0);
+  const studentsUsed = Number(
+    (subData as any)?.usage?.students ??
+    (dashboardData as any)?.students ??
+    (dashboardData as any)?.totalStudents ??
+    0
+  );
+  const staffUsed = Number(
+    (subData as any)?.usage?.staff ??
+    (dashboardData as any)?.staff ??
+    (dashboardData as any)?.totalStaff ??
+    0
+  );
+  const aiUsed = Number(
+    (subData as any)?.usage?.aiCalls ??
+    (subData as any)?.aiUsageCount ??
+    (dashboardData as any)?.aiUsageCount ??
+    0
+  );
 
   const studentUsagePercent = currentPlan.limits.students >= 999999 
     ? 1 

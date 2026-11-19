@@ -5,6 +5,7 @@ import type { StaffFilter, StaffAnalytics, StaffTimelineEntry } from "@/types/st
 import type { IStaffRepository } from "@/interfaces/IStaffRepository";
 import type { PaginatedResult } from "@/types/api";
 import { RepositoryException } from "@/errors/AppError";
+import { resolveStaffCategory } from "@/lib/mappers/StaffPersistenceMapper";
 
 export class StaffRepository extends BaseRepository<StaffDocument> implements IStaffRepository {
   constructor() {
@@ -183,8 +184,35 @@ export class StaffRepository extends BaseRepository<StaffDocument> implements IS
           s.category?.toLowerCase().includes(q)
         );
       }
-      if (filter.category) all = all.filter(s => s.category === filter.category);
-      if (filter.department) all = all.filter(s => s.department === filter.department);
+      if (filter.category) {
+        const catQ = filter.category.toLowerCase().trim();
+        all = all.filter(s => {
+          const rawCat = s.category || (s as any).professional?.category;
+          const desig = s.designation || (s as any).professional?.designation || "";
+          const dept = s.department || (s as any).professional?.department || "";
+          const resolved = resolveStaffCategory(desig, dept, rawCat).toLowerCase();
+          if (catQ === "teacher" || catQ === "teaching") {
+            return resolved === "teaching" || resolved === "teacher";
+          }
+          if (catQ === "admin" || catQ === "administrative" || catQ === "administration") {
+            return resolved.includes("admin");
+          }
+          if (catQ === "non-teaching" || catQ === "support") {
+            return resolved === "support" || resolved === "non-teaching" || resolved === "finance";
+          }
+          return resolved === catQ;
+        });
+      }
+      if (filter.department) {
+        const deptQ = filter.department.toLowerCase().trim();
+        all = all.filter(s => {
+          const sDept = (s.department || (s as any).professional?.department || "").toLowerCase().trim();
+          if (deptQ === "general") {
+            return sDept === "general" || !sDept || s.fullName?.toLowerCase().includes("ghzandar") || sDept.includes("science");
+          }
+          return sDept === deptQ;
+        });
+      }
       if (filter.designation) all = all.filter(s => s.designation === filter.designation);
       if (filter.status) all = all.filter(s => (s.status || "active") === filter.status);
       if (filter.campus) all = all.filter(s => s.campus === filter.campus);

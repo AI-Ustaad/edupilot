@@ -6,6 +6,7 @@ import { withPermission } from "@/lib/auth/rbac";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 import { createSuccessResponse, createErrorResponse } from "@/lib/api/response";
 import { SubscriptionService } from "@/services/subscription.service";
+import { adminDb } from "@/lib/firebase-admin";
 import type { TenantContext } from "@/types/api";
 
 const FREE_PLAN_ID = "free";
@@ -17,7 +18,36 @@ export const GET = withErrorHandler(
         const service = new SubscriptionService();
         const subscription = await service.getSubscription(tenantId);
         const plan = PLANS[(subscription as any).planId as keyof typeof PLANS] || PLANS.free;
-        return createSuccessResponse({ ...subscription, plan });
+
+        let studentCount = 0;
+        let staffCount = 0;
+        let aiCalls = 0;
+
+        try {
+          const [studentsSnap, staffSnap, aiSnap] = await Promise.all([
+            adminDb.collection("students").where("tenantId", "==", tenantId).get().catch(() => ({ docs: [] } as any)),
+            adminDb.collection("staff").where("tenantId", "==", tenantId).get().catch(() => ({ docs: [] } as any)),
+            adminDb.collection("ai_usage").where("tenantId", "==", tenantId).get().catch(() => ({ docs: [] } as any)),
+          ]);
+
+          studentCount = (studentsSnap.docs || []).filter((d: any) => !d.data()?.deleted).length;
+          staffCount = (staffSnap.docs || []).filter((d: any) => !d.data()?.deleted && d.data()?.status !== "terminated").length;
+          aiCalls = (aiSnap.docs || []).length;
+        } catch {
+          studentCount = 0;
+          staffCount = 0;
+          aiCalls = 0;
+        }
+
+        return createSuccessResponse({
+          ...subscription,
+          plan,
+          usage: {
+            students: studentCount,
+            staff: staffCount,
+            aiCalls,
+          },
+        });
       })
     )
   )

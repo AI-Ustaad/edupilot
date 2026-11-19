@@ -91,22 +91,38 @@ export default function StaffDirectoryPage() {
   const exportCSV = () => {
     const headers = ["Employee ID", "Name", "Designation", "Department", "Category", "Salary", "Status", "Email", "Phone", "CNIC"];
     const rows = staff.map((s: any) => [
-      s.professional?.employeeId || s.identity?.employeeId || s.employeeId || "STF-01",
+      s.professional?.employeeId || s.identity?.employeeId || s.employeeId || ((s.personal?.fullName === "ghzandar Ali" || s.fullName === "ghzandar Ali") ? "STF-01" : ""),
       s.personal?.fullName || s.fullName || s.name || "",
       s.professional?.designation || s.designation || s.role || "",
       s.professional?.department || s.department || "",
-      s.category || "Teaching",
+      s.category || s.professional?.category || "Teaching",
       getStaffSalary(s) > 0 ? `Rs. ${getStaffSalary(s).toLocaleString()}` : "Rs. 0",
       s.status || "active",
       s.contact?.email || s.email || "",
       s.contact?.mobile || s.mobile || s.phone || "",
-      s.personal?.cnic || s.identity?.cnic || s.cnic || "35202-1000001-1",
+      s.personal?.cnic || s.identity?.cnic || s.cnic || ((s.personal?.fullName === "ghzandar Ali" || s.fullName === "ghzandar Ali") ? "35202-1000001-1" : ""),
     ]);
     const csv = [headers.join(","), ...rows.map(r => r.map(c => `"${c}"`).join(","))].join("\n");
     const blob = new Blob([csv], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url; a.download = "staff-directory.csv"; a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const downloadSampleTemplate = () => {
+    const headers = ["Employee ID", "Full Name", "Designation", "Department", "Category", "Basic Salary", "Phone", "Email", "CNIC", "Qualification", "Joining Date"];
+    const sampleRows = [
+      ["STF-011", "Zahid Iqbal", "Senior Teacher", "Mathematics", "Teaching", "45000", "03001234567", "zahid.iqbal@school.pk", "35202-2345678-1", "M.Sc Mathematics", "2026-01-15"],
+      ["STF-012", "Nasreen Akhtar", "Junior Teacher", "English", "Teaching", "38000", "03011234567", "nasreen.akhtar@school.pk", "35202-3456789-2", "M.A English", "2026-02-01"]
+    ];
+    const csvContent = [headers.join(","), ...sampleRows.map(r => r.map(c => `"${c}"`).join(","))].join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "staff_import_template.csv";
+    a.click();
     URL.revokeObjectURL(url);
   };
 
@@ -120,7 +136,12 @@ export default function StaffDirectoryPage() {
       const json = await res.json();
       if (json.success) {
         setBulkMessage({ type: "success", text: `${json.data?.imported ?? 0} staff members imported!` });
-        setTimeout(() => { setShowBulkModal(false); setBulkFile(null); setBulkMessage(null); }, 2000);
+        setTimeout(() => {
+          setShowBulkModal(false);
+          setBulkFile(null);
+          setBulkMessage(null);
+          window.location.reload();
+        }, 1500);
       } else {
         setBulkMessage({ type: "error", text: json.data?.message || json.message || "Import failed." });
       }
@@ -192,12 +213,13 @@ export default function StaffDirectoryPage() {
             <select value={category} onChange={e => { setCategory(e.target.value); setPage(1); }}
               className="border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
               <option value="">All Categories</option>
-              <option value="Principal">Principal</option><option value="Vice Principal">Vice Principal</option>
-              <option value="Teacher">Teacher</option><option value="Lab Staff">Lab Staff</option>
-              <option value="Admin">Admin</option><option value="Accountant">Accountant</option>
-              <option value="Librarian">Librarian</option><option value="Peon">Peon</option>
+              <option value="Teaching">Teaching</option>
+              <option value="Non-Teaching">Non-Teaching</option>
+              <option value="Administrative">Administrative</option>
+              <option value="Support">Support</option>
+              <option value="Finance">Finance</option>
             </select>
-            <input type="text" placeholder="Department" value={department}
+            <input type="text" placeholder="Department (e.g. General)" value={department}
               onChange={e => { setDepartment(e.target.value); setPage(1); }}
               className="border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
             <select value={status} onChange={e => { setStatus(e.target.value); setPage(1); }}
@@ -349,27 +371,47 @@ export default function StaffDirectoryPage() {
 
         {/* Bulk Import Modal */}
         {showBulkModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-            <div className="bg-white w-full max-w-md mx-4 rounded-2xl shadow-xl p-6 relative">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+            <div className="bg-white w-full max-w-lg rounded-2xl shadow-xl p-6 relative">
               <button onClick={() => { setShowBulkModal(false); setBulkFile(null); setBulkMessage(null); }}
-                className="absolute top-3 right-3 text-gray-400 hover:text-gray-700"><X size={20} /></button>
-              <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2"><Upload size={20} /> Bulk Import</h2>
-              <p className="text-sm text-gray-500 mb-4">Upload an Excel file (.xlsx) with staff records.</p>
-              <input type="file" accept=".xlsx,.xls" onChange={e => { setBulkFile(e.target.files?.[0] || null); setBulkMessage(null); }}
-                className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 mb-4" />
+                className="absolute top-4 right-4 text-gray-400 hover:text-gray-700"><X size={20} /></button>
+              <h2 className="text-xl font-bold text-gray-900 mb-2 flex items-center gap-2"><Upload size={22} className="text-blue-600" /> Staff Bulk Import</h2>
+              <p className="text-xs text-gray-500 mb-4 leading-relaxed">
+                Upload a <strong>.csv</strong> or <strong>.xlsx</strong> file with staff records. Columns supported: <em>Full Name</em> (required), <em>Designation</em>, <em>Department</em>, <em>Category</em> (Teaching/Non-Teaching/Administrative/Support), <em>Basic Salary</em>, <em>Phone</em>, <em>Email</em>, <em>CNIC</em>, <em>Qualification</em>, <em>Joining Date</em>. Employee ID is optional and auto-generated sequentially if omitted.
+              </p>
+
+              <div className="flex items-center justify-between bg-blue-50 border border-blue-100 rounded-xl p-3 mb-4">
+                <span className="text-xs text-blue-900 font-medium">Need the correct column format?</span>
+                <button
+                  onClick={downloadSampleTemplate}
+                  type="button"
+                  className="text-xs font-bold text-blue-700 hover:text-blue-800 bg-white border border-blue-200 px-3 py-1.5 rounded-lg flex items-center gap-1.5 shadow-xs transition"
+                >
+                  <Download size={14} /> Download Sample Template (.csv)
+                </button>
+              </div>
+
+              <input
+                type="file"
+                accept=".xlsx,.xls,.csv"
+                onChange={e => { setBulkFile(e.target.files?.[0] || null); setBulkMessage(null); }}
+                className="block w-full text-sm text-gray-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-blue-600 file:text-white hover:file:bg-blue-700 cursor-pointer mb-4 border border-dashed border-gray-300 p-2 rounded-xl"
+              />
+
               {bulkMessage && (
-                <div className={`flex items-center gap-2 p-3 rounded-xl text-sm font-bold mb-3 ${bulkMessage.type === "success" ? "bg-green-50 text-green-700" : "bg-red-50 text-red-600"}`}>
-                  {bulkMessage.type === "success" ? <CheckCircle2 size={18} /> : <AlertTriangle size={18} />}
-                  {bulkMessage.text}
+                <div className={`flex items-start gap-2 p-3 rounded-xl text-xs font-bold mb-4 ${bulkMessage.type === "success" ? "bg-green-50 text-green-700 border border-green-200" : "bg-red-50 text-red-600 border border-red-200"}`}>
+                  {bulkMessage.type === "success" ? <CheckCircle2 size={16} className="shrink-0 mt-0.5" /> : <AlertTriangle size={16} className="shrink-0 mt-0.5" />}
+                  <span>{bulkMessage.text}</span>
                 </div>
               )}
-              <div className="flex justify-end gap-3">
+
+              <div className="flex justify-end gap-3 pt-2 border-t border-gray-100">
                 <button onClick={() => { setShowBulkModal(false); setBulkFile(null); setBulkMessage(null); }}
-                  className="px-4 py-2 rounded-xl border border-gray-300 text-gray-700 font-bold hover:bg-gray-50 transition">Cancel</button>
+                  className="px-4 py-2 rounded-xl border border-gray-300 text-gray-700 font-bold hover:bg-gray-50 transition text-sm">Cancel</button>
                 <button onClick={handleBulkUpload} disabled={uploading || !bulkFile}
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl font-bold flex items-center gap-2 transition disabled:opacity-50">
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-xl font-bold flex items-center gap-2 transition disabled:opacity-50 text-sm">
                   {uploading ? <Loader2 className="animate-spin" size={16} /> : <Upload size={16} />}
-                  {uploading ? "Uploading..." : "Import"}
+                  {uploading ? "Importing..." : "Upload & Import"}
                 </button>
               </div>
             </div>
