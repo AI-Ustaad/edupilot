@@ -20,7 +20,7 @@ export interface IStudentRepository {
   findByHouse(...args: any[]): Promise<any>;
   findById(...args: any[]): Promise<any>;
   findByParent(...args: any[]): Promise<any>;
-  findByRollNumber(...args: any[]): Promise<any>;
+  findByRollNumber(rollNumber: string, tenantId: string, classGrade?: string, section?: string): Promise<any>;
   findBySection(...args: any[]): Promise<any>;
   findByStatus(...args: any[]): Promise<any>;
   findByTransport(...args: any[]): Promise<any>;

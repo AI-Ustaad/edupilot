@@ -53,6 +53,7 @@ const MENU_GROUPS = [
     items: [
       { name: "All Staff", icon: UserCircle, path: "/staff", permission: "staff.view" },
       { name: "Add Staff", icon: UserPlus, path: "/staff/add", permission: "staff.create" },
+      { name: "Payroll", icon: DollarSign, path: "/payroll", permission: "staff.view" },
       { name: "Staff OCR", icon: ScanLine, path: "/staff/ocr", permission: "staff.create" },
       { name: "Departments", icon: Briefcase, path: "/staff/departments", permission: "staff.view" },
       { name: "Leave Requests", icon: Calendar, path: "/leave-requests", permission: "leave.manage" },

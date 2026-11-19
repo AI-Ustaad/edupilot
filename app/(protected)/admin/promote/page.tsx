@@ -29,6 +29,7 @@ export default function PromoteStudentsPage() {
 
   // Form state - unified canonical active academic year
   const [fromClass, setFromClass] = useState("");
+  const [fromSection, setFromSection] = useState("");
   const [toClass, setToClass] = useState("");
   const [toSection, setToSection] = useState("A");
   const [academicYear, setAcademicYear] = useState("2025-2026");
@@ -64,18 +65,27 @@ export default function PromoteStudentsPage() {
     return CANONICAL_CLASSES;
   }, [classesData]);
 
-  // Filter students by fromClass (normalized and sorted numerically by roll number)
+  // Filter students by fromClass and fromSection (normalized and sorted numerically by roll number)
   const eligibleStudents = useMemo(() => {
     if (!fromClass) return [];
     const target = normClass(fromClass);
     return students
-      .filter(s => normClass(s.classGrade || s.class) === target && (s.status || "active").toLowerCase() === "active" && !s.deleted)
+      .filter(s => {
+        if (normClass(s.classGrade || s.class) !== target) return false;
+        if ((s.status || "active").toLowerCase() !== "active" || s.deleted) return false;
+        if (fromSection && fromSection !== "ALL") {
+          const sSec = String(s.section || "").trim().toUpperCase();
+          const targetSec = String(fromSection).trim().toUpperCase();
+          if (sSec !== targetSec) return false;
+        }
+        return true;
+      })
       .sort((a, b) => {
         const rollA = Number(String(a.rollNumber || "").replace(/\D/g, "")) || 0;
         const rollB = Number(String(b.rollNumber || "").replace(/\D/g, "")) || 0;
         return rollA - rollB;
       });
-  }, [students, fromClass]);
+  }, [students, fromClass, fromSection]);
 
   // Promotion mutation
   const promoteMutation = useMutation({
@@ -136,12 +146,19 @@ export default function PromoteStudentsPage() {
       {/* Promotion Config */}
       <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm space-y-4">
         <h2 className="font-bold text-gray-800">Promotion Configuration</h2>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
           <div>
             <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">From Class</label>
             <select value={fromClass} onChange={e => { setFromClass(e.target.value); setSelectedIds(new Set()); setResult(null); }} className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
               <option value="">Select class</option>
               {availableClasses.map(c => <option key={c} value={c}>{formatClassLabel(c)}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">From Section</label>
+            <select value={fromSection} onChange={e => { setFromSection(e.target.value); setSelectedIds(new Set()); setResult(null); }} className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <option value="">All Sections</option>
+              {SECTION_OPTIONS.map(s => <option key={s} value={s}>Section {s}</option>)}
             </select>
           </div>
           <div>
@@ -164,13 +181,39 @@ export default function PromoteStudentsPage() {
         </div>
       </div>
 
+      {/* Confirmation Summary Banner */}
+      {selectedIds.size > 0 && toClass && (
+        <div className="bg-blue-50 border border-blue-200 rounded-2xl p-5 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-blue-600 animate-pulse"></span>
+              <p className="font-black text-blue-900 text-base">
+                Ready to Promote {selectedIds.size} Student{selectedIds.size !== 1 ? "s" : ""}
+              </p>
+            </div>
+            <p className="text-sm text-blue-700 mt-1">
+              Source: <span className="font-bold">{formatClassLabel(fromClass)} {fromSection ? `(Section ${fromSection})` : "(All Sections)"}</span>
+              {" → "}
+              Target: <span className="font-bold">{formatClassLabel(toClass)} (Section {toSection})</span>
+              {" • "}
+              Academic Session: <span className="font-bold">{academicYear}</span>
+            </p>
+          </div>
+          <div className="text-xs bg-white text-blue-700 px-3 py-1.5 rounded-lg border border-blue-200 font-bold shadow-xs">
+            {selectedIds.size} of {eligibleStudents.length} Selected
+          </div>
+        </div>
+      )}
+
       {/* Student Selection */}
       {fromClass && (
         <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
           <div className="p-4 border-b border-gray-100 flex items-center justify-between">
             <div>
               <h3 className="font-bold text-gray-800">Eligible Students ({eligibleStudents.length})</h3>
-              <p className="text-sm text-gray-500">{formatClassLabel(fromClass)} - Active students</p>
+              <p className="text-sm text-gray-500">
+                {formatClassLabel(fromClass)} {fromSection ? `• Section ${fromSection}` : "• All Sections"} - Active students
+              </p>
             </div>
             {eligibleStudents.length > 0 && (
               <button onClick={toggleAll} className="text-sm text-blue-600 font-bold hover:underline">
@@ -184,7 +227,7 @@ export default function PromoteStudentsPage() {
           ) : eligibleStudents.length === 0 ? (
             <div className="p-8 text-center text-gray-400">
               <Users className="mx-auto mb-2 text-gray-300" size={32} />
-              <p>No active students found in {formatClassLabel(fromClass)}</p>
+              <p>No active students found in {formatClassLabel(fromClass)} {fromSection ? `Section ${fromSection}` : ""}</p>
             </div>
           ) : (
             <div className="max-h-96 overflow-y-auto">
@@ -194,6 +237,7 @@ export default function PromoteStudentsPage() {
                     <th className="p-3 w-10"></th>
                     <th className="p-3 text-left font-bold text-gray-500 text-xs uppercase">Name</th>
                     <th className="p-3 text-left font-bold text-gray-500 text-xs uppercase">Roll No</th>
+                    <th className="p-3 text-left font-bold text-gray-500 text-xs uppercase">Section</th>
                     <th className="p-3 text-left font-bold text-gray-500 text-xs uppercase">Father Name</th>
                   </tr>
                 </thead>
@@ -204,7 +248,8 @@ export default function PromoteStudentsPage() {
                         <input type="checkbox" checked={selectedIds.has(s.id)} onChange={() => toggleStudent(s.id)} className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
                       </td>
                       <td className="p-3 font-medium text-gray-800">{s.fullName}</td>
-                      <td className="p-3 text-gray-600">{s.rollNumber}</td>
+                      <td className="p-3 text-gray-600 font-bold">{s.rollNumber}</td>
+                      <td className="p-3 text-gray-600 font-semibold">{s.section || "A"}</td>
                       <td className="p-3 text-gray-600">{s.fatherName || "N/A"}</td>
                     </tr>
                   ))}

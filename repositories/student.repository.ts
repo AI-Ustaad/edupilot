@@ -34,15 +34,44 @@ export class StudentRepository extends BaseRepository<StudentDocument> implement
 
   async findByRollNumber(
     rollNumber: string,
-    tenantId: string
+    tenantId: string,
+    classGrade?: string,
+    section?: string
   ): Promise<StudentDocument | null> {
     try {
-      const snapshot = await this.db
-        .collection(this.collectionName)
-        .where("tenantId", "==", tenantId)
-        .where("rollNumber", "==", rollNumber)
-        .limit(1)
-        .get();
+      const rollStr = String(rollNumber);
+      const rollNum = Number(rollNumber);
+
+      const fetchDocsForRoll = async (val: string | number, targetClass?: string) => {
+        let q: FirebaseFirestore.Query = this.db
+          .collection(this.collectionName)
+          .where("tenantId", "==", tenantId)
+          .where("rollNumber", "==", val);
+
+        if (targetClass) {
+          q = q.where("classGrade", "==", targetClass);
+        }
+        if (section) {
+          q = q.where("section", "==", section);
+        }
+        return await q.limit(1).get();
+      };
+
+      let snapshot = await fetchDocsForRoll(rollStr, classGrade);
+      if (snapshot.empty && !isNaN(rollNum)) {
+        snapshot = await fetchDocsForRoll(rollNum, classGrade);
+      }
+
+      // Check alternate class format if classGrade was provided (e.g. "Class 1" vs "1")
+      if (snapshot.empty && classGrade) {
+        const altClass = classGrade.startsWith("Class ")
+          ? classGrade.replace(/^Class\s*/i, "").trim()
+          : `Class ${classGrade}`.trim();
+        snapshot = await fetchDocsForRoll(rollStr, altClass);
+        if (snapshot.empty && !isNaN(rollNum)) {
+          snapshot = await fetchDocsForRoll(rollNum, altClass);
+        }
+      }
 
       if (snapshot.empty) return null;
       const doc = snapshot.docs[0];
@@ -51,6 +80,8 @@ export class StudentRepository extends BaseRepository<StudentDocument> implement
       throw new RepositoryException("Failed to find student by roll number", {
         rollNumber,
         tenantId,
+        classGrade,
+        section,
       });
     }
   }

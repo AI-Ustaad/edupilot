@@ -232,13 +232,20 @@ export class DashboardService implements IDashboardService {
       }).length;
 
       const totalMarked = presentCount + lateCount + absentCount;
+      const unmarkedCount = Math.max(0, activeStudentList.length - totalMarked);
+      const percentage = totalMarked > 0 
+        ? Math.round(((presentCount + lateCount) / totalMarked) * 100) 
+        : 0;
 
       const todayAttendance = {
         date: todayStr,
         present: presentCount,
         absent: absentCount,
         late: lateCount,
+        unmarked: unmarkedCount,
         total: totalMarked,
+        totalStudents: activeStudentList.length,
+        percentage,
       };
 
       // 5. 7-Day Attendance Trend — Single Source of Truth (Option A — Honest Semantics)

@@ -109,11 +109,18 @@ export class StudentService implements IStudentService {
     const entity = StudentPersistenceMapper.fromDTO(validatedDTO);
     const document = StudentPersistenceMapper.toFirestore(entity, userId);
 
-    if (document.rollNumber) {
+    if (document.rollNumber && typeof this.repository.findByRollNumber === "function") {
       const rollNum = typeof document.rollNumber === "string" ? document.rollNumber : String(document.rollNumber);
-      const existing = await this.repository.findByRollNumber(rollNum, tenantId);
+      const existing = await this.repository.findByRollNumber(
+        rollNum,
+        tenantId,
+        document.classGrade,
+        document.section
+      );
       if (existing) {
-        throw new BusinessError(`Student with roll number ${rollNum} already exists`);
+        throw new BusinessError(
+          `Student with roll number ${rollNum} already exists in ${document.classGrade || "class"} Section ${document.section || ""}`.trim()
+        );
       }
     }
 
@@ -275,6 +282,18 @@ export class StudentService implements IStudentService {
     else if (existing.classGrade) document.classGrade = existing.classGrade;
     if (flatSection) document.section = flatSection;
     else if (existing.section) document.section = existing.section;
+
+    if (flatRoll !== undefined && typeof this.repository.findByRollNumber === "function" && (String(flatRoll) !== String(existing.rollNumber) || (flatClass && flatClass !== existing.classGrade) || (flatSection && flatSection !== existing.section))) {
+      const rollNum = String(flatRoll);
+      const targetClass = document.classGrade || existing.classGrade;
+      const targetSec = document.section || existing.section;
+      const conflict = await this.repository.findByRollNumber(rollNum, tenantId, targetClass, targetSec);
+      if (conflict && conflict.id !== studentId) {
+        throw new BusinessError(
+          `Student with roll number ${rollNum} already exists in ${targetClass || "class"} Section ${targetSec || ""}`.trim()
+        );
+      }
+    }
     if (flatGuardianName) document.guardianName = flatGuardianName;
     if (flatGuardianPhone) document.guardianPhone = flatGuardianPhone;
     if (flatEmail) document.email = flatEmail;

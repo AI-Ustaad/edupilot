@@ -181,8 +181,8 @@ describe("Phase 18 — Phase 5: Bulk Import Engine, Staff Data Integrity & Billi
       expect(entity.personal.fatherName).toBe("");
       expect((entity.personal as any).cnic).toBe("");
       expect(entity.cnic).toBe("");
-      expect(entity.payroll.bankName).toBe("");
-      expect(entity.payroll.accountNumber).toBe("");
+      expect(entity.payroll?.bankName).toBe("");
+      expect(entity.payroll?.accountNumber).toBe("");
       expect((entity.contact as any).currentAddress).toBe("");
       expect((entity.personal as any).bloodGroup).toBe("");
       expect(entity.qualification).toBe("");

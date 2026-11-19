@@ -4,6 +4,7 @@ import { School, Plus, Trash2, Loader2, CheckCircle, AlertCircle, Users } from "
 import RequirePermission from "@/components/RequirePermission";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 import { useClasses, useCreateClass, useDeleteClass, useUpdateClass } from "@/hooks/useClasses";
+import { useAcademicYears } from "@/hooks/useAdmin";
 import { useStudents } from "@/hooks/useStudents";
 import { useStaff } from "@/hooks/useStaff";
 import { useToast } from "@/components/ToastProvider";
@@ -30,6 +31,11 @@ const sortClasses = (a: any, b: any) => {
 
 export default function ClassesManagementPage() {
   const { data: sections = [], isLoading } = useClasses();
+  const { data: academicYears = [] } = useAcademicYears();
+  const activeAcademicYear = useMemo(() => {
+    const current = (academicYears as any[]).find((ay: any) => ay.isCurrent);
+    return current?.name || "2025-2026";
+  }, [academicYears]);
   const { data: studentsData = [] } = useStudents();
   const students: any[] = Array.isArray(studentsData) ? studentsData : [];
   const { data: staffData = [] } = useStaff();
@@ -228,7 +234,7 @@ export default function ClassesManagementPage() {
                         <div className="flex gap-2 mt-1 text-xs text-gray-500 font-medium">
                           <span className="bg-blue-50 text-blue-600 px-2 py-0.5 rounded">Punjab Board</span>
                           <span className="bg-green-50 text-green-600 px-2 py-0.5 rounded">English Medium</span>
-                          <span className="bg-purple-50 text-purple-600 px-2 py-0.5 rounded">2026-27</span>
+                          <span className="bg-purple-50 text-purple-600 px-2 py-0.5 rounded">{activeAcademicYear}</span>
                         </div>
                       </div>
                       <div className="text-right mt-2 md:mt-0">

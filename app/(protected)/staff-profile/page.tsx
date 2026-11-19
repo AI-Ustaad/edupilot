@@ -10,8 +10,9 @@ import {
   Clock, MessageSquare, Sparkles, Activity, UserCheck, BookOpenCheck,
 } from "lucide-react";
 import { useStaffMember, useStaffTimeline, useStaff } from "@/hooks/useStaff";
+import { useClasses } from "@/hooks/useClasses";
 import type { Staff } from "@/types/staff";
-import { formatClassLabel } from "@/lib/utils/formatClassLabel";
+import { formatClassLabel, cleanSectionName } from "@/lib/utils/formatClassLabel";
 import { getStaffSalary } from "@/lib/mappers/StaffPersistenceMapper";
 
 function StaffProfileContent() {
@@ -20,6 +21,7 @@ function StaffProfileContent() {
   const staffId = searchParams.get("id");
   const { data: staffData, isLoading } = useStaffMember(staffId || "");
   const { data: staffList = [] } = useStaff();
+  const { data: allSectionsData = [] } = useClasses();
   const { data: timelineData } = useStaffTimeline(staffId || "");
   const [activeTab, setActiveTab] = useState("overview");
   const [aiSummary, setAiSummary] = useState<string | null>(null);
@@ -78,7 +80,29 @@ function StaffProfileContent() {
   const qual = professional?.qualification || staff.qualification || fallback?.qualification || "—";
   const exp = professional?.experience || staff.experience || fallback?.experience || "—";
   const subs = (academic?.subjects && academic.subjects.length > 0) ? academic.subjects : (staff.subjects && staff.subjects.length > 0 ? staff.subjects : []);
-  const classesAssignedList = (academic?.classesAssigned && academic.classesAssigned.length > 0) ? academic.classesAssigned : (staff.classesAssigned && staff.classesAssigned.length > 0 ? staff.classesAssigned : []);
+  const classesAssignedList: string[] = (() => {
+    const list: string[] = [];
+    const direct = (academic?.classesAssigned && academic.classesAssigned.length > 0) 
+      ? academic.classesAssigned 
+      : (staff.classesAssigned && staff.classesAssigned.length > 0 ? staff.classesAssigned : []);
+    direct.forEach((c: string) => {
+      if (!list.includes(c)) list.push(c);
+    });
+
+    const sName = (fullName || staff.fullName || staff.name || "").trim().toLowerCase();
+    const sId = staff.id || staff.staffId || "";
+
+    (allSectionsData as any[]).forEach((sec: any) => {
+      const incharge = String(sec.incharge || sec.classTeacherName || "").trim().toLowerCase();
+      const inchargeId = String(sec.classTeacherId || sec.inchargeId || "");
+      if ((inchargeId && inchargeId === sId) || (sName && incharge === sName)) {
+        const clsLabel = `${formatClassLabel(sec.classGrade || sec.className)} - Section ${cleanSectionName(sec.sectionName || sec.section || "A")}`;
+        if (!list.includes(clsLabel)) list.push(clsLabel);
+      }
+    });
+
+    return list;
+  })();
 
   const TABS = [
     { id: "overview", label: "Overview", icon: Users },

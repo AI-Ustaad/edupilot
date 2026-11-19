@@ -47,9 +47,18 @@ export default function DashboardPage() {
     );
   }
 
-  // Safe Data Extraction
-  const total = (data.todayAttendance?.present || 0) + (data.todayAttendance?.absent || 0);
-  const attendancePercent = total > 0 ? ((data.todayAttendance.present / total) * 100).toFixed(0) : "0";
+  // Safe Data Extraction - Late counts as attended: (present + late) / totalMarked
+  const presentCount = data.todayAttendance?.present || 0;
+  const lateCount = data.todayAttendance?.late || 0;
+  const absentCount = data.todayAttendance?.absent || 0;
+  const totalMarked = presentCount + lateCount + absentCount;
+  const totalStudents = data.students || data.todayAttendance?.totalStudents || 0;
+  const unmarkedCount = data.todayAttendance?.unmarked !== undefined 
+    ? data.todayAttendance.unmarked 
+    : Math.max(0, totalStudents - totalMarked);
+  const attendancePercent = totalMarked > 0 
+    ? Math.round(((presentCount + lateCount) / totalMarked) * 100).toString() 
+    : "0";
   
   // Option A (Honest Semantics): Plot ONLY marked days.
   // Unmarked days (totalMarked === 0) are "no data", NEVER 0% attendance.
@@ -82,7 +91,7 @@ export default function DashboardPage() {
         <KpiCard title="Total Students" value={data.students || 0} icon={<Users size={24} className="text-blue-600" />} color="blue" />
         <KpiCard title="Total Staff" value={data.staff || 0} icon={<Briefcase size={24} className="text-purple-600" />} color="purple" />
         <KpiCard title="Revenue (Month)" value={"Rs " + (data.revenue || 0).toLocaleString()} icon={<DollarSign size={24} className="text-green-600" />} color="green" />
-        <KpiCard title="Today Attendance" value={total > 0 ? attendancePercent + "%" : "0%"} subtitle={(data.todayAttendance?.date || new Date().toISOString().slice(0, 10)) + " • " + (data.todayAttendance?.present || 0) + "P / " + (data.todayAttendance?.absent || 0) + "A"} icon={<Activity size={24} className="text-cyan-600" />} color="cyan" />
+        <KpiCard title="Today Attendance" value={totalMarked > 0 ? attendancePercent + "%" : "0%"} subtitle={`${data.todayAttendance?.date || new Date().toISOString().slice(0, 10)} • ${presentCount}P / ${absentCount}A / ${lateCount}L / ${unmarkedCount}U`} icon={<Activity size={24} className="text-cyan-600" />} color="cyan" />
       </motion.div>
 
       {riskStudents.length > 0 && (

@@ -70,6 +70,67 @@ export default function AttendancePage() {
     }
   };
 
+  const attendanceStats = useMemo(() => {
+    let present = 0;
+    let absent = 0;
+    let late = 0;
+    let leave = 0;
+    let unmarked = 0;
+
+    students.forEach((s: any) => {
+      const existing = attendanceRecords.find((a: any) => a.studentId === s.id);
+      const rawStatus = entries[s.id] || existing?.status;
+      if (!rawStatus || String(rawStatus).toLowerCase() === "not marked") {
+        unmarked++;
+      } else {
+        const str = String(rawStatus).toLowerCase();
+        if (str === "present") present++;
+        else if (str === "absent") absent++;
+        else if (str === "late") late++;
+        else if (str === "leave") leave++;
+        else present++;
+      }
+    });
+
+    const marked = present + absent + late + leave;
+    return { present, absent, late, leave, unmarked, marked, total: students.length };
+  }, [students, entries, attendanceRecords]);
+
+  const handleMarkRemainingPresent = async () => {
+    const unmarkedStudents = students.filter((student: any) => {
+      const existing = attendanceRecords.find((a: any) => a.studentId === student.id);
+      const rawStatus = entries[student.id] || existing?.status;
+      return !rawStatus || String(rawStatus).toLowerCase() === "not marked";
+    });
+
+    if (unmarkedStudents.length === 0) {
+      showToast("All students are already marked.", "info");
+      return;
+    }
+
+    try {
+      const bulkData = unmarkedStudents.map((student: any) => ({
+        studentId: student.id,
+        studentName: student.fullName || student.name,
+        classGrade: selectedClass,
+        section: selectedSection,
+        date: selectedDate,
+        status: "Present" as const,
+      }));
+
+      const newEntries = { ...entries };
+      unmarkedStudents.forEach((s: any) => {
+        newEntries[s.id] = "Present";
+      });
+      setEntries(newEntries);
+
+      await saveMutation.mutateAsync(bulkData);
+      showToast(`Marked ${unmarkedStudents.length} remaining students as Present!`, "success");
+    } catch {
+      showToast("Failed to mark remaining students.", "error");
+    }
+  };
+
   const handleSaveAll = async () => {
     if (students.length === 0) return;
     try {
@@ -92,7 +153,7 @@ export default function AttendancePage() {
 
   return (
     <div className="p-6 max-w-5xl mx-auto space-y-6 animate-fade-in">
-      <div className="flex justify-between items-end">
+      <div className="flex flex-wrap justify-between items-end gap-4">
         <div>
           <h1 className="text-2xl font-black text-gray-900 flex items-center gap-3">
             <Calendar className="text-blue-600"/> Daily Attendance
@@ -106,15 +167,30 @@ export default function AttendancePage() {
           </p>
         </div>
         
-        <button 
-          onClick={handleSaveAll} 
-          disabled={saveMutation.isPending || students.length === 0}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 shadow-md disabled:opacity-50 transition"
-          title="Save Attendance for all students"
-        >
-          {saveMutation.isPending ? <Loader2 className="animate-spin" size={18}/> : <Save size={18}/>} 
-          Save Attendance
-        </button>
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-2 text-xs font-semibold px-3 py-2 rounded-xl border bg-emerald-50 text-emerald-700 border-emerald-200">
+            {saveMutation.isPending ? (
+              <>
+                <Loader2 size={15} className="animate-spin text-emerald-600" />
+                <span>Saving changes...</span>
+              </>
+            ) : (
+              <>
+                <CheckCircle2 size={15} className="text-emerald-600" />
+                <span>Auto-saved live</span>
+              </>
+            )}
+          </div>
+          <button 
+            onClick={handleMarkRemainingPresent} 
+            disabled={saveMutation.isPending || students.length === 0 || attendanceStats.unmarked === 0}
+            className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl font-bold flex items-center gap-2 shadow-sm disabled:opacity-50 transition text-xs"
+            title="Mark all unmarked students as Present"
+          >
+            <CheckCircle2 size={14}/> 
+            <span>Mark Remaining Present ({attendanceStats.unmarked})</span>
+          </button>
+        </div>
       </div>
 
       {/* FILTERS - 100% Dynamic */}
@@ -145,6 +221,40 @@ export default function AttendancePage() {
           {availableSections.map((s: string) => <option key={s} value={s}>Section {s}</option>)}
         </select>
       </div>
+
+      {/* Explicit Summary Bar */}
+      {selectedClass && selectedSection && students.length > 0 && (
+        <div className="bg-slate-900 text-white px-6 py-3.5 rounded-2xl flex flex-wrap items-center justify-between gap-4 shadow-sm">
+          <div className="flex flex-wrap items-center gap-2.5 text-sm font-bold">
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span>
+              {attendanceStats.marked}/{attendanceStats.total} marked
+            </span>
+            <span className="text-slate-400 font-normal">—</span>
+            <span className="text-emerald-400">{attendanceStats.present} Present</span>
+            <span className="text-slate-500">•</span>
+            <span className="text-red-400">{attendanceStats.absent} Absent</span>
+            <span className="text-slate-500">•</span>
+            <span className="text-amber-400">{attendanceStats.late} Late</span>
+            {attendanceStats.leave > 0 && (
+              <>
+                <span className="text-slate-500">•</span>
+                <span className="text-blue-400">{attendanceStats.leave} Leave</span>
+              </>
+            )}
+            {attendanceStats.unmarked > 0 && (
+              <>
+                <span className="text-slate-500">•</span>
+                <span className="text-slate-300 font-semibold">{attendanceStats.unmarked} Unmarked</span>
+              </>
+            )}
+          </div>
+
+          <div className="text-xs text-slate-300 font-semibold bg-slate-800 px-3 py-1 rounded-lg border border-slate-700">
+            {formatClassLabel(selectedClass)} - Section {cleanSectionName(selectedSection)} • {selectedDate}
+          </div>
+        </div>
+      )}
 
       {/* STUDENTS LIST - Live DB Data */}
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">

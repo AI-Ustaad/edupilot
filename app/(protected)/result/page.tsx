@@ -4,6 +4,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useQuery } from "@tanstack/react-query";
 import { GraduationCap, Search, Loader2, AlertCircle, FileText, Award, Users, Printer, X, Download } from "lucide-react";
 import { useClasses } from "@/hooks/useClasses";
+import { useStudents } from "@/hooks/useStudents";
 import { useSettings } from "@/hooks/useSettings";
 import { useAcademicYears } from "@/hooks/useAdmin";
 import { formatClassLabel, cleanSectionName } from "@/lib/utils/formatClassLabel";
@@ -60,15 +61,30 @@ export default function ResultsPage() {
     [classesData, selectedClass]
   );
 
-  const { data: rawResults = [], isLoading, error } = useQuery({
+  const { data: studentsData = [], isLoading: loadingStudents } = useStudents();
+  const enrolledStudents = useMemo(() => {
+    if (!selectedClass || !selectedSection) return [];
+    const targetCls = selectedClass.replace(/^Class\s*/i, "").trim().toLowerCase();
+    const targetSec = selectedSection.replace(/^Section\s*/i, "").trim().toLowerCase();
+    return (studentsData as any[])
+      .filter((s: any) => {
+        const sCls = String(s.classGrade || s.className || "").replace(/^Class\s*/i, "").trim().toLowerCase();
+        const sSec = String(s.section || s.sectionName || "").replace(/^Section\s*/i, "").trim().toLowerCase();
+        return sCls === targetCls && sSec === targetSec && !s.deleted && (s.status || "active").toLowerCase() === "active";
+      })
+      .sort((a: any, b: any) => (Number(String(a.rollNumber || "").replace(/\D/g, "")) || 0) - (Number(String(b.rollNumber || "").replace(/\D/g, "")) || 0));
+  }, [studentsData, selectedClass, selectedSection]);
+
+  const { data: rawResults = [], isLoading, isFetching, error } = useQuery({
     queryKey: ["results", user?.tenantId, selectedClass, selectedSection, selectedTerm],
     queryFn: () => fetchResults({ classGrade: selectedClass, section: selectedSection, term: selectedTerm }),
     enabled: !!user?.tenantId && !!selectedClass && !!selectedSection && !!selectedTerm,
   });
 
-  // Normalize results with canonical grading scale
+  // Normalize results with canonical grading scale & full enrolled student roster
   const results = useMemo(() => {
-    return rawResults.map((row: any) => {
+    const marksByStudent = new Map<string, any>();
+    (rawResults as any[]).forEach((row: any) => {
       const marks = (row.marks || []).map((m: any) => {
         const pct = m.percentage ?? (Number(m.totalMarks) > 0 ? (Number(m.marksObtained) / Number(m.totalMarks)) * 100 : 0);
         return {
@@ -78,14 +94,54 @@ export default function ResultsPage() {
         };
       });
       const pct = Number(row.percentage) || (Number(row.totalMax) > 0 ? (Number(row.totalObtained) / Number(row.totalMax)) * 100 : 0);
-      return {
+      const normalizedRow = {
         ...row,
         marks,
-        percentage: pct.toFixed(2),
-        grade: calculateGrade(pct),
+        percentage: marks.length > 0 ? pct.toFixed(2) : "—",
+        grade: marks.length > 0 ? calculateGrade(pct) : "—",
+        hasMarks: marks.length > 0,
       };
+      if (row.studentId) marksByStudent.set(String(row.studentId), normalizedRow);
+      if (row.rollNumber !== undefined && row.rollNumber !== null) marksByStudent.set(`roll_${String(row.rollNumber)}`, normalizedRow);
     });
-  }, [rawResults]);
+
+    if (enrolledStudents.length > 0) {
+      return enrolledStudents.map((s: any) => {
+        const matched = marksByStudent.get(String(s.id)) || marksByStudent.get(`roll_${String(s.rollNumber)}`);
+        if (matched) {
+          return {
+            ...matched,
+            studentName: matched.studentName || s.fullName || s.name,
+            rollNumber: matched.rollNumber !== undefined ? matched.rollNumber : (s.rollNumber || "—"),
+          };
+        }
+        return {
+          studentId: s.id,
+          studentName: s.fullName || s.name || "Student",
+          rollNumber: s.rollNumber || "—",
+          marks: [],
+          totalObtained: 0,
+          totalMax: 0,
+          percentage: "—",
+          grade: "—",
+          hasMarks: false,
+        };
+      });
+    }
+
+    return Array.from(marksByStudent.values());
+  }, [rawResults, enrolledStudents]);
+
+  const evaluatedCount = useMemo(() => {
+    return results.filter((r: any) => r.hasMarks && r.marks && r.marks.length > 0).length;
+  }, [results]);
+
+  const classAverage = useMemo(() => {
+    const evaluated = results.filter((r: any) => r.hasMarks && !isNaN(Number(r.percentage)));
+    if (evaluated.length === 0) return null;
+    const sum = evaluated.reduce((acc: number, r: any) => acc + Number(r.percentage), 0);
+    return (sum / evaluated.length).toFixed(1);
+  }, [results]);
 
   const handleDownloadDirectPDF = (studentRow: any) => {
     downloadStudentReportPDF(studentRow, {
@@ -163,6 +219,32 @@ export default function ResultsPage() {
         </div>
       </div>
 
+      {/* Summary Header */}
+      {selectedClass && selectedSection && results.length > 0 && !isLoading && !isFetching && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-xs">
+            <p className="text-xs font-bold text-gray-500 uppercase">Enrolled Students</p>
+            <p className="text-2xl font-black text-gray-900 mt-1">{results.length}</p>
+            <p className="text-[11px] text-gray-400 mt-0.5">{formatClassLabel(selectedClass)} - Section {cleanSectionName(selectedSection)}</p>
+          </div>
+          <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-xs">
+            <p className="text-xs font-bold text-gray-500 uppercase">Evaluated Students</p>
+            <p className="text-2xl font-black text-indigo-600 mt-1">{evaluatedCount}</p>
+            <p className="text-[11px] text-gray-400 mt-0.5">{results.length - evaluatedCount} pending</p>
+          </div>
+          <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-xs">
+            <p className="text-xs font-bold text-gray-500 uppercase">Class Average</p>
+            <p className="text-2xl font-black text-emerald-600 mt-1">{classAverage ? `${classAverage}%` : "—"}</p>
+            <p className="text-[11px] text-gray-400 mt-0.5">{evaluatedCount > 0 ? `${evaluatedCount} graded` : "No graded students"}</p>
+          </div>
+          <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-xs">
+            <p className="text-xs font-bold text-gray-500 uppercase">Active Session</p>
+            <p className="text-2xl font-black text-purple-600 mt-1">{activeAcademicYear}</p>
+            <p className="text-[11px] text-gray-400 mt-0.5">{selectedTerm}</p>
+          </div>
+        </div>
+      )}
+
       {/* Result Ledger Table */}
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
         <div className="px-6 py-4 bg-gray-50 border-b border-gray-200 font-bold text-gray-700 flex flex-wrap items-center justify-between gap-3">
@@ -178,7 +260,7 @@ export default function ResultsPage() {
             )}
           </div>
 
-          {results.length > 0 && (
+          {results.length > 0 && evaluatedCount > 0 && (
             <button
               onClick={handleDownloadAll}
               className="inline-flex items-center gap-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 px-3.5 py-1.5 rounded-lg text-xs font-bold transition shadow-sm"
@@ -189,7 +271,7 @@ export default function ResultsPage() {
           )}
         </div>
 
-        {isLoading ? (
+        {isLoading || isFetching || loadingStudents ? (
           <div className="p-12 flex flex-col items-center justify-center text-gray-400">
             <Loader2 className="animate-spin text-indigo-500 mb-3" size={32}/>
             <p className="font-medium">Calculating results...</p>
@@ -231,29 +313,33 @@ export default function ResultsPage() {
                     <td className="px-6 py-4 font-mono font-bold text-gray-700">{row.rollNumber}</td>
                     <td className="px-6 py-4 font-bold text-gray-900">{row.studentName}</td>
                     <td className="px-6 py-4">
-                      <div className="flex flex-wrap gap-1.5 max-w-md">
-                        {row.marks?.map((m: any, idx: number) => (
-                          <span 
-                            key={idx} 
-                            className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-gray-100 text-gray-800 border border-gray-200"
-                          >
-                            {m.subject}: <span className="font-bold ml-1 text-gray-900">{m.marksObtained}/{m.totalMarks}</span>
-                            <span className={`ml-1 px-1 rounded text-[10px] font-bold border ${getGradeBadgeClasses(m.grade)}`}>
-                              {m.grade}
+                      {row.marks && row.marks.length > 0 ? (
+                        <div className="flex flex-wrap gap-1.5 max-w-md">
+                          {row.marks.map((m: any, idx: number) => (
+                            <span 
+                              key={idx} 
+                              className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-gray-100 text-gray-800 border border-gray-200"
+                            >
+                              {m.subject}: <span className="font-bold ml-1 text-gray-900">{m.marksObtained}/{m.totalMarks}</span>
+                              <span className={`ml-1 px-1 rounded text-[10px] font-bold border ${getGradeBadgeClasses(m.grade)}`}>
+                                {m.grade}
+                              </span>
                             </span>
-                          </span>
-                        ))}
-                      </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <span className="text-xs text-gray-400 italic font-medium">No marks recorded (—)</span>
+                      )}
                     </td>
                     <td className="px-6 py-4 text-center font-medium text-gray-700">
-                      {row.totalObtained} / {row.totalMax}
+                      {row.hasMarks ? `${row.totalObtained} / ${row.totalMax}` : "—"}
                     </td>
                     <td className="px-6 py-4 text-center font-black text-gray-900">
-                      {row.percentage}%
+                      {row.hasMarks ? `${row.percentage}%` : "—"}
                     </td>
                     <td className="px-6 py-4 text-center">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold border ${getGradeBadgeClasses(row.grade)}`}>
-                        {row.grade}
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold border ${row.hasMarks ? getGradeBadgeClasses(row.grade) : "bg-gray-100 text-gray-400 border-gray-200"}`}>
+                        {row.hasMarks ? row.grade : "—"}
                       </span>
                     </td>
                     <td className="px-6 py-4 text-right">

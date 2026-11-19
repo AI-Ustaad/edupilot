@@ -92,6 +92,37 @@ export const PUT = withErrorHandler(
 
         await sectionRepo.update(id, patchData, tenantId);
 
+        // Two-way sync: Update staff profile academic.classesAssigned
+        if (classTeacherId && classTeacherId !== "__unassign__") {
+          try {
+            const secDoc = await sectionRepo.findById(id, tenantId);
+            if (secDoc) {
+              const db = (sectionRepo as any).db;
+              if (db?.collection) {
+                const staffRef = db.collection("staff").doc(classTeacherId);
+                const staffSnap = await staffRef.get();
+                if (staffSnap.exists) {
+                  const sData = staffSnap.data();
+                  const existingList = Array.isArray(sData?.academic?.classesAssigned) 
+                    ? sData.academic.classesAssigned 
+                    : (Array.isArray(sData?.classesAssigned) ? sData.classesAssigned : []);
+                  const label = `${formatClassLabel(secDoc.classGrade)} - Section ${secDoc.sectionName || "A"}`;
+                  if (!existingList.includes(label)) {
+                    const nextList = [...existingList, label];
+                    await staffRef.update({
+                      "academic.classesAssigned": nextList,
+                      classesAssigned: nextList,
+                      updatedAt: new Date().toISOString(),
+                    });
+                  }
+                }
+              }
+            }
+          } catch {
+            // Non-fatal
+          }
+        }
+
         const audit = new AuditService();
         await audit.log({
           action: "class.update",

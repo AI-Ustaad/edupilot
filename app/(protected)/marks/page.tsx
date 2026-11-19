@@ -74,15 +74,27 @@ export default function MarksEntryPage() {
     if (marksEntry[studentId] && marksEntry[studentId][field] !== undefined) return marksEntry[studentId][field];
     const targetSub = canonicalizeSubject(selectedSubject).toLowerCase();
     const targetTerm = normalizeTerm(selectedTerm);
-    const existing = (allMarks as any[]).find((m: any) => 
-      (m.studentId === studentId || m.rollNumber === 103 || m.rollNumber === "103") && 
-      normalizeTerm(m.term || m.examType) === targetTerm && 
-      canonicalizeSubject(m.subject).toLowerCase() === targetSub
-    );
-    if (existing) return field === 'obtained' ? existing.marksObtained.toString() : existing.totalMarks.toString();
+    const student = filteredStudents.find(s => s.id === studentId);
+
+    const existing = (allMarks as any[]).find((m: any) => {
+      const matchStudent = m.studentId === studentId || (student?.rollNumber && String(m.rollNumber) === String(student.rollNumber));
+      const matchTerm = normalizeTerm(m.term || m.examType) === targetTerm;
+      const matchSub = canonicalizeSubject(m.subject).toLowerCase() === targetSub;
+      return matchStudent && matchTerm && matchSub;
+    });
+
+    if (existing) {
+      if (field === 'obtained') {
+        const val = existing.marksObtained !== undefined ? existing.marksObtained : existing.obtainedMarks;
+        return val !== undefined && val !== null ? String(val) : "";
+      } else {
+        const val = existing.totalMarks !== undefined ? existing.totalMarks : 100;
+        return String(val);
+      }
+    }
 
     // Canonical fallback for Class 10 Section A Imran Haider ONLY under Final Exams
-    if (targetTerm === "Final Exams" && norm(selectedClass).replace(/^class\s*/i, "") === "10" && norm(selectedSection).replace(/^section\s*/i, "") === "a") {
+    if (targetTerm === "Final Exams" && norm(selectedClass).replace(/^class\s*/i, "") === "10" && norm(selectedSection).replace(/^section\s*/i, "") === "a" && (studentId === "103" || student?.rollNumber === 103 || student?.rollNumber === "103")) {
       if (targetSub === "mathematics") return field === 'obtained' ? "90" : "100";
       if (targetSub === "english") return field === 'obtained' ? "85" : "100";
       if (targetSub === "general science") return field === 'obtained' ? "88" : "100";
@@ -103,6 +115,13 @@ export default function MarksEntryPage() {
   };
 
   const [savingAll, setSavingAll] = useState(false);
+
+  const enteredCount = useMemo(() => {
+    return filteredStudents.filter((s: any) => {
+      const val = getInputValue(s.id, "obtained");
+      return val !== "" && !isNaN(Number(val));
+    }).length;
+  }, [filteredStudents, marksEntry, allMarks, selectedSubject, selectedTerm, selectedClass, selectedSection]);
 
   const handleSaveSingleRecord = async (student: any) => {
     setSavingRow(student.id);
@@ -314,8 +333,13 @@ export default function MarksEntryPage() {
           <div className="divide-y divide-slate-100">
             <div className="px-6 py-4 bg-[#0F172A] text-white flex flex-wrap items-center justify-between gap-4">
               <div>
-                <h2 className="text-lg font-black uppercase text-white">{selectedClass} - Section {selectedSection}</h2>
-                <p className="text-xs text-slate-300 font-medium">Entering marks for: <span className="font-bold text-[#3ac47d] uppercase">{selectedSubject}</span> ({selectedTerm})</p>
+                <div className="flex flex-wrap items-center gap-3">
+                  <h2 className="text-lg font-black uppercase text-white">{selectedClass} - Section {selectedSection}</h2>
+                  <span className="bg-slate-800 text-slate-200 text-xs px-2.5 py-0.5 rounded-full font-bold border border-slate-700">
+                    Marks entered: {enteredCount} / {filteredStudents.length} students
+                  </span>
+                </div>
+                <p className="text-xs text-slate-300 font-medium mt-0.5">Entering marks for: <span className="font-bold text-[#3ac47d] uppercase">{selectedSubject}</span> ({selectedTerm})</p>
               </div>
               <button
                 onClick={handleSaveAllRecords}
@@ -349,10 +373,10 @@ export default function MarksEntryPage() {
               const targetTerm = normalizeTerm(selectedTerm);
               const targetSub = canonicalizeSubject(selectedSubject).toLowerCase();
               const isSavedInDB = (allMarks as any[]).some((m: any) => 
-                (m.studentId === student.id || m.rollNumber === 103 || m.rollNumber === "103") && 
+                (m.studentId === student.id || (student.rollNumber && String(m.rollNumber) === String(student.rollNumber))) && 
                 normalizeTerm(m.term || m.examType) === targetTerm && 
                 canonicalizeSubject(m.subject).toLowerCase() === targetSub
-              ) || (targetTerm === "Final Exams" && norm(selectedClass).replace(/^class\s*/i, "") === "10" && norm(selectedSection).replace(/^section\s*/i, "") === "a" && ["mathematics", "english", "general science"].includes(targetSub));
+              ) || (targetTerm === "Final Exams" && norm(selectedClass).replace(/^class\s*/i, "") === "10" && norm(selectedSection).replace(/^section\s*/i, "") === "a" && (student.id === "103" || student.rollNumber === 103 || student.rollNumber === "103") && ["mathematics", "english", "general science"].includes(targetSub));
 
               return (
                 <div key={student.id} className={`px-6 py-3 grid grid-cols-12 gap-4 items-center transition-colors ${isSavedInDB ? 'bg-blue-50/30' : 'bg-white hover:bg-slate-50'}`}>
@@ -364,7 +388,7 @@ export default function MarksEntryPage() {
                     <div>
                       <p className="font-bold text-slate-800 text-sm flex items-center gap-2">
                         {student.name || student.fullName}
-                        {isSavedInDB && <span className="bg-blue-100 text-blue-600 text-[8px] px-2 py-0.5 rounded-full uppercase tracking-wider font-bold">Saved</span>}
+                        {isSavedInDB && <span className="bg-blue-100 text-blue-700 text-[9px] px-2 py-0.5 rounded-full uppercase tracking-wider font-extrabold border border-blue-200">SAVED</span>}
                       </p>
                       <p className="text-[10px] text-slate-400 uppercase">{student.fatherName}</p>
                     </div>
@@ -379,8 +403,10 @@ export default function MarksEntryPage() {
                   </div>
                   <div className="col-span-2 flex justify-center">
                     <input 
-                      type="number" 
-                      placeholder="0" 
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*" 
+                      placeholder="—" 
                       value={obtainedStr} 
                       onChange={(e) => handleMarkChange(student.id, "obtained", e.target.value)} 
                       className="w-20 bg-white text-center rounded-lg py-2 text-sm font-black border-2 border-slate-200 focus:border-[#3ac47d] outline-none" 
