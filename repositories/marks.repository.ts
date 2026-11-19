@@ -42,12 +42,24 @@ export class MarksRepository extends BaseRepository<Mark> implements IMarksRepos
       if (filters?.studentId) {
         query = query.where("studentId", "==", filters.studentId);
       }
-      if (filters?.term) {
-        query = query.where("term", "==", filters.term);
-      }
 
       const snapshot = await query.get();
       let docs = snapshot.docs.map(doc => serializeDoc<Mark>(doc));
+
+      if (filters?.term) {
+        const targetTerm = filters.term.trim().toLowerCase();
+        const isFinalTarget = targetTerm === "final exams" || targetTerm === "final";
+        docs = docs.filter(d => {
+          const docTerm = String(d.term || (d as any).examType || "").trim().toLowerCase();
+          if (!docTerm) {
+            return isFinalTarget;
+          }
+          if (isFinalTarget) {
+            return docTerm === "final exams" || docTerm === "final";
+          }
+          return docTerm === targetTerm;
+        });
+      }
 
       if (filters?.classGrade) {
         const targetClass = filters.classGrade.trim().toLowerCase().replace(/^class\s*/i, "");
@@ -90,7 +102,17 @@ export class MarksRepository extends BaseRepository<Mark> implements IMarksRepos
         }
         if (filters?.term) {
           const targetTerm = filters.term.trim().toLowerCase();
-          docs = docs.filter(d => String(d.term || "").trim().toLowerCase() === targetTerm);
+          const isFinalTarget = targetTerm === "final exams" || targetTerm === "final";
+          docs = docs.filter(d => {
+            const docTerm = String(d.term || (d as any).examType || "").trim().toLowerCase();
+            if (!docTerm) {
+              return isFinalTarget;
+            }
+            if (isFinalTarget) {
+              return docTerm === "final exams" || docTerm === "final";
+            }
+            return docTerm === targetTerm;
+          });
         }
         if (filters?.classGrade) {
           const targetClass = filters.classGrade.trim().toLowerCase().replace(/^class\s*/i, "");

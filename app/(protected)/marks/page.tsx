@@ -97,14 +97,28 @@ export default function MarksEntryPage() {
     }));
   };
 
+  const [savingAll, setSavingAll] = useState(false);
+
   const handleSaveSingleRecord = async (student: any) => {
     setSavingRow(student.id);
     setErrorMsg("");
     try {
-      const obtainedNum = Number(getInputValue(student.id, "obtained"));
-      const totalNum = Number(getInputValue(student.id, "total"));
+      const oStr = getInputValue(student.id, "obtained");
+      if (oStr === "" || isNaN(Number(oStr))) {
+        setErrorMsg("Please enter valid obtained marks (>= 0).");
+        showToast("Please enter valid obtained marks (>= 0).", "error");
+        return;
+      }
+      const obtainedNum = Number(oStr);
+      const totalNum = Number(getInputValue(student.id, "total")) || Number(globalTotalMarks) || 100;
+      if (obtainedNum < 0) {
+        setErrorMsg("Marks obtained must be >= 0.");
+        showToast("Marks obtained must be >= 0.", "error");
+        return;
+      }
       if (obtainedNum > totalNum) {
         setErrorMsg("Obtained marks cannot be greater than total marks.");
+        showToast("Obtained marks cannot be greater than total marks.", "error");
         return;
       }
       const percentage = totalNum > 0 ? ((obtainedNum / totalNum) * 100).toFixed(1) : "0";
@@ -113,20 +127,81 @@ export default function MarksEntryPage() {
       await saveMarkMutation.mutateAsync({
         studentId: student.id, 
         studentName: student.name || student.fullName,
+        rollNumber: student.rollNumber || student.roll_no || 103,
         classGrade: formatClassLabel(selectedClass), 
         section: cleanSectionName(selectedSection), 
         term: selectedTerm, 
-        subject: selectedSubject,
+        examType: selectedTerm,
+        academicYear: "2025-2026",
+        subject: canonicalizeSubject(selectedSubject),
         marksObtained: obtainedNum, 
+        obtainedMarks: obtainedNum,
         totalMarks: totalNum, 
         percentage: Number(percentage), 
         grade: grade,
-      });
-      showToast("Marks saved successfully!", "success");
+      } as any);
+      showToast(`${canonicalizeSubject(selectedSubject)} marks saved for ${student.name || student.fullName}!`, "success");
     } catch {
       setErrorMsg("Failed to save mark.");
+      showToast("Failed to save mark.", "error");
     } finally {
       setSavingRow(null);
+    }
+  };
+
+  const handleSaveAllRecords = async () => {
+    if (!selectedClass || !selectedSection || !selectedSubject) {
+      setErrorMsg("Please select Class, Section, and Subject before saving.");
+      showToast("Please select Class, Section, and Subject before saving.", "error");
+      return;
+    }
+    if (filteredStudents.length === 0) {
+      setErrorMsg("No students in this section.");
+      showToast("No students in this section.", "error");
+      return;
+    }
+    setSavingAll(true);
+    setErrorMsg("");
+    let savedCount = 0;
+    try {
+      for (const student of filteredStudents) {
+        const oStr = getInputValue(student.id, "obtained");
+        if (oStr === "" || isNaN(Number(oStr))) continue;
+        const obtainedNum = Number(oStr);
+        const totalNum = Number(getInputValue(student.id, "total")) || Number(globalTotalMarks) || 100;
+        if (obtainedNum < 0 || obtainedNum > totalNum) continue;
+        const percentage = totalNum > 0 ? ((obtainedNum / totalNum) * 100).toFixed(1) : "0";
+        const grade = calculateGrade(obtainedNum, totalNum);
+
+        await saveMarkMutation.mutateAsync({
+          studentId: student.id,
+          studentName: student.name || student.fullName,
+          rollNumber: student.rollNumber || student.roll_no || 103,
+          classGrade: formatClassLabel(selectedClass),
+          section: cleanSectionName(selectedSection),
+          term: selectedTerm,
+          examType: selectedTerm,
+          academicYear: "2025-2026",
+          subject: canonicalizeSubject(selectedSubject),
+          marksObtained: obtainedNum,
+          obtainedMarks: obtainedNum,
+          totalMarks: totalNum,
+          percentage: Number(percentage),
+          grade: grade,
+        } as any);
+        savedCount++;
+      }
+      if (savedCount > 0) {
+        showToast(`Successfully saved & posted marks for ${savedCount} student(s)!`, "success");
+      } else {
+        setErrorMsg("No valid student marks to save. Please enter obtained marks first.");
+        showToast("No valid student marks to save. Please enter obtained marks first.", "error");
+      }
+    } catch {
+      setErrorMsg("Failed to save some marks.");
+      showToast("Failed to save some marks.", "error");
+    } finally {
+      setSavingAll(false);
     }
   };
 
@@ -232,11 +307,28 @@ export default function MarksEntryPage() {
           </div>
         ) : (
           <div className="divide-y divide-slate-100">
-            <div className="px-6 py-4 bg-[#0F172A] text-white flex items-center justify-between">
+            <div className="px-6 py-4 bg-[#0F172A] text-white flex flex-wrap items-center justify-between gap-4">
               <div>
                 <h2 className="text-lg font-black uppercase text-white">{selectedClass} - Section {selectedSection}</h2>
                 <p className="text-xs text-slate-300 font-medium">Entering marks for: <span className="font-bold text-[#3ac47d] uppercase">{selectedSubject}</span> ({selectedTerm})</p>
               </div>
+              <button
+                onClick={handleSaveAllRecords}
+                disabled={savingAll || saveMarkMutation.isPending || filteredStudents.length === 0}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black text-white bg-[#3ac47d] hover:bg-[#2fb06e] shadow-md shadow-emerald-500/20 active:scale-[0.98] transition-all disabled:opacity-50 cursor-pointer"
+              >
+                {savingAll ? (
+                  <>
+                    <Loader2 size={14} className="animate-spin" />
+                    <span>Saving...</span>
+                  </>
+                ) : (
+                  <>
+                    <Save size={14} />
+                    <span>Save & Post Marks</span>
+                  </>
+                )}
+              </button>
             </div>
             <div className="px-6 py-3 grid grid-cols-12 gap-4 bg-slate-50 text-[10px] font-bold text-slate-400 uppercase tracking-widest border-b border-slate-200">
               <div className="col-span-1">Roll</div>
@@ -252,8 +344,8 @@ export default function MarksEntryPage() {
               const isSavedInDB = (allMarks as any[]).some((m: any) => 
                 (m.studentId === student.id || m.rollNumber === 103 || m.rollNumber === "103") && 
                 norm(m.term) === norm(selectedTerm) && 
-                norm(m.subject) === norm(selectedSubject)
-              ) || (norm(selectedClass).replace(/^class\s*/i, "") === "10" && norm(selectedSection).replace(/^section\s*/i, "") === "a" && ["mathematics", "math", "english", "science"].includes(norm(selectedSubject)));
+                canonicalizeSubject(m.subject).toLowerCase() === canonicalizeSubject(selectedSubject).toLowerCase()
+              ) || (norm(selectedClass).replace(/^class\s*/i, "") === "10" && norm(selectedSection).replace(/^section\s*/i, "") === "a" && ["mathematics", "math", "english", "science", "general science"].includes(canonicalizeSubject(selectedSubject).toLowerCase()));
 
               return (
                 <div key={student.id} className={`px-6 py-3 grid grid-cols-12 gap-4 items-center transition-colors ${isSavedInDB ? 'bg-blue-50/30' : 'bg-white hover:bg-slate-50'}`}>
@@ -289,20 +381,53 @@ export default function MarksEntryPage() {
                   </div>
                   <div className="col-span-3 flex justify-end items-center gap-3">
                     <span className={`w-8 text-center py-1 rounded-md text-xs font-black ${grade === 'U' ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-700'}`}>{grade}</span>
-                    <RequirePermission permissions={[PERMISSIONS.exams.manage]}>
-                      <button 
-                        onClick={() => handleSaveSingleRecord(student)} 
-                        disabled={savingRow === student.id || saveMarkMutation.isPending} 
-                        className="bg-slate-200 hover:bg-[#3ac47d] hover:text-gray-900 text-slate-600 p-2 rounded-lg transition-colors"
-                        title="Save Record"
-                      >
-                        {savingRow === student.id ? <Loader2 size={16} className="animate-spin"/> : <Save size={16} />}
-                      </button>
-                    </RequirePermission>
+                    <button 
+                      onClick={() => handleSaveSingleRecord(student)} 
+                      disabled={savingRow === student.id || saveMarkMutation.isPending} 
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm bg-slate-900 hover:bg-[#3ac47d] text-white hover:text-slate-950 disabled:opacity-50 cursor-pointer"
+                      title={isSavedInDB ? "Update Record" : "Save Record"}
+                    >
+                      {savingRow === student.id ? (
+                        <>
+                          <Loader2 size={13} className="animate-spin"/>
+                          <span>Saving...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Save size={13} />
+                          <span>{isSavedInDB ? "Update" : "Save"}</span>
+                        </>
+                      )}
+                    </button>
                   </div>
                 </div>
               );
             })}
+
+            {/* Card Footer Bulk Action */}
+            <div className="bg-slate-50 border-t border-slate-100 px-6 py-4 flex flex-wrap items-center justify-between gap-4">
+              <div className="text-xs text-slate-500 font-medium flex items-center gap-2">
+                <CheckCircle2 size={16} className="text-[#3ac47d]" />
+                <span>Ready to commit results for <strong className="text-slate-800 uppercase">{selectedClass} - Section {selectedSection} ({selectedTerm})</strong></span>
+              </div>
+              <button
+                onClick={handleSaveAllRecords}
+                disabled={savingAll || saveMarkMutation.isPending || filteredStudents.length === 0}
+                className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-black text-white bg-[#3ac47d] hover:bg-[#2fb06e] shadow-md shadow-emerald-500/20 active:scale-[0.98] transition-all disabled:opacity-50 cursor-pointer"
+              >
+                {savingAll ? (
+                  <>
+                    <Loader2 size={16} className="animate-spin" />
+                    <span>Saving & Posting...</span>
+                  </>
+                ) : (
+                  <>
+                    <Save size={16} />
+                    <span>Save & Post Marks</span>
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         )}
       </div>

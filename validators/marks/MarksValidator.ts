@@ -4,15 +4,22 @@ import { z } from "zod";
 export const SaveMarkSchema = z.object({
   studentId: z.string().min(1, "Student ID is required"),
   studentName: z.string().optional(),
+  rollNumber: z.union([z.string(), z.number()]).optional(),
   classGrade: z.string().min(1, "Class is required"),
   section: z.string().min(1, "Section is required"),
   term: z.string().min(1, "Term is required"),
+  examType: z.string().optional(),
+  academicYear: z.string().optional(),
   subject: z.string().min(1, "Subject is required"),
-  marksObtained: z.number().min(0, "Marks obtained must be >= 0"),
+  marksObtained: z.number().min(0, "Marks obtained must be >= 0").optional(),
+  obtainedMarks: z.number().min(0, "Marks obtained must be >= 0").optional(),
   totalMarks: z.number().min(1, "Total marks must be >= 1"),
   percentage: z.number().min(0).max(100).optional(),
   grade: z.string().optional(),
   skills: z.record(z.number()).optional(),
+}).refine(data => data.marksObtained !== undefined || data.obtainedMarks !== undefined, {
+  message: "Either marksObtained or obtainedMarks must be provided",
+  path: ["marksObtained"],
 });
 
 export const BulkPublishSchema = z.object({

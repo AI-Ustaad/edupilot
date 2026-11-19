@@ -31,9 +31,11 @@ export const useSaveMarks = () => {
     mutationFn: async (data: SaveMarkInput) => {
       return apiClient.post("/marks", data);
     },
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["marks", tenantId, variables.classGrade, variables.section, variables.term, variables.subject] });
-      queryClient.invalidateQueries({ queryKey: ["dashboard", tenantId] });
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["marks"] });
+      queryClient.invalidateQueries({ queryKey: ["results"] });
+      queryClient.invalidateQueries({ queryKey: ["student"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
     },
   });
 };

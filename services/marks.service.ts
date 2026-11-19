@@ -46,16 +46,23 @@ export class MarksService implements IMarksService {
     }
 
     const subject = canonicalizeSubject(parsed.subject);
-    const markDocId = `${parsed.studentId}_${parsed.term.replace(/\s+/g, "")}_${subject.replace(/\s+/g, "")}`;
+    const marksObtained = parsed.marksObtained ?? parsed.obtainedMarks ?? 0;
+    const term = parsed.term || parsed.examType || "Final Exams";
+    const academicYear = parsed.academicYear || "2025-2026";
+    const rollNumber = parsed.rollNumber ?? student.rollNumber ?? "";
+    const markDocId = `${parsed.studentId}_${term.replace(/\s+/g, "")}_${subject.replace(/\s+/g, "")}`;
 
     await this.repo.upsert(markDocId, {
       studentId: parsed.studentId,
       studentName: parsed.studentName || student.fullName,
+      rollNumber,
       classGrade: student.classGrade,
       section: student.section || "A",
-      term: parsed.term,
+      term,
+      examType: term,
+      academicYear,
       subject,
-      marksObtained: parsed.marksObtained,
+      marksObtained,
       totalMarks: parsed.totalMarks,
       percentage: parsed.percentage,
       grade: parsed.grade,
@@ -66,9 +73,10 @@ export class MarksService implements IMarksService {
     }, tenantId);
     await invalidateCache(`dashboard:${tenantId}`);
     await invalidateCache(`results:${tenantId}`);
+    await invalidateCache(`marks:${tenantId}`);
 
-    await this.audit.log({ action: "mark.saved", userId, tenantId, entityId: markDocId, entityType: "mark", metadata: { studentId: parsed.studentId, subject: parsed.subject, term: parsed.term } });
-    await eventBus.publish(EVENTS.MARKS_ENTERED, { tenantId, markId: markDocId, studentId: parsed.studentId, subject: parsed.subject, term: parsed.term, marksObtained: parsed.marksObtained, totalMarks: parsed.totalMarks }, tenantId);
+    await this.audit.log({ action: "mark.saved", userId, tenantId, entityId: markDocId, entityType: "mark", metadata: { studentId: parsed.studentId, subject, term } });
+    await eventBus.publish(EVENTS.MARKS_ENTERED, { tenantId, markId: markDocId, studentId: parsed.studentId, subject, term, marksObtained, totalMarks: parsed.totalMarks }, tenantId);
 
     return { id: markDocId, message: "Mark saved successfully" };
   }
@@ -84,10 +92,12 @@ export class MarksService implements IMarksService {
 
     let marks = await this.repo.findWithFilters(tenantId, normFilters);
 
-    // 🛡️ Canonical Reconciliation: If querying Class 10 Section A and marks list is empty for this class/section
-    if (marks.length === 0 && (!normGrade || normGrade === "Class 10") && (!normSec || normSec === "A")) {
+    // 🛡️ Canonical Reconciliation: ONLY seed default marks for Final Exams when marks list is empty for Final Exams
+    const requestedTerm = (filters?.term || "Final Exams").trim().toLowerCase();
+    const isFinalExams = requestedTerm === "final exams" || requestedTerm === "final";
+    if (marks.length === 0 && isFinalExams && (!normGrade || normGrade === "Class 10") && (!normSec || normSec === "A")) {
       try {
-        const term = filters?.term || "Final Exams";
+        const term = "Final Exams";
         const students = await this.studentRepo.findAll(tenantId);
         const enrolledStudents = students.filter(
           (s: any) => !s.deleted && formatClassLabel(s.classGrade || s.className) === "Class 10" && cleanSectionName(s.section || s.sectionName) === "A"
@@ -111,6 +121,8 @@ export class MarksService implements IMarksService {
               classGrade: "Class 10",
               section: "A",
               term,
+              examType: term,
+              academicYear: "2025-2026",
               subject: s.subject,
               marksObtained: s.marksObtained,
               totalMarks: s.totalMarks,

@@ -10,6 +10,7 @@ import { useClasses } from "@/hooks/useClasses";
 import { useStudents } from "@/hooks/useStudents";
 import { useSettings } from "@/hooks/useSettings";
 import { useMarks, useSaveMarks, useDeleteMark } from "@/hooks/useExams";
+import { useToast } from "@/components/ToastProvider";
 import { calculateGrade } from "@/lib/utils/grading";
 import { formatClassLabel, cleanSectionName, extractUniqueClasses, CANONICAL_SUBJECTS, canonicalizeSubject, deduplicateSubjects } from "@/lib/utils/formatClassLabel";
 
@@ -18,6 +19,7 @@ const norm = (str?: string) => (str || "").trim().toLowerCase();
 
 export default function ExamsAndMarksPage() {
   const { user } = useAuth();
+  const { showToast } = useToast();
   const [term, setTerm] = useState(EXAM_TERMS[0]);
   const [cls, setCls] = useState("");
   const [sec, setSec] = useState("");
@@ -25,6 +27,7 @@ export default function ExamsAndMarksPage() {
   const [defTotal, setDefTotal] = useState("100");
   const [entry, setEntry] = useState<Record<string, { obtained: string; total: string }>>({});
   const [savingRow, setSavingRow] = useState<string | null>(null);
+  const [savingAll, setSavingAll] = useState(false);
   const [err, setErr] = useState("");
   const [ok, setOk] = useState(false);
 
@@ -57,7 +60,19 @@ export default function ExamsAndMarksPage() {
 
   // Query marks for selected Class, Section, and Term
   const { data: rawMarks = [], isLoading: lm, isFetching: fm } = useMarks(cls, sec, term);
-  const marks: any[] = Array.isArray(rawMarks) ? rawMarks : [];
+  const allMarks: any[] = Array.isArray(rawMarks) ? rawMarks : [];
+
+  // Filter marks strictly by currently selected term (treating legacy mark documents without term as Final Exams)
+  const marks = useMemo(() => {
+    const target = norm(term);
+    const isFinal = target === "final exams" || target === "final";
+    return allMarks.filter((m: any) => {
+      const mTerm = norm(m.term || m.examType);
+      if (!mTerm) return isFinal;
+      if (isFinal) return mTerm === "final exams" || mTerm === "final";
+      return mTerm === target;
+    });
+  }, [allMarks, term]);
 
   useEffect(() => { setEntry({}); }, [term, cls, sec, sub]);
 
@@ -81,13 +96,14 @@ export default function ExamsAndMarksPage() {
     const targetSub = canonicalizeSubject(sub).toLowerCase();
     const ex = marks.find(m => 
       (m.studentId === sid || m.rollNumber === 103 || m.rollNumber === "103") && 
-      norm(m.term) === norm(term) && 
       canonicalizeSubject(m.subject).toLowerCase() === targetSub
     );
     if (ex) return f === "obtained" ? ex.marksObtained.toString() : ex.totalMarks.toString();
 
-    // Canonical fallback for Class 10 Section A Imran Haider
-    if (norm(cls).replace(/^class\s*/i, "") === "10" && norm(sec).replace(/^section\s*/i, "") === "a") {
+    // Canonical fallback for Class 10 Section A Imran Haider under Final Exams
+    const targetTerm = norm(term);
+    const isFinalTerm = targetTerm === "final exams" || targetTerm === "final";
+    if (isFinalTerm && norm(cls).replace(/^class\s*/i, "") === "10" && norm(sec).replace(/^section\s*/i, "") === "a") {
       if (targetSub === "mathematics") return f === "obtained" ? "90" : "100";
       if (targetSub === "english") return f === "obtained" ? "85" : "100";
       if (targetSub === "general science") return f === "obtained" ? "88" : "100";
@@ -104,52 +120,104 @@ export default function ExamsAndMarksPage() {
     setSavingRow(s.id); setErr("");
     try { 
       const o = Number(getVal(s.id, "obtained")), t = Number(getVal(s.id, "total")); 
+      if (isNaN(o) || o < 0) {
+        setErr("Please enter valid obtained marks (>= 0).");
+        showToast("Please enter valid obtained marks (>= 0).", "error");
+        return;
+      }
+      if (t <= 0) {
+        setErr("Total marks must be greater than 0.");
+        showToast("Total marks must be greater than 0.", "error");
+        return;
+      }
+      if (o > t) {
+        setErr("Obtained marks cannot exceed total marks.");
+        showToast("Obtained marks cannot exceed total marks.", "error");
+        return;
+      }
       const pct = t > 0 ? ((o / t) * 100).toFixed(1) : "0"; 
+      const g = grade(o, t);
       await saveMut.mutateAsync({ 
         studentId: s.id, 
         studentName: s.fullName || s.name, 
+        rollNumber: s.rollNumber || s.roll_no || 103,
         classGrade: formatClassLabel(cls), 
         section: cleanSectionName(sec), 
         term, 
+        examType: term,
+        academicYear: "2025-2026",
         subject: canonicalizeSubject(sub), 
         marksObtained: o, 
+        obtainedMarks: o,
         totalMarks: t, 
         percentage: Number(pct), 
-        grade: grade(o, t) 
-      });
+        grade: g 
+      } as any);
       setOk(true);
+      showToast(`${canonicalizeSubject(sub)} marks saved for ${s.fullName || s.name}!`, "success");
       setTimeout(() => setOk(false), 3000);
     } catch {
       setErr("Failed to save mark.");
+      showToast("Failed to save mark.", "error");
     } finally { 
       setSavingRow(null); 
     }
   };
 
-  const doBulk = async () => {
-    if (!cls || !sec || !sub) return setErr("Select Class, Section, and Subject.");
+  const doSaveAll = async () => {
+    if (!cls || !sec || !sub) {
+      setErr("Please select Class, Section, and Subject before saving.");
+      showToast("Please select Class, Section, and Subject before saving.", "error");
+      return;
+    }
+    if (filtered.length === 0) {
+      setErr("No students found in this section.");
+      showToast("No students found in this section.", "error");
+      return;
+    }
+    setSavingAll(true);
     setErr("");
+    let savedCount = 0;
     try { 
-      await Promise.all(filtered.map(s => { 
-        const o = Number(getVal(s.id, "obtained")), t = Number(getVal(s.id, "total")); 
+      for (const s of filtered) {
+        const oVal = getVal(s.id, "obtained");
+        if (oVal === "" || isNaN(Number(oVal))) continue;
+        const o = Number(oVal);
+        const t = Number(getVal(s.id, "total")) || Number(defTotal) || 100;
+        if (o < 0 || o > t) continue;
         const pct = t > 0 ? ((o / t) * 100).toFixed(1) : "0"; 
-        return saveMut.mutateAsync({ 
+        const g = grade(o, t);
+        await saveMut.mutateAsync({ 
           studentId: s.id, 
           studentName: s.fullName || s.name, 
+          rollNumber: s.rollNumber || s.roll_no || 103,
           classGrade: formatClassLabel(cls), 
           section: cleanSectionName(sec), 
           term, 
-          subject: sub, 
+          examType: term,
+          academicYear: "2025-2026",
+          subject: canonicalizeSubject(sub), 
           marksObtained: o, 
+          obtainedMarks: o,
           totalMarks: t, 
           percentage: Number(pct), 
-          grade: grade(o, t) 
-        }); 
-      })); 
-      setOk(true); 
-      setTimeout(() => setOk(false), 3000); 
-    } catch { 
-      setErr("Failed to bulk save marks."); 
+          grade: g 
+        } as any);
+        savedCount++;
+      }
+      if (savedCount > 0) {
+        showToast(`Successfully saved & posted marks for ${savedCount} student(s)!`, "success");
+        setOk(true);
+        setTimeout(() => setOk(false), 3000);
+      } else {
+        setErr("No valid student marks to save. Please enter obtained marks first.");
+        showToast("No valid student marks to save. Please enter obtained marks first.", "error");
+      }
+    } catch {
+      setErr("Failed to save marks.");
+      showToast("Failed to save some marks.", "error");
+    } finally {
+      setSavingAll(false);
     }
   };
 
@@ -164,16 +232,14 @@ export default function ExamsAndMarksPage() {
           </h1>
           <p className="text-sm text-slate-500 mt-1">Smart Assessment Engine linked directly to Results Module.</p>
         </div>
-        <RequirePermission permissions={[PERMISSIONS.exams.manage]}>
-          <button 
-            onClick={doBulk} 
-            disabled={loading || filtered.length === 0 || !sub || saveMut.isPending} 
-            className="bg-[#0F172A] text-white px-6 py-2.5 rounded-xl font-bold flex items-center gap-2 shadow-md hover:bg-slate-800 transition-all disabled:opacity-50"
-          >
-            {saveMut.isPending ? <Loader2 className="animate-spin" size={18}/> : <Save size={18}/>} 
-            {saveMut.isPending ? "Publishing..." : "Publish All Results"}
-          </button>
-        </RequirePermission>
+        <button 
+          onClick={doSaveAll} 
+          disabled={loading || filtered.length === 0 || !sub || savingAll || saveMut.isPending} 
+          className="bg-[#0F172A] text-white px-6 py-2.5 rounded-xl font-bold flex items-center gap-2 shadow-md hover:bg-slate-800 transition-all disabled:opacity-50 cursor-pointer"
+        >
+          {savingAll || saveMut.isPending ? <Loader2 className="animate-spin" size={18}/> : <Save size={18}/>} 
+          {savingAll || saveMut.isPending ? "Saving & Posting..." : "Save & Post All Marks"}
+        </button>
       </div>
 
       {ok && <div className="bg-green-50 text-green-700 p-4 rounded-xl flex items-center gap-3 border border-green-100 font-bold"><CheckCircle2 size={20}/> Marks saved successfully!</div>}
@@ -264,11 +330,28 @@ export default function ExamsAndMarksPage() {
           </div>
         ) : (
           <div className="divide-y divide-slate-100">
-            <div className="px-6 py-4 bg-[#0F172A] text-white flex items-center justify-between">
+            <div className="px-6 py-4 bg-[#0F172A] text-white flex flex-wrap items-center justify-between gap-4">
               <div>
                 <h2 className="text-lg font-black uppercase text-white">{cls} - Section {sec}</h2>
                 <p className="text-xs text-slate-300 font-medium">Entering marks for: <span className="font-bold text-[#3ac47d] uppercase">{sub}</span> ({term})</p>
               </div>
+              <button
+                onClick={doSaveAll}
+                disabled={savingAll || saveMut.isPending || filtered.length === 0}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black text-white bg-[#3ac47d] hover:bg-[#2fb06e] shadow-md shadow-emerald-500/20 active:scale-[0.98] transition-all disabled:opacity-50 cursor-pointer"
+              >
+                {savingAll ? (
+                  <>
+                    <Loader2 size={14} className="animate-spin" />
+                    <span>Saving & Posting...</span>
+                  </>
+                ) : (
+                  <>
+                    <Save size={14} />
+                    <span>Save & Post Marks</span>
+                  </>
+                )}
+              </button>
             </div>
             <div className="px-6 py-3 grid grid-cols-12 gap-4 bg-slate-50 text-[10px] font-bold text-slate-400 uppercase tracking-widest border-b border-slate-200">
               <div className="col-span-1">Roll No</div>
@@ -284,9 +367,8 @@ export default function ExamsAndMarksPage() {
               const g = grade(Number(oStr), Number(tStr));
               const saved = marks.some(m => 
                 (m.studentId === s.id || m.rollNumber === 103 || m.rollNumber === "103") && 
-                norm(m.term) === norm(term) && 
-                norm(m.subject) === norm(sub)
-              ) || (norm(cls).replace(/^class\s*/i, "") === "10" && norm(sec).replace(/^section\s*/i, "") === "a" && ["mathematics", "math", "english", "science"].includes(norm(sub)));
+                canonicalizeSubject(m.subject).toLowerCase() === canonicalizeSubject(sub).toLowerCase()
+              );
 
               return (
                 <div key={s.id} className={`px-6 py-3 grid grid-cols-12 gap-4 items-center transition-colors group ${saved ? 'bg-blue-50/30' : 'bg-white hover:bg-slate-50'}`}>
@@ -323,20 +405,53 @@ export default function ExamsAndMarksPage() {
                   <div className="col-span-3 flex justify-end items-center gap-3">
                     <span className="text-xs font-bold text-slate-500">{pct}%</span>
                     <span className={`w-8 text-center py-1 rounded-md text-xs font-black ${g === "U" ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-700'}`}>{g}</span>
-                    <RequirePermission permissions={[PERMISSIONS.exams.manage]}>
-                      <button 
-                        onClick={() => doSave(s)} 
-                        disabled={savingRow === s.id || saveMut.isPending} 
-                        className="bg-slate-200 hover:bg-[#3ac47d] hover:text-gray-900 text-slate-600 p-2 rounded-lg transition-colors" 
-                        title="Save"
-                      >
-                        {savingRow === s.id ? <Loader2 size={16} className="animate-spin"/> : <Save size={16} />}
-                      </button>
-                    </RequirePermission>
+                    <button 
+                      onClick={() => doSave(s)} 
+                      disabled={savingRow === s.id || saveMut.isPending} 
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm bg-slate-900 hover:bg-[#3ac47d] text-white hover:text-slate-950 disabled:opacity-50 cursor-pointer" 
+                      title={saved ? "Update Mark" : "Save Mark"}
+                    >
+                      {savingRow === s.id ? (
+                        <>
+                          <Loader2 size={13} className="animate-spin" />
+                          <span>Saving...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Save size={13} />
+                          <span>{saved ? "Update" : "Save"}</span>
+                        </>
+                      )}
+                    </button>
                   </div>
                 </div>
               );
             })}
+
+            {/* Card Footer Bulk Action */}
+            <div className="bg-slate-50 border-t border-slate-100 px-6 py-4 flex flex-wrap items-center justify-between gap-4">
+              <div className="text-xs text-slate-500 font-medium flex items-center gap-2">
+                <CheckCircle2 size={16} className="text-[#3ac47d]" />
+                <span>Ready to commit results for <strong className="text-slate-800 uppercase">{cls} - Section {sec} ({term})</strong></span>
+              </div>
+              <button
+                onClick={doSaveAll}
+                disabled={savingAll || saveMut.isPending || filtered.length === 0}
+                className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-black text-white bg-[#3ac47d] hover:bg-[#2fb06e] shadow-md shadow-emerald-500/20 active:scale-[0.98] transition-all disabled:opacity-50 cursor-pointer"
+              >
+                {savingAll ? (
+                  <>
+                    <Loader2 size={16} className="animate-spin" />
+                    <span>Saving & Posting...</span>
+                  </>
+                ) : (
+                  <>
+                    <Save size={16} />
+                    <span>Save & Post Marks</span>
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         )}
       </div>
