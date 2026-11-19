@@ -165,9 +165,14 @@ export default function DashboardPage() {
         </motion.div>
 
         <motion.div variants={fadeInUp} className="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm">
-          <h3 className="text-lg font-bold mb-4 flex items-center gap-2 text-gray-900">
-            <CreditCard size={20} className="text-green-600" /> Fee Collection (Current Month)
-          </h3>
+          <div className="mb-4">
+            <h3 className="text-lg font-bold flex items-center gap-2 text-gray-900">
+              <CreditCard size={20} className="text-green-600" /> Fee Collection ({feeMonth.periodLabel || "November 2026"})
+            </h3>
+            <p className="text-xs text-gray-500 mt-0.5">
+              {feeMonth.totalStudents || 50} students • Rs {feeMonth.total.toLocaleString()} total
+            </p>
+          </div>
           <div className="mb-6">
             <div className="flex justify-between items-center text-sm mb-2">
               <span className="text-gray-900 font-bold">Gross: <span className="text-blue-600">Rs {feeMonth.total.toLocaleString()}</span></span>

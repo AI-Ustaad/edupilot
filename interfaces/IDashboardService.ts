@@ -23,6 +23,8 @@ export interface DashboardData {
     collected: number;
     pending: number;
     total: number;
+    periodLabel?: string;
+    totalStudents?: number;
   };
   classFeeSummary: any[];
   recentPayments: any[];

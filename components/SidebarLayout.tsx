@@ -15,7 +15,7 @@ import {
   UserCheck, UserPlus, Library,
   Bot, FileQuestion, BrainCircuit, School, Activity, Briefcase,
   ArrowUpDown, Shield, Globe, FileText, Film, MessageSquare,
-  ScanLine, Compass
+  ScanLine, Compass, Sliders
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { ROLE_PERMISSIONS } from "@/lib/auth/roles";
@@ -127,6 +127,7 @@ const MENU_GROUPS = [
     key: "fees",
     items: [
       { name: "Fee Management", icon: Wallet, path: "/fees", permission: "fees.view" },
+      { name: "Fee Structure", icon: Sliders, path: "/fees/structure", permission: "fees.view" },
     ],
   },
   {

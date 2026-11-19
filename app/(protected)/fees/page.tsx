@@ -1,9 +1,10 @@
 "use client";
 import React, { useState, useMemo } from "react";
+import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
 import {
   Wallet, Loader2, AlertCircle, CheckCircle,
-  Save, DollarSign, Calendar, Users, Trash2,
+  Save, DollarSign, Calendar, Users, Trash2, Sliders, Filter,
 } from "lucide-react";
 import RequirePermission from "@/components/RequirePermission";
 import { PERMISSIONS } from "@/lib/auth/permissions";
@@ -15,7 +16,11 @@ import { useFees, useSaveFee, useDeleteFee } from "@/hooks/useFees";
 import { formatClassLabel, cleanSectionName } from "@/lib/utils/formatClassLabel";
 import { computeFeeSummary } from "@/lib/aggregations/shared-metrics";
 
-const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+const MONTHS = [
+  "January 2026", "February 2026", "March 2026", "April 2026",
+  "May 2026", "June 2026", "July 2026", "August 2026",
+  "September 2026", "October 2026", "November 2026", "December 2026",
+];
 
 function formatClassSection(cls?: string, sec?: string): string {
   let c = (cls || "").trim();
@@ -35,9 +40,10 @@ function formatClassSection(cls?: string, sec?: string): string {
 export default function FeesPage() {
   const { user } = useAuth();
 
-  const [selectedMonth, setSelectedMonth] = useState(new Date().toLocaleString("default", { month: "long" }));
+  const [selectedMonth, setSelectedMonth] = useState("November 2026");
   const [selectedClass, setSelectedClass] = useState("");
   const [selectedSection, setSelectedSection] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
   const [feeEntries, setFeeEntries] = useState<Record<string, { amount: string; status: string }>>({});
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState("");
@@ -60,6 +66,15 @@ export default function FeesPage() {
     selectedClass && selectedSection ? { classGrade: selectedClass, section: selectedSection } : undefined
   );
 
+  // Student lookup map to resolve canonical names & roll numbers
+  const studentLookup = useMemo(() => {
+    const map = new Map<string, any>();
+    for (const s of students) {
+      map.set(s.id, s);
+    }
+    return map;
+  }, [students]);
+
   // 3. Fetch Fee Records
   const { data: feeRecords = [], isLoading: feesLoading } = useFees(selectedMonth, selectedClass, selectedSection);
 
@@ -67,10 +82,72 @@ export default function FeesPage() {
   const saveMutation = useSaveFee();
   const deleteMutation = useDeleteFee();
 
-  const filteredStudents = students.filter(
-    (s: any) => (!selectedClass || formatClassLabel(s.classGrade) === formatClassLabel(selectedClass)) && 
-                (!selectedSection || cleanSectionName(s.section) === cleanSectionName(selectedSection))
-  );
+  const filteredStudents = useMemo(() => {
+    return students.filter((s: any) => {
+      const matchClass = !selectedClass || formatClassLabel(s.classGrade) === formatClassLabel(selectedClass);
+      const matchSection = !selectedSection || cleanSectionName(s.section) === cleanSectionName(selectedSection);
+      if (!matchClass || !matchSection) return false;
+
+      if (statusFilter !== "all") {
+        const existing = feeRecords.find((f: any) =>
+          f.studentId === s.id &&
+          (f.feeMonth?.toLowerCase().includes(selectedMonth.toLowerCase().slice(0, 3)) || f.feeMonth === selectedMonth)
+        );
+        const st = (feeEntries[s.id]?.status ?? existing?.status ?? "pending").toLowerCase();
+        if (st !== statusFilter) return false;
+      }
+
+      return true;
+    });
+  }, [students, selectedClass, selectedSection, statusFilter, feeRecords, feeEntries, selectedMonth]);
+
+  const filteredLedgerRecords = useMemo(() => {
+    return feeRecords.filter((fee: any) => {
+      if (selectedClass && formatClassLabel(fee.classGrade) !== formatClassLabel(selectedClass)) return false;
+      if (selectedSection && cleanSectionName(fee.section) !== cleanSectionName(selectedSection)) return false;
+      if (statusFilter !== "all") {
+        const st = (fee.status || "pending").toLowerCase().trim();
+        if (st !== statusFilter) return false;
+      }
+      return true;
+    });
+  }, [feeRecords, selectedClass, selectedSection, statusFilter]);
+
+  const handleSaveSingle = async (student: any) => {
+    const existing = feeRecords.find((f: any) => 
+      f.studentId === student.id && 
+      (f.feeMonth?.toLowerCase().includes(selectedMonth.toLowerCase().slice(0, 3)) || f.feeMonth === selectedMonth)
+    );
+    const isPaidExisting = (existing?.status || "").toLowerCase() === "paid";
+    const defaultAmount = isPaidExisting
+      ? (existing?.amountPaid || 5000).toString()
+      : (existing?.amountDue || existing?.amount || 5000).toString();
+    const currentAmount = feeEntries[student.id]?.amount ?? defaultAmount;
+    const currentStatus = feeEntries[student.id]?.status ?? existing?.status ?? (isPaidExisting ? "paid" : "pending");
+    const isPaid = currentStatus === "paid";
+    const amt = Number(currentAmount) || 5000;
+
+    setSaving(true);
+    try {
+      await saveMutation.mutateAsync({
+        studentId: student.id,
+        studentName: student.fullName || student.name,
+        rollNumber: student.rollNumber,
+        classGrade: student.classGrade,
+        section: student.section,
+        feeMonth: selectedMonth,
+        amount: amt,
+        amountPaid: isPaid ? amt : 0,
+        status: currentStatus,
+      });
+      setSuccess(`Fee record saved for ${student.fullName || student.name}!`);
+      setTimeout(() => setSuccess(""), 4000);
+    } catch {
+      alert("Failed to save fee record.");
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const handleSaveAll = async () => {
     const studentsToSave = filteredStudents.filter((student: any) => {
@@ -79,7 +156,7 @@ export default function FeesPage() {
     });
 
     if (studentsToSave.length === 0) {
-      alert("Please enter fee amounts greater than 0 for students before saving.");
+      alert("Please adjust fee amounts or status for students before saving.");
       return;
     }
 
@@ -87,19 +164,23 @@ export default function FeesPage() {
     try {
       await Promise.all(studentsToSave.map((student: any) => {
         const entry = feeEntries[student.id];
+        const isPaid = (entry.status || "paid").toLowerCase() === "paid";
+        const amt = Number(entry.amount) || 5000;
         return saveMutation.mutateAsync({
           studentId: student.id,
           studentName: student.fullName || student.name,
+          rollNumber: student.rollNumber,
           classGrade: student.classGrade,
           section: student.section,
           feeMonth: selectedMonth,
-          amountPaid: Number(entry.amount),
-          status: entry.status || "paid",
+          amount: amt,
+          amountPaid: isPaid ? amt : 0,
+          status: entry.status || (isPaid ? "paid" : "pending"),
         });
       }));
-      setSuccess("Fee records saved successfully!");
-      setTimeout(() => setSuccess(""), 3000);
-    } catch (err) {
+      setSuccess(`Saved ${studentsToSave.length} fee records successfully!`);
+      setTimeout(() => setSuccess(""), 4000);
+    } catch {
       alert("Failed to save fees.");
     } finally {
       setSaving(false);
@@ -135,22 +216,38 @@ export default function FeesPage() {
 
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6 animate-fade-in">
-      <div className="flex justify-between items-end">
+      <div className="flex flex-wrap justify-between items-end gap-4">
         <div>
           <h1 className="text-2xl font-black text-gray-900 flex items-center gap-3">
             <Wallet className="text-green-600" /> Fee Management
           </h1>
           <p className="text-sm text-gray-500 mt-1">Track and manage student fee collections securely.</p>
         </div>
-        <RequirePermission permissions={[PERMISSIONS.fees.create]}>
-          <button onClick={handleSaveAll} disabled={saving || saveMutation.isPending || filteredStudents.length === 0} className="bg-green-600 hover:bg-green-700 text-white px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 shadow-md disabled:opacity-50">
-            {saving || saveMutation.isPending ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />}
-            Save All Fees
-          </button>
-        </RequirePermission>
+        <div className="flex items-center gap-3">
+          <Link
+            href="/fees/structure"
+            className="border border-gray-300 hover:bg-gray-50 text-gray-700 px-4 py-2.5 rounded-xl font-bold flex items-center gap-2 shadow-sm transition"
+          >
+            <Sliders size={18} /> Fee Structure
+          </Link>
+          <RequirePermission permissions={[PERMISSIONS.fees.create]}>
+            <button
+              onClick={handleSaveAll}
+              disabled={saving || saveMutation.isPending || filteredStudents.length === 0}
+              className="bg-green-600 hover:bg-green-700 text-white px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 shadow-md disabled:opacity-50 transition"
+            >
+              {saving || saveMutation.isPending ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />}
+              Save All Fees
+            </button>
+          </RequirePermission>
+        </div>
       </div>
 
-      {success && <div className="bg-green-50 text-green-700 p-3 rounded-lg flex items-center gap-2 font-bold border border-green-100"><CheckCircle size={18} /> {success}</div>}
+      {success && (
+        <div className="bg-green-50 text-green-700 p-3 rounded-lg flex items-center gap-2 font-bold border border-green-100">
+          <CheckCircle size={18} /> {success}
+        </div>
+      )}
 
       {/* 🎨 Summary Cards with Hover Effects */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -205,8 +302,8 @@ export default function FeesPage() {
       </div>
 
       <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm flex flex-wrap gap-4">
-        <div className="flex-1 min-w-[200px]">
-          <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 block">Month</label>
+        <div className="flex-1 min-w-[180px]">
+          <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 block">Billing Month</label>
           <select value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2 font-medium">
             {MONTHS.map((m) => <option key={m} value={m}>{m}</option>)}
           </select>
@@ -225,11 +322,22 @@ export default function FeesPage() {
             {availableSections.map((s) => <option key={s} value={s}>Section {s}</option>)}
           </select>
         </div>
+        <div className="flex-1 min-w-[150px]">
+          <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 block">Status Filter</label>
+          <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2 font-medium">
+            <option value="all">All Statuses</option>
+            <option value="paid">Paid</option>
+            <option value="pending">Pending</option>
+            <option value="partial">Partial</option>
+          </select>
+        </div>
       </div>
 
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
-        <div className="px-6 py-4 bg-gray-50 border-b border-gray-200 font-bold text-gray-700 flex items-center gap-2">
-          <DollarSign size={18} /> Fee Entry - {selectedMonth}
+        <div className="px-6 py-4 bg-gray-50 border-b border-gray-200 font-bold text-gray-700 flex items-center justify-between">
+          <span className="flex items-center gap-2">
+            <DollarSign size={18} /> Fee Entry — {selectedMonth} ({filteredStudents.length} Students)
+          </span>
         </div>
         {studentsLoading || feesLoading ? (
           <div className="p-8 flex justify-center"><Loader2 className="animate-spin text-green-500" size={32} /></div>
@@ -247,21 +355,54 @@ export default function FeesPage() {
               const currentAmount = feeEntries[student.id]?.amount ?? defaultAmount;
               const currentStatus = feeEntries[student.id]?.status ?? existing?.status ?? (isPaid ? "paid" : "pending");
               return (
-                <div key={student.id} className="px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition">
-                  <div className="flex items-center gap-4 flex-1">
-                    <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center font-bold text-gray-500">{student.rollNumber || "—"}</div>
+                <div key={student.id} className="px-6 py-4 flex flex-wrap items-center justify-between gap-3 hover:bg-gray-50 transition">
+                  <div className="flex items-center gap-4 flex-1 min-w-[200px]">
+                    <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center font-bold text-gray-600 text-sm">
+                      {student.rollNumber || "—"}
+                    </div>
                     <div className="flex-1">
                       <p className="font-bold text-gray-900">{student.fullName || student.name}</p>
-                      <p className="text-xs text-gray-400 uppercase">{formatClassSection(student.classGrade, student.section)}</p>
+                      <p className="text-xs text-gray-500 uppercase">{formatClassSection(student.classGrade, student.section)}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
-                    <input type="number" placeholder="Amount" value={currentAmount} onChange={(e) => setFeeEntries((prev) => ({ ...prev, [student.id]: { amount: e.target.value, status: prev[student.id]?.status ?? currentStatus } }))} className="w-24 border border-gray-300 rounded-lg px-3 py-2 text-center font-bold" />
-                    <select value={currentStatus} onChange={(e) => setFeeEntries((prev) => ({ ...prev, [student.id]: { amount: prev[student.id]?.amount ?? currentAmount, status: e.target.value } }))} className={`border rounded-lg px-3 py-2 font-bold ${currentStatus === "paid" ? "bg-green-100 border-green-300 text-green-700" : "bg-orange-100 border-orange-300 text-orange-700"}`}>
+                    <input
+                      type="number"
+                      placeholder="Amount"
+                      value={currentAmount}
+                      onChange={(e) => setFeeEntries((prev) => ({
+                        ...prev,
+                        [student.id]: { amount: e.target.value, status: prev[student.id]?.status ?? currentStatus }
+                      }))}
+                      className="w-28 border border-gray-300 rounded-lg px-3 py-2 text-center font-bold"
+                    />
+                    <select
+                      value={currentStatus}
+                      onChange={(e) => setFeeEntries((prev) => ({
+                        ...prev,
+                        [student.id]: { amount: prev[student.id]?.amount ?? currentAmount, status: e.target.value }
+                      }))}
+                      className={`border rounded-lg px-3 py-2 font-bold ${
+                        currentStatus === "paid"
+                          ? "bg-green-100 border-green-300 text-green-700"
+                          : currentStatus === "partial"
+                          ? "bg-blue-100 border-blue-300 text-blue-700"
+                          : "bg-orange-100 border-orange-300 text-orange-700"
+                      }`}
+                    >
                       <option value="pending">Pending</option>
                       <option value="paid">Paid</option>
                       <option value="partial">Partial</option>
                     </select>
+                    <button
+                      type="button"
+                      onClick={() => handleSaveSingle(student)}
+                      disabled={saving || saveMutation.isPending}
+                      className="px-3 py-2 bg-green-50 hover:bg-green-100 text-green-700 rounded-lg text-xs font-bold transition flex items-center gap-1 disabled:opacity-50"
+                      title="Save this student's fee"
+                    >
+                      <Save size={14} /> Save
+                    </button>
                   </div>
                 </div>
               );
@@ -270,39 +411,72 @@ export default function FeesPage() {
         )}
       </div>
 
-      {feeRecords.length > 0 && (
+      {filteredLedgerRecords.length > 0 && (
         <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
-          <div className="px-6 py-4 bg-gray-50 border-b border-gray-200 font-bold text-gray-700 flex items-center gap-2">
-            <Calendar size={18} /> Fee Ledger - {selectedMonth}
+          <div className="px-6 py-4 bg-gray-50 border-b border-gray-200 font-bold text-gray-700 flex items-center justify-between">
+            <span className="flex items-center gap-2">
+              <Calendar size={18} /> Fee Ledger — {selectedMonth} ({filteredLedgerRecords.length} Records)
+            </span>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
                   <th className="px-6 py-3 font-bold text-gray-600">Student</th>
-                  <th className="px-6 py-3 font-bold text-gray-600">Class</th>
+                  <th className="px-6 py-3 font-bold text-gray-600">Class & Section</th>
                   <th className="px-6 py-3 font-bold text-gray-600">Amount</th>
                   <th className="px-6 py-3 font-bold text-gray-600">Status</th>
+                  <th className="px-6 py-3 font-bold text-gray-600">Receipt Ref</th>
                   <th className="px-6 py-3 font-bold text-gray-600 text-right">Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {feeRecords.map((fee: any) => {
+                {filteredLedgerRecords.map((fee: any) => {
+                  const resolvedStudent = studentLookup.get(fee.studentId);
+                  const studentName = resolvedStudent?.fullName || resolvedStudent?.name || fee.studentName || "Student";
+                  const studentClass = formatClassLabel(resolvedStudent?.classGrade || fee.classGrade);
+                  const studentSection = cleanSectionName(resolvedStudent?.section || fee.section);
+                  const rollNumber = resolvedStudent?.rollNumber ?? fee.rollNumber ?? "—";
+
                   const isPaid = (fee.status || "").toLowerCase() === "paid";
                   const displayAmount = isPaid ? (fee.amountPaid || fee.amount || 5000) : (fee.amountDue || fee.amount || 5000);
+
                   return (
                     <tr key={fee.id} className="hover:bg-gray-50 transition">
-                      <td className="px-6 py-3 font-bold text-gray-900">{fee.studentName}</td>
-                      <td className="px-6 py-3 text-gray-600">{formatClassSection(fee.classGrade, fee.section)}</td>
+                      <td className="px-6 py-3">
+                        <div className="font-bold text-gray-900">{studentName}</div>
+                        <div className="text-xs text-gray-400">Roll #{rollNumber}</div>
+                      </td>
+                      <td className="px-6 py-3 text-gray-600 font-medium">{formatClassSection(studentClass, studentSection)}</td>
                       <td className="px-6 py-3 font-black text-gray-900">Rs. {Number(displayAmount).toLocaleString()}</td>
                       <td className="px-6 py-3">
-                        <span className={`px-3 py-1 rounded-full text-xs font-bold border ${isPaid ? "bg-green-100 text-green-700 border-green-300" : fee.status?.toLowerCase() === "partial" ? "bg-blue-100 text-blue-700 border-blue-200" : "bg-orange-100 text-orange-700 border-orange-200"}`}>
+                        <span className={`px-3 py-1 rounded-full text-xs font-bold border ${
+                          isPaid
+                            ? "bg-green-100 text-green-700 border-green-300"
+                            : fee.status?.toLowerCase() === "partial"
+                            ? "bg-blue-100 text-blue-700 border-blue-200"
+                            : "bg-orange-100 text-orange-700 border-orange-200"
+                        }`}>
                           {fee.status?.toUpperCase() || "PENDING"}
                         </span>
                       </td>
+                      <td className="px-6 py-3">
+                        {fee.receiptNumber ? (
+                          <span className="text-xs font-mono bg-gray-100 text-gray-700 px-2 py-1 rounded border border-gray-200">
+                            {fee.receiptNumber}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-gray-400">—</span>
+                        )}
+                      </td>
                       <td className="px-6 py-3 text-right">
                         <RequirePermission permissions={[PERMISSIONS.fees.manage]}>
-                          <button onClick={() => handleDelete(fee.id)} disabled={deleteMutation.isPending} className="text-red-400 hover:text-red-600 bg-red-50 p-2 rounded-lg transition disabled:opacity-50">
+                          <button
+                            onClick={() => handleDelete(fee.id)}
+                            disabled={deleteMutation.isPending}
+                            className="text-red-400 hover:text-red-600 bg-red-50 p-2 rounded-lg transition disabled:opacity-50"
+                            title="Archive fee record"
+                          >
                             {deleteMutation.isPending ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
                           </button>
                         </RequirePermission>

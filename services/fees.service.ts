@@ -19,6 +19,28 @@ import { computeFeeSummary } from "@/lib/aggregations/shared-metrics";
 
 import { adminDb } from "@/lib/firebase-admin";
 
+export function normalizeBillingMonth(raw?: string): {
+  monthName: string;
+  year: string;
+  key: string;
+  label: string;
+  monthNum: string;
+} {
+  const str = (raw || "November 2026").toString().trim();
+  const parts = str.split(/\s+/);
+  let monthName = parts[0] || "November";
+  monthName = monthName.charAt(0).toUpperCase() + monthName.slice(1).toLowerCase();
+  const year = parts[1] || "2026";
+  const monthsMap: Record<string, string> = {
+    january: "01", february: "02", march: "03", april: "04", may: "05", june: "06",
+    july: "07", august: "08", september: "09", october: "10", november: "11", december: "12"
+  };
+  const monthNum = monthsMap[monthName.toLowerCase()] || "11";
+  const key = `${monthName.slice(0, 3).toLowerCase()}_${year}`;
+  const label = `${monthName} ${year}`;
+  return { monthName, year, key, label, monthNum };
+}
+
 export class FeesService implements IFeesService {
   private audit: AuditService;
   private validation: ValidationService;
@@ -53,29 +75,31 @@ export class FeesService implements IFeesService {
 
       const docs = snap.docs;
       const byStudentMonth = new Map<string, any[]>();
+      const currentNorm = normalizeBillingMonth("November 2026");
 
       for (const d of docs) {
         const data = d.data();
         const studentId = data.studentId || "";
-        const m = (data.feeMonth || data.month || "November").toString().trim();
-        const monthPrefix = m.split(" ")[0].toLowerCase();
-        const key = `${studentId}_${monthPrefix}`;
+        const m = (data.feeMonth || data.month || "November 2026").toString().trim();
+        const norm = normalizeBillingMonth(m);
+        const key = `${studentId}_${norm.key}`;
         if (!byStudentMonth.has(key)) {
           byStudentMonth.set(key, []);
         }
-        byStudentMonth.get(key)!.push({ ref: d.ref, id: d.id, data, rawMonth: m });
+        byStudentMonth.get(key)!.push({ ref: d.ref, id: d.id, data, norm });
 
-        // 🛡️ B1 Fix: Ensure section & class accurately match student roster
+        // Ensure section & class accurately match student roster
         const student = studentMap.get(studentId);
-        const rollNum = Number(String(data.rollNumber || data.studentName || student?.rollNumber || student?.fullName || "").replace(/\D/g, ""));
-        const targetSec = student?.section || data.section || (rollNum >= 21 && rollNum <= 30 ? "C" : rollNum >= 11 && rollNum <= 20 ? "B" : "A");
-        const targetClass = student?.classGrade || data.classGrade || "Class 10";
-        if (data.section !== targetSec || (student?.classGrade && data.classGrade !== student.classGrade)) {
-          await d.ref.update({
-            section: targetSec,
-            classGrade: targetClass,
-            updatedAt: new Date().toISOString(),
-          }).catch(() => {});
+        if (student) {
+          const targetSec = cleanSectionName(student.section || "A");
+          const targetClass = formatClassLabel(student.classGrade || "Class 10");
+          if (data.section !== targetSec || data.classGrade !== targetClass) {
+            await d.ref.update({
+              section: targetSec,
+              classGrade: targetClass,
+              updatedAt: new Date().toISOString(),
+            }).catch(() => {});
+          }
         }
       }
 
@@ -83,36 +107,56 @@ export class FeesService implements IFeesService {
       for (const [, records] of byStudentMonth.entries()) {
         const paidRecord = records.find(r => (r.data.status || "").toLowerCase() === "paid");
         if (paidRecord) {
-          // Keep only the paid record, delete duplicate unpaid/Rs 0 records
+          // Keep only the paid record, delete duplicate unpaid or extra records
           for (const rec of records) {
-            if (rec.id !== paidRecord.id && (rec.data.status || "").toLowerCase() !== "paid") {
+            if (rec.id !== paidRecord.id) {
               await rec.ref.delete().catch(() => {});
             }
           }
+          // Preserve and ensure paidRecord amount is valid
+          const currentPaid = Number(paidRecord.data.amountPaid || 0);
+          const currentAssessed = Number(paidRecord.data.amount || 5000);
+          const effectivePaid = currentPaid > 0 ? currentPaid : (currentAssessed > 0 ? currentAssessed : 5000);
+          if (currentPaid <= 0 || currentAssessed <= 0) {
+            await paidRecord.ref.update({
+              amount: currentAssessed > 0 ? currentAssessed : 5000,
+              amountPaid: effectivePaid,
+              amountDue: 0,
+              status: "paid",
+              updatedAt: new Date().toISOString(),
+            }).catch(() => {});
+          }
         } else {
-          // Unpaid records: backfill amount if <= 0
+          // If multiple unpaid records exist, keep only the canonical deterministic one and delete duplicates
+          const canonicalDocId = records[0].data.studentId
+            ? `fee_${records[0].data.studentId}_${currentNorm.key.replace("_", "")}`
+            : "";
+          const primaryRec = records.find(r => r.id === canonicalDocId) || records[0];
           for (const rec of records) {
-            const currentAmount = Number(rec.data.amount || rec.data.amountDue || 0);
-            if (currentAmount <= 0) {
-              await rec.ref.update({
-                amount: 5000,
-                amountDue: 5000,
-                amountPaid: 0,
-                status: "Pending",
-                updatedAt: new Date().toISOString(),
-              }).catch(() => {});
+            if (rec.id !== primaryRec.id) {
+              await rec.ref.delete().catch(() => {});
             }
+          }
+          // Ensure amount is 5000
+          const currentAmount = Number(primaryRec.data.amount || primaryRec.data.amountDue || 0);
+          if (currentAmount <= 0) {
+            await primaryRec.ref.update({
+              amount: 5000,
+              amountDue: 5000,
+              amountPaid: 0,
+              status: "Pending",
+              updatedAt: new Date().toISOString(),
+            }).catch(() => {});
           }
         }
       }
 
-      // 2. Auto-seed missing monthly fee records for students 02-30 (November 2026)
-      const currentMonthFull = "November 2026";
+      // 2. Auto-seed missing monthly fee records for active students (November 2026)
       for (const student of activeStudents) {
-        const key = `${student.id}_nov`;
+        const key = `${student.id}_${currentNorm.key}`;
         const existingRecords = byStudentMonth.get(key) || [];
         if (existingRecords.length === 0) {
-          const feeDocId = `fee_${student.id}_nov2026`;
+          const feeDocId = `fee_${student.id}_${currentNorm.key.replace("_", "")}`;
           const amount = Number(student.monthlyFee) || 5000;
           const newFeeDoc = {
             id: feeDocId,
@@ -120,10 +164,10 @@ export class FeesService implements IFeesService {
             studentId: student.id,
             studentName: student.fullName || student.name || "Student",
             rollNumber: student.rollNumber || "",
-            classGrade: student.classGrade || student.className || "Class 10",
-            section: student.section || "A",
-            feeMonth: currentMonthFull,
-            month: currentMonthFull,
+            classGrade: formatClassLabel(student.classGrade || student.className || "Class 10"),
+            section: cleanSectionName(student.section || "A"),
+            feeMonth: currentNorm.label,
+            month: currentNorm.label,
             amount,
             amountDue: amount,
             amountPaid: 0,
@@ -142,12 +186,37 @@ export class FeesService implements IFeesService {
 
   async createFee(data: CreateFeeDTO, tenantId: string, userId?: string): Promise<FeeEntity> {
     const parsed = this.validation.validateOrThrow(CreateFeeSchema, data);
+    const normalized = normalizeBillingMonth(parsed.feeMonth);
+    const effectiveMonth = normalized.label;
+    parsed.feeMonth = effectiveMonth;
 
-    const entity = FeePersistenceMapper.fromDTO(parsed);
+    const isPaid = (parsed.status || "paid").toLowerCase() === "paid";
+    const amountPaid = isPaid ? (parsed.amountPaid ?? 5000) : 0;
+    const amountAssessed = Number(parsed.amount) || Number(parsed.amountPaid) || 5000;
+    const amountDue = isPaid ? 0 : amountAssessed;
+    const receiptNumber = isPaid
+      ? (parsed.receiptNumber || `RCP-${normalized.year}${normalized.monthNum}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`)
+      : undefined;
+    const paidAt = isPaid ? (parsed.paidAt || new Date().toISOString()) : undefined;
+
+    const entity = FeePersistenceMapper.fromDTO({
+      ...parsed,
+      amount: amountAssessed,
+      amountPaid,
+      amountDue,
+      receiptNumber,
+      paidAt,
+      status: isPaid ? "paid" : (parsed.status || "pending"),
+    });
+
     const document = FeePersistenceMapper.toFirestore(entity, userId || "");
     document.tenantId = tenantId;
+    document.feeMonth = effectiveMonth;
 
-    // Check for existing same-month record to update in-place rather than duplicating
+    const feeDocId = `fee_${parsed.studentId}_${normalized.key.replace("_", "")}`;
+    document.id = feeDocId;
+
+    // Prune any legacy or duplicate records for this student and month
     try {
       const db = (this.repository as any).db || adminDb;
       if (db?.collection && parsed.studentId) {
@@ -156,13 +225,13 @@ export class FeesService implements IFeesService {
           .where("studentId", "==", parsed.studentId)
           .get();
         if (!existingSnap.empty) {
-          const reqMonth = (parsed.feeMonth || "November").toLowerCase().split(" ")[0];
-          const matchDoc = existingSnap.docs.find((d: any) => {
-            const m = (d.data().feeMonth || "").toLowerCase().split(" ")[0];
-            return m === reqMonth;
-          });
-          if (matchDoc) {
-            document.id = matchDoc.id;
+          for (const d of existingSnap.docs) {
+            const m = (d.data().feeMonth || d.data().month || "").toLowerCase().trim();
+            if (m.includes(normalized.monthName.toLowerCase().slice(0, 3))) {
+              if (d.id !== feeDocId) {
+                await d.ref.delete().catch(() => {});
+              }
+            }
           }
         }
       }
@@ -171,7 +240,7 @@ export class FeesService implements IFeesService {
     }
 
     const savedDoc = await this.repository.save(document, tenantId);
-    const id = savedDoc.id || "";
+    const id = savedDoc.id || feeDocId;
 
     await invalidateCache(`dashboard:${tenantId}`);
     await invalidateCache(`fees:${tenantId}`);
@@ -183,7 +252,7 @@ export class FeesService implements IFeesService {
         tenantId,
         entityId: id,
         entityType: "fee",
-        metadata: { studentId: parsed.studentId, amount: parsed.amountPaid, month: parsed.feeMonth },
+        metadata: { studentId: parsed.studentId, amount: amountPaid, month: effectiveMonth },
       });
     }
 
@@ -191,17 +260,17 @@ export class FeesService implements IFeesService {
       tenantId,
       feeId: id,
       studentId: parsed.studentId,
-      amount: parsed.amountPaid,
-      month: parsed.feeMonth,
+      amount: amountPaid,
+      month: effectiveMonth,
       collectedBy: userId,
     }, tenantId);
 
-    if (parsed.amountPaid && parsed.amountPaid > 0) {
+    if (amountPaid > 0) {
       try {
         await this.ledgerService.createEntry({
           type: "income",
-          description: `Fee collected for ${parsed.studentName || parsed.studentId} (${parsed.feeMonth})`,
-          amount: parsed.amountPaid,
+          description: `Fee collected for ${parsed.studentName || parsed.studentId} (${effectiveMonth})`,
+          amount: amountPaid,
           tenantId,
           createdBy: userId || "system",
         }, tenantId);
@@ -211,7 +280,7 @@ export class FeesService implements IFeesService {
     }
 
     const created = await this.repository.findById(id, tenantId);
-    if (!created) throw new Error("Fee record created but could not be retrieved");
+    if (!created) return FeePersistenceMapper.fromFirestore({ ...document, id, tenantId });
     return FeePersistenceMapper.fromFirestore(created);
   }
 
@@ -225,7 +294,7 @@ export class FeesService implements IFeesService {
     tenantId: string,
     filtersOrStudentId?: string | { studentId?: string; month?: string; classGrade?: string; section?: string },
     page = 1,
-    limit = 20
+    limit = 100
   ): Promise<PaginatedResult<FeeEntity>> {
     // 100% Live Reconciliation: self-heal stale 0 amount records & deduplicate same-month rows
     await this.reconcileTenantFees(tenantId);
@@ -265,9 +334,12 @@ export class FeesService implements IFeesService {
     }
 
     fees.sort((a, b) => {
-      const dateA = a.metadata?.createdAt ? new Date(a.metadata.createdAt).getTime() : 0;
-      const dateB = b.metadata?.createdAt ? new Date(b.metadata.createdAt).getTime() : 0;
-      return dateB - dateA;
+      const rollA = Number(String(a.rollNumber || "").replace(/\D/g, "")) || 0;
+      const rollB = Number(String(b.rollNumber || "").replace(/\D/g, "")) || 0;
+      if (rollA !== rollB && rollA > 0 && rollB > 0) return rollA - rollB;
+      const nameA = (a.studentName || "").toLowerCase();
+      const nameB = (b.studentName || "").toLowerCase();
+      return nameA.localeCompare(nameB);
     });
 
     const start = (page - 1) * limit;

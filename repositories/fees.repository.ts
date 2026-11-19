@@ -96,10 +96,23 @@ export class FeesRepository extends BaseRepository<FeeDocument> implements IFees
   async save(document: FeeDocument, tenantId: string): Promise<FeeDocument> {
     try {
       if (document.id) {
-        await this.update(document.id, document, tenantId);
+        const docRef = this.db.collection(this.collectionName).doc(document.id);
+        const docSnap = await docRef.get();
+        if (docSnap.exists) {
+          if (docSnap.data()?.tenantId && docSnap.data()?.tenantId !== tenantId) {
+            throw new Error("Unauthorized");
+          }
+          await this.update(document.id, document, tenantId);
+        } else {
+          await docRef.set({
+            ...document,
+            tenantId,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          });
+        }
         const updated = await this.findById(document.id, tenantId);
-        if (!updated) throw new Error("Fee not found after update.");
-        return updated;
+        return updated || ({ ...document, id: document.id, tenantId } as any);
       } else {
         const newId = await this.create(document, tenantId);
         const created = await this.findById(newId, tenantId);

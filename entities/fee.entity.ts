@@ -12,6 +12,10 @@ export interface FeeEntity {
     section?: string;
     feeMonth: string;
     amountPaid: number;
+    amount?: number;
+    amountDue?: number;
+    receiptNumber?: string;
+    paidAt?: string;
     paymentMethod: string;
     dueDate?: string;
     status?: string;
@@ -48,5 +52,7 @@ export interface FeeEntity {
   paymentMethod?: string;
   dueDate?: string;
   status?: string;
+  receiptNumber?: string;
+  paidAt?: string;
   remarks?: string;
 }

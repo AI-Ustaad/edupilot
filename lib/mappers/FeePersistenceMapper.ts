@@ -7,18 +7,35 @@ function isFiniteNumber(val: unknown): val is number {
 }
 
 export class FeePersistenceMapper {
-  static fromDTO(dto: Partial<CreateFeeDTO>): Partial<FeeEntity> {
+  static fromDTO(dto: Partial<CreateFeeDTO> & Record<string, any>): Partial<FeeEntity> {
     return {
+      studentId: dto.studentId || "",
+      studentName: dto.studentName,
+      rollNumber: dto.rollNumber !== undefined ? Number(dto.rollNumber) : undefined,
+      classGrade: dto.classGrade,
+      section: dto.section,
+      feeMonth: dto.feeMonth || "",
+      amount: dto.amount,
+      amountDue: dto.amountDue,
+      amountPaid: isFiniteNumber(dto.amountPaid) ? dto.amountPaid : 0,
+      receiptNumber: dto.receiptNumber,
+      paidAt: dto.paidAt,
+      status: dto.status,
       identity: {
         studentId: dto.studentId || "",
         studentName: dto.studentName,
-        rollNumber: dto.rollNumber,
+        rollNumber: dto.rollNumber !== undefined ? Number(dto.rollNumber) : undefined,
         email: dto.email || undefined,
       },
       financial: {
         classGrade: dto.classGrade,
+        section: dto.section,
         feeMonth: dto.feeMonth || "",
+        amount: dto.amount,
+        amountDue: dto.amountDue,
         amountPaid: isFiniteNumber(dto.amountPaid) ? dto.amountPaid : 0,
+        receiptNumber: dto.receiptNumber,
+        paidAt: dto.paidAt,
         paymentMethod: dto.paymentMethod || "Cash",
         dueDate: dto.dueDate,
         status: dto.status,
@@ -31,7 +48,7 @@ export class FeePersistenceMapper {
     };
   }
 
-  static toFirestore(entity: Partial<FeeEntity>, userId: string): FeeDocument {
+  static toFirestore(entity: Partial<FeeEntity> & Record<string, any>, userId: string): FeeDocument {
     const collected = isFiniteNumber(entity.financial?.amountPaid)
       ? Math.max(0, entity.financial.amountPaid)
       : isFiniteNumber(entity.amountPaid)
@@ -40,11 +57,19 @@ export class FeePersistenceMapper {
 
     const assessed = isFiniteNumber(entity.amount)
       ? Math.max(0, entity.amount)
-      : collected;
+      : isFiniteNumber(entity.financial?.amount)
+      ? Math.max(0, entity.financial.amount)
+      : collected > 0 ? collected : 5000;
 
     const outstanding = isFiniteNumber(entity.amountDue)
       ? Math.max(0, entity.amountDue)
+      : isFiniteNumber(entity.financial?.amountDue)
+      ? Math.max(0, entity.financial.amountDue)
       : Math.max(0, assessed - collected);
+
+    const section = entity.section || entity.financial?.section || (entity as any).studentInfo?.sectionId || "";
+    const receiptNumber = entity.receiptNumber || entity.financial?.receiptNumber || (entity as any).paymentDetails?.receiptNumber;
+    const paidAt = entity.paidAt || entity.financial?.paidAt || (entity as any).paymentDetails?.paidAt;
 
     return {
       studentId: entity.identity?.studentId || entity.studentId || "",
@@ -54,10 +79,13 @@ export class FeePersistenceMapper {
         ? (Number(entity.identity?.rollNumber ?? entity.rollNumber) || undefined)
         : undefined,
       classGrade: entity.financial?.classGrade || entity.classGrade,
+      section,
       feeMonth: entity.financial?.feeMonth || entity.feeMonth || "",
       amountPaid: collected,
       amount: assessed,
       amountDue: outstanding,
+      receiptNumber,
+      paidAt,
       paymentMethod: entity.financial?.paymentMethod || entity.paymentMethod || "Cash",
       remarks: entity.financial?.remarks || entity.remarks,
       dueDate: entity.financial?.dueDate || entity.dueDate,
@@ -151,6 +179,8 @@ export class FeePersistenceMapper {
     const email = doc.email || doc.identity?.email;
     const dueDate = doc.dueDate || doc.financial?.dueDate;
     const remarks = doc.remarks || doc.financial?.remarks;
+    const receiptNumber = doc.receiptNumber || doc.paymentDetails?.receiptNumber || doc.financial?.receiptNumber;
+    const paidAt = doc.paidAt || doc.paymentDetails?.paidAt || doc.financial?.paidAt;
 
     return {
       feeId: doc.id || "",
@@ -169,6 +199,8 @@ export class FeePersistenceMapper {
         dueDate,
         status,
         remarks,
+        receiptNumber,
+        paidAt,
       },
       metadata: {
         version: doc.metadata?.version ?? 1,
@@ -200,6 +232,8 @@ export class FeePersistenceMapper {
       dueDate,
       status,
       remarks,
+      receiptNumber,
+      paidAt,
     };
   }
 }
