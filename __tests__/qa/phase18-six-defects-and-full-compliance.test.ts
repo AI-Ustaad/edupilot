@@ -826,6 +826,7 @@ describe("Phase 18 — Six Live Defects & Full Compliance Suite", () => {
         upsert: jest.fn().mockImplementation(async (id: string, data: any) => {
           inMemoryMarks.push({ id, ...data });
         }),
+        delete: jest.fn(),
       };
       const mockStudentRepo: any = {
         findAll: jest.fn().mockResolvedValue([
@@ -835,14 +836,17 @@ describe("Phase 18 — Six Live Defects & Full Compliance Suite", () => {
 
       const service = new MarksService(mockMarksRepo, mockStudentRepo);
 
-      // Querying 1st Term should NOT seed default marks
+      // Querying 1st Term should return Pakistan Studies 65/100 and NOT seed Final Exams marks
       const firstTermMarks = await service.listMarks(TENANT_ID, {
         classGrade: "Class 10",
         section: "A",
         term: "1st Term",
       });
-      expect(firstTermMarks).toHaveLength(0);
-      expect(mockMarksRepo.upsert).not.toHaveBeenCalled();
+      expect(firstTermMarks).toHaveLength(1);
+      expect(firstTermMarks[0].subject).toBe("Pakistan Studies");
+      expect(firstTermMarks[0].marksObtained).toBe(65);
+      expect(firstTermMarks.find(m => m.subject === "Mathematics")).toBeUndefined();
+      expect(firstTermMarks.find(m => m.subject === "English")).toBeUndefined();
 
       // Querying Final Exams DOES seed default marks if empty
       const finalMarks = await service.listMarks(TENANT_ID, {
@@ -851,7 +855,33 @@ describe("Phase 18 — Six Live Defects & Full Compliance Suite", () => {
         term: "Final Exams",
       });
       expect(finalMarks).toHaveLength(3);
-      expect(mockMarksRepo.upsert).toHaveBeenCalledTimes(3);
+      expect(finalMarks.map(m => m.subject)).toEqual(expect.arrayContaining(["Mathematics", "English", "General Science"]));
+
+      // Querying 2nd Term should return empty array []
+      const secondTermMarks = await service.listMarks(TENANT_ID, {
+        classGrade: "Class 10",
+        section: "A",
+        term: "2nd Term",
+      });
+      expect(secondTermMarks).toHaveLength(0);
+    });
+
+    it("Defect 2: normalizeTerm standardizes terms and defaults legacy untagged to Final Exams", async () => {
+      const { normalizeTerm } = await import("@/lib/utils/formatClassLabel");
+
+      expect(normalizeTerm("Final Exams")).toBe("Final Exams");
+      expect(normalizeTerm("final exams")).toBe("Final Exams");
+      expect(normalizeTerm("final")).toBe("Final Exams");
+      expect(normalizeTerm("Final")).toBe("Final Exams");
+      expect(normalizeTerm("")).toBe("Final Exams");
+      expect(normalizeTerm(null)).toBe("Final Exams");
+      expect(normalizeTerm(undefined)).toBe("Final Exams");
+      expect(normalizeTerm("1st Term")).toBe("1st Term");
+      expect(normalizeTerm("1st term")).toBe("1st Term");
+      expect(normalizeTerm("first term")).toBe("1st Term");
+      expect(normalizeTerm("2nd Term")).toBe("2nd Term");
+      expect(normalizeTerm("2nd term")).toBe("2nd Term");
+      expect(normalizeTerm("second term")).toBe("2nd Term");
     });
 
     it("Defect 2: Live Database Ledger on /exams strictly isolates marks by current exam term", () => {

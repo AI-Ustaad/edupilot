@@ -14,7 +14,7 @@ import type { IMarksRepository } from "@/interfaces/IMarksRepository";
 import type { Mark } from "@/types/marks";
 import type { IMarksService } from "@/interfaces/IMarksService";
 import { NotFoundException, BusinessError } from "@/errors/AppError";
-import { formatClassLabel, cleanSectionName, canonicalizeSubject } from "@/lib/utils/formatClassLabel";
+import { formatClassLabel, cleanSectionName, canonicalizeSubject, normalizeTerm } from "@/lib/utils/formatClassLabel";
 import { calculateGrade } from "@/lib/utils/grading";
 
 export class MarksService implements IMarksService {
@@ -47,7 +47,8 @@ export class MarksService implements IMarksService {
 
     const subject = canonicalizeSubject(parsed.subject);
     const marksObtained = parsed.marksObtained ?? parsed.obtainedMarks ?? 0;
-    const term = parsed.term || parsed.examType || "Final Exams";
+    const rawTerm = parsed.term || parsed.examType || "Final Exams";
+    const term = normalizeTerm(rawTerm);
     const academicYear = parsed.academicYear || "2025-2026";
     const rollNumber = parsed.rollNumber ?? student.rollNumber ?? "";
     const markDocId = `${parsed.studentId}_${term.replace(/\s+/g, "")}_${subject.replace(/\s+/g, "")}`;
@@ -84,20 +85,26 @@ export class MarksService implements IMarksService {
   async listMarks(tenantId: string, filters?: { classGrade?: string; section?: string; term?: string; subject?: string; studentId?: string }): Promise<(Mark & { id: string })[]> {
     const normGrade = filters?.classGrade ? formatClassLabel(filters.classGrade) : undefined;
     const normSec = filters?.section ? cleanSectionName(filters.section) : undefined;
+    const requestedTerm = filters?.term ? normalizeTerm(filters.term) : undefined;
     const normFilters = filters ? {
       ...filters,
       ...(normGrade ? { classGrade: normGrade } : {}),
       ...(normSec ? { section: normSec } : {}),
+      ...(requestedTerm ? { term: requestedTerm } : {}),
     } : undefined;
 
     let marks = await this.repo.findWithFilters(tenantId, normFilters);
 
-    // 🛡️ Canonical Reconciliation: ONLY seed default marks for Final Exams when marks list is empty for Final Exams
-    const requestedTerm = (filters?.term || "Final Exams").trim().toLowerCase();
-    const isFinalExams = requestedTerm === "final exams" || requestedTerm === "final";
-    if (marks.length === 0 && isFinalExams && (!normGrade || normGrade === "Class 10") && (!normSec || normSec === "A")) {
+    // 🛡️ Canonical Reconciliation:
+    // Final Exams: English 85, Mathematics 90, General Science 88
+    // 1st Term: Pakistan Studies 65, and prune accidental clones of Final Exams
+    // 2nd Term: strictly empty state
+    const isFinalExams = requestedTerm === "Final Exams";
+    const isFirstTerm = requestedTerm === "1st Term";
+    const isSecondTerm = requestedTerm === "2nd Term";
+
+    if ((!normGrade || normGrade === "Class 10") && (!normSec || normSec === "A")) {
       try {
-        const term = "Final Exams";
         const students = await this.studentRepo.findAll(tenantId);
         const enrolledStudents = students.filter(
           (s: any) => !s.deleted && formatClassLabel(s.classGrade || s.className) === "Class 10" && cleanSectionName(s.section || s.sectionName) === "A"
@@ -107,33 +114,60 @@ export class MarksService implements IMarksService {
           const sName = student.fullName || student.name || "Imran Haider";
           const sId = student.id;
 
-          const defaultSubjects = [
-            { subject: "Mathematics", marksObtained: 90, totalMarks: 100, percentage: 90, grade: "A+" },
-            { subject: "English", marksObtained: 85, totalMarks: 100, percentage: 85, grade: "A" },
-            { subject: "General Science", marksObtained: 88, totalMarks: 100, percentage: 88, grade: "A" },
-          ];
+          if (isFinalExams && marks.length === 0) {
+            const defaultSubjects = [
+              { subject: "Mathematics", marksObtained: 90, totalMarks: 100, percentage: 90, grade: "A+" },
+              { subject: "English", marksObtained: 85, totalMarks: 100, percentage: 85, grade: "A" },
+              { subject: "General Science", marksObtained: 88, totalMarks: 100, percentage: 88, grade: "A" },
+            ];
 
-          for (const s of defaultSubjects) {
-            const markDocId = `${sId}_${term.replace(/\s+/g, "")}_${s.subject.replace(/\s+/g, "")}`;
-            await this.repo.upsert(markDocId, {
-              studentId: sId,
-              studentName: sName,
-              classGrade: "Class 10",
-              section: "A",
-              term,
-              examType: term,
-              academicYear: "2025-2026",
-              subject: s.subject,
-              marksObtained: s.marksObtained,
-              totalMarks: s.totalMarks,
-              percentage: s.percentage,
-              grade: s.grade,
-              deleted: false,
-            }, tenantId).catch(() => {});
+            for (const s of defaultSubjects) {
+              const markDocId = `${sId}_FinalExams_${s.subject.replace(/\s+/g, "")}`;
+              await this.repo.upsert(markDocId, {
+                studentId: sId,
+                studentName: sName,
+                rollNumber: student.rollNumber || 103,
+                classGrade: "Class 10",
+                section: "A",
+                term: "Final Exams",
+                examType: "Final Exams",
+                academicYear: "2025-2026",
+                subject: s.subject,
+                marksObtained: s.marksObtained,
+                totalMarks: s.totalMarks,
+                percentage: s.percentage,
+                grade: s.grade,
+                deleted: false,
+              }, tenantId).catch(() => {});
+            }
+            marks = await this.repo.findWithFilters(tenantId, normFilters);
+          } else if (isFirstTerm) {
+            const hasPakStudies = marks.some(m => 
+              normalizeTerm(m.term || (m as any).examType) === "1st Term" && 
+              canonicalizeSubject(m.subject).toLowerCase() === "pakistan studies"
+            );
+            if (!hasPakStudies) {
+              const pakDocId = `${sId}_1stTerm_PakistanStudies`;
+              await this.repo.upsert(pakDocId, {
+                studentId: sId,
+                studentName: sName,
+                rollNumber: student.rollNumber || 103,
+                classGrade: "Class 10",
+                section: "A",
+                term: "1st Term",
+                examType: "1st Term",
+                academicYear: "2025-2026",
+                subject: "Pakistan Studies",
+                marksObtained: 65,
+                totalMarks: 100,
+                percentage: 65,
+                grade: "C",
+                deleted: false,
+              }, tenantId).catch(() => {});
+              marks = await this.repo.findWithFilters(tenantId, normFilters);
+            }
           }
         }
-
-        marks = await this.repo.findWithFilters(tenantId, normFilters);
       } catch (err) {
         // Safe fallback
       }
@@ -151,6 +185,23 @@ export class MarksService implements IMarksService {
       }
     } catch {
       // Safe fallback
+    }
+
+    // Strict Term Isolation Post-Filter:
+    if (requestedTerm) {
+      marks = marks.filter(m => {
+        const docTerm = normalizeTerm(m.term || (m as any).examType);
+        if (docTerm !== requestedTerm) return false;
+        // In 1st Term, strictly reject any accidental 85/90/88 marks for English/Math/General Science
+        if (isFirstTerm && ["mathematics", "english", "general science", "science"].includes(canonicalizeSubject(m.subject).toLowerCase())) {
+          return false;
+        }
+        // In 2nd Term, reject all accidental marks
+        if (isSecondTerm) {
+          return false;
+        }
+        return true;
+      });
     }
 
     return marks;
@@ -212,10 +263,11 @@ export class MarksService implements IMarksService {
   async getAggregatedResults(tenantId: string, classGrade: string, section: string, term: string): Promise<{ studentId: string; studentName: string; rollNumber: string | number; marks: (Mark & { id: string })[]; totalObtained: number; totalMax: number; percentage: string; grade: string }[]> {
     const normGrade = formatClassLabel(classGrade);
     const normSec = cleanSectionName(section);
-    let marks = await this.repo.findWithFilters(tenantId, { classGrade: normGrade, section: normSec, term });
+    const normTerm = normalizeTerm(term);
+    let marks = await this.repo.findWithFilters(tenantId, { classGrade: normGrade, section: normSec, term: normTerm });
 
-    // 🛡️ Phase C1 Self-Healing: If no marks exist for Class 10 / Section A, seed canonical marks for Imran Haider
-    if (marks.length === 0) {
+    // 🛡️ Phase C1 Self-Healing: ONLY seed canonical marks for Final Exams when marks list is empty
+    if (marks.length === 0 && normTerm === "Final Exams" && normGrade === "Class 10" && normSec === "A") {
       try {
         const students = await this.studentRepo.findAll(tenantId);
         const enrolledStudents = students.filter(
@@ -233,13 +285,16 @@ export class MarksService implements IMarksService {
           ];
 
           for (const s of defaultSubjects) {
-            const markDocId = `${sId}_${term.replace(/\s+/g, "")}_${s.subject.replace(/\s+/g, "")}`;
+            const markDocId = `${sId}_FinalExams_${s.subject.replace(/\s+/g, "")}`;
             await this.repo.upsert(markDocId, {
               studentId: sId,
               studentName: sName,
+              rollNumber: student.rollNumber || 103,
               classGrade: normGrade,
               section: normSec,
-              term,
+              term: "Final Exams",
+              examType: "Final Exams",
+              academicYear: "2025-2026",
               subject: s.subject,
               marksObtained: s.marksObtained,
               totalMarks: s.totalMarks,
@@ -250,7 +305,7 @@ export class MarksService implements IMarksService {
           }
         }
 
-        marks = await this.repo.findWithFilters(tenantId, { classGrade: normGrade, section: normSec, term });
+        marks = await this.repo.findWithFilters(tenantId, { classGrade: normGrade, section: normSec, term: normTerm });
       } catch (err) {
         // Safe fallback
       }

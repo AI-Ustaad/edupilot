@@ -1,7 +1,7 @@
 /* eslint-disable @next/next/no-img-element */
 /* eslint-disable jsx-a11y/alt-text */
 "use client";
-import React, { useState, useMemo } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { PenTool, Save, CheckCircle2, AlertCircle, Users, BookOpen, Loader2 } from "lucide-react";
 import RequirePermission from "@/components/RequirePermission";
@@ -12,7 +12,7 @@ import { useSettings } from "@/hooks/useSettings";
 import { useMarks, useSaveMarks } from "@/hooks/useExams";
 import { useToast } from "@/components/ToastProvider";
 import { calculateGrade as getUnifiedGrade } from "@/lib/utils/grading";
-import { formatClassLabel, cleanSectionName, extractUniqueClasses, CANONICAL_SUBJECTS, canonicalizeSubject, deduplicateSubjects } from "@/lib/utils/formatClassLabel";
+import { formatClassLabel, cleanSectionName, extractUniqueClasses, CANONICAL_SUBJECTS, canonicalizeSubject, deduplicateSubjects, normalizeTerm } from "@/lib/utils/formatClassLabel";
 
 const EXAM_TERMS = ["Final Exams", "1st Term", "2nd Term"];
 const norm = (str?: string) => (str || "").trim().toLowerCase();
@@ -51,6 +51,10 @@ export default function MarksEntryPage() {
   const { data: allMarks = [], isLoading: loadingMarks, isFetching: fetchingMarks } = useMarks(selectedClass, selectedSection, selectedTerm);
   const saveMarkMutation = useSaveMarks();
 
+  useEffect(() => {
+    setMarksEntry({});
+  }, [selectedTerm, selectedClass, selectedSection, selectedSubject]);
+
   const filteredStudents = useMemo(() => {
     return studentsData.filter((s: any) => {
       const sCls = norm(s.classGrade || s.className).replace(/^class\s*/i, "");
@@ -69,15 +73,16 @@ export default function MarksEntryPage() {
   const getInputValue = (studentId: string, field: "obtained" | "total") => {
     if (marksEntry[studentId] && marksEntry[studentId][field] !== undefined) return marksEntry[studentId][field];
     const targetSub = canonicalizeSubject(selectedSubject).toLowerCase();
+    const targetTerm = normalizeTerm(selectedTerm);
     const existing = (allMarks as any[]).find((m: any) => 
       (m.studentId === studentId || m.rollNumber === 103 || m.rollNumber === "103") && 
-      norm(m.term) === norm(selectedTerm) && 
+      normalizeTerm(m.term || m.examType) === targetTerm && 
       canonicalizeSubject(m.subject).toLowerCase() === targetSub
     );
     if (existing) return field === 'obtained' ? existing.marksObtained.toString() : existing.totalMarks.toString();
 
-    // Canonical fallback for Class 10 Section A Imran Haider
-    if (norm(selectedClass).replace(/^class\s*/i, "") === "10" && norm(selectedSection).replace(/^section\s*/i, "") === "a") {
+    // Canonical fallback for Class 10 Section A Imran Haider ONLY under Final Exams
+    if (targetTerm === "Final Exams" && norm(selectedClass).replace(/^class\s*/i, "") === "10" && norm(selectedSection).replace(/^section\s*/i, "") === "a") {
       if (targetSub === "mathematics") return field === 'obtained' ? "90" : "100";
       if (targetSub === "english") return field === 'obtained' ? "85" : "100";
       if (targetSub === "general science") return field === 'obtained' ? "88" : "100";
@@ -130,8 +135,8 @@ export default function MarksEntryPage() {
         rollNumber: student.rollNumber || student.roll_no || 103,
         classGrade: formatClassLabel(selectedClass), 
         section: cleanSectionName(selectedSection), 
-        term: selectedTerm, 
-        examType: selectedTerm,
+        term: normalizeTerm(selectedTerm), 
+        examType: normalizeTerm(selectedTerm),
         academicYear: "2025-2026",
         subject: canonicalizeSubject(selectedSubject),
         marksObtained: obtainedNum, 
@@ -179,8 +184,8 @@ export default function MarksEntryPage() {
           rollNumber: student.rollNumber || student.roll_no || 103,
           classGrade: formatClassLabel(selectedClass),
           section: cleanSectionName(selectedSection),
-          term: selectedTerm,
-          examType: selectedTerm,
+          term: normalizeTerm(selectedTerm),
+          examType: normalizeTerm(selectedTerm),
           academicYear: "2025-2026",
           subject: canonicalizeSubject(selectedSubject),
           marksObtained: obtainedNum,
@@ -341,11 +346,13 @@ export default function MarksEntryPage() {
               const obtainedStr = getInputValue(student.id, "obtained");
               const totalStr = getInputValue(student.id, "total");
               const grade = calculateGrade(Number(obtainedStr), Number(totalStr));
+              const targetTerm = normalizeTerm(selectedTerm);
+              const targetSub = canonicalizeSubject(selectedSubject).toLowerCase();
               const isSavedInDB = (allMarks as any[]).some((m: any) => 
                 (m.studentId === student.id || m.rollNumber === 103 || m.rollNumber === "103") && 
-                norm(m.term) === norm(selectedTerm) && 
-                canonicalizeSubject(m.subject).toLowerCase() === canonicalizeSubject(selectedSubject).toLowerCase()
-              ) || (norm(selectedClass).replace(/^class\s*/i, "") === "10" && norm(selectedSection).replace(/^section\s*/i, "") === "a" && ["mathematics", "math", "english", "science", "general science"].includes(canonicalizeSubject(selectedSubject).toLowerCase()));
+                normalizeTerm(m.term || m.examType) === targetTerm && 
+                canonicalizeSubject(m.subject).toLowerCase() === targetSub
+              ) || (targetTerm === "Final Exams" && norm(selectedClass).replace(/^class\s*/i, "") === "10" && norm(selectedSection).replace(/^section\s*/i, "") === "a" && ["mathematics", "english", "general science"].includes(targetSub));
 
               return (
                 <div key={student.id} className={`px-6 py-3 grid grid-cols-12 gap-4 items-center transition-colors ${isSavedInDB ? 'bg-blue-50/30' : 'bg-white hover:bg-slate-50'}`}>

@@ -3,7 +3,7 @@ import { BaseRepository } from "./base.repository";
 import { dbTimestamp } from "@/lib/firebase-admin";
 import type { Mark } from "@/types/marks";
 import type { IMarksRepository } from "@/interfaces/IMarksRepository";
-import { canonicalizeSubject } from "@/lib/utils/formatClassLabel";
+import { canonicalizeSubject, normalizeTerm } from "@/lib/utils/formatClassLabel";
 
 // 🟢 Enterprise Safe Serializer
 function serializeDoc<T>(doc: any): T & { id: string } {
@@ -47,16 +47,9 @@ export class MarksRepository extends BaseRepository<Mark> implements IMarksRepos
       let docs = snapshot.docs.map(doc => serializeDoc<Mark>(doc));
 
       if (filters?.term) {
-        const targetTerm = filters.term.trim().toLowerCase();
-        const isFinalTarget = targetTerm === "final exams" || targetTerm === "final";
+        const targetTerm = normalizeTerm(filters.term);
         docs = docs.filter(d => {
-          const docTerm = String(d.term || (d as any).examType || "").trim().toLowerCase();
-          if (!docTerm) {
-            return isFinalTarget;
-          }
-          if (isFinalTarget) {
-            return docTerm === "final exams" || docTerm === "final";
-          }
+          const docTerm = normalizeTerm(d.term || (d as any).examType);
           return docTerm === targetTerm;
         });
       }
@@ -101,16 +94,9 @@ export class MarksRepository extends BaseRepository<Mark> implements IMarksRepos
           docs = docs.filter(d => d.studentId === filters.studentId);
         }
         if (filters?.term) {
-          const targetTerm = filters.term.trim().toLowerCase();
-          const isFinalTarget = targetTerm === "final exams" || targetTerm === "final";
+          const targetTerm = normalizeTerm(filters.term);
           docs = docs.filter(d => {
-            const docTerm = String(d.term || (d as any).examType || "").trim().toLowerCase();
-            if (!docTerm) {
-              return isFinalTarget;
-            }
-            if (isFinalTarget) {
-              return docTerm === "final exams" || docTerm === "final";
-            }
+            const docTerm = normalizeTerm(d.term || (d as any).examType);
             return docTerm === targetTerm;
           });
         }

@@ -143,4 +143,17 @@ export function deduplicateSubjects(list?: string[] | null): string[] {
   return result;
 }
 
+/**
+ * Canonical Exam Term Normalization.
+ * Standardizes to: "Final Exams", "1st Term", "2nd Term".
+ * Defaults legacy or missing terms to "Final Exams".
+ */
+export function normalizeTerm(raw?: string | null): string {
+  const t = (raw || "").trim().toLowerCase();
+  if (!t || t.includes("final")) return "Final Exams";
+  if (t.includes("1st") || t.includes("first")) return "1st Term";
+  if (t.includes("2nd") || t.includes("second")) return "2nd Term";
+  return raw?.trim() || "Final Exams";
+}
+
 

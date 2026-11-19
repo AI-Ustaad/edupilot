@@ -4,6 +4,7 @@ import { createSuccessResponse, createErrorResponse, createApiResponse } from "@
 import { MarksService } from "@/services/marks.service";
 import { withPermission } from "@/lib/auth/rbac";
 import { PERMISSIONS } from "@/lib/auth/permissions";
+import { normalizeTerm } from "@/lib/utils/formatClassLabel";
 import type { TenantContext } from "@/types/api";
 
 const marksService = new MarksService();
@@ -16,10 +17,11 @@ export const GET = withErrorHandler(
     withTenant(
       withPermission(PERMISSIONS.marks.view)(async (req: Request, { tenantId }: TenantContext) => {
         const { searchParams } = new URL(req.url);
+        const rawTerm = searchParams.get("term") || searchParams.get("examType");
         const filters = {
           classGrade: searchParams.get("classGrade") || undefined,
           section: searchParams.get("section") || undefined,
-          term: searchParams.get("term") || undefined,
+          term: rawTerm ? normalizeTerm(rawTerm) : undefined,
           subject: searchParams.get("subject") || undefined,
           studentId: searchParams.get("studentId") || undefined,
         };
@@ -39,6 +41,8 @@ export const POST = withErrorHandler(
     withTenant(
       withPermission(PERMISSIONS.marks.update)(async (req: Request, { tenantId, user }: TenantContext) => {
         const body = await req.json();
+        if (body.term) body.term = normalizeTerm(body.term);
+        if (body.examType) body.examType = normalizeTerm(body.examType);
         const result = await marksService.saveMark(body, tenantId, user.uid);
         return createApiResponse(200, result, result.message);
       })

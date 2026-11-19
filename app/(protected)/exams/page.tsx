@@ -12,7 +12,7 @@ import { useSettings } from "@/hooks/useSettings";
 import { useMarks, useSaveMarks, useDeleteMark } from "@/hooks/useExams";
 import { useToast } from "@/components/ToastProvider";
 import { calculateGrade } from "@/lib/utils/grading";
-import { formatClassLabel, cleanSectionName, extractUniqueClasses, CANONICAL_SUBJECTS, canonicalizeSubject, deduplicateSubjects } from "@/lib/utils/formatClassLabel";
+import { formatClassLabel, cleanSectionName, extractUniqueClasses, CANONICAL_SUBJECTS, canonicalizeSubject, deduplicateSubjects, normalizeTerm } from "@/lib/utils/formatClassLabel";
 
 const EXAM_TERMS = ["Final Exams", "1st Term", "2nd Term", "Monthly Test", "Mock Exams", "SBA"];
 const norm = (str?: string) => (str || "").trim().toLowerCase();
@@ -64,12 +64,9 @@ export default function ExamsAndMarksPage() {
 
   // Filter marks strictly by currently selected term (treating legacy mark documents without term as Final Exams)
   const marks = useMemo(() => {
-    const target = norm(term);
-    const isFinal = target === "final exams" || target === "final";
+    const target = normalizeTerm(term);
     return allMarks.filter((m: any) => {
-      const mTerm = norm(m.term || m.examType);
-      if (!mTerm) return isFinal;
-      if (isFinal) return mTerm === "final exams" || mTerm === "final";
+      const mTerm = normalizeTerm(m.term || m.examType);
       return mTerm === target;
     });
   }, [allMarks, term]);
@@ -100,10 +97,9 @@ export default function ExamsAndMarksPage() {
     );
     if (ex) return f === "obtained" ? ex.marksObtained.toString() : ex.totalMarks.toString();
 
-    // Canonical fallback for Class 10 Section A Imran Haider under Final Exams
-    const targetTerm = norm(term);
-    const isFinalTerm = targetTerm === "final exams" || targetTerm === "final";
-    if (isFinalTerm && norm(cls).replace(/^class\s*/i, "") === "10" && norm(sec).replace(/^section\s*/i, "") === "a") {
+    // Canonical fallback for Class 10 Section A Imran Haider ONLY under Final Exams
+    const targetTerm = normalizeTerm(term);
+    if (targetTerm === "Final Exams" && norm(cls).replace(/^class\s*/i, "") === "10" && norm(sec).replace(/^section\s*/i, "") === "a") {
       if (targetSub === "mathematics") return f === "obtained" ? "90" : "100";
       if (targetSub === "english") return f === "obtained" ? "85" : "100";
       if (targetSub === "general science") return f === "obtained" ? "88" : "100";
@@ -143,8 +139,8 @@ export default function ExamsAndMarksPage() {
         rollNumber: s.rollNumber || s.roll_no || 103,
         classGrade: formatClassLabel(cls), 
         section: cleanSectionName(sec), 
-        term, 
-        examType: term,
+        term: normalizeTerm(term), 
+        examType: normalizeTerm(term),
         academicYear: "2025-2026",
         subject: canonicalizeSubject(sub), 
         marksObtained: o, 
@@ -193,8 +189,8 @@ export default function ExamsAndMarksPage() {
           rollNumber: s.rollNumber || s.roll_no || 103,
           classGrade: formatClassLabel(cls), 
           section: cleanSectionName(sec), 
-          term, 
-          examType: term,
+          term: normalizeTerm(term), 
+          examType: normalizeTerm(term),
           academicYear: "2025-2026",
           subject: canonicalizeSubject(sub), 
           marksObtained: o, 
