@@ -14,9 +14,11 @@ export const PUT = withErrorHandler(
     withTenant(
       withPermission(PERMISSIONS.students.update)(async (req: Request, { tenantId, user }: TenantContext) => {
         const url = new URL(req.url);
-        const studentId = url.pathname.split("/").pop() || "";
+        const segments = url.pathname.split("/").filter(Boolean);
+        const commentIndex = segments.indexOf("comment");
+        const studentId = commentIndex > 0 ? segments[commentIndex - 1] : segments[segments.length - 1];
 
-        if (!studentId) {
+        if (!studentId || studentId === "comment") {
           return createErrorResponse(400, "Student ID is required");
         }
 

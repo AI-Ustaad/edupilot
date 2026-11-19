@@ -108,7 +108,7 @@ export default function ReportCommentsPage() {
           <input placeholder="Attendance (%)" type="number" value={attendance} onChange={e => setAttendance(e.target.value)} className="border border-gray-300 bg-gray-50 rounded-xl p-3" required />
         </div>
         
-        <RequirePermission permissions={[PERMISSIONS.exams.manage]}>
+        <RequirePermission permissions={[PERMISSIONS.ai.view, PERMISSIONS.exams.manage, PERMISSIONS.marks.create, PERMISSIONS.exams.view]}>
           <button type="submit" disabled={generateMutation.isPending} className="w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition disabled:opacity-50">
             {generateMutation.isPending ? <Loader2 className="animate-spin" size={18} /> : <Sparkles size={18} />}
             Generate AI Comment

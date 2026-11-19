@@ -5,6 +5,7 @@ import { Sparkles, Loader2, AlertTriangle, TrendingUp, ArrowRight, Zap } from "l
 import RequirePermission from "@/components/RequirePermission";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 import { usePrincipalAgent } from "@/hooks/useAIAgents";
+import { FormattedAiText } from "@/components/ui/FormattedAiText";
 
 export default function PrincipalCopilotPage() {
   const [query, setQuery] = useState("");
@@ -100,9 +101,7 @@ export default function PrincipalCopilotPage() {
             <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2 border-b pb-2">
               <TrendingUp className="text-green-600" /> Executive Summary & Recommendations
             </h2>
-            <div className="prose prose-sm max-w-none text-gray-800 whitespace-pre-line font-medium leading-relaxed">
-              {insights}
-            </div>
+            <FormattedAiText content={insights} className="pt-2" />
           </div>
         )}
       </div>

@@ -5,6 +5,7 @@ export interface AgentContext {
   userId: string;
   userRole: string;
   query: string;
+  tenantSnapshot?: string;
 }
 
 export interface IAgentStrategy {

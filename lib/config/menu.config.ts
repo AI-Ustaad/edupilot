@@ -498,13 +498,6 @@ export const ALL_MENU_GROUPS: MenuGroupDef[] = [
     key: "adminTools",
     items: [
       {
-        id: "configuration-dashboard",
-        name: "Configuration Dashboard",
-        icon: Activity,
-        path: "/admin/configuration-dashboard",
-        requiredPermission: "settings.manage",
-      },
-      {
         id: "school-setup",
         name: "School Setup",
         icon: School,
@@ -554,22 +547,8 @@ export const ALL_MENU_GROUPS: MenuGroupDef[] = [
         requiredPermission: "settings.manage",
       },
       {
-        id: "billing",
-        name: "Subscription",
-        icon: CreditCard,
-        path: "/settings/billing",
-        requiredPermission: "billing.view",
-      },
-      {
         id: "whitelabel",
-        name: "White Label",
-        icon: Palette,
-        path: "/settings/whitelabel",
-        requiredPermission: "settings.manage",
-      },
-      {
-        id: "admin-branding",
-        name: "Admin Branding",
+        name: "White Label & Branding",
         icon: Palette,
         path: "/admin/whitelabel",
         requiredPermission: "settings.manage",

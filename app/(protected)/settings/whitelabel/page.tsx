@@ -41,15 +41,15 @@ export default function EnterpriseWhiteLabelPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-sm font-bold text-gray-700 mb-1">School Name</label>
-                  <input type="text" value={form.schoolName || ""} onChange={(e) => setForm({ ...form, schoolName: e.target.value })} className={inputClass} placeholder="EduPilot High School" />
+                  <input type="text" value={form.schoolName || ""} onChange={(e) => setForm({ ...form, schoolName: e.target.value })} className={inputClass} placeholder="e.g. Government High School Sahiwal" />
                 </div>
                 <div>
                   <label className="block text-sm font-bold text-gray-700 mb-1">Favicon URL</label>
-                  <input type="text" value={form.favicon || ""} onChange={(e) => setForm({ ...form, favicon: e.target.value })} className={inputClass} placeholder="https://example.com/favicon.ico" />
+                  <input type="text" value={form.favicon || ""} onChange={(e) => setForm({ ...form, favicon: e.target.value })} className={inputClass} placeholder="https://your-domain.com/favicon.ico" />
                 </div>
                 <div className="md:col-span-2">
                   <label className="block text-sm font-bold text-gray-700 mb-1">Logo URL (Light Background)</label>
-                  <input type="text" value={form.logo || ""} onChange={(e) => setForm({ ...form, logo: e.target.value })} className={inputClass} placeholder="https://example.com/logo.png" />
+                  <input type="text" value={form.logo || ""} onChange={(e) => setForm({ ...form, logo: e.target.value })} className={inputClass} placeholder="https://your-domain.com/logo.png" />
                 </div>
               </div>
             </div>

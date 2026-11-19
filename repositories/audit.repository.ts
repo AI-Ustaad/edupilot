@@ -28,17 +28,43 @@ export class AuditRepository extends BaseRepository<AuditLog> implements IAuditR
   }
 
   async findByTenant(tenantId: string, options?: { limit?: number; action?: string; entityType?: string }): Promise<AuditLog[]> {
-    let query = this.db
-      .collection(this.collectionName)
-      .where("tenantId", "==", tenantId)
-      .orderBy("createdAt", "desc");
+    try {
+      let query = this.db
+        .collection(this.collectionName)
+        .where("tenantId", "==", tenantId)
+        .orderBy("createdAt", "desc");
 
-    if (options?.action) query = query.where("action", "==", options.action);
-    if (options?.entityType) query = query.where("entityType", "==", options.entityType);
-    if (options?.limit) query = query.limit(options.limit);
+      if (options?.action) query = query.where("action", "==", options.action);
+      if (options?.entityType) query = query.where("entityType", "==", options.entityType);
+      if (options?.limit) query = query.limit(options.limit);
 
-    const snapshot = await query.get();
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as AuditLog));
+      const snapshot = await query.get();
+      return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as AuditLog));
+    } catch {
+      // Fallback without orderBy in case of missing index, then sort in memory
+      let query = this.db
+        .collection(this.collectionName)
+        .where("tenantId", "==", tenantId);
+
+      if (options?.action) query = query.where("action", "==", options.action);
+      if (options?.entityType) query = query.where("entityType", "==", options.entityType);
+      if (options?.limit) query = query.limit(options.limit);
+
+      const snapshot = await query.get();
+      const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as AuditLog));
+      docs.sort((a: any, b: any) => {
+        const getMs = (val: any) => {
+          if (!val) return 0;
+          if (typeof val?.toDate === "function") return val.toDate().getTime();
+          if (val?._seconds !== undefined) return val._seconds * 1000;
+          if (val?.seconds !== undefined) return val.seconds * 1000;
+          const t = new Date(val).getTime();
+          return isNaN(t) ? 0 : t;
+        };
+        return getMs(b.createdAt) - getMs(a.createdAt);
+      });
+      return docs;
+    }
   }
 
   async findByEntity(tenantId: string, entityType: string, entityId: string): Promise<AuditLog[]> {

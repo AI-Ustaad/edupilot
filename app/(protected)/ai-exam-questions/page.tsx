@@ -108,7 +108,7 @@ export default function AIExamQuestionsPage() {
           </select>
         </div>
 
-        <RequirePermission permissions={[PERMISSIONS.exams.manage]}>
+        <RequirePermission permissions={[PERMISSIONS.ai.view, PERMISSIONS.exams.manage, PERMISSIONS.exams.view]}>
           <button 
             onClick={generateExam} 
             disabled={generateExamMutation.isPending} 

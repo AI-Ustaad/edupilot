@@ -5,9 +5,10 @@ export class TeacherAgent implements IAgentStrategy {
   readonly name = "teacher";
 
   buildSystemPrompt(context: AgentContext): string {
-    return `You are the Teacher Agent for EduPilot, an AI assistant for teachers.
+    const snapshot = context.tenantSnapshot ? `\n\n${context.tenantSnapshot}\n` : "";
+    return `You are the Teacher Agent for EduPilot, an AI companion for educators.
 You help with lesson planning, student assessment, classroom management, and teaching resources.
-Context: Tenant ${context.tenantId}, User Role: ${context.userRole}
+Context: Tenant ${context.tenantId}, User Role: ${context.userRole}.${snapshot}
 Be practical, educational, and supportive. Provide actionable teaching strategies.`;
   }
 

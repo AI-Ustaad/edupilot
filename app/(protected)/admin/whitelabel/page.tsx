@@ -70,7 +70,7 @@ export default function EnterpriseWhiteLabelPage() {
 
               <div className="pt-4 border-t">
                 <label className="block text-sm font-bold text-gray-700 mb-1">School Name</label>
-                <input type="text" value={form.schoolName || ""} onChange={(e) => setForm({ ...form, schoolName: e.target.value })} className={inputClass} placeholder="EduPilot High School" />
+                <input type="text" value={form.schoolName || ""} onChange={(e) => setForm({ ...form, schoolName: e.target.value })} className={inputClass} placeholder="e.g. Government High School Sahiwal" />
               </div>
             </div>
 

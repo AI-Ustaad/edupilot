@@ -47,13 +47,29 @@ export class TimetableService implements IAITimetableService {
     );
     const text = response.text;
     try {
-      const parsed = JSON.parse(text.replace(/```json|```/g, "").trim());
-      if (!Array.isArray(parsed) || parsed.length === 0) {
+      let cleaned = text.trim();
+      const codeBlockMatch = cleaned.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+      if (codeBlockMatch) {
+        cleaned = codeBlockMatch[1].trim();
+      } else {
+        cleaned = cleaned.replace(/```json|```/g, "").trim();
+      }
+
+      // If array is surrounded by extraneous text, isolate array bounds
+      const firstBracket = cleaned.indexOf("[");
+      const lastBracket = cleaned.lastIndexOf("]");
+      if (firstBracket !== -1 && lastBracket !== -1 && lastBracket > firstBracket) {
+        cleaned = cleaned.slice(firstBracket, lastBracket + 1);
+      }
+
+      const parsed = JSON.parse(cleaned);
+      const list = Array.isArray(parsed) ? parsed : (parsed.timetable || parsed.entries || parsed.items || []);
+      if (!Array.isArray(list) || list.length === 0) {
         throw new Error("Empty or invalid timetable");
       }
 
       // Normalize entries to strictly adhere to CreateTimetableEntrySchema (DEF-016)
-      const timetable = parsed.map((entry: any) => ({
+      const timetable = list.map((entry: any) => ({
         ...entry,
         classGrade: String(entry.classGrade || entry.class || ""),
         class: String(entry.class || entry.classGrade || ""),

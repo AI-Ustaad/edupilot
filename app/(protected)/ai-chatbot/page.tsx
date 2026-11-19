@@ -6,6 +6,7 @@ import { PERMISSIONS } from "@/lib/auth/permissions";
 
 // 🚀 Layered Architecture Hook
 import { useAskChatbot } from "@/hooks/useAI";
+import { FormattedAiText } from "@/components/ui/FormattedAiText";
 
 export default function AIChatbotPage() {
   const [question, setQuestion] = useState("");
@@ -63,7 +64,7 @@ export default function AIChatbotPage() {
           <h2 className="font-black text-purple-900 mb-3 border-b border-purple-200 pb-2 flex items-center gap-2">
             <Bot size={20} /> AI Response
           </h2>
-          <div className="text-purple-900 leading-relaxed whitespace-pre-line font-medium">{answer}</div>
+          <FormattedAiText content={answer} className="text-purple-950" />
         </div>
       )}
     </div>

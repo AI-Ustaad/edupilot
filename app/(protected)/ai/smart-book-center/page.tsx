@@ -5,6 +5,7 @@ import { Loader2, BookOpen, Sparkles, AlertTriangle, ArrowRight, Zap } from "luc
 import RequirePermission from "@/components/RequirePermission";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 import { useAskSmartBookCenter } from "@/hooks/useAI";
+import { FormattedAiText } from "@/components/ui/FormattedAiText";
 
 export default function SmartBookCenterPage() {
   const [query, setQuery] = useState("");
@@ -103,7 +104,7 @@ export default function SmartBookCenterPage() {
       {result && (
         <div className="bg-blue-50 border border-blue-200 rounded-2xl p-6 shadow-inner animate-fade-in">
           <h2 className="font-black text-blue-900 mb-3 border-b border-blue-200 pb-2">AI Results</h2>
-          <div className="text-blue-900 leading-relaxed whitespace-pre-line font-medium">{result}</div>
+          <FormattedAiText content={result} className="text-blue-950" />
         </div>
       )}
     </div>

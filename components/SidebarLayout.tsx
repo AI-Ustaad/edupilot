@@ -184,8 +184,7 @@ const MENU_GROUPS = [
       { name: "Classes & Curriculum", icon: BookOpen, path: "/settings/curriculum", permission: "settings.manage" },
       { name: "Subscription & Billing", icon: CreditCard, path: "/settings/billing", permission: "billing.view" },
       { name: "Addons & Modules", icon: Package, path: "/settings/addons", permission: "settings.manage" },
-      { name: "White Label (Settings)", icon: Palette, path: "/settings/whitelabel", permission: "settings.manage" },
-      { name: "Admin Branding", icon: Palette, path: "/admin/whitelabel", permission: "settings.manage" },
+      { name: "White Label & Branding", icon: Palette, path: "/admin/whitelabel", permission: "settings.manage" },
     ],
   },
   {

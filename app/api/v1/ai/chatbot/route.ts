@@ -3,6 +3,7 @@ import { withAuth, withTenant, withErrorHandler } from "@/route-helpers";
 import { createSuccessResponse, createErrorResponse } from "@/lib/api/response";
 import { agentRegistry } from "@/lib/ai/agents/AgentRegistry";
 import { enforceAiQuota, createAiErrorResponse, recordAiTelemetry } from "@/lib/ai/ai-quota-guard";
+import { getTenantContextSnapshot } from "@/lib/ai/tenant-snapshot";
 import type { TenantContext } from "@/types/api";
 
 export const POST = withErrorHandler(
@@ -20,11 +21,13 @@ export const POST = withErrorHandler(
 
       const startTime = Date.now();
       try {
+        const tenantSnapshot = await getTenantContextSnapshot(tenantId);
         const answer = await agentRegistry.execute("teacher", {
           tenantId,
           userId: user.uid,
           userRole: user.role,
           query: question,
+          tenantSnapshot,
         });
 
         await recordAiTelemetry({
