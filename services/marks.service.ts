@@ -14,7 +14,7 @@ import type { IMarksRepository } from "@/interfaces/IMarksRepository";
 import type { Mark } from "@/types/marks";
 import type { IMarksService } from "@/interfaces/IMarksService";
 import { NotFoundException, BusinessError } from "@/errors/AppError";
-import { formatClassLabel, cleanSectionName } from "@/lib/utils/formatClassLabel";
+import { formatClassLabel, cleanSectionName, canonicalizeSubject } from "@/lib/utils/formatClassLabel";
 import { calculateGrade } from "@/lib/utils/grading";
 
 export class MarksService implements IMarksService {
@@ -45,7 +45,8 @@ export class MarksService implements IMarksService {
       throw new BusinessError("Student has no class assignment");
     }
 
-    const markDocId = `${parsed.studentId}_${parsed.term.replace(/\s+/g, "")}_${parsed.subject.replace(/\s+/g, "")}`;
+    const subject = canonicalizeSubject(parsed.subject);
+    const markDocId = `${parsed.studentId}_${parsed.term.replace(/\s+/g, "")}_${subject.replace(/\s+/g, "")}`;
 
     await this.repo.upsert(markDocId, {
       studentId: parsed.studentId,
@@ -53,7 +54,7 @@ export class MarksService implements IMarksService {
       classGrade: student.classGrade,
       section: student.section || "A",
       term: parsed.term,
-      subject: parsed.subject,
+      subject,
       marksObtained: parsed.marksObtained,
       totalMarks: parsed.totalMarks,
       percentage: parsed.percentage,
@@ -99,7 +100,7 @@ export class MarksService implements IMarksService {
           const defaultSubjects = [
             { subject: "Mathematics", marksObtained: 90, totalMarks: 100, percentage: 90, grade: "A+" },
             { subject: "English", marksObtained: 85, totalMarks: 100, percentage: 85, grade: "A" },
-            { subject: "Science", marksObtained: 88, totalMarks: 100, percentage: 88, grade: "A" },
+            { subject: "General Science", marksObtained: 88, totalMarks: 100, percentage: 88, grade: "A" },
           ];
 
           for (const s of defaultSubjects) {
@@ -124,6 +125,20 @@ export class MarksService implements IMarksService {
       } catch (err) {
         // Safe fallback
       }
+    }
+
+    // Re-key and migrate any legacy "Science" documents to "General Science"
+    try {
+      const legacyScience = marks.filter(m => (m.subject || "").trim().toLowerCase() === "science");
+      for (const leg of legacyScience) {
+        const rekeyedId = `${leg.studentId}_${(leg.term || "FinalExams").replace(/\s+/g, "")}_GeneralScience`;
+        await this.repo.upsert(rekeyedId, {
+          ...leg,
+          subject: "General Science",
+        }, tenantId).catch(() => {});
+      }
+    } catch {
+      // Safe fallback
     }
 
     return marks;
@@ -202,7 +217,7 @@ export class MarksService implements IMarksService {
           const defaultSubjects = [
             { subject: "Mathematics", marksObtained: 90, totalMarks: 100, percentage: 90, grade: "A+" },
             { subject: "English", marksObtained: 85, totalMarks: 100, percentage: 85, grade: "A" },
-            { subject: "Science", marksObtained: 88, totalMarks: 100, percentage: 88, grade: "A" },
+            { subject: "General Science", marksObtained: 88, totalMarks: 100, percentage: 88, grade: "A" },
           ];
 
           for (const s of defaultSubjects) {
@@ -227,6 +242,20 @@ export class MarksService implements IMarksService {
       } catch (err) {
         // Safe fallback
       }
+    }
+
+    // Re-key and migrate any legacy "Science" documents to "General Science"
+    try {
+      const legacyScience = marks.filter(m => (m.subject || "").trim().toLowerCase() === "science");
+      for (const leg of legacyScience) {
+        const rekeyedId = `${leg.studentId}_${(leg.term || "FinalExams").replace(/\s+/g, "")}_GeneralScience`;
+        await this.repo.upsert(rekeyedId, {
+          ...leg,
+          subject: "General Science",
+        }, tenantId).catch(() => {});
+      }
+    } catch {
+      // Safe fallback
     }
 
     const marksByStudent = new Map<string, (Mark & { id: string })[]>();

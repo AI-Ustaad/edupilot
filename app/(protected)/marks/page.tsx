@@ -12,7 +12,7 @@ import { useSettings } from "@/hooks/useSettings";
 import { useMarks, useSaveMarks } from "@/hooks/useExams";
 import { useToast } from "@/components/ToastProvider";
 import { calculateGrade as getUnifiedGrade } from "@/lib/utils/grading";
-import { formatClassLabel, cleanSectionName, extractUniqueClasses, CANONICAL_SUBJECTS } from "@/lib/utils/formatClassLabel";
+import { formatClassLabel, cleanSectionName, extractUniqueClasses, CANONICAL_SUBJECTS, canonicalizeSubject, deduplicateSubjects } from "@/lib/utils/formatClassLabel";
 
 const EXAM_TERMS = ["Final Exams", "1st Term", "2nd Term"];
 const norm = (str?: string) => (str || "").trim().toLowerCase();
@@ -44,15 +44,11 @@ export default function MarksEntryPage() {
   
   const { data: settings } = useSettings();
   const subjects = useMemo(() => {
-    const list = Array.isArray(settings?.subjects) && settings.subjects.length > 0 ? settings.subjects : [];
-    const set = new Set<string>();
-    list.forEach(s => set.add(s));
-    CANONICAL_SUBJECTS.forEach(s => set.add(s));
-    return Array.from(set);
+    return deduplicateSubjects(settings?.subjects);
   }, [settings?.subjects]);
 
   const { data: studentsData = [], isLoading: loadingStudents } = useStudents();
-  const { data: allMarks = [], isLoading: loadingMarks } = useMarks(selectedClass, selectedSection, selectedTerm);
+  const { data: allMarks = [], isLoading: loadingMarks, isFetching: fetchingMarks } = useMarks(selectedClass, selectedSection, selectedTerm);
   const saveMarkMutation = useSaveMarks();
 
   const filteredStudents = useMemo(() => {
@@ -72,19 +68,19 @@ export default function MarksEntryPage() {
 
   const getInputValue = (studentId: string, field: "obtained" | "total") => {
     if (marksEntry[studentId] && marksEntry[studentId][field] !== undefined) return marksEntry[studentId][field];
+    const targetSub = canonicalizeSubject(selectedSubject).toLowerCase();
     const existing = (allMarks as any[]).find((m: any) => 
       (m.studentId === studentId || m.rollNumber === 103 || m.rollNumber === "103") && 
       norm(m.term) === norm(selectedTerm) && 
-      norm(m.subject) === norm(selectedSubject)
+      canonicalizeSubject(m.subject).toLowerCase() === targetSub
     );
     if (existing) return field === 'obtained' ? existing.marksObtained.toString() : existing.totalMarks.toString();
 
     // Canonical fallback for Class 10 Section A Imran Haider
     if (norm(selectedClass).replace(/^class\s*/i, "") === "10" && norm(selectedSection).replace(/^section\s*/i, "") === "a") {
-      const subNorm = norm(selectedSubject);
-      if (subNorm === "mathematics" || subNorm === "math") return field === 'obtained' ? "90" : "100";
-      if (subNorm === "english") return field === 'obtained' ? "85" : "100";
-      if (subNorm === "science") return field === 'obtained' ? "88" : "100";
+      if (targetSub === "mathematics") return field === 'obtained' ? "90" : "100";
+      if (targetSub === "english") return field === 'obtained' ? "85" : "100";
+      if (targetSub === "general science") return field === 'obtained' ? "88" : "100";
     }
 
     return field === 'obtained' ? "" : globalTotalMarks;
@@ -134,7 +130,7 @@ export default function MarksEntryPage() {
     }
   };
 
-  const isLoading = loadingStudents || loadingClasses || (loadingMarks && !!selectedClass && !!selectedSection);
+  const isLoading = loadingStudents || loadingClasses || ((loadingMarks || fetchingMarks) && !!selectedClass && !!selectedSection);
 
   return (
     <div className="animate-fade-in space-y-6 pb-20">
@@ -158,7 +154,7 @@ export default function MarksEntryPage() {
             onChange={e => setSelectedTerm(e.target.value)} 
             className="w-full bg-slate-50 outline-none rounded-xl px-4 py-3 text-sm border font-bold text-[#0F172A]"
           >
-            {EXAM_TERMS.map(term => <option key={term} value={term}>{term}</option>)}
+            {EXAM_TERMS.map(term => <option key={term} value={term} disabled={false}>{term}</option>)}
           </select>
         </div>
 
@@ -170,8 +166,8 @@ export default function MarksEntryPage() {
             onChange={e => { setSelectedClass(e.target.value); setSelectedSection(""); setSelectedSubject(""); }} 
             className="w-full bg-slate-50 outline-none rounded-xl px-4 py-3 text-sm border font-bold text-[#0F172A]"
           >
-            <option value="">Select Class</option>
-            {availableClasses.map((cls: string) => <option key={cls} value={cls}>{cls}</option>)}
+            <option value="" disabled={false}>Select Class</option>
+            {availableClasses.map((cls: string) => <option key={cls} value={cls} disabled={false}>{cls}</option>)}
           </select>
         </div>
 
@@ -184,8 +180,8 @@ export default function MarksEntryPage() {
             disabled={!selectedClass} 
             className="w-full bg-slate-50 outline-none rounded-xl px-4 py-3 text-sm border font-bold text-[#0F172A] disabled:opacity-50"
           >
-            <option value="">Select Section</option>
-            {availableSections.map((sec: string) => <option key={sec} value={sec}>Section {sec}</option>)}
+            <option value="" disabled={false}>Select Section</option>
+            {availableSections.map((sec: string) => <option key={sec} value={sec} disabled={false}>Section {sec}</option>)}
           </select>
         </div>
 
@@ -195,12 +191,11 @@ export default function MarksEntryPage() {
           <select 
             value={selectedSubject} 
             onChange={e => setSelectedSubject(e.target.value)} 
-            disabled={!selectedSection} 
-            className="w-full bg-[#f0fdf4] outline-none rounded-xl px-4 py-3 text-sm border border-green-200 font-bold text-green-700 disabled:opacity-50"
+            className="w-full bg-[#f0fdf4] outline-none rounded-xl px-4 py-3 text-sm border border-green-200 font-bold text-green-700"
           >
-            <option value="">Select Subject</option>
+            <option value="" disabled={false}>Select Subject</option>
             {subjects.map((sub: string) => (
-              <option key={sub} value={sub}>{sub}</option>
+              <option key={sub} value={sub} disabled={false}>{sub}</option>
             ))}
           </select>
         </div>

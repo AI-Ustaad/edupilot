@@ -3,6 +3,7 @@ import { BaseRepository } from "./base.repository";
 import { dbTimestamp } from "@/lib/firebase-admin";
 import type { Mark } from "@/types/marks";
 import type { IMarksRepository } from "@/interfaces/IMarksRepository";
+import { canonicalizeSubject } from "@/lib/utils/formatClassLabel";
 
 // 🟢 Enterprise Safe Serializer
 function serializeDoc<T>(doc: any): T & { id: string } {
@@ -65,16 +66,17 @@ export class MarksRepository extends BaseRepository<Mark> implements IMarksRepos
       }
 
       if (filters?.subject) {
-        const targetSub = filters.subject.trim().toLowerCase();
+        const targetSub = canonicalizeSubject(filters.subject).toLowerCase();
         docs = docs.filter(d => {
-          const docSub = String(d.subject || "").trim().toLowerCase();
-          return docSub === targetSub || 
-            (targetSub === "mathematics" && docSub === "math") ||
-            (targetSub === "math" && docSub === "mathematics");
+          const docSub = canonicalizeSubject(d.subject).toLowerCase();
+          return docSub === targetSub;
         });
       }
 
-      return docs;
+      return docs.map(d => ({
+        ...d,
+        subject: canonicalizeSubject(d.subject),
+      }));
     } catch {
       try {
         const snapshot = await this.db
@@ -99,15 +101,16 @@ export class MarksRepository extends BaseRepository<Mark> implements IMarksRepos
           docs = docs.filter(d => String(d.section || "").trim().toLowerCase().replace(/^section\s*/i, "") === targetSec);
         }
         if (filters?.subject) {
-          const targetSub = filters.subject.trim().toLowerCase();
+          const targetSub = canonicalizeSubject(filters.subject).toLowerCase();
           docs = docs.filter(d => {
-            const docSub = String(d.subject || "").trim().toLowerCase();
-            return docSub === targetSub || 
-              (targetSub === "mathematics" && docSub === "math") ||
-              (targetSub === "math" && docSub === "mathematics");
+            const docSub = canonicalizeSubject(d.subject).toLowerCase();
+            return docSub === targetSub;
           });
         }
-        return docs;
+        return docs.map(d => ({
+          ...d,
+          subject: canonicalizeSubject(d.subject),
+        }));
       } catch {
         return [];
       }

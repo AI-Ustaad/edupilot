@@ -68,15 +68,79 @@ export function extractUniqueClasses(items: any[] | undefined | null): string[] 
  */
 export const CANONICAL_SUBJECTS = [
   "English",
-  "Mathematics",
-  "Science",
   "Urdu",
-  "Islamiat",
-  "Pakistan Studies",
+  "Mathematics",
+  "General Science",
+  "Social Studies",
   "Computer Science",
+  "Islamiyat",
   "Physics",
   "Chemistry",
   "Biology",
-  "Social Studies"
+  "Pakistan Studies"
 ];
+
+/**
+ * Standardize subject names (e.g. Science -> General Science, Islamiat -> Islamiyat, Math -> Mathematics).
+ */
+export function canonicalizeSubject(raw: string | undefined | null): string {
+  if (!raw) return "";
+  const s = String(raw).trim();
+  const lower = s.toLowerCase();
+
+  if (lower === "science" || lower === "general science" || lower === "gen science" || lower === "gen. science") {
+    return "General Science";
+  }
+  if (lower === "islamiat" || lower === "islamiyat" || lower === "islamiayat" || lower === "islamic studies") {
+    return "Islamiyat";
+  }
+  if (lower === "math" || lower === "mathematics" || lower === "maths") {
+    return "Mathematics";
+  }
+  if (lower === "pakistan studies" || lower === "pak studies" || lower === "pak study") {
+    return "Pakistan Studies";
+  }
+  if (lower === "social studies" || lower === "social study" || lower === "s.st") {
+    return "Social Studies";
+  }
+  if (lower === "computer science" || lower === "computer") {
+    return "Computer Science";
+  }
+
+  const match = CANONICAL_SUBJECTS.find(c => c.toLowerCase() === lower);
+  return match || s;
+}
+
+/**
+ * Deduplicate and canonicalize subject list so ONLY the 11 canonical subjects appear without duplicates.
+ */
+export function deduplicateSubjects(list?: string[] | null): string[] {
+  const seen = new Set<string>();
+  const result: string[] = [];
+
+  // Seed canonical 11 subjects
+  for (const sub of CANONICAL_SUBJECTS) {
+    const key = sub.toLowerCase();
+    if (!seen.has(key)) {
+      seen.add(key);
+      result.push(sub);
+    }
+  }
+
+  // If list has any non-canonical custom subject, append if unique
+  if (Array.isArray(list)) {
+    for (const item of list) {
+      if (!item) continue;
+      const canonical = canonicalizeSubject(item);
+      const key = canonical.toLowerCase();
+      if (!seen.has(key)) {
+        seen.add(key);
+        result.push(canonical);
+      }
+    }
+  }
+
+  return result;
+}
+
 

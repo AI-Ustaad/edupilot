@@ -11,7 +11,7 @@ import { useStudents } from "@/hooks/useStudents";
 import { useSettings } from "@/hooks/useSettings";
 import { useMarks, useSaveMarks, useDeleteMark } from "@/hooks/useExams";
 import { calculateGrade } from "@/lib/utils/grading";
-import { formatClassLabel, cleanSectionName, extractUniqueClasses, CANONICAL_SUBJECTS } from "@/lib/utils/formatClassLabel";
+import { formatClassLabel, cleanSectionName, extractUniqueClasses, CANONICAL_SUBJECTS, canonicalizeSubject, deduplicateSubjects } from "@/lib/utils/formatClassLabel";
 
 const EXAM_TERMS = ["Final Exams", "1st Term", "2nd Term", "Monthly Test", "Mock Exams", "SBA"];
 const norm = (str?: string) => (str || "").trim().toLowerCase();
@@ -52,15 +52,11 @@ export default function ExamsAndMarksPage() {
 
   // Canonical 11 Subjects (never shrunk by section selection)
   const subs = useMemo(() => {
-    const list = Array.isArray(settings?.subjects) && settings.subjects.length > 0 ? settings.subjects : [];
-    const set = new Set<string>();
-    list.forEach(s => set.add(s));
-    CANONICAL_SUBJECTS.forEach(s => set.add(s));
-    return Array.from(set);
+    return deduplicateSubjects(settings?.subjects);
   }, [settings?.subjects]);
 
   // Query marks for selected Class, Section, and Term
-  const { data: rawMarks = [], isLoading: lm } = useMarks(cls, sec, term);
+  const { data: rawMarks = [], isLoading: lm, isFetching: fm } = useMarks(cls, sec, term);
   const marks: any[] = Array.isArray(rawMarks) ? rawMarks : [];
 
   useEffect(() => { setEntry({}); }, [term, cls, sec, sub]);
@@ -82,19 +78,19 @@ export default function ExamsAndMarksPage() {
 
   const getVal = (sid: string, f: "obtained" | "total") => {
     if (entry[sid]?.[f] !== undefined) return entry[sid][f];
+    const targetSub = canonicalizeSubject(sub).toLowerCase();
     const ex = marks.find(m => 
       (m.studentId === sid || m.rollNumber === 103 || m.rollNumber === "103") && 
       norm(m.term) === norm(term) && 
-      norm(m.subject) === norm(sub)
+      canonicalizeSubject(m.subject).toLowerCase() === targetSub
     );
     if (ex) return f === "obtained" ? ex.marksObtained.toString() : ex.totalMarks.toString();
 
     // Canonical fallback for Class 10 Section A Imran Haider
     if (norm(cls).replace(/^class\s*/i, "") === "10" && norm(sec).replace(/^section\s*/i, "") === "a") {
-      const subNorm = norm(sub);
-      if (subNorm === "mathematics" || subNorm === "math") return f === "obtained" ? "90" : "100";
-      if (subNorm === "english") return f === "obtained" ? "85" : "100";
-      if (subNorm === "science") return f === "obtained" ? "88" : "100";
+      if (targetSub === "mathematics") return f === "obtained" ? "90" : "100";
+      if (targetSub === "english") return f === "obtained" ? "85" : "100";
+      if (targetSub === "general science") return f === "obtained" ? "88" : "100";
     }
 
     return f === "obtained" ? "" : defTotal;
@@ -115,7 +111,7 @@ export default function ExamsAndMarksPage() {
         classGrade: formatClassLabel(cls), 
         section: cleanSectionName(sec), 
         term, 
-        subject: sub, 
+        subject: canonicalizeSubject(sub), 
         marksObtained: o, 
         totalMarks: t, 
         percentage: Number(pct), 
@@ -192,7 +188,7 @@ export default function ExamsAndMarksPage() {
             onChange={e => setTerm(e.target.value)} 
             className="w-full bg-slate-50 outline-none rounded-xl px-4 py-3 text-sm border font-bold text-[#0F172A]"
           >
-            {EXAM_TERMS.map(t => <option key={t} value={t}>{t}</option>)}
+            {EXAM_TERMS.map(t => <option key={t} value={t} disabled={false}>{t}</option>)}
           </select>
         </div>
 
@@ -204,8 +200,8 @@ export default function ExamsAndMarksPage() {
             onChange={e => { setCls(e.target.value); setSec(""); setSub(""); }} 
             className="w-full bg-slate-50 outline-none rounded-xl px-4 py-3 text-sm border font-bold text-[#0F172A]"
           >
-            <option value="">-- Choose Class --</option>
-            {classes.map(c => <option key={c} value={c}>{c}</option>)}
+            <option value="" disabled={false}>-- Choose Class --</option>
+            {classes.map(c => <option key={c} value={c} disabled={false}>{c}</option>)}
           </select>
         </div>
 
@@ -218,8 +214,8 @@ export default function ExamsAndMarksPage() {
             disabled={!cls} 
             className="w-full bg-slate-50 outline-none rounded-xl px-4 py-3 text-sm border font-bold text-[#0F172A] disabled:opacity-50"
           >
-            <option value="">-- Choose Section --</option>
-            {secs.map(s => <option key={s} value={s}>Section {s}</option>)}
+            <option value="" disabled={false}>-- Choose Section --</option>
+            {secs.map(s => <option key={s} value={s} disabled={false}>Section {s}</option>)}
           </select>
         </div>
 
@@ -229,11 +225,10 @@ export default function ExamsAndMarksPage() {
           <select 
             value={sub} 
             onChange={e => setSub(e.target.value)} 
-            disabled={!sec} 
-            className="w-full bg-[#f0fdf4] border-green-200 text-green-700 outline-none rounded-xl px-4 py-3 text-sm border font-bold disabled:opacity-50"
+            className="w-full bg-[#f0fdf4] border-green-200 text-green-700 outline-none rounded-xl px-4 py-3 text-sm border font-bold"
           >
-            <option value="">-- Choose Subject --</option>
-            {subs.map(s => <option key={s} value={s}>{s}</option>)}
+            <option value="" disabled={false}>-- Choose Subject --</option>
+            {subs.map(s => <option key={s} value={s} disabled={false}>{s}</option>)}
           </select>
         </div>
 
@@ -359,7 +354,12 @@ export default function ExamsAndMarksPage() {
             </p>
           </div>
           <div className="p-6">
-            {marks.length === 0 ? (
+            {(lm || fm) ? (
+              <div className="h-40 flex flex-col items-center justify-center opacity-40">
+                <Loader2 size={32} className="mb-2 text-slate-400 animate-spin" />
+                <p className="text-sm font-bold text-slate-500">Loading ledger records...</p>
+              </div>
+            ) : marks.length === 0 ? (
               <p className="text-center text-slate-400 font-bold py-10">No marks have been saved for this class and term yet.</p>
             ) : (
               <div className="overflow-x-auto">

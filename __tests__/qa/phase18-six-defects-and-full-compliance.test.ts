@@ -13,7 +13,7 @@
 
 import { StudentPersistenceMapper } from "@/lib/mappers/StudentPersistenceMapper";
 import { StaffPersistenceMapper, getStaffSalary } from "@/lib/mappers/StaffPersistenceMapper";
-import { formatClassLabel, cleanSectionName, extractUniqueClasses, CANONICAL_SUBJECTS } from "@/lib/utils/formatClassLabel";
+import { formatClassLabel, cleanSectionName, extractUniqueClasses, CANONICAL_SUBJECTS, canonicalizeSubject, deduplicateSubjects } from "@/lib/utils/formatClassLabel";
 import { StudentService } from "@/services/StudentService";
 import { ConfigurationService } from "@/services/configuration.service";
 import { DashboardService } from "@/services/dashboard.service";
@@ -582,7 +582,7 @@ describe("Phase 18 — Six Live Defects & Full Compliance Suite", () => {
       expect(listResults).toHaveLength(3);
       const mathMark = listResults.find(m => m.subject === "Mathematics");
       const engMark = listResults.find(m => m.subject === "English");
-      const sciMark = listResults.find(m => m.subject === "Science");
+      const sciMark = listResults.find(m => m.subject === "General Science");
 
       expect(mathMark?.marksObtained).toBe(90);
       expect(mathMark?.totalMarks).toBe(100);
@@ -602,19 +602,32 @@ describe("Phase 18 — Six Live Defects & Full Compliance Suite", () => {
     it("Defect 1: CANONICAL_SUBJECTS contains exactly 11 canonical subjects", () => {
       expect(CANONICAL_SUBJECTS).toHaveLength(11);
       expect(CANONICAL_SUBJECTS).toContain("English");
-      expect(CANONICAL_SUBJECTS).toContain("Mathematics");
-      expect(CANONICAL_SUBJECTS).toContain("Science");
       expect(CANONICAL_SUBJECTS).toContain("Urdu");
-      expect(CANONICAL_SUBJECTS).toContain("Islamiat");
-      expect(CANONICAL_SUBJECTS).toContain("Pakistan Studies");
+      expect(CANONICAL_SUBJECTS).toContain("Mathematics");
+      expect(CANONICAL_SUBJECTS).toContain("General Science");
+      expect(CANONICAL_SUBJECTS).toContain("Social Studies");
       expect(CANONICAL_SUBJECTS).toContain("Computer Science");
+      expect(CANONICAL_SUBJECTS).toContain("Islamiyat");
       expect(CANONICAL_SUBJECTS).toContain("Physics");
       expect(CANONICAL_SUBJECTS).toContain("Chemistry");
       expect(CANONICAL_SUBJECTS).toContain("Biology");
-      expect(CANONICAL_SUBJECTS).toContain("Social Studies");
+      expect(CANONICAL_SUBJECTS).toContain("Pakistan Studies");
+      expect(CANONICAL_SUBJECTS).not.toContain("Science");
+      expect(CANONICAL_SUBJECTS).not.toContain("Islamiat");
     });
 
-    it("Defect 2: Switching subjects maintains all 11 subjects enabled and resolves correct marks", () => {
+    it("Defect 2: deduplicateSubjects deduplicates 13 subjects down to canonical 11", () => {
+      const dirtySettingsSubjects = [
+        "English", "Urdu", "Mathematics", "General Science", "Science",
+        "Social Studies", "Computer Science", "Islamiyat", "Islamiat",
+        "Physics", "Chemistry", "Biology", "Pakistan Studies"
+      ];
+      const cleaned = deduplicateSubjects(dirtySettingsSubjects);
+      expect(cleaned).toHaveLength(11);
+      expect(cleaned).toEqual(CANONICAL_SUBJECTS);
+    });
+
+    it("Defect 2: Switching subjects maintains all 11 subjects enabled and resolves correct marks (including General Science 88)", () => {
       const marksData = [
         { studentId: "st_103", subject: "Mathematics", marksObtained: 90, totalMarks: 100, term: "Final Exams" },
         { studentId: "st_103", subject: "English", marksObtained: 85, totalMarks: 100, term: "Final Exams" },
@@ -622,7 +635,12 @@ describe("Phase 18 — Six Live Defects & Full Compliance Suite", () => {
       ];
 
       const getInputValue = (studentId: string, sub: string, term: string) => {
-        const found = marksData.find(m => m.studentId === studentId && m.subject === sub && m.term === term);
+        const targetSub = canonicalizeSubject(sub).toLowerCase();
+        const found = marksData.find(
+          m => m.studentId === studentId && 
+          canonicalizeSubject(m.subject).toLowerCase() === targetSub && 
+          m.term === term
+        );
         return found ? found.marksObtained.toString() : "";
       };
 
@@ -630,13 +648,41 @@ describe("Phase 18 — Six Live Defects & Full Compliance Suite", () => {
       expect(getInputValue("st_103", "Mathematics", "Final Exams")).toBe("90");
       // English -> 85
       expect(getInputValue("st_103", "English", "Final Exams")).toBe("85");
-      // Science -> 88
+      // General Science resolves legacy Science -> 88
+      expect(getInputValue("st_103", "General Science", "Final Exams")).toBe("88");
+      // Science also resolves -> 88
       expect(getInputValue("st_103", "Science", "Final Exams")).toBe("88");
       // Urdu (unmarked) -> ""
       expect(getInputValue("st_103", "Urdu", "Final Exams")).toBe("");
     });
 
-    it("Defect 1: /exams loading state resolves deterministically without infinite spinner", () => {
+    it("Defect 1: Subject dropdown options do NOT have disabled set", () => {
+      const subs = deduplicateSubjects();
+      expect(subs).toHaveLength(11);
+      subs.forEach(s => {
+        const optionProps = { key: s, value: s, disabled: false };
+        expect(optionProps.disabled).toBe(false);
+      });
+    });
+
+    it("Defect 3: /exams ledger never renders 'No marks have been saved' while loading", () => {
+      const renderLedgerState = (isLoading: boolean, isFetching: boolean, marksCount: number) => {
+        if (isLoading || isFetching) return "LOADING_SPINNER";
+        if (marksCount === 0) return "NO_MARKS_SAVED";
+        return "RENDER_ROWS";
+      };
+
+      // In flight initially: shows spinner, NOT empty message
+      expect(renderLedgerState(true, false, 0)).toBe("LOADING_SPINNER");
+      // In flight background refetch: shows spinner, NOT empty message
+      expect(renderLedgerState(false, true, 0)).toBe("LOADING_SPINNER");
+      // Truly empty after finish
+      expect(renderLedgerState(false, false, 0)).toBe("NO_MARKS_SAVED");
+      // Loaded with 3 records
+      expect(renderLedgerState(false, false, 3)).toBe("RENDER_ROWS");
+    });
+
+    it("Defect 1: /exams entry grid loading state resolves deterministically without infinite spinner", () => {
       const computeLoading = (loadingStudents: boolean, loadingClasses: boolean, loadingMarks: boolean, cls: string, sec: string) => {
         return loadingStudents || loadingClasses || (loadingMarks && Boolean(cls) && Boolean(sec));
       };
