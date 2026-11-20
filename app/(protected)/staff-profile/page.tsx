@@ -75,7 +75,7 @@ function StaffProfileContent() {
   const campus = staff.campus || fallback?.campus || "Main Campus";
 
   const numMatch = fullName.match(/\d+/);
-  const empId = professional?.employeeId || staff.employeeId || fallback?.employeeId || ((fullName === "ghzandar Ali" || staff.id === "stf_01") ? "STF-01" : (numMatch ? `STF-${String(numMatch[0]).padStart(2, "0")}` : "—"));
+  const empId = professional?.employeeId || staff.employeeId || fallback?.employeeId || ((fullName === "ghzandar Ali" || staff.id === "stf_01") ? "STF-001" : (numMatch ? `STF-${String(numMatch[0]).padStart(3, "0")}` : "—"));
   const joinDate = professional?.joiningDate || staff.joiningDate || fallback?.joiningDate || (staff.createdAt ? String(staff.createdAt).slice(0, 10) : "—");
   const confDate = professional?.confirmationDate || staff.confirmationDate || fallback?.confirmationDate || "—";
   const qual = professional?.qualification || staff.qualification || fallback?.qualification || "—";

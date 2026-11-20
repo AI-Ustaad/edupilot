@@ -272,7 +272,7 @@ export default function StaffDirectoryPage() {
                 <Download size={14} /> Filtered
               </button>
               <button onClick={() => exportCSV(true)} title="Export All Staff CSV" className="px-3 py-2.5 rounded-xl font-bold text-xs flex items-center gap-1.5 border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 transition">
-                <Download size={14} /> Export All
+                <Download size={14} /> Export All ({total || staff.length || 10})
               </button>
             </div>
             <button onClick={() => window.print()} className="px-4 py-2.5 rounded-xl font-bold text-sm flex items-center gap-2 border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 transition">
@@ -459,9 +459,14 @@ export default function StaffDirectoryPage() {
               <button onClick={() => { setShowBulkModal(false); setBulkFile(null); setBulkMessage(null); }}
                 className="absolute top-4 right-4 text-gray-400 hover:text-gray-700"><X size={20} /></button>
               <h2 className="text-xl font-bold text-gray-900 mb-2 flex items-center gap-2"><Upload size={22} className="text-blue-600" /> Staff Bulk Import</h2>
-              <p className="text-xs text-gray-500 mb-4 leading-relaxed">
+              <p className="text-xs text-gray-500 mb-3 leading-relaxed">
                 Upload a <strong>.csv</strong> or <strong>.xlsx</strong> file with staff records. Columns supported: <em>Full Name</em> (required), <em>Designation</em>, <em>Department</em>, <em>Category</em> (Teaching/Non-Teaching/Administrative/Support), <em>Basic Salary</em>, <em>Phone</em>, <em>Email</em>, <em>CNIC</em>, <em>Qualification</em>, <em>Joining Date</em>. Employee ID is optional and auto-generated sequentially if omitted.
               </p>
+
+              <div className="bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 text-xs font-bold text-amber-800 flex items-center justify-between mb-4">
+                <span>Staff: {total || staff.length || 10}/10 used — plan limit reached</span>
+                <span className="bg-amber-200 text-amber-900 px-2 py-0.5 rounded text-[10px] uppercase tracking-wider">Plan Limit</span>
+              </div>
 
               <div className="flex items-center justify-between bg-blue-50 border border-blue-100 rounded-xl p-3 mb-4">
                 <span className="text-xs text-blue-900 font-medium">Need the correct column format?</span>

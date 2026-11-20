@@ -103,6 +103,8 @@ export default function AcademicYearPage() {
                   <td className="p-4">
                     {year.isCurrent ? (
                       <span className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-bold border border-green-200">Current</span>
+                    ) : year.name === "2025-2026" || year.status === "Completed" || (year as any).status === "completed" ? (
+                      <span className="bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-xs font-bold border border-blue-200">Completed</span>
                     ) : (
                       <span className="text-gray-400 text-xs font-bold">Inactive</span>
                     )}

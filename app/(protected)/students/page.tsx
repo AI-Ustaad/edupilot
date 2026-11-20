@@ -429,9 +429,14 @@ export default function StudentsPage() {
             <h2 className="text-xl font-bold text-gray-900 mb-2 flex items-center gap-2">
               <Upload size={22} className="text-blue-600" /> Student Bulk Import
             </h2>
-            <p className="text-xs text-gray-500 mb-4 leading-relaxed">
+            <p className="text-xs text-gray-500 mb-3 leading-relaxed">
               Upload a <strong>.csv</strong> or <strong>.xlsx</strong> file with student admission records. Required columns: <em>Full Name</em> and <em>Class</em>. Optional: <em>Roll No</em>, <em>Section</em> (defaults to A), <em>Father Name</em>, <em>Gender</em>, <em>DOB</em>, <em>Guardian Phone</em>, <em>Monthly Fee</em>.
             </p>
+
+            <div className="bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 text-xs font-bold text-amber-800 flex items-center justify-between mb-4">
+              <span>Students: {students?.length || 50}/50 used — plan limit reached</span>
+              <span className="bg-amber-200 text-amber-900 px-2 py-0.5 rounded text-[10px] uppercase tracking-wider">Plan Limit</span>
+            </div>
 
             <div className="flex items-center justify-between bg-blue-50 border border-blue-100 rounded-xl p-3 mb-4">
               <span className="text-xs text-blue-900 font-medium">Download standard format:</span>

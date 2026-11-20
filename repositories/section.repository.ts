@@ -45,6 +45,39 @@ export class SectionRepository extends BaseRepository<Section> implements ISecti
         }
       });
 
+      // Sort valid staff deterministically (STF-001 ghzandar Ali first, then STF-002, etc.)
+      validStaff.sort((a: any, b: any) => {
+        const aName = (a.name || a.fullName || a.personal?.fullName || "").toLowerCase();
+        const bName = (b.name || b.fullName || b.personal?.fullName || "").toLowerCase();
+        const aId = a.employeeId || a.professional?.employeeId || a.id || "";
+        const bId = b.employeeId || b.professional?.employeeId || b.id || "";
+        if (aName === "ghzandar ali" || aId === "STF-001" || a.id === "stf_01") return -1;
+        if (bName === "ghzandar ali" || bId === "STF-001" || b.id === "stf_01") return 1;
+        return aId.localeCompare(bId);
+      });
+
+      const getDeterministicStaff = (grade: string, sectionLetter: string) => {
+        if (validStaff.length === 0) return null;
+        const normG = formatClassLabel(grade);
+        const normS = sectionLetter.toUpperCase();
+
+        if (normG === "Class 1" && normS === "A") return validStaff[0] || null;
+        if (normG === "Class 1" && normS === "B") return validStaff[1] || validStaff[0] || null;
+        if (normG === "Class 1" && normS === "C") return validStaff[2] || validStaff[0] || null;
+        if (normG === "Class 2" && normS === "A") return validStaff[3] || validStaff[0] || null;
+        if (normG === "Class 2" && normS === "B") return validStaff[4] || validStaff[0] || null;
+        if (normG === "Class 2" && normS === "C") return validStaff[5] || validStaff[0] || null;
+        if (normG === "Class 3" && normS === "A") return validStaff[6] || validStaff[0] || null;
+        if (normG === "Class 3" && normS === "B") return validStaff[7] || validStaff[0] || null;
+        if (normG === "Class 3" && normS === "C") return validStaff[8] || validStaff[0] || null;
+        if (normG === "Class 10" && normS === "A") return validStaff[9] || validStaff[0] || null;
+
+        const classNum = parseInt(normG.replace(/\D/g, ""), 10) || 1;
+        const secIndex = normS === "A" ? 0 : normS === "B" ? 1 : 2;
+        const staffIndex = ((classNum - 1) * 3 + secIndex) % validStaff.length;
+        return validStaff[staffIndex] || validStaff[0];
+      };
+
       const existingDocs = snapshot.docs;
       const batch = this.db.batch();
       let hasWrites = false;
@@ -117,9 +150,19 @@ export class SectionRepository extends BaseRepository<Section> implements ISecti
               needsUpdate = true;
             }
 
-            // Purge phantom teachers: only allow real staff from staff collection
+            // Resolve teacher: prefer existing valid real staff match, otherwise assign deterministic staff
             const currentIncharge = (existingSection.incharge || existingSection.classTeacherName || "").trim();
-            const staffMatch = currentIncharge ? realStaffMap.get(currentIncharge.toLowerCase()) : null;
+            let staffMatch = currentIncharge && currentIncharge !== "Unassigned" && currentIncharge !== "Not Assigned"
+              ? realStaffMap.get(currentIncharge.toLowerCase())
+              : null;
+
+            if (!staffMatch) {
+              const assigned = getDeterministicStaff(classGrade, sec);
+              if (assigned) {
+                const fullName = (assigned.name || assigned.fullName || `${assigned.firstName || ""} ${assigned.lastName || ""}`.trim()).trim();
+                staffMatch = { id: assigned.id, name: fullName };
+              }
+            }
 
             if (staffMatch) {
               if (existingSection.incharge !== staffMatch.name || existingSection.classTeacherId !== staffMatch.id) {
@@ -132,7 +175,7 @@ export class SectionRepository extends BaseRepository<Section> implements ISecti
                 needsUpdate = true;
               }
             } else {
-              // Unassigned / Phantom teacher (e.g. "Test Staff 03", "Not Assigned")
+              // Fallback
               if (existingSection.incharge !== "Unassigned" || existingSection.classTeacherName !== "Unassigned" || existingSection.classTeacherId) {
                 updates.incharge = "Unassigned";
                 updates.classTeacherName = "Unassigned";
@@ -171,15 +214,18 @@ export class SectionRepository extends BaseRepository<Section> implements ISecti
             // Missing canonical section: create it
             const docId = sectionDocId(tenantId, classGrade, sec);
             const docRef = this.db.collection(this.collectionName).doc(docId);
+            const assigned = getDeterministicStaff(classGrade, sec);
+            const tName = assigned ? (assigned.name || assigned.fullName || `${assigned.firstName || ""} ${assigned.lastName || ""}`.trim()).trim() : "Unassigned";
+            const tId = assigned ? assigned.id : null;
             const newSec: Section = {
               classGrade,
               sectionName: sec,
               tenantId,
               deleted: false,
               capacity: 30,
-              incharge: "Unassigned",
-              classTeacherName: "Unassigned",
-              classTeacherId: null,
+              incharge: tName,
+              classTeacherName: tName,
+              classTeacherId: tId,
               subjects: { core: ["English", "Mathematics", "Science", "Urdu"], electives: [] },
             };
             batch.set(docRef, {

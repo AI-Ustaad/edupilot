@@ -1,6 +1,7 @@
 // services/PayrollService.ts
 import { adminDb } from "@/lib/firebase-admin";
 import { StaffRepository } from "@/repositories/staff.repository";
+import { StaffService } from "./StaffService";
 import { getStaffSalary } from "@/lib/mappers/StaffPersistenceMapper";
 import { AuditService } from "./AuditService";
 import { normalizeBillingMonth } from "./fees.service";
@@ -52,9 +53,10 @@ export class PayrollService {
     const { label: month } = normalizeBillingMonth(rawMonth);
     const db = adminDb;
 
-    // 1. Fetch active staff
-    const staffDocs = await this.staffRepo.findAll(tenantId);
-    const activeStaff = staffDocs.filter((s: any) => !s.deleted && (s.status || "active").toLowerCase() !== "terminated");
+    // 1. Fetch active staff via StaffService to ensure deterministic employeeId reconciliation and salary persistence
+    const staffService = new StaffService(this.staffRepo);
+    const reconciledStaff = await staffService.list(tenantId);
+    const activeStaff = reconciledStaff.filter((s: any) => !s.deleted && (s.status || "active").toLowerCase() !== "terminated");
 
     // 2. Fetch existing payroll entries for this month
     const payrollSnap = await db.collection("payroll")
@@ -69,13 +71,12 @@ export class PayrollService {
     });
 
     // 3. Build unified payroll records
-    const records: PayrollRecord[] = activeStaff.map((staff: any) => {
+    const records: PayrollRecord[] = activeStaff.map((staff: any, idx: number) => {
       const staffId = staff.id || staff.staffId;
       const existing = existingMap.get(staffId);
 
       const fullName = (staff.personal?.fullName || staff.fullName || staff.name || "Staff Member").trim();
-      const numMatch = fullName.match(/\d+/);
-      const employeeId = staff.professional?.employeeId || staff.employeeId || ((fullName === "ghzandar Ali" || staffId === "stf_01") ? "STF-01" : (numMatch ? `STF-${String(numMatch[0]).padStart(2, "0")}` : `STF-${String(staffId).slice(-4)}`));
+      const employeeId = staff.employeeId || staff.professional?.employeeId || staff.identity?.employeeId || `STF-${String(idx + 1).padStart(3, "0")}`;
       const designation = staff.professional?.designation || staff.designation || "Faculty";
       const department = staff.professional?.department || staff.department || "General";
 

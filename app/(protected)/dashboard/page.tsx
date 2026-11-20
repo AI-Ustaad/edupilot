@@ -59,6 +59,8 @@ export default function DashboardPage() {
   const attendancePercent = totalMarked > 0 
     ? Math.round(((presentCount + lateCount) / totalMarked) * 100).toString() 
     : "0";
+  const todayDateStr = data.todayAttendance?.date ? data.todayAttendance.date.slice(5) : new Date().toISOString().slice(5, 10);
+  const todayDisplayPercent = totalMarked > 0 ? `${attendancePercent}%` : "0%";
   
   // Option A (Honest Semantics): Plot ONLY marked days.
   // Unmarked days (totalMarked === 0) are "no data", NEVER 0% attendance.
@@ -91,7 +93,7 @@ export default function DashboardPage() {
         <KpiCard title="Total Students" value={data.students || 0} icon={<Users size={24} className="text-blue-600" />} color="blue" />
         <KpiCard title="Total Staff" value={data.staff || 0} icon={<Briefcase size={24} className="text-purple-600" />} color="purple" />
         <KpiCard title="Revenue (Month)" value={"Rs " + (data.revenue || 0).toLocaleString()} icon={<DollarSign size={24} className="text-green-600" />} color="green" />
-        <KpiCard title="Today Attendance" value={totalMarked > 0 ? attendancePercent + "%" : "0%"} subtitle={`${data.todayAttendance?.date || new Date().toISOString().slice(0, 10)} • ${presentCount}P / ${absentCount}A / ${lateCount}L / ${unmarkedCount}U`} icon={<Activity size={24} className="text-cyan-600" />} color="cyan" />
+        <KpiCard title="Today Attendance" value={todayDisplayPercent} subtitle={`${data.todayAttendance?.date || new Date().toISOString().slice(0, 10)} • ${presentCount}P / ${absentCount}A / ${lateCount}L / ${unmarkedCount}U`} icon={<Activity size={24} className="text-cyan-600" />} color="cyan" />
       </motion.div>
 
       {riskStudents.length > 0 && (
@@ -129,7 +131,7 @@ export default function DashboardPage() {
                 <TrendingUp size={20} className="text-blue-600" /> Weekly Attendance Trend
               </h3>
               <p className="text-xs text-gray-500 mt-0.5 font-medium">
-                2-Day Avg: {attendanceStats.avg || 97}% • Today (11-19): {attendancePercent}%
+                2-Day Avg: {attendanceStats.avg || 97}% • Today ({todayDateStr}): {todayDisplayPercent}
               </p>
             </div>
           </div>

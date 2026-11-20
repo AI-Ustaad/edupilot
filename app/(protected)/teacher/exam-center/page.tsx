@@ -61,7 +61,7 @@ export default function ExamCenterPage() {
         <div className="flex items-center justify-between mb-4">
           <h2 className="font-bold text-gray-800">Active Examination Terms & Ledgers</h2>
           <span className="text-xs font-semibold text-indigo-700 bg-indigo-50 border border-indigo-200 px-3 py-1 rounded-full">
-            Academic Year 2025-2026
+            Academic Year 2026-2027
           </span>
         </div>
         <div className="divide-y divide-gray-100">

@@ -5,6 +5,11 @@ export interface TenantAnalytics {
   students: number;
   staff: number;
   revenue: number;
+  totalStudents?: number;
+  totalStaff?: number;
+  totalRevenue?: number;
+  activeUsers?: number;
+  trend?: any[];
 }
 
 export interface IAnalyticsService {

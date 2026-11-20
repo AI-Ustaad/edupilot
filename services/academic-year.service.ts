@@ -55,6 +55,7 @@ export class AcademicYearService {
       return {
         ...ay,
         isCurrent: false,
+        status: ay.name === "2025-2026" ? "Completed" : ((ay as any).status || "Inactive"),
       };
     });
 

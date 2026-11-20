@@ -237,7 +237,7 @@ export default function StaffAttendancePage() {
                   const name = staff.fullName || staff.name || "Staff Member";
                   const desig = staff.designation || staff.role || "Teacher";
                   const dept = staff.department || "Academic";
-                  const empId = staff.employeeId || staff.identity?.employeeId || `STF-${sid.slice(0, 4)}`;
+                  const empId = staff.employeeId || staff.identity?.employeeId || staff.professional?.employeeId || "—";
 
                   return (
                     <tr key={sid} className="hover:bg-slate-50 transition-colors">
