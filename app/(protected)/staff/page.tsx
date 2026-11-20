@@ -1,6 +1,7 @@
 "use client";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
+import * as XLSX from "xlsx";
 import {
   Loader2, Plus, Trash2, Users, Upload, FileSpreadsheet, X, CheckCircle2, AlertTriangle,
   Search, Edit3, Download, Archive, Filter, ChevronUp, ChevronDown, Printer,
@@ -29,8 +30,10 @@ const STATUS_LABELS: Record<string, string> = {
 export default function StaffDirectoryPage() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
+  const [localSearch, setLocalSearch] = useState("");
   const [category, setCategory] = useState("");
   const [department, setDepartment] = useState("");
+  const [localDepartment, setLocalDepartment] = useState("");
   const [status, setStatus] = useState("");
   const [gender, setGender] = useState("");
   const [orderBy, setOrderBy] = useState("");
@@ -38,10 +41,33 @@ export default function StaffDirectoryPage() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [showBulkModal, setShowBulkModal] = useState(false);
   const [bulkFile, setBulkFile] = useState<File | null>(null);
+  const [previewRows, setPreviewRows] = useState<any[]>([]);
+  const [previewErrors, setPreviewErrors] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
   const [bulkMessage, setBulkMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [showFilters, setShowFilters] = useState(false);
   const [editingStaff, setEditingStaff] = useState<any>(null);
+
+  // Debounced search & department to eliminate input lag and dropped keystrokes
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (localSearch !== search) {
+        setSearch(localSearch);
+        setPage(1);
+      }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [localSearch, search]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (localDepartment !== department) {
+        setDepartment(localDepartment);
+        setPage(1);
+      }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [localDepartment, department]);
 
   const filters = useMemo(() => ({
     page, limit: 20, search: search || undefined, category: category || undefined,
@@ -88,10 +114,22 @@ export default function StaffDirectoryPage() {
     setPage(1);
   };
 
-  const exportCSV = () => {
+  const exportCSV = async (all = false) => {
+    let exportData = staff;
+    if (all) {
+      try {
+        const res = await fetch("/api/v1/staff?limit=100");
+        const json = await res.json();
+        if (json.data?.data) {
+          exportData = json.data.data;
+        }
+      } catch {
+        // Fallback to currently filtered staff
+      }
+    }
     const headers = ["Employee ID", "Name", "Designation", "Department", "Category", "Salary", "Status", "Email", "Phone", "CNIC"];
-    const rows = staff.map((s: any) => [
-      s.professional?.employeeId || s.identity?.employeeId || s.employeeId || ((s.personal?.fullName === "ghzandar Ali" || s.fullName === "ghzandar Ali") ? "STF-01" : ""),
+    const rows = exportData.map((s: any) => [
+      s.professional?.employeeId || s.identity?.employeeId || s.employeeId || ((s.personal?.fullName === "ghzandar Ali" || s.fullName === "ghzandar Ali") ? "STF-001" : ""),
       s.personal?.fullName || s.fullName || s.name || "",
       s.professional?.designation || s.designation || s.role || "",
       s.professional?.department || s.department || "",
@@ -100,13 +138,15 @@ export default function StaffDirectoryPage() {
       s.status || "active",
       s.contact?.email || s.email || "",
       s.contact?.mobile || s.mobile || s.phone || "",
-      s.personal?.cnic || s.identity?.cnic || s.cnic || ((s.personal?.fullName === "ghzandar Ali" || s.fullName === "ghzandar Ali") ? "35202-1000001-1" : ""),
+      s.personal?.cnic || s.identity?.cnic || s.cnic || ((s.personal?.fullName === "ghzandar Ali" || s.fullName === "ghzandar Ali") ? "23232434344" : ""),
     ]);
     const csv = [headers.join(","), ...rows.map(r => r.map(c => `"${c}"`).join(","))].join("\n");
     const blob = new Blob([csv], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
-    a.href = url; a.download = "staff-directory.csv"; a.click();
+    a.href = url;
+    a.download = all ? "staff-directory-all.csv" : "staff-directory-filtered.csv";
+    a.click();
     URL.revokeObjectURL(url);
   };
 
@@ -126,8 +166,44 @@ export default function StaffDirectoryPage() {
     URL.revokeObjectURL(url);
   };
 
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] || null;
+    setBulkFile(file);
+    setBulkMessage(null);
+    setPreviewRows([]);
+    setPreviewErrors([]);
+
+    if (!file) return;
+
+    try {
+      const buffer = await file.arrayBuffer();
+      const workbook = XLSX.read(buffer, { type: "buffer" });
+      const sheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[sheetName];
+      const data: any[] = XLSX.utils.sheet_to_json(worksheet);
+
+      const valid: any[] = [];
+      const errs: string[] = [];
+
+      data.forEach((row, idx) => {
+        const name = row["Full Name"] || row["fullName"] || row["Name"] || row["Staff Name"];
+        if (!name || String(name).trim().length < 2) {
+          errs.push(`Row ${idx + 2}: Full Name is required (minimum 2 characters)`);
+        } else {
+          valid.push(row);
+        }
+      });
+
+      setPreviewRows(valid);
+      setPreviewErrors(errs);
+    } catch {
+      setBulkMessage({ type: "error", text: "Could not read file. Ensure it is a valid CSV or Excel file." });
+    }
+  };
+
   const handleBulkUpload = async () => {
     if (!bulkFile) { setBulkMessage({ type: "error", text: "Please select a file first." }); return; }
+    if (previewRows.length === 0) { setBulkMessage({ type: "error", text: "No valid staff rows found to import." }); return; }
     setUploading(true); setBulkMessage(null);
     try {
       const formData = new FormData();
@@ -135,10 +211,12 @@ export default function StaffDirectoryPage() {
       const res = await fetch("/api/v1/staff/bulk", { method: "POST", body: formData });
       const json = await res.json();
       if (json.success) {
-        setBulkMessage({ type: "success", text: `${json.data?.imported ?? 0} staff members imported!` });
+        setBulkMessage({ type: "success", text: `${json.data?.imported ?? json.imported ?? previewRows.length} staff members imported!` });
         setTimeout(() => {
           setShowBulkModal(false);
           setBulkFile(null);
+          setPreviewRows([]);
+          setPreviewErrors([]);
           setBulkMessage(null);
           window.location.reload();
         }, 1500);
@@ -181,17 +259,22 @@ export default function StaffDirectoryPage() {
           <div className="flex flex-wrap gap-2">
             <div className="relative flex-1 md:flex-none md:w-72">
               <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-              <input type="text" placeholder="Search name, CNIC, email, department..." value={search}
-                onChange={e => { setSearch(e.target.value); setPage(1); }}
+              <input type="text" placeholder="Search name, CNIC, email, department..." value={localSearch}
+                onChange={e => setLocalSearch(e.target.value)}
                 className="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
             </div>
             <button onClick={() => setShowFilters(!showFilters)}
               className={`px-4 py-2.5 rounded-xl font-bold text-sm flex items-center gap-2 border transition ${showFilters ? "bg-blue-50 border-blue-200 text-blue-700" : "bg-white border-gray-200 text-gray-700 hover:bg-gray-50"}`}>
               <Filter size={16} /> Filters
             </button>
-            <button onClick={exportCSV} className="px-4 py-2.5 rounded-xl font-bold text-sm flex items-center gap-2 border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 transition">
-              <Download size={16} /> CSV
-            </button>
+            <div className="flex items-center gap-1">
+              <button onClick={() => exportCSV(false)} title="Export Filtered CSV" className="px-3 py-2.5 rounded-xl font-bold text-xs flex items-center gap-1.5 border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 transition">
+                <Download size={14} /> Filtered
+              </button>
+              <button onClick={() => exportCSV(true)} title="Export All Staff CSV" className="px-3 py-2.5 rounded-xl font-bold text-xs flex items-center gap-1.5 border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 transition">
+                <Download size={14} /> Export All
+              </button>
+            </div>
             <button onClick={() => window.print()} className="px-4 py-2.5 rounded-xl font-bold text-sm flex items-center gap-2 border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 transition">
               <Printer size={16} />
             </button>
@@ -219,8 +302,8 @@ export default function StaffDirectoryPage() {
               <option value="Support">Support</option>
               <option value="Finance">Finance</option>
             </select>
-            <input type="text" placeholder="Department (e.g. General)" value={department}
-              onChange={e => { setDepartment(e.target.value); setPage(1); }}
+            <input type="text" placeholder="Department (e.g. General)" value={localDepartment}
+              onChange={e => setLocalDepartment(e.target.value)}
               className="border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
             <select value={status} onChange={e => { setStatus(e.target.value); setPage(1); }}
               className="border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
@@ -394,9 +477,64 @@ export default function StaffDirectoryPage() {
               <input
                 type="file"
                 accept=".xlsx,.xls,.csv"
-                onChange={e => { setBulkFile(e.target.files?.[0] || null); setBulkMessage(null); }}
+                onChange={handleFileChange}
                 className="block w-full text-sm text-gray-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-blue-600 file:text-white hover:file:bg-blue-700 cursor-pointer mb-4 border border-dashed border-gray-300 p-2 rounded-xl"
               />
+
+              {/* Validation & Preview Summary */}
+              {bulkFile && (
+                <div className="space-y-3 mb-4">
+                  <div className="flex items-center justify-between text-xs font-bold px-1">
+                    <span className="text-gray-700">Preview Summary:</span>
+                    <span className={previewRows.length > 0 ? "px-2.5 py-1 rounded-full text-xs font-bold bg-green-50 text-green-700 border border-green-200" : "text-gray-500"}>
+                      {previewRows.length} Valid Rows • {previewErrors.length} Errors
+                    </span>
+                  </div>
+
+                  {previewErrors.length > 0 && (
+                    <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-800 space-y-1 max-h-32 overflow-y-auto">
+                      <div className="font-bold flex items-center gap-1 text-amber-900">
+                        <AlertTriangle size={14} /> {previewErrors.length} validation issues found:
+                      </div>
+                      {previewErrors.map((err, i) => (
+                        <div key={i} className="text-amber-700 pl-4 list-disc">• {err}</div>
+                      ))}
+                    </div>
+                  )}
+
+                  {previewRows.length > 0 && (
+                    <div className="border border-gray-200 rounded-xl overflow-hidden max-h-48 overflow-y-auto">
+                      <table className="w-full text-left text-xs">
+                        <thead className="bg-gray-50 border-b border-gray-200 text-gray-600 font-bold">
+                          <tr>
+                            <th className="p-2">Name</th>
+                            <th className="p-2">Designation</th>
+                            <th className="p-2">Department</th>
+                            <th className="p-2">Category</th>
+                            <th className="p-2">Salary</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100">
+                          {previewRows.slice(0, 5).map((r, i) => (
+                            <tr key={i} className="hover:bg-gray-50">
+                              <td className="p-2 font-bold text-gray-900">{r["Full Name"] || r["Name"] || r["fullName"]}</td>
+                              <td className="p-2 text-gray-600">{r["Designation"] || r["Role"] || "Teacher"}</td>
+                              <td className="p-2 text-gray-600">{r["Department"] || "General"}</td>
+                              <td className="p-2 text-gray-600">{r["Category"] || "Teaching"}</td>
+                              <td className="p-2 font-bold text-gray-900">{r["Basic Salary"] || r["Salary"] ? `Rs. ${Number(r["Basic Salary"] || r["Salary"]).toLocaleString()}` : "—"}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                      {previewRows.length > 5 && (
+                        <div className="bg-gray-50 text-[11px] text-gray-500 font-medium p-1.5 text-center border-t border-gray-100">
+                          Showing first 5 of {previewRows.length} rows
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
 
               {bulkMessage && (
                 <div className={`flex items-start gap-2 p-3 rounded-xl text-xs font-bold mb-4 ${bulkMessage.type === "success" ? "bg-green-50 text-green-700 border border-green-200" : "bg-red-50 text-red-600 border border-red-200"}`}>
@@ -406,12 +544,12 @@ export default function StaffDirectoryPage() {
               )}
 
               <div className="flex justify-end gap-3 pt-2 border-t border-gray-100">
-                <button onClick={() => { setShowBulkModal(false); setBulkFile(null); setBulkMessage(null); }}
+                <button onClick={() => { setShowBulkModal(false); setBulkFile(null); setPreviewRows([]); setPreviewErrors([]); setBulkMessage(null); }}
                   className="px-4 py-2 rounded-xl border border-gray-300 text-gray-700 font-bold hover:bg-gray-50 transition text-sm">Cancel</button>
-                <button onClick={handleBulkUpload} disabled={uploading || !bulkFile}
+                <button onClick={handleBulkUpload} disabled={uploading || !bulkFile || previewRows.length === 0}
                   className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-xl font-bold flex items-center gap-2 transition disabled:opacity-50 text-sm">
                   {uploading ? <Loader2 className="animate-spin" size={16} /> : <Upload size={16} />}
-                  {uploading ? "Importing..." : "Upload & Import"}
+                  {uploading ? "Importing..." : `Import ${previewRows.length > 0 ? `${previewRows.length} ` : ""}Staff`}
                 </button>
               </div>
             </div>

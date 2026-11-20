@@ -29,7 +29,18 @@ export class MenuService implements IMenuService {
   }
 
   async getMenu(tenantId: string): Promise<any[]> {
-    return this.menuRepo.getMenu(tenantId);
+    const raw = await this.menuRepo.getMenu(tenantId);
+    let items = (Array.isArray(raw) && raw.length > 0) ? [...raw] : [];
+    if (items.length > 0 && !items.some((i: any) => i.id === "payroll" || i.path === "/payroll")) {
+      const staffIdx = items.findIndex((i: any) => i.id === "staff" || i.path === "/staff");
+      const payrollItem = { id: "payroll", label: "Payroll", path: "/payroll" };
+      if (staffIdx >= 0) {
+        items.splice(staffIdx + 1, 0, payrollItem);
+      } else {
+        items.push(payrollItem);
+      }
+    }
+    return items;
   }
 
   async saveMenu(tenantId: string, menuItems: any[]): Promise<void> {

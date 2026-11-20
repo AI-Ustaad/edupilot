@@ -33,7 +33,7 @@ export default function ResultsPage() {
   const { data: academicYears = [] } = useAcademicYears();
   const activeAcademicYear = useMemo(() => {
     const current = (academicYears as any[]).find((ay: any) => ay.isCurrent);
-    return current?.name || "2025-2026";
+    return current?.name || "2026-2027";
   }, [academicYears]);
 
   const schoolName = settings?.schoolName || (settings as any)?.school?.name || (user as any)?.schoolName || "Government High School Sahiwal";

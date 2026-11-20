@@ -9,6 +9,7 @@ import { useGenerateReportComments } from "@/hooks/useAI";
 import { useToast } from "@/components/ToastProvider";
 import apiClient from "@/lib/api/client";
 import { formatClassLabel } from "@/lib/utils/formatClassLabel";
+import { stripMarkdown } from "@/components/ui/FormattedAiText";
 
 export default function ReportCommentsPage() {
   const { data: students = [] } = useStudents();
@@ -40,7 +41,7 @@ export default function ReportCommentsPage() {
         attendance: parseInt(attendance) 
       },
       {
-        onSuccess: (data: any) => setComment(data?.comment || "Could not generate comment."),
+        onSuccess: (data: any) => setComment(stripMarkdown(data?.comment || "") || "Could not generate comment."),
         onError: (err: any) => {
           const errorData = err?.response?.data;
           if (err?.response?.status === 429 || errorData?.error === "RATE_LIMIT_EXCEEDED") {

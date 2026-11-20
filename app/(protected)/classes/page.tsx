@@ -34,7 +34,7 @@ export default function ClassesManagementPage() {
   const { data: academicYears = [] } = useAcademicYears();
   const activeAcademicYear = useMemo(() => {
     const current = (academicYears as any[]).find((ay: any) => ay.isCurrent);
-    return current?.name || "2025-2026";
+    return current?.name || "2026-2027";
   }, [academicYears]);
   const { data: studentsData = [] } = useStudents();
   const students: any[] = Array.isArray(studentsData) ? studentsData : [];
@@ -257,8 +257,15 @@ export default function ClassesManagementPage() {
                         const matchedStaff = staffList.find((st: any) => {
                           if (st.deleted) return false;
                           if (sec.classTeacherId && st.id === sec.classTeacherId) return true;
-                          const sName = (st.name || st.fullName || `${st.firstName || ""} ${st.lastName || ""}`.trim()).trim().toLowerCase();
-                          return Boolean(rawIncharge && rawIncharge.toLowerCase() === sName && !rawIncharge.startsWith("Test Staff"));
+                          const sName = (st.name || st.fullName || st.personal?.fullName || `${st.firstName || ""} ${st.lastName || ""}`.trim()).trim().toLowerCase();
+                          if (rawIncharge && rawIncharge.toLowerCase() === sName && !rawIncharge.startsWith("Test Staff")) return true;
+
+                          // Match by staff academic class & section assignment
+                          const classes = st.academic?.classesAssigned || st.classesAssigned || st.professional?.classesAssigned || [];
+                          const assignedSection = cleanSectionName(st.academic?.sectionAssignment || st.sectionAssignment || "");
+                          const matchesClass = Array.isArray(classes) && classes.some((c: string) => formatClassLabel(c) === displayName);
+                          const matchesSection = !assignedSection || assignedSection === secName;
+                          return matchesClass && matchesSection;
                         });
                         const isAssigned = Boolean(matchedStaff);
 
@@ -287,9 +294,9 @@ export default function ClassesManagementPage() {
                                   <a 
                                     href={`/staff-profile?id=${sec.classTeacherId || matchedStaff?.id}`}
                                     className="text-blue-600 hover:underline font-bold truncate max-w-[110px]"
-                                    title={matchedStaff?.name || sec.incharge}
+                                    title={matchedStaff?.fullName || matchedStaff?.name || sec.incharge}
                                   >
-                                    {matchedStaff?.name || sec.incharge}
+                                    {matchedStaff?.fullName || matchedStaff?.name || sec.incharge}
                                   </a>
                                 ) : (
                                   <span className="text-amber-600 font-semibold">Unassigned</span>

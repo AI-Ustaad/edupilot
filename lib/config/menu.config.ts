@@ -282,6 +282,13 @@ export const ALL_MENU_GROUPS: MenuGroupDef[] = [
         requiredPermission: "staff.create",
       },
       {
+        id: "payroll",
+        name: "Payroll",
+        icon: DollarSign,
+        path: "/payroll",
+        requiredPermission: "staff.view",
+      },
+      {
         id: "staff-ocr",
         name: "Staff OCR",
         icon: ScanLine,

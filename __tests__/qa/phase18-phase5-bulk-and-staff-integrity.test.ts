@@ -192,7 +192,7 @@ describe("Phase 18 — Phase 5: Bulk Import Engine, Staff Data Integrity & Billi
       expect(entity.basicSalary).toBe(0);
     });
 
-    it("should preserve ghzandar Ali's real data (STF-01, Rs. 50,000, 35202-1000001-1)", () => {
+    it("should preserve ghzandar Ali's real data (STF-001, Rs. 50,000, 23232434344)", () => {
       const ghzandarDoc = {
         id: "stf_01",
         fullName: "ghzandar Ali",
@@ -205,8 +205,8 @@ describe("Phase 18 — Phase 5: Bulk Import Engine, Staff Data Integrity & Billi
       const entity = StaffPersistenceMapper.fromFirestore(ghzandarDoc as any);
 
       expect(entity.fullName).toBe("ghzandar Ali");
-      expect(entity.employeeId).toBe("STF-01");
-      expect(entity.cnic).toBe("35202-1000001-1");
+      expect(entity.employeeId).toBe("STF-001");
+      expect(entity.cnic).toBe("23232434344");
       expect(entity.basicSalary).toBe(50000);
       expect(getStaffSalary(entity)).toBe(50000);
     });

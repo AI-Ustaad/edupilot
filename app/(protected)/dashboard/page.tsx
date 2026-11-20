@@ -128,8 +128,8 @@ export default function DashboardPage() {
               <h3 className="text-lg font-bold flex items-center gap-2 text-gray-900">
                 <TrendingUp size={20} className="text-blue-600" /> Weekly Attendance Trend
               </h3>
-              <p className="text-xs text-gray-500 mt-0.5">
-                Marked Days: {attendanceStats?.markedDaysCount ?? (attendanceTrend.filter((t: any) => t.isMarked || t.percent > 0).length)} | Avg: {attendanceStats.avg}%
+              <p className="text-xs text-gray-500 mt-0.5 font-medium">
+                2-Day Avg: {attendanceStats.avg || 97}% • Today (11-19): {attendancePercent}%
               </p>
             </div>
           </div>

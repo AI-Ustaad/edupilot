@@ -24,7 +24,7 @@ export default function PromoteStudentsPage() {
   const { data: years = [] } = useAcademicYears();
   const activeYearName = useMemo(() => {
     const current = (years as any[]).find((y: any) => y.isCurrent);
-    return current?.name || "2025-2026";
+    return current?.name || "2026-2027";
   }, [years]);
 
   // Form state - unified canonical active academic year
@@ -32,7 +32,7 @@ export default function PromoteStudentsPage() {
   const [fromSection, setFromSection] = useState("");
   const [toClass, setToClass] = useState("");
   const [toSection, setToSection] = useState("A");
-  const [academicYear, setAcademicYear] = useState("2025-2026");
+  const [academicYear, setAcademicYear] = useState("2026-2027");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [result, setResult] = useState<{ promoted: number; errors: string[] } | null>(null);
 
@@ -176,7 +176,7 @@ export default function PromoteStudentsPage() {
           </div>
           <div>
             <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Academic Year</label>
-            <input type="text" value={academicYear} onChange={e => setAcademicYear(e.target.value)} className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="2025-2026" />
+            <input type="text" value={academicYear} onChange={e => setAcademicYear(e.target.value)} className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="2026-2027" />
           </div>
         </div>
       </div>

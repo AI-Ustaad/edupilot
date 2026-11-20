@@ -22,16 +22,16 @@ export async function getTenantContextSnapshot(tenantId: string): Promise<string
     return `
 === LIVE SCHOOL CONTEXT SNAPSHOT ===
 - School / Institution: ${schoolName}
-- Current Academic Year: 2025-2026
+- Current Academic Year: 2026-2027
 - Enrolled Students: ${studentCount} (Classes 1–10 across Sections A, B, C)
 - Active Staff Members: ${staffCount} (including Admin, Principal, Subject Teachers, and Support Staff)
-- Current Term: 1st Term / Final Exams 2025-2026
+- Current Term: 1st Term / Final Exams 2026-2027
 - Recent Student Attendance: ~94% present/late rate
 - System Status: Live SaaS Tenant in Active Operation
 ====================================
 Use this school data context to provide accurate, specific, and actionable administrative and educational answers.
     `.trim();
   } catch {
-    return "School: Government High School Sahiwal, Academic Year: 2025-2026, Students: 50, Staff: 10";
+    return "School: Government High School Sahiwal, Academic Year: 2026-2027, Students: 50, Staff: 10";
   }
 }

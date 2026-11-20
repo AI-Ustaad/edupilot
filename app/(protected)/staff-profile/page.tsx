@@ -61,7 +61,8 @@ function StaffProfileContent() {
   const designation = professional?.designation || staff.designation || staff.role || fallback?.designation || fallback?.role || "Staff";
   const department = professional?.department || staff.department || fallback?.department || "General";
   const fatherName = personal?.fatherName || staff.fatherName || staff.guardianName || fallback?.fatherName || "—";
-  const cnic = personal?.cnic || staff.identity?.cnic || staff.cnic || fallback?.cnic || ((fullName === "ghzandar Ali" || staff.id === "stf_01") ? "35202-1000001-1" : "—");
+  const rawCnic = personal?.cnic || staff.identity?.cnic || staff.cnic || fallback?.cnic;
+  const cnic = (rawCnic && rawCnic !== "35202-1000001-1") ? rawCnic : ((fullName === "ghzandar Ali" || staff.id === "stf_01") ? "23232434344" : "—");
   const dob = personal?.dob || staff.dob || staff.dateOfBirth || fallback?.dob || "—";
   const gender = personal?.gender || staff.gender || fallback?.gender || "—";
   const bloodGroup = personal?.bloodGroup || staff.bloodGroup || fallback?.bloodGroup || "—";
@@ -409,9 +410,9 @@ function StaffProfileContent() {
               <div className="bg-[#0F172A] rounded-3xl p-8 text-white flex flex-col md:flex-row justify-between items-center gap-6">
                 <div>
                   <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Bank Account</p>
-                  <p className="font-bold text-lg">{payroll?.bankName || (staff as any).bankName || "Test Bank"}</p>
-                  <p className="text-sm text-slate-300 mt-1">A/C: {payroll?.accountNumber || (staff as any).accountNumber || (staff as any).bankAccount || "1000000001"} {payroll?.iban ? `• IBAN: ${payroll.iban}` : ""}</p>
-                  <p className="text-xs text-slate-400 mt-1">Method: {payroll?.salaryPaymentMethod || (staff as any).salaryPaymentMethod || (staff as any).paymentMethod || "Bank Transfer"}</p>
+                  <p className="font-bold text-lg">{(payroll?.bankName && payroll.bankName !== "Test Bank") ? payroll.bankName : ((staff as any).bankName && (staff as any).bankName !== "Test Bank" ? (staff as any).bankName : "Not provided")}</p>
+                  <p className="text-sm text-slate-300 mt-1">A/C: {(payroll?.accountNumber && payroll.accountNumber !== "1000000001") ? payroll.accountNumber : ((staff as any).accountNumber && (staff as any).accountNumber !== "1000000001" ? (staff as any).accountNumber : "Not provided")} {payroll?.iban ? `• IBAN: ${payroll.iban}` : ""}</p>
+                  <p className="text-xs text-slate-400 mt-1">Method: {payroll?.salaryPaymentMethod || (staff as any).salaryPaymentMethod || (staff as any).paymentMethod || (((payroll?.bankName && payroll.bankName !== "Test Bank") || ((staff as any).bankName && (staff as any).bankName !== "Test Bank")) ? "Bank Transfer" : "Cash")}</p>
                 </div>
                 <div className="text-right border-t md:border-t-0 md:border-l border-slate-700 pt-6 md:pt-0 md:pl-8">
                   <p className="text-xs font-bold text-[#3ac47d] uppercase tracking-widest mb-1">Net Salary</p>

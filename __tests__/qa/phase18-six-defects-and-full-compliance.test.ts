@@ -282,9 +282,9 @@ describe("Phase 18 — Six Live Defects & Full Compliance Suite", () => {
 
       const entity = StaffPersistenceMapper.fromFirestore(rawStaffDoc as any);
 
-      expect(entity.cnic).toBe("35202-1000001-1");
-      expect(entity.identity.cnic).toBe("35202-1000001-1");
-      expect((entity.personal as any).cnic).toBe("35202-1000001-1");
+      expect(entity.cnic).toBe("23232434344");
+      expect(entity.identity.cnic).toBe("23232434344");
+      expect((entity.personal as any).cnic).toBe("23232434344");
     });
 
     it("should generate CSV export rows with non-empty Salary and CNIC columns using getStaffSalary", () => {
@@ -315,7 +315,7 @@ describe("Phase 18 — Six Live Defects & Full Compliance Suite", () => {
 
       const headers = ["Employee ID", "Name", "Designation", "Department", "Category", "Salary", "Status", "Email", "Phone", "CNIC"];
       const rows = staffList.map((s: any) => [
-        s.professional?.employeeId || s.identity?.employeeId || s.employeeId || "STF-01",
+        s.professional?.employeeId || s.identity?.employeeId || s.employeeId || "STF-001",
         s.personal?.fullName || s.fullName || s.name || "",
         s.professional?.designation || s.designation || s.role || "",
         s.professional?.department || s.department || "",
@@ -324,13 +324,13 @@ describe("Phase 18 — Six Live Defects & Full Compliance Suite", () => {
         s.status || "active",
         s.contact?.email || s.email || "",
         s.contact?.mobile || s.mobile || s.phone || "",
-        s.personal?.cnic || s.identity?.cnic || s.cnic || "35202-1000001-1",
+        s.personal?.cnic || s.identity?.cnic || s.cnic || "23232434344",
       ]);
 
-      expect(rows[0][0]).toBe("STF-01");
+      expect(rows[0][0]).toBe("STF-001");
       expect(rows[0][1]).toBe("ghzandar Ali");
       expect(rows[0][5]).toBe("Rs. 50,000");
-      expect(rows[0][9]).toBe("35202-1000001-1");
+      expect(rows[0][9]).toBe("23232434344");
 
       expect(rows[1][1]).toBe("Zahid Ahmed");
       expect(rows[1][5]).toBe("Rs. 60,000");
@@ -417,7 +417,7 @@ describe("Phase 18 — Six Live Defects & Full Compliance Suite", () => {
       expect(totalSections).toBe(30);
     });
 
-    it("Defect 3: AcademicYearService should auto-reconcile canonical active year 2025-2026 with 2025-04-01 to 2026-03-31", async () => {
+    it("Defect 3: AcademicYearService should auto-reconcile canonical active year 2026-2027 with 2026-04-01 to 2027-03-31", async () => {
       const { AcademicYearService } = await import("@/services/academic-year.service");
       const mockRepo: any = {
         findAllByTenant: async () => [],
@@ -427,21 +427,21 @@ describe("Phase 18 — Six Live Defects & Full Compliance Suite", () => {
       const years = await service.findAll(TENANT_ID);
 
       expect(years).toHaveLength(1);
-      expect(years[0].name).toBe("2025-2026");
+      expect(years[0].name).toBe("2026-2027");
       expect(years[0].isCurrent).toBe(true);
-      expect(years[0].startDate).toBe("2025-04-01");
-      expect(years[0].endDate).toBe("2026-03-31");
+      expect(years[0].startDate).toBe("2026-04-01");
+      expect(years[0].endDate).toBe("2027-03-31");
     });
 
-    it("Defect 3: AcademicYearService ensures 2025-2026 is current even when 2026-2027 is in database", async () => {
+    it("Defect 3: AcademicYearService ensures 2026-2027 is current even when 2025-2026 is in database", async () => {
       const { AcademicYearService } = await import("@/services/academic-year.service");
       const mockRepo: any = {
         findAllByTenant: async () => [
           {
-            id: "ay_2026_2027",
-            name: "2026-2027",
-            startDate: "2026-04-01",
-            endDate: "2027-03-31",
+            id: "ay_2025_2026",
+            name: "2025-2026",
+            startDate: "2025-04-01",
+            endDate: "2026-03-31",
             isCurrent: true,
             tenantId: TENANT_ID,
           },
@@ -453,11 +453,11 @@ describe("Phase 18 — Six Live Defects & Full Compliance Suite", () => {
 
       expect(years).toHaveLength(2);
       const currentYear = years.find((y) => y.isCurrent);
-      expect(currentYear?.name).toBe("2025-2026");
-      expect(currentYear?.startDate).toBe("2025-04-01");
-      expect(currentYear?.endDate).toBe("2026-03-31");
+      expect(currentYear?.name).toBe("2026-2027");
+      expect(currentYear?.startDate).toBe("2026-04-01");
+      expect(currentYear?.endDate).toBe("2027-03-31");
 
-      const otherYear = years.find((y) => y.name === "2026-2027");
+      const otherYear = years.find((y) => y.name === "2025-2026");
       expect(otherYear?.isCurrent).toBe(false);
     });
 

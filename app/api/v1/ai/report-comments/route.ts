@@ -5,6 +5,7 @@ import { agentRegistry } from "@/lib/ai/agents/AgentRegistry";
 import { enforceAiQuota, createAiErrorResponse, recordAiTelemetry } from "@/lib/ai/ai-quota-guard";
 import type { TenantContext } from "@/types/api";
 import { formatClassLabel } from "@/lib/utils/formatClassLabel";
+import { stripMarkdown } from "@/components/ui/FormattedAiText";
 
 export const POST = withErrorHandler(
   withAuth(
@@ -21,7 +22,7 @@ export const POST = withErrorHandler(
       }
 
       const gradeLabel = formatClassLabel(body.grade || "N/A");
-      const query = `Write a personalized report card comment for ${body.studentName} (${gradeLabel}, Subject ${body.subject}). Marks: ${body.marks || "N/A"}%, Attendance: ${body.attendance || "N/A"}%.`;
+      const query = `Write a personalized report card remark for ${body.studentName} (${gradeLabel}, Subject: ${body.subject}). Marks: ${body.marks || "N/A"}%, Attendance: ${body.attendance || "N/A"}%. Output ONLY 2-3 polished, encouragement-focused sentences of plain prose. Do NOT include any markdown characters, asterisks, bullet points, hashtags, or quotation marks. Output clean sentences ready to print directly on a report card.`;
 
       const startTime = Date.now();
       try {
@@ -40,7 +41,8 @@ export const POST = withErrorHandler(
           success: true,
         });
 
-        return createSuccessResponse({ comment: result });
+        const cleanComment = stripMarkdown(String(result || ""));
+        return createSuccessResponse({ comment: cleanComment });
       } catch (err: any) {
         await recordAiTelemetry({
           tenantId,

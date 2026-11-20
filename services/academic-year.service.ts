@@ -14,23 +14,23 @@ export class AcademicYearService {
     const records = await this.repository.findAllByTenant(tenantId);
     let ayList = records ? [...records] : [];
 
-    const existing2025 = ayList.find((r) => r.name === "2025-2026");
-    if (!existing2025) {
+    const existing2026 = ayList.find((r) => r.name === "2026-2027");
+    if (!existing2026) {
       const canonicalAY: AcademicYear & { id: string } = {
-        id: `ay_2025_2026_${tenantId}`,
-        name: "2025-2026",
-        startDate: "2025-04-01",
-        endDate: "2026-03-31",
+        id: `ay_2026_2027_${tenantId}`,
+        name: "2026-2027",
+        startDate: "2026-04-01",
+        endDate: "2027-03-31",
         isCurrent: true,
         tenantId,
         createdBy: "system",
       };
       if (typeof this.repository.createIfAbsentByName === "function") {
         this.repository.createIfAbsentByName(
-          "2025-2026",
+          "2026-2027",
           {
-            startDate: "2025-04-01",
-            endDate: "2026-03-31",
+            startDate: "2026-04-01",
+            endDate: "2027-03-31",
             isCurrent: true,
             tenantId,
             createdBy: "system",
@@ -41,13 +41,14 @@ export class AcademicYearService {
       ayList.unshift(canonicalAY);
     }
 
-    // Canonical active academic year is 2025-2026 (2025-04-01 to 2026-03-31)
+    // Canonical active academic year is 2026-2027 (2026-04-01 to 2027-03-31)
+    // 2025-2026 is marked Completed / Inactive
     ayList = ayList.map((ay) => {
-      if (ay.name === "2025-2026") {
+      if (ay.name === "2026-2027") {
         return {
           ...ay,
-          startDate: "2025-04-01",
-          endDate: "2026-03-31",
+          startDate: "2026-04-01",
+          endDate: "2027-03-31",
           isCurrent: true,
         };
       }

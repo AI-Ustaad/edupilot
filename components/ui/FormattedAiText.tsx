@@ -1,6 +1,21 @@
 "use client";
 import React from "react";
 
+export function stripMarkdown(text: string): string {
+  if (!text) return "";
+  return text
+    .replace(/^#+\s+/gm, "")
+    .replace(/\*\*([^*]+)\*\*/g, "$1")
+    .replace(/\*([^*]+)\*/g, "$1")
+    .replace(/__([^_]+)__/g, "$1")
+    .replace(/_([^_]+)_/g, "$1")
+    .replace(/`([^`]+)`/g, "$1")
+    .replace(/^[-*+]\s+/gm, "")
+    .replace(/^-{3,}|^\*{3,}|^_{3,}/gm, "")
+    .replace(/^\d+\.\s+/gm, "")
+    .trim();
+}
+
 interface FormattedAiTextProps {
   content: string;
   className?: string;
@@ -54,6 +69,11 @@ export function FormattedAiText({ content, className = "" }: FormattedAiTextProp
 
         if (!line) {
           return <div key={idx} className="h-1.5" />;
+        }
+
+        // Horizontal rule
+        if (/^[-*_]{3,}$/.test(line)) {
+          return <hr key={idx} className="my-3 border-t border-gray-200" />;
         }
 
         // Heading 1 / 2 / 3
@@ -112,3 +132,6 @@ export function FormattedAiText({ content, className = "" }: FormattedAiTextProp
     </div>
   );
 }
+
+export const FormattedAIResponse = FormattedAiText;
+export default FormattedAiText;

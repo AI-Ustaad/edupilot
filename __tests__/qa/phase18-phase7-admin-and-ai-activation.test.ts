@@ -196,7 +196,7 @@ describe("Phase 18 - Phase 7: Admin Governance & AI Activation Test Suite", () =
     it("should generate a rich live tenant snapshot with school details", async () => {
       const snapshot = await getTenantContextSnapshot("tenant_ghs_sahiwal");
       expect(typeof snapshot).toBe("string");
-      expect(snapshot).toContain("Academic Year: 2025-2026");
+      expect(snapshot).toContain("Academic Year: 2026-2027");
       expect(snapshot).toContain("Enrolled Students");
       expect(snapshot).toContain("Active Staff Members");
     });
