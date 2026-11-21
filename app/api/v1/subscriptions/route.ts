@@ -24,6 +24,10 @@ export const GET = withErrorHandler(
         let aiCalls = 0;
 
         try {
+          const startOfMonth = new Date();
+          startOfMonth.setUTCDate(1);
+          startOfMonth.setUTCHours(0, 0, 0, 0);
+
           const [studentsSnap, staffSnap, aiSnap] = await Promise.all([
             adminDb.collection("students").where("tenantId", "==", tenantId).get().catch(() => ({ docs: [] } as any)),
             adminDb.collection("staff").where("tenantId", "==", tenantId).get().catch(() => ({ docs: [] } as any)),
@@ -32,7 +36,21 @@ export const GET = withErrorHandler(
 
           studentCount = (studentsSnap.docs || []).filter((d: any) => !d.data()?.deleted).length;
           staffCount = (staffSnap.docs || []).filter((d: any) => !d.data()?.deleted && d.data()?.status !== "terminated").length;
-          aiCalls = (aiSnap.docs || []).length;
+          
+          // Reconcile current calendar month successful AI calls
+          const rawAiDocs = aiSnap.docs || [];
+          const currentMonthDocs = rawAiDocs.filter((d: any) => {
+            const data = d.data() || {};
+            if (data.success === false) return false;
+            let dateVal: Date | null = null;
+            if (data.createdAt?.toDate) dateVal = data.createdAt.toDate();
+            else if (data.createdAt) dateVal = new Date(data.createdAt);
+            else if (data.timestamp?.toDate) dateVal = data.timestamp.toDate();
+            else if (data.timestamp) dateVal = new Date(data.timestamp);
+            if (!dateVal || isNaN(dateVal.getTime())) return true;
+            return dateVal >= startOfMonth;
+          });
+          aiCalls = currentMonthDocs.length;
         } catch {
           studentCount = 0;
           staffCount = 0;

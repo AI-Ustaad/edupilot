@@ -16,7 +16,7 @@ export const GET = withErrorHandler(
   withAuth(
     withTenant(
       withPermission(PERMISSIONS.audit.view)(async (req: Request, { tenantId }: TenantContext) => {
-        const logs = await auditService.queryByTenant(tenantId, { limit: 500 });
+        const logs = await auditService.queryByTenant(tenantId, { limit: 100 });
 
         // Build user map for fast name and email resolution
         const userMap = new Map<string, { name: string; email: string; role?: string }>();

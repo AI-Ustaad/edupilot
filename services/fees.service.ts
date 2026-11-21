@@ -77,6 +77,9 @@ export class FeesService implements IFeesService {
       const byStudentMonth = new Map<string, any[]>();
       const currentNorm = normalizeBillingMonth("November 2026");
 
+      const batch = db.batch ? db.batch() : null;
+      let mutationCount = 0;
+
       for (const d of docs) {
         const data = d.data();
         const studentId = data.studentId || "";
@@ -94,11 +97,17 @@ export class FeesService implements IFeesService {
           const targetSec = cleanSectionName(student.section || "A");
           const targetClass = formatClassLabel(student.classGrade || "Class 10");
           if (data.section !== targetSec || data.classGrade !== targetClass) {
-            await d.ref.update({
+            const updatePayload = {
               section: targetSec,
               classGrade: targetClass,
               updatedAt: new Date().toISOString(),
-            }).catch(() => {});
+            };
+            if (batch) {
+              batch.update(d.ref, updatePayload);
+              mutationCount++;
+            } else {
+              await d.ref.update(updatePayload).catch(() => {});
+            }
           }
         }
       }
@@ -110,7 +119,12 @@ export class FeesService implements IFeesService {
           // Keep only the paid record, delete duplicate unpaid or extra records
           for (const rec of records) {
             if (rec.id !== paidRecord.id) {
-              await rec.ref.delete().catch(() => {});
+              if (batch) {
+                batch.delete(rec.ref);
+                mutationCount++;
+              } else {
+                await rec.ref.delete().catch(() => {});
+              }
             }
           }
           // Preserve and ensure paidRecord amount is valid
@@ -118,13 +132,19 @@ export class FeesService implements IFeesService {
           const currentAssessed = Number(paidRecord.data.amount || 5000);
           const effectivePaid = currentPaid > 0 ? currentPaid : (currentAssessed > 0 ? currentAssessed : 5000);
           if (currentPaid <= 0 || currentAssessed <= 0) {
-            await paidRecord.ref.update({
+            const updatePayload = {
               amount: currentAssessed > 0 ? currentAssessed : 5000,
               amountPaid: effectivePaid,
               amountDue: 0,
               status: "paid",
               updatedAt: new Date().toISOString(),
-            }).catch(() => {});
+            };
+            if (batch) {
+              batch.update(paidRecord.ref, updatePayload);
+              mutationCount++;
+            } else {
+              await paidRecord.ref.update(updatePayload).catch(() => {});
+            }
           }
         } else {
           // If multiple unpaid records exist, keep only the canonical deterministic one and delete duplicates
@@ -134,19 +154,30 @@ export class FeesService implements IFeesService {
           const primaryRec = records.find(r => r.id === canonicalDocId) || records[0];
           for (const rec of records) {
             if (rec.id !== primaryRec.id) {
-              await rec.ref.delete().catch(() => {});
+              if (batch) {
+                batch.delete(rec.ref);
+                mutationCount++;
+              } else {
+                await rec.ref.delete().catch(() => {});
+              }
             }
           }
           // Ensure amount is 5000
           const currentAmount = Number(primaryRec.data.amount || primaryRec.data.amountDue || 0);
           if (currentAmount <= 0) {
-            await primaryRec.ref.update({
+            const updatePayload = {
               amount: 5000,
               amountDue: 5000,
               amountPaid: 0,
               status: "Pending",
               updatedAt: new Date().toISOString(),
-            }).catch(() => {});
+            };
+            if (batch) {
+              batch.update(primaryRec.ref, updatePayload);
+              mutationCount++;
+            } else {
+              await primaryRec.ref.update(updatePayload).catch(() => {});
+            }
           }
         }
       }
@@ -176,8 +207,17 @@ export class FeesService implements IFeesService {
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
           };
-          await db.collection("fees").doc(feeDocId).set(newFeeDoc).catch(() => {});
+          if (batch) {
+            batch.set(db.collection("fees").doc(feeDocId), newFeeDoc);
+            mutationCount++;
+          } else {
+            await db.collection("fees").doc(feeDocId).set(newFeeDoc).catch(() => {});
+          }
         }
+      }
+
+      if (batch && mutationCount > 0) {
+        await batch.commit().catch(() => {});
       }
     } catch {
       // non-fatal
@@ -191,8 +231,8 @@ export class FeesService implements IFeesService {
     parsed.feeMonth = effectiveMonth;
 
     const isPaid = (parsed.status || "paid").toLowerCase() === "paid";
-    const amountPaid = isPaid ? (parsed.amountPaid ?? 5000) : 0;
-    const amountAssessed = Number(parsed.amount) || Number(parsed.amountPaid) || 5000;
+    const amountAssessed = Number(parsed.amount) || (Number(parsed.amountPaid) > 0 ? Number(parsed.amountPaid) : 5000);
+    const amountPaid = isPaid ? (Number(parsed.amountPaid) > 0 ? Number(parsed.amountPaid) : amountAssessed) : 0;
     const amountDue = isPaid ? 0 : amountAssessed;
     const receiptNumber = isPaid
       ? (parsed.receiptNumber || `RCP-${normalized.year}${normalized.monthNum}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`)

@@ -145,7 +145,7 @@ describe("Phase 18 Batch 1 Post-Hotfix Remediation QA Verification", () => {
       };
 
       const staffService = new StaffService(mockRepo);
-      const reconciled = staffService.reconcileStaffEntities(mockRawDocs, tenantId);
+      const reconciled = staffService.reconcileStaffEntities(mockRawDocs, tenantId) as any[];
 
       expect(reconciled).toHaveLength(10);
       const ids = reconciled.map(s => s.employeeId);

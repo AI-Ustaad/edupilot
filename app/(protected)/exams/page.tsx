@@ -282,9 +282,14 @@ export default function ExamsAndMarksPage() {
     <div className="animate-fade-in space-y-6 pb-20">
       <div className="flex justify-between items-end">
         <div>
-          <h1 className="text-2xl font-extrabold text-[#0F172A] tracking-tight flex items-center gap-3">
-            <PenTool className="text-[#3ac47d]"/> Exams & Marks Entry
-          </h1>
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl font-extrabold text-[#0F172A] tracking-tight flex items-center gap-3">
+              <PenTool className="text-[#3ac47d]"/> Exams & Marks Entry
+            </h1>
+            <span className="bg-blue-100 text-blue-800 text-xs font-bold px-3 py-1 rounded-full border border-blue-200 shadow-sm">
+              Academic Year: 2026-2027
+            </span>
+          </div>
           <p className="text-sm text-slate-500 mt-1">Smart Assessment Engine linked directly to Results Module.</p>
         </div>
         <button 

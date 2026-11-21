@@ -18,6 +18,7 @@ export const useFees = (month: string, classGrade: string, section: string) => {
       return safeArray(res);
     },
     enabled: !!tenantId && !!month,
+    staleTime: 30_000,
   });
 };
 
@@ -32,8 +33,9 @@ export const useSaveFee = () => {
       return apiClient.post("/fees", data);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["fees", tenantId] });
-      queryClient.invalidateQueries({ queryKey: QueryKeys.dashboard(tenantId) });
+      queryClient.invalidateQueries({ queryKey: ["fees"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+      queryClient.invalidateQueries({ queryKey: ["analytics"] });
     },
   });
 };
@@ -49,8 +51,9 @@ export const useDeleteFee = () => {
       return apiClient.delete(`/fees?id=${id}`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["fees", tenantId] });
-      queryClient.invalidateQueries({ queryKey: QueryKeys.dashboard(tenantId) });
+      queryClient.invalidateQueries({ queryKey: ["fees"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+      queryClient.invalidateQueries({ queryKey: ["analytics"] });
     },
   });
 };

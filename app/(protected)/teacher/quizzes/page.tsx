@@ -25,6 +25,7 @@ export default function TeacherQuizzesPage() {
   const { data: quizzes = [], isLoading } = useQuery({
     queryKey: ["quizzes", tenantId],
     queryFn: async () => safeArray(await apiClient.get("/quizzes")),
+    staleTime: 30_000,
   });
 
   const { data: classesData = [] } = useClasses();

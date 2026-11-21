@@ -49,7 +49,7 @@ export const GET = withErrorHandler(
           });
         }
 
-        const configuration = await configurationService.getConfigurationViewModel(tenantId);
+        const configuration = (loadResult as any).configuration || await configurationService.getConfigurationViewModel(tenantId);
         const history = await configurationService.getConfigurationHistoryViewModel(tenantId);
 
         return createSuccessResponse({ configuration, history, status: loadResult.status });

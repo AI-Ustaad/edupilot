@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import RequirePermission from "@/components/RequirePermission";
 import { PERMISSIONS } from "@/lib/auth/permissions";
+import { useToast } from "@/components/ToastProvider";
 
 // 🚀 Layered Architecture Hooks
 import { useClasses } from "@/hooks/useClasses";
@@ -39,6 +40,7 @@ function formatClassSection(cls?: string, sec?: string): string {
 
 export default function FeesPage() {
   const { user } = useAuth();
+  const { showToast } = useToast();
 
   const [selectedMonth, setSelectedMonth] = useState("November 2026");
   const [selectedClass, setSelectedClass] = useState("");
@@ -124,7 +126,7 @@ export default function FeesPage() {
       : (existing?.amountDue || existing?.amount || 5000).toString();
     const currentAmount = feeEntries[student.id]?.amount ?? defaultAmount;
     const currentStatus = feeEntries[student.id]?.status ?? existing?.status ?? (isPaidExisting ? "paid" : "pending");
-    const isPaid = currentStatus === "paid";
+    const isPaid = currentStatus.toLowerCase() === "paid";
     const amt = Number(currentAmount) || 5000;
 
     setSaving(true);
@@ -137,13 +139,19 @@ export default function FeesPage() {
         section: student.section,
         feeMonth: selectedMonth,
         amount: amt,
-        amountPaid: isPaid ? amt : 0,
+        amountPaid: isPaid ? amt : (amt || 5000),
         status: currentStatus,
       });
+      showToast(`Fee record saved for ${student.fullName || student.name}!`, "success");
       setSuccess(`Fee record saved for ${student.fullName || student.name}!`);
       setTimeout(() => setSuccess(""), 4000);
+      setFeeEntries((prev) => {
+        const next = { ...prev };
+        delete next[student.id];
+        return next;
+      });
     } catch {
-      alert("Failed to save fee record.");
+      showToast("Failed to save fee record.", "error");
     } finally {
       setSaving(false);
     }
@@ -156,7 +164,7 @@ export default function FeesPage() {
     });
 
     if (studentsToSave.length === 0) {
-      alert("Please adjust fee amounts or status for students before saving.");
+      showToast("Please adjust fee amounts or status for students before saving.", "error");
       return;
     }
 
@@ -174,14 +182,16 @@ export default function FeesPage() {
           section: student.section,
           feeMonth: selectedMonth,
           amount: amt,
-          amountPaid: isPaid ? amt : 0,
+          amountPaid: isPaid ? amt : (amt || 5000),
           status: entry.status || (isPaid ? "paid" : "pending"),
         });
       }));
+      showToast(`Saved ${studentsToSave.length} fee records successfully!`, "success");
       setSuccess(`Saved ${studentsToSave.length} fee records successfully!`);
       setTimeout(() => setSuccess(""), 4000);
+      setFeeEntries({});
     } catch {
-      alert("Failed to save fees.");
+      showToast("Failed to save fees.", "error");
     } finally {
       setSaving(false);
     }

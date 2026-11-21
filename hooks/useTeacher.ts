@@ -18,6 +18,7 @@ export const useAssignments = () => {
       const data = res.data;
       return safeArray(data?.data || data);
     },
+    staleTime: 30_000,
   });
 };
 

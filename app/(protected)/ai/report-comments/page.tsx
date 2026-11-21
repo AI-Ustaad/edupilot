@@ -9,7 +9,7 @@ import { useGenerateReportComments } from "@/hooks/useAI";
 import { useToast } from "@/components/ToastProvider";
 import apiClient from "@/lib/api/client";
 import { formatClassLabel } from "@/lib/utils/formatClassLabel";
-import { stripMarkdown } from "@/components/ui/FormattedAiText";
+import { FormattedAiText, stripMarkdown } from "@/components/ui/FormattedAiText";
 
 export default function ReportCommentsPage() {
   const { data: students = [] } = useStudents();
@@ -120,7 +120,10 @@ export default function ReportCommentsPage() {
       {comment && (
         <div className="bg-green-50 border border-green-200 rounded-2xl p-6 shadow-inner animate-fade-in space-y-4">
           <h2 className="font-black text-green-800 mb-2 flex items-center gap-2"><CheckCircle2 size={20} /> Generated Comment</h2>
-          <textarea rows={4} value={comment} onChange={e => setComment(e.target.value)} className="w-full bg-white p-4 border border-green-200 rounded-xl text-green-900 font-medium outline-none" />
+          <div className="bg-white p-4 border border-green-200 rounded-xl text-gray-800 font-medium leading-relaxed shadow-sm">
+            <FormattedAiText content={comment} />
+          </div>
+          <textarea rows={3} value={comment} onChange={e => setComment(stripMarkdown(e.target.value))} className="w-full bg-white p-3 border border-green-200 rounded-xl text-green-900 font-medium outline-none text-sm" placeholder="Edit remark before saving..." />
           <button onClick={saveComment} className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-xl font-bold flex items-center gap-2 transition">
             <Save size={18} /> Save to Student Profile
           </button>

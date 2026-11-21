@@ -51,8 +51,8 @@ function SortableItem({ id, label, path, onRemove }: { id: string; label: string
 }
 
 export default function MenuManager() {
-  const [items, setItems] = useState<MenuItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [items, setItems] = useState<MenuItem[]>(DEFAULT_MENU_ITEMS);
+  const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [newLabel, setNewLabel] = useState("");
   const [newPath, setNewPath] = useState("");

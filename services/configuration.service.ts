@@ -321,13 +321,14 @@ export class ConfigurationService implements IConfigurationService {
         },
       ];
 
-      // Async write back to Firestore history collection for persistent storage
+      // Non-blocking batch write back to Firestore history collection
       try {
         const db = (this.repo as any).db || adminDb;
-        if (db?.collection) {
+        if (db?.collection && db?.batch) {
           const histRef = db.collection("tenants").doc(tenantId).collection("settings").doc("configuration").collection("history");
+          const batch = db.batch();
           for (const item of canonicalHistory) {
-            await histRef.doc(item.id).set({
+            batch.set(histRef.doc(item.id), {
               id: item.id,
               versionNumber: item.versionNumber,
               version: { number: item.versionNumber, createdAt: item.createdAt, reason: item.reason, createdBy: item.createdBy },
@@ -336,6 +337,7 @@ export class ConfigurationService implements IConfigurationService {
               createdAt: item.createdAt,
             }, { merge: true });
           }
+          batch.commit().catch(() => {});
         }
       } catch (err) {
         logger.warn("Failed to backfill config history docs to Firestore", { tenantId, err });

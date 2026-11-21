@@ -98,8 +98,11 @@ export default function EnterpriseBillingPage() {
   const isCancelAtPeriodEnd = !!(subData as any)?.cancelAtPeriodEnd;
   const isStudentOverLimit = currentPlan.limits.students < 999999 && studentsUsed > currentPlan.limits.students;
   const isStaffOverLimit = currentPlan.limits.staff < 999999 && staffUsed > currentPlan.limits.staff;
-  const isAiOverLimit = aiUsed >= aiLimit;
+  const isAiOverLimit = aiUsed > aiLimit;
   const isQuotaExceeded = isStudentOverLimit || isStaffOverLimit || isAiOverLimit;
+  const isAtStudentLimit = currentPlan.limits.students < 999999 && studentsUsed === currentPlan.limits.students;
+  const isAtStaffLimit = currentPlan.limits.staff < 999999 && staffUsed === currentPlan.limits.staff;
+  const isAtPlanLimit = isAtStudentLimit || isAtStaffLimit;
 
   // 3. Real Stripe Checkout & Subscription Activation Handler (DEF-006)
   const handleUpgrade = async (planId: string) => {
@@ -182,14 +185,40 @@ export default function EnterpriseBillingPage() {
               <AlertCircle size={24} />
             </div>
             <div className="flex-1">
-              <h3 className="font-bold text-orange-900 text-base">Plan Limit Reached &bull; Soft-Cap Active</h3>
+              <h3 className="font-bold text-orange-900 text-base">Plan Limit Exceeded</h3>
               <p className="text-sm text-orange-700 mt-1">
                 {isStudentOverLimit && isStaffOverLimit
                   ? `Your tenant has exceeded both student (${studentsUsed}/${currentPlan.limits.students}) and staff (${staffUsed}/${currentPlan.limits.staff}) limits.`
                   : isStudentOverLimit
                   ? `Your student count (${studentsUsed}) exceeds your active plan limit (${currentPlan.limits.students}).`
-                  : `Your staff count (${staffUsed}) exceeds your active plan limit (${currentPlan.limits.staff}).`}
+                  : isStaffOverLimit
+                  ? `Your staff count (${staffUsed}) exceeds your active plan limit (${currentPlan.limits.staff}).`
+                  : `Your monthly AI usage (${aiUsed}/${aiLimit}) has exceeded your plan limit.`}
                 {" "}All existing student and staff records remain fully accessible for viewing and management. However, creating or enrolling new records is blocked until you upgrade your plan.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {!isQuotaExceeded && isAtPlanLimit && (
+          <div className="bg-blue-50 border-2 border-blue-200 rounded-2xl p-5 flex items-start gap-4 shadow-sm">
+            <div className="p-2 bg-blue-100 rounded-xl text-blue-600 shrink-0">
+              <AlertCircle size={24} />
+            </div>
+            <div className="flex-1">
+              <div className="flex items-center gap-2">
+                <h3 className="font-bold text-blue-900 text-base">Plan Capacity Notice</h3>
+                <span className="bg-blue-600 text-white text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full">
+                  At Plan Limit
+                </span>
+              </div>
+              <p className="text-sm text-blue-700 mt-1">
+                {isAtStudentLimit && isAtStaffLimit
+                  ? `Your tenant is at its plan ceiling for both students (${studentsUsed}/${currentPlan.limits.students}) and staff (${staffUsed}/${currentPlan.limits.staff}).`
+                  : isAtStudentLimit
+                  ? `Your student count (${studentsUsed}/${currentPlan.limits.students}) has reached your plan limit.`
+                  : `Your staff count (${staffUsed}/${currentPlan.limits.staff}) has reached your plan limit.`}
+                {" "}All existing records remain fully operational. To add more students or staff, please upgrade your subscription.
               </p>
             </div>
           </div>

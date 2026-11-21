@@ -86,32 +86,47 @@ export class BaseRepository<T> {
     direction?: 'asc' | 'desc'
   ): Promise<{ data: (T & { id: string })[]; total: number; page: number; totalPages: number }> {
     const col = this.db.collection(this.collectionName);
-    let query: FirebaseFirestore.Query = col.where('tenantId', '==', tenantId);
 
-    const countSnap = await query.count().get();
-    const total = countSnap.data().count;
-    const totalPages = Math.ceil(total / limit) || 1;
+    try {
+      let query: FirebaseFirestore.Query = col.where('tenantId', '==', tenantId);
 
-    if (orderBy) {
-      query = query.orderBy(orderBy, direction || 'asc');
-    } else {
-      query = query.orderBy('createdAt', 'desc');
-    }
+      const countSnap = await query.count().get().catch(() => ({ data: () => ({ count: 0 }) } as any));
+      const total = countSnap.data().count;
+      const totalPages = Math.ceil(total / limit) || 1;
 
-    const offset = (page - 1) * limit;
-    if (offset > 0) {
-      const startAfterSnap = await query.limit(offset).get();
-      const lastDoc = startAfterSnap.docs[startAfterSnap.docs.length - 1];
-      if (lastDoc) {
-        query = query.startAfter(lastDoc);
+      if (orderBy) {
+        query = query.orderBy(orderBy, direction || 'asc');
+      } else {
+        query = query.orderBy('createdAt', 'desc');
       }
+
+      const offset = (page - 1) * limit;
+      if (offset > 0) {
+        const startAfterSnap = await query.limit(offset).get();
+        const lastDoc = startAfterSnap.docs[startAfterSnap.docs.length - 1];
+        if (lastDoc) {
+          query = query.startAfter(lastDoc);
+        }
+      }
+
+      const snapshot = await query.limit(limit).get();
+      const data = snapshot.docs.map(doc => serializeDoc<T>(doc));
+      return { data, total, page, totalPages };
+    } catch {
+      // Fast fallback without composite index requirement
+      const snapshot = await col.where('tenantId', '==', tenantId).limit(limit * 2).get();
+      let docs = snapshot.docs.map(doc => serializeDoc<T>(doc));
+      const field = orderBy || 'createdAt';
+      docs.sort((a: any, b: any) => {
+        const valA = a[field] || '';
+        const valB = b[field] || '';
+        return direction === 'asc' ? String(valA).localeCompare(String(valB)) : String(valB).localeCompare(String(valA));
+      });
+      const total = docs.length;
+      const totalPages = Math.ceil(total / limit) || 1;
+      const paginated = docs.slice((page - 1) * limit, page * limit);
+      return { data: paginated, total, page, totalPages };
     }
-
-    const snapshot = await query.limit(limit).get();
-    // 🟢 Applied Serializer Here
-    const data = snapshot.docs.map(doc => serializeDoc<T>(doc));
-
-    return { data, total, page, totalPages };
   }
 
   async count(tenantId: string): Promise<number> {

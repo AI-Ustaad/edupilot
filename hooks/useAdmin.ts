@@ -13,6 +13,7 @@ export const useAcademicYears = () => {
     queryKey: ["academicYears", tenantId],
     queryFn: async () => safeArray(await apiClient.get("/academic-year")),
     enabled: !!tenantId && tenantId !== "unknown",
+    staleTime: 30_000,
   });
 };
 
@@ -39,6 +40,7 @@ export const useAuditLogs = () => {
     queryKey: ["audit", tenantId],
     queryFn: async () => safeArray(await apiClient.get("/audit")),
     enabled: !!tenantId && tenantId !== "unknown",
+    staleTime: 30_000,
   });
 };
 
@@ -50,6 +52,7 @@ export const useBuses = () => {
     queryKey: ["buses", tenantId],
     queryFn: async () => safeArray(await apiClient.get("/buses")),
     enabled: !!tenantId && tenantId !== "unknown",
+    staleTime: 30_000,
   });
 };
 
@@ -76,6 +79,7 @@ export const useUsers = () => {
     queryKey: ["users", tenantId],
     queryFn: async () => safeArray(await apiClient.get("/admin/users")),
     enabled: !!tenantId && tenantId !== "unknown",
+    staleTime: 30_000,
   });
 };
 
@@ -128,6 +132,7 @@ export const useBranding = () => {
     queryKey: ["branding", tenantId],
     queryFn: async () => safeObject(await apiClient.get("/settings/whitelabel")),
     enabled: !!tenantId && tenantId !== "unknown",
+    staleTime: 30_000,
   });
 };
 

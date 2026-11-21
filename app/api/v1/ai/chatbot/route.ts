@@ -38,7 +38,12 @@ export const POST = withErrorHandler(
           success: true,
         });
 
-        return createSuccessResponse({ answer });
+        const cleanAnswer = String(answer || "")
+          .replace(/^-{3,}\s*$/gm, "")
+          .replace(/^#{1,6}\s+/gm, "")
+          .trim();
+
+        return createSuccessResponse({ answer: cleanAnswer });
       } catch (err: any) {
         await recordAiTelemetry({
           tenantId,
