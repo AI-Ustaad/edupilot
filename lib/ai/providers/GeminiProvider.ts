@@ -65,6 +65,10 @@ export class GeminiProvider implements AIProvider {
       generationConfig.responseMimeType = options.responseMimeType;
     }
 
+    if ((options as any)?.maxOutputTokens) {
+      generationConfig.maxOutputTokens = (options as any).maxOutputTokens;
+    }
+
     const requestBody: any = {
       contents: [{ role: "user", parts }],
       generationConfig,

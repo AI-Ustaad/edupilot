@@ -3,7 +3,7 @@ import { withAuth, withTenant, withErrorHandler } from "@/route-helpers";
 import { withPermission } from "@/lib/auth/rbac";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 import { LessonPlanService } from "@/services/lesson-plan.service";
-import { createSuccessResponse, createApiResponse } from "@/lib/api/response";
+import { createSuccessResponse, createApiResponse, createErrorResponse } from "@/lib/api/response";
 import type { TenantContext } from "@/types/api";
 
 export const GET = withErrorHandler(
@@ -29,6 +29,23 @@ export const POST = withErrorHandler(
         const plan = await service.createLessonPlan(body, tenantId, user.uid);
         return createApiResponse(201, plan, "Lesson plan created");
       })
+    )
+  )
+);
+
+export const DELETE = withErrorHandler(
+  withAuth(
+    withTenant(
+      withPermission([PERMISSIONS.lessonPlans.create, PERMISSIONS.lessonPlans.delete, "lessonPlans" as any])(
+        async (req: Request, context: any) => {
+          const { searchParams } = new URL(req.url);
+          const id = searchParams.get("id");
+          if (!id) return createErrorResponse(400, "Lesson Plan ID is required");
+          const service = new LessonPlanService();
+          await service.deleteLessonPlan(id, context.tenantId, context.user?.uid || "admin");
+          return createSuccessResponse(null, { message: "Lesson plan deleted successfully" });
+        }
+      )
     )
   )
 );

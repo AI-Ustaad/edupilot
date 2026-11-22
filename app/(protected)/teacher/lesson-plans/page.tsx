@@ -1,11 +1,11 @@
 "use client";
 import { useState, useMemo } from "react";
-import { Loader2, Plus } from "lucide-react";
+import { Loader2, Plus, Trash2 } from "lucide-react";
 import RequirePermission from "@/components/RequirePermission";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 import { useClasses } from "@/hooks/useClasses";
 import { useSettings } from "@/hooks/useSettings";
-import { useLessonPlans, useCreateLessonPlan } from "@/hooks/useTeacher";
+import { useLessonPlans, useCreateLessonPlan, useDeleteLessonPlan } from "@/hooks/useTeacher";
 import { TableSkeleton } from "@/components/Skeletons";
 import { extractUniqueClasses } from "@/lib/utils/formatClassLabel";
 
@@ -16,6 +16,7 @@ export default function LessonPlannerPage() {
   const subjects = settings?.subjects || [];
   const uniqueClasses = useMemo(() => extractUniqueClasses(classes), [classes]);
   const createMutation = useCreateLessonPlan();
+  const deleteMutation = useDeleteLessonPlan();
 
   const [form, setForm] = useState({ date: new Date().toISOString().slice(0, 10), classGrade: "", subject: "", topic: "", objective: "", materials: "", notes: "" });
 
@@ -59,17 +60,36 @@ export default function LessonPlannerPage() {
               <th className="p-4 text-left font-bold">Date</th>
               <th className="p-4 text-left font-bold">Class</th>
               <th className="p-4 text-left font-bold">Topic</th>
+              <th className="p-4 text-right font-bold">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
             {plans.length === 0 ? (
-              <tr><td colSpan={3} className="p-6 text-center text-gray-400">No lesson plans yet.</td></tr>
+              <tr><td colSpan={4} className="p-6 text-center text-gray-400">No lesson plans yet.</td></tr>
             ) : (
               plans.map((p: any) => (
                 <tr key={p.id} className="hover:bg-gray-50 transition-colors">
                   <td className="p-4 font-bold text-gray-900">{p.date}</td>
                   <td className="p-4 text-gray-700 font-medium">{p.classGrade}</td>
                   <td className="p-4 text-gray-700 font-medium">{p.topic}</td>
+                  <td className="p-4 text-right">
+                    <button
+                      onClick={() => {
+                        if (confirm("Are you sure you want to delete this lesson plan?")) {
+                          deleteMutation.mutate(p.id);
+                        }
+                      }}
+                      disabled={deleteMutation.isPending && deleteMutation.variables === p.id}
+                      className="text-red-500 hover:bg-red-50 p-2 rounded-lg transition disabled:opacity-50"
+                      title="Delete Lesson Plan"
+                    >
+                      {deleteMutation.isPending && deleteMutation.variables === p.id ? (
+                        <Loader2 size={16} className="animate-spin" />
+                      ) : (
+                        <Trash2 size={16} />
+                      )}
+                    </button>
+                  </td>
                 </tr>
               ))
             )}

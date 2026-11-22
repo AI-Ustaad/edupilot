@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
 import {
   Wallet, Loader2, AlertCircle, CheckCircle,
-  Save, DollarSign, Calendar, Users, Trash2, Sliders, Filter,
+  Save, DollarSign, Calendar, Users, Trash2, Sliders, Filter, Download,
 } from "lucide-react";
 import RequirePermission from "@/components/RequirePermission";
 import { PERMISSIONS } from "@/lib/auth/permissions";
@@ -114,6 +114,61 @@ export default function FeesPage() {
       return true;
     });
   }, [feeRecords, selectedClass, selectedSection, statusFilter]);
+
+  const handleExportCSV = () => {
+    const rows: string[] = [
+      "Roll No,Student Name,Class,Section,Fee Month,Amount,Amount Paid,Status,Receipt Number,Date"
+    ];
+
+    const studentMap = new Map<string, any>();
+    students.forEach((s: any) => studentMap.set(s.id, s));
+    const processedStudentIds = new Set<string>();
+
+    feeRecords.forEach((f: any) => {
+      const student = studentMap.get(f.studentId);
+      const roll = f.rollNumber || student?.rollNumber || "—";
+      const name = (f.studentName || student?.fullName || student?.name || "Student").replace(/,/g, " ");
+      const cls = formatClassLabel(f.classGrade || student?.classGrade || "");
+      const sec = cleanSectionName(f.section || student?.section || "A");
+      const month = f.feeMonth || selectedMonth;
+      const amount = f.amount || 5000;
+      const amountPaid = f.amountPaid ?? (f.status?.toLowerCase() === "paid" ? amount : 0);
+      const status = (f.status || "pending").toUpperCase();
+      const receipt = f.receiptNumber || "";
+      const date = f.paidAt || f.createdAt || "";
+
+      if (f.studentId) processedStudentIds.add(f.studentId);
+      rows.push(`"${roll}","${name}","${cls}","${sec}","${month}",${amount},${amountPaid},"${status}","${receipt}","${date}"`);
+    });
+
+    students.forEach((s: any) => {
+      if (!processedStudentIds.has(s.id)) {
+        const roll = s.rollNumber || "—";
+        const name = (s.fullName || s.name || "Student").replace(/,/g, " ");
+        const cls = formatClassLabel(s.classGrade || "");
+        const sec = cleanSectionName(s.section || "A");
+        const month = selectedMonth;
+        const amount = s.monthlyFee ? Number(s.monthlyFee) : 5000;
+        const amountPaid = 0;
+        const status = "PENDING";
+        const receipt = "";
+        const date = "";
+        rows.push(`"${roll}","${name}","${cls}","${sec}","${month}",${amount},${amountPaid},"${status}","${receipt}","${date}"`);
+      }
+    });
+
+    const csvContent = rows.join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `fees-${selectedMonth.toLowerCase().replace(/\s+/g, "-")}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    showToast(`Exported ${rows.length - 1} fee records as CSV.`, "success");
+  };
 
   const handleSaveSingle = async (student: any) => {
     const existing = feeRecords.find((f: any) => 
@@ -234,6 +289,13 @@ export default function FeesPage() {
           <p className="text-sm text-gray-500 mt-1">Track and manage student fee collections securely.</p>
         </div>
         <div className="flex items-center gap-3">
+          <button
+            onClick={handleExportCSV}
+            className="border border-gray-300 hover:bg-gray-50 text-gray-700 px-4 py-2.5 rounded-xl font-bold flex items-center gap-2 shadow-sm transition"
+            title="Export fee records as CSV"
+          >
+            <Download size={18} /> Export CSV
+          </button>
           <Link
             href="/fees/structure"
             className="border border-gray-300 hover:bg-gray-50 text-gray-700 px-4 py-2.5 rounded-xl font-bold flex items-center gap-2 shadow-sm transition"

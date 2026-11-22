@@ -1,20 +1,8 @@
 "use client";
 import React from "react";
+import { stripMarkdown } from "@/lib/utils/markdown";
 
-export function stripMarkdown(text: string): string {
-  if (!text) return "";
-  return text
-    .replace(/^#+\s+/gm, "")
-    .replace(/\*\*([^*]+)\*\*/g, "$1")
-    .replace(/\*([^*]+)\*/g, "$1")
-    .replace(/__([^_]+)__/g, "$1")
-    .replace(/_([^_]+)_/g, "$1")
-    .replace(/`([^`]+)`/g, "$1")
-    .replace(/^[-*+]\s+/gm, "")
-    .replace(/^-{3,}|^\*{3,}|^_{3,}/gm, "")
-    .replace(/^\d+\.\s+/gm, "")
-    .trim();
-}
+export { stripMarkdown };
 
 interface FormattedAiTextProps {
   content: string;

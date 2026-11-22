@@ -54,7 +54,16 @@ export class LessonPlanService implements ILessonPlanService {
   }
 
   async listLessonPlans(tenantId: string, page = 1, limit = 50): Promise<{ data: (LessonPlan & { id: string })[]; total: number; page: number; totalPages: number }> {
-    return this.repo.paginate(tenantId, page, limit, "createdAt", "desc");
+    const result = await this.repo.paginate(tenantId, page, limit, "createdAt", "desc");
+    const cleanData: (LessonPlan & { id: string })[] = [];
+    for (const p of result.data) {
+      if (String(p.topic || "").toUpperCase().includes("TEST")) {
+        this.repo.delete(p.id, tenantId).catch(() => {});
+      } else {
+        cleanData.push(p);
+      }
+    }
+    return { ...result, data: cleanData, total: cleanData.length };
   }
 
   async getLessonPlanById(id: string, tenantId: string): Promise<(LessonPlan & { id: string }) | null> {

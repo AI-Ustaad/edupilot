@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import {
@@ -22,6 +22,7 @@ export default function OCRAdmissionPage() {
   const router = useRouter();
   const { user } = useAuth();
   const { showToast } = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [file, setFile] = useState<File | null>(null);
   const [extracting, setExtracting] = useState(false);
@@ -29,19 +30,18 @@ export default function OCRAdmissionPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
-  // یہ وہ اضافی فیلڈز ہیں جو OCR نہیں نکال سکتا، انہیں صارف خود بھرے گا
   const [manualFields, setManualFields] = useState({
     classGrade: "",
-    section: "",
+    section: "A",
     rollNumber: "",
-    guardianRelation: "",
+    guardianRelation: "Father",
+    monthlyFee: "5000",
     previousSchool: "",
     medicalConditions: "",
   });
 
   const createMutation = useCreateStudent();
 
-  // فائل اپ لوڈ ہینڈلر
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
     if (selectedFile) {
@@ -51,7 +51,6 @@ export default function OCRAdmissionPage() {
     }
   };
 
-  // OCR API کو کال کریں
   const handleExtract = async () => {
     if (!file) {
       setError("Please select an image or PDF file.");
@@ -72,8 +71,20 @@ export default function OCRAdmissionPage() {
       
       const json = await res.json();
       if (res.ok && json.success) {
-        const { studentFormData } = mapOCRToStudentForm(json.data);
-        setExtractedData(studentFormData);
+        const rawData = json.data?.data || json.data || {};
+        const { studentFormData } = mapOCRToStudentForm(rawData);
+        setExtractedData({
+          ...studentFormData,
+          guardianName: rawData.guardianName || studentFormData.guardianName || studentFormData.fatherName || "",
+          monthlyFee: rawData.monthlyFee || "5000",
+        });
+        setManualFields((prev) => ({
+          ...prev,
+          classGrade: studentFormData.classGrade || rawData.classGrade || prev.classGrade,
+          section: studentFormData.section || rawData.section || prev.section || "A",
+          rollNumber: studentFormData.rollNumber || rawData.rollNumber || prev.rollNumber,
+          monthlyFee: rawData.monthlyFee || prev.monthlyFee || "5000",
+        }));
         showToast("Data extracted successfully!", "success");
       } else {
         setError(json.message || "OCR extraction failed.");
@@ -135,7 +146,10 @@ export default function OCRAdmissionPage() {
           <Upload size={20} className="text-indigo-500" /> Upload Document
         </h2>
         <div className="flex flex-col sm:flex-row gap-4 items-center">
-          <label className="flex flex-col items-center justify-center w-full sm:w-64 h-32 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:bg-gray-50 transition">
+          <div 
+            onClick={() => fileInputRef.current?.click()}
+            className="flex flex-col items-center justify-center w-full sm:w-64 h-32 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:bg-gray-50 transition"
+          >
             {file ? (
               <div className="text-center p-2">
                 <ImageIcon size={32} className="mx-auto text-gray-500" />
@@ -149,8 +163,14 @@ export default function OCRAdmissionPage() {
                 <p className="text-xs text-gray-400">PNG, JPG, PDF</p>
               </div>
             )}
-            <input type="file" accept="image/*,.pdf" onChange={handleFileChange} className="hidden" />
-          </label>
+            <input 
+              ref={fileInputRef}
+              type="file" 
+              accept="image/*,.pdf" 
+              onChange={handleFileChange} 
+              className="hidden" 
+            />
+          </div>
           <button
             onClick={handleExtract}
             disabled={!file || extracting}
@@ -180,6 +200,7 @@ export default function OCRAdmissionPage() {
             <Field label="Address" value={extractedData.address || ""} />
             <Field label="Guardian Name" value={extractedData.guardianName || ""} />
             <Field label="Guardian Phone" value={extractedData.guardianPhone || ""} />
+            <Field label="Extracted Monthly Fee" value={extractedData.monthlyFee ? `Rs. ${extractedData.monthlyFee}` : "Rs. 5,000"} />
           </div>
 
           {/* Manual fields (editable) */}
@@ -201,6 +222,12 @@ export default function OCRAdmissionPage() {
                 label="Roll Number"
                 value={manualFields.rollNumber}
                 onChange={(e) => setManualFields({ ...manualFields, rollNumber: e.target.value })}
+              />
+              <Input
+                label="Monthly Fee (Rs.) *"
+                value={manualFields.monthlyFee}
+                onChange={(e) => setManualFields({ ...manualFields, monthlyFee: e.target.value })}
+                required
               />
               <Input
                 label="Guardian Relation"

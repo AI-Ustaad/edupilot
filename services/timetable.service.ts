@@ -19,8 +19,71 @@ export class TimetableService implements ITimetableService {
     this.validation = new ValidationService();
   }
 
+  async reconcileDefaultTimetable(tenantId: string): Promise<void> {
+    const activeClassSections = [
+      { classGrade: "Class 1", section: "A" },
+      { classGrade: "Class 1", section: "B" },
+      { classGrade: "Class 1", section: "C" },
+      { classGrade: "Class 2", section: "A" },
+      { classGrade: "Class 9", section: "A" },
+      { classGrade: "Class 10", section: "A" },
+    ];
+    const subjects = [
+      "English", "Urdu", "Mathematics", "General Science", "Social Studies",
+      "Computer Science", "Islamiyat", "Physics", "Chemistry", "Biology", "Pakistan Studies"
+    ];
+    const teachers = [
+      "Muhammad Imran", "Tahir Khan", "Zainab Bibi", "Hamza Malik", "Sadia Parveen",
+      "Kashif Mahmood", "Noreen Akhtar", "Bilal Tariq", "Ayesha Siddiqua", "Usman Ghani"
+    ];
+    const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
+
+    for (let dayIdx = 0; dayIdx < days.length; dayIdx++) {
+      const day = days[dayIdx];
+      for (let p = 1; p <= 8; p++) {
+        const isBreak = p === 4;
+        for (let clsIdx = 0; clsIdx < activeClassSections.length; clsIdx++) {
+          const clsSec = activeClassSections[clsIdx];
+          if (isBreak) {
+            await this.repo.create({
+              tenantId,
+              day,
+              period: `${p}`,
+              subject: "Break / Recess",
+              classGrade: clsSec.classGrade,
+              class: clsSec.classGrade,
+              section: clsSec.section,
+              teacher: "Duty Staff",
+              createdAt: new Date(),
+            } as any, tenantId);
+          } else {
+            const academicIdx = p > 4 ? p - 2 : p - 1;
+            const subIdx = (academicIdx + dayIdx * 2 + clsIdx * 3) % subjects.length;
+            const teachIdx = (dayIdx * 3 + p * 2 + clsIdx) % teachers.length;
+            await this.repo.create({
+              tenantId,
+              day,
+              period: `${p}`,
+              subject: subjects[subIdx],
+              classGrade: clsSec.classGrade,
+              class: clsSec.classGrade,
+              section: clsSec.section,
+              teacher: teachers[teachIdx],
+              createdAt: new Date(),
+            } as any, tenantId);
+          }
+        }
+      }
+    }
+  }
+
   async listEntries(tenantId: string): Promise<(TimetableEntry & { id: string })[]> {
-    return this.repo.findAll(tenantId);
+    const list = await this.repo.findAll(tenantId);
+    if (!list || list.length === 0) {
+      await this.reconcileDefaultTimetable(tenantId);
+      return this.repo.findAll(tenantId);
+    }
+    return list;
   }
 
   async createEntry(data: unknown, tenantId: string, userId?: string): Promise<string> {

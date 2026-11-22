@@ -71,6 +71,21 @@ export const useSaveBus = () => {
   });
 };
 
+export const useDeleteBus = () => {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const tenantId = user?.tenantId || "unknown";
+  const { showToast } = useToast();
+  return useMutation({
+    mutationFn: async (id: string) => apiClient.delete(`/buses/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["buses", tenantId] });
+      showToast("Bus deleted successfully!", "success");
+    },
+    onError: () => showToast("Failed to delete bus.", "error"),
+  });
+};
+
 // 5. Users & Roles
 export const useUsers = () => {
   const { user } = useAuth();

@@ -32,3 +32,20 @@ export const POST = withErrorHandler(
     )
   )
 );
+
+export const DELETE = withErrorHandler(
+  withAuth(
+    withTenant(
+      withPermission([PERMISSIONS.assignments.create, PERMISSIONS.assignments.delete, "assignments" as any])(
+        async (req: Request, context: any) => {
+          const { searchParams } = new URL(req.url);
+          const id = searchParams.get("id");
+          if (!id) return createSuccessResponse(null, { message: "Assignment ID is required" });
+          const service = new AssignmentService();
+          await service.deleteAssignment(id, context.tenantId, context.user?.uid || "admin");
+          return createSuccessResponse(null, { message: "Assignment deleted successfully" });
+        }
+      )
+    )
+  )
+);

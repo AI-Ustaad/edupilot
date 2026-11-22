@@ -5,7 +5,7 @@ import { agentRegistry } from "@/lib/ai/agents/AgentRegistry";
 import { enforceAiQuota, createAiErrorResponse, recordAiTelemetry } from "@/lib/ai/ai-quota-guard";
 import type { TenantContext } from "@/types/api";
 import { formatClassLabel } from "@/lib/utils/formatClassLabel";
-import { stripMarkdown } from "@/components/ui/FormattedAiText";
+import { stripMarkdown } from "@/lib/utils/markdown";
 
 export const POST = withErrorHandler(
   withAuth(

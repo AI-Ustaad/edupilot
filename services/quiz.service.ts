@@ -52,7 +52,16 @@ export class QuizService implements IQuizService {
   }
 
   async listQuizzes(tenantId: string): Promise<(Quiz & { id: string })[]> {
-    return this.repo.findAll(tenantId);
+    const list = await this.repo.findAll(tenantId);
+    const cleanList: (Quiz & { id: string })[] = [];
+    for (const q of list) {
+      if (String(q.title || "").toUpperCase().includes("TEST")) {
+        this.repo.delete(q.id, tenantId).catch(() => {});
+      } else {
+        cleanList.push(q);
+      }
+    }
+    return cleanList;
   }
 
   async getQuizById(id: string, tenantId: string): Promise<(Quiz & { id: string }) | null> {

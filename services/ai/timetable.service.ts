@@ -1,6 +1,7 @@
 import { GeminiProvider } from "@/lib/ai/providers/GeminiProvider";
 import { UsageTracker } from "@/lib/ai/monitoring/UsageTracker";
 import type { IAITimetableService } from "@/interfaces/IAITimetableService";
+import { CANONICAL_SUBJECTS } from "@/lib/utils/formatClassLabel";
 
 interface TimetableRequest {
   classes: string[];
@@ -23,15 +24,36 @@ export class TimetableService implements IAITimetableService {
     const days = req.days && req.days.length > 0 ? req.days : ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
     const classes = req.classes && req.classes.length > 0 ? req.classes : ["Class 10"];
     const periods = Number(req.periods) || 8;
-    const subjects = req.subjects && req.subjects.length > 0 ? req.subjects : ["Mathematics", "English", "General Science", "Urdu", "Islamiat"];
-    const teachers = req.teachers && req.teachers.length > 0 ? req.teachers : ["Sir Ahmed", "Ms. Fatima", "ghzandar Ali"];
+    const subjects = req.subjects && req.subjects.length >= 5 ? req.subjects : CANONICAL_SUBJECTS;
+    const teachers = req.teachers && req.teachers.length > 0 ? req.teachers : [
+      "Sir Ahmed", "Ms. Fatima", "ghzandar Ali", "Tahir Khan", "Zainab Bibi", "Hamza Malik", "Sadia Parveen", "Kashif Mahmood", "Noreen Akhtar", "Bilal Tariq"
+    ];
 
     const schedule: any[] = [];
     days.forEach((day, dayIdx) => {
       for (let p = 1; p <= periods; p++) {
+        const isBreak = p === 4; // Period 4 is explicit Break / Recess
+
         classes.forEach((cls, clsIdx) => {
-          const subIdx = (p - 1 + dayIdx * 2 + clsIdx) % subjects.length;
-          const teachIdx = (subIdx + clsIdx) % teachers.length;
+          if (isBreak) {
+            schedule.push({
+              day,
+              period: String(p),
+              subject: "Break / Recess",
+              classGrade: cls,
+              class: cls,
+              teacher: "Duty Staff",
+            });
+            return;
+          }
+
+          // Offset academic subjects to cycle through 11 canonical subjects
+          const academicPeriodIndex = p > 4 ? p - 2 : p - 1;
+          const subIdx = (academicPeriodIndex + dayIdx * 2 + clsIdx * 3) % subjects.length;
+          
+          // Non-overlapping teacher assignment: for a given period & day, every class gets a distinct teacher
+          const teachIdx = (dayIdx * 3 + p * 2 + clsIdx) % teachers.length;
+
           schedule.push({
             day,
             period: String(p),

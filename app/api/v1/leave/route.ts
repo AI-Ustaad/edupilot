@@ -62,3 +62,22 @@ export const POST = withErrorHandler(
     )
   )
 );
+
+export const DELETE = withErrorHandler(
+  withAuth(
+    withTenant(
+      withPermission([PERMISSIONS.staff.update, PERMISSIONS.staff.delete, PERMISSIONS.leaves.delete, "leaveRequests" as any])(
+        async (req: Request, context: any) => {
+          const { searchParams } = new URL(req.url);
+          const id = searchParams.get("id");
+          if (!id) {
+            return createErrorResponse(400, "Leave ID is required");
+          }
+          const leaveService = new LeaveService();
+          await leaveService.deleteLeave(id, context.tenantId);
+          return createSuccessResponse(null, { message: "Leave request deleted successfully" });
+        }
+      )
+    )
+  )
+);

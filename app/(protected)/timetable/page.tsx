@@ -1,6 +1,6 @@
 "use client";
 import { useState, useMemo } from "react";
-import { Clock, AlertCircle, Video, Trash2, Loader2, Plus } from "lucide-react";
+import { Clock, AlertCircle, Video, Trash2, Loader2, Plus, Filter } from "lucide-react";
 import RequirePermission from "@/components/RequirePermission";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 
@@ -27,6 +27,8 @@ const FALLBACK_SUBJECTS = [
 
 export default function TimetablePage() {
   const [form, setForm] = useState({ day: "", period: "", subject: "", classGrade: "", section: "A", teacher: "", meetingLink: "" });
+  const [filterClass, setFilterClass] = useState("all");
+  const [filterSection, setFilterSection] = useState("all");
 
   // 1. Fetch Live Data
   const { data: classes = [] } = useClasses();
@@ -70,6 +72,18 @@ export default function TimetablePage() {
   const { data: entries = [], isLoading, error } = useTimetable();
   const createMutation = useCreateTimetableEntry();
   const deleteMutation = useDeleteTimetableEntry();
+
+  const filteredEntries = useMemo(() => {
+    return entries.filter((e: any) => {
+      if (filterClass !== "all" && formatClassLabel(e.classGrade || e.class) !== formatClassLabel(filterClass)) {
+        return false;
+      }
+      if (filterSection !== "all" && cleanSectionName(e.section) !== cleanSectionName(filterSection)) {
+        return false;
+      }
+      return true;
+    });
+  }, [entries, filterClass, filterSection]);
 
   const addEntry = (e: React.FormEvent) => {
     e.preventDefault();
@@ -148,6 +162,43 @@ export default function TimetablePage() {
         </div>
       </RequirePermission>
 
+      <div className="bg-white border border-gray-200 rounded-2xl p-4 mb-4 shadow-sm flex flex-wrap items-center justify-between gap-4">
+        <div className="flex items-center gap-2">
+          <Filter size={18} className="text-gray-500" />
+          <span className="font-bold text-sm text-gray-700">Filter Timetable:</span>
+        </div>
+        <div className="flex flex-wrap items-center gap-3">
+          <select
+            value={filterClass}
+            onChange={(e) => setFilterClass(e.target.value)}
+            className="border border-gray-300 rounded-xl px-3 py-2 text-sm bg-gray-50 font-medium outline-none"
+          >
+            <option value="all">All Classes</option>
+            {uniqueClasses.map((cls: string) => (
+              <option key={cls} value={cls}>{formatClassLabel(cls)}</option>
+            ))}
+          </select>
+          <select
+            value={filterSection}
+            onChange={(e) => setFilterSection(e.target.value)}
+            className="border border-gray-300 rounded-xl px-3 py-2 text-sm bg-gray-50 font-medium outline-none"
+          >
+            <option value="all">All Sections</option>
+            <option value="A">Section A</option>
+            <option value="B">Section B</option>
+            <option value="C">Section C</option>
+          </select>
+          {(filterClass !== "all" || filterSection !== "all") && (
+            <button
+              onClick={() => { setFilterClass("all"); setFilterSection("all"); }}
+              className="text-xs text-blue-600 hover:underline font-bold"
+            >
+              Reset Filters
+            </button>
+          )}
+        </div>
+      </div>
+
       <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
         <div className="overflow-x-auto">
           <table className="w-full text-left">
@@ -164,8 +215,8 @@ export default function TimetablePage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {entries.length === 0 ? <tr><td colSpan={8} className="p-6 text-center text-gray-400 font-medium">No entries yet.</td></tr> :
-              entries.map((e: any) => (
+              {filteredEntries.length === 0 ? <tr><td colSpan={8} className="p-6 text-center text-gray-400 font-medium">No entries found matching filters.</td></tr> :
+              filteredEntries.map((e: any) => (
                 <tr key={e.id} className="hover:bg-gray-50 transition-colors">
                   <td className="p-4 font-bold text-gray-900">{e.day}</td>
                   <td className="p-4 font-medium text-gray-700">{e.period}</td>

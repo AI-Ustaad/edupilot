@@ -28,14 +28,22 @@ function getImageMime(buffer: Buffer): string {
 
 function extractStudentFields(text: string) {
   const n = text.replace(/\s+/g, " ");
+  const fatherName = n.match(/(?:Father|Father Name|Father's Name)[:\s]*([A-Za-z\s\.]+)/i)?.[1]?.trim() || "";
+  const guardianName = n.match(/(?:Guardian Name|Guardian)[:\s]*([A-Za-z\s\.]+)/i)?.[1]?.trim() || fatherName;
+  const rawFee = n.match(/(?:Monthly Fee|Tuition Fee|Fee)[:\s]*(?:Rs\.?|PKR)?\s*([0-9,]+)/i)?.[1]?.replace(/,/g, "") || "5000";
+
   return {
-    fullName: n.match(/(?:Student Name|Name)[:\s]*([A-Za-z\s\.]+)/i)?.[1]?.trim() || "",
-    fatherName: n.match(/(?:Father|Father Name)[:\s]*([A-Za-z\s\.]+)/i)?.[1]?.trim() || "",
+    fullName: n.match(/(?:Student Name|Full Name|Name)[:\s]*([A-Za-z\s\.]+)/i)?.[1]?.trim() || "",
+    fatherName,
+    guardianName,
     cnic: n.match(/\b([0-9]{5}-[0-9]{7}-[0-9]|[0-9]{13})\b/)?.[1] || "",
     dob: n.match(/(?:DOB|Date of Birth)[:\s]*([0-9]{1,2}[/-][0-9]{1,2}[/-][0-9]{2,4})/i)?.[1] || "",
     phone: n.match(/\b(03[0-9]{9})\b/)?.[1] || "",
+    guardianPhone: n.match(/(?:Guardian Phone|Emergency Contact|Contact)[:\s]*(03[0-9]{9})/i)?.[1] || n.match(/\b(03[0-9]{9})\b/)?.[1] || "",
+    address: n.match(/(?:Address|Residential Address)[:\s]*([A-Za-z0-9\s,\.-]+)/i)?.[1]?.trim() || "",
     classGrade: n.match(/(?:Class|Grade)[:\s]*([A-Za-z0-9\s]+)/i)?.[1]?.trim() || "",
     rollNumber: n.match(/(?:Roll No|Roll Number)[:\s]*([0-9]+)/i)?.[1] || "",
+    monthlyFee: rawFee,
     gender: "Male",
     religion: "Islam",
   };
@@ -44,7 +52,7 @@ function extractStudentFields(text: string) {
 export const POST = withErrorHandler(
   withAuth(
     withTenant(
-      withPermission(PERMISSIONS.admissions.create)(async (req: Request, { tenantId, user }: TenantContext) => {
+      withPermission([PERMISSIONS.students.create, PERMISSIONS.admissions.create, "admissions" as any])(async (req: Request, { tenantId, user }: TenantContext) => {
         // AI Quota & Burst Rate Limit Guard
         const quotaCheck = await enforceAiQuota(user, "ocr-admission");
         if (!quotaCheck.allowed) {
@@ -100,7 +108,7 @@ export const POST = withErrorHandler(
             success: true,
           });
 
-          return createSuccessResponse({ success: true, data: extractedData });
+          return createSuccessResponse(extractedData);
         } catch (err: any) {
           await recordAiTelemetry({
             tenantId,

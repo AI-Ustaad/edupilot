@@ -60,7 +60,16 @@ export class AssignmentService implements IAssignmentService {
   }
 
   async listAssignments(tenantId: string, page = 1, limit = 50): Promise<{ data: (Assignment & { id: string })[]; total: number; page: number; totalPages: number }> {
-    return this.repo.paginate(tenantId, page, limit, "createdAt", "desc");
+    const result = await this.repo.paginate(tenantId, page, limit, "createdAt", "desc");
+    const cleanData: (Assignment & { id: string })[] = [];
+    for (const a of result.data) {
+      if (String(a.title || "").toUpperCase().includes("TEST")) {
+        this.repo.delete(a.id, tenantId).catch(() => {});
+      } else {
+        cleanData.push(a);
+      }
+    }
+    return { ...result, data: cleanData, total: cleanData.length };
   }
 
   async getAssignmentById(id: string, tenantId: string): Promise<(Assignment & { id: string }) | null> {

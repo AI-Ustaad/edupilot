@@ -3,12 +3,13 @@ import { useState } from "react";
 import { Loader2, Plus, Trash2, Bus } from "lucide-react";
 import RequirePermission from "@/components/RequirePermission";
 import { PERMISSIONS } from "@/lib/auth/permissions";
-import { useBuses, useSaveBus } from "@/hooks/useAdmin";
+import { useBuses, useSaveBus, useDeleteBus } from "@/hooks/useAdmin";
 import { TableSkeleton } from "@/components/Skeletons";
 
 export default function BusesPage() {
   const { data: buses = [], isLoading } = useBuses();
   const saveMutation = useSaveBus();
+  const deleteMutation = useDeleteBus();
   const [form, setForm] = useState({ busNumber: "", route: "", driverName: "", driverContact: "", capacity: "" });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -50,6 +51,22 @@ export default function BusesPage() {
                     <p className="font-bold text-gray-900">{bus.busNumber}</p>
                     <p className="text-sm text-gray-500 font-medium">{bus.route} {bus.driverName && <span className="text-gray-400 ml-1">| Driver: {bus.driverName}</span>}</p>
                   </div>
+                  <button
+                    onClick={() => {
+                      if (confirm("Are you sure you want to delete this bus?")) {
+                        deleteMutation.mutate(bus.id);
+                      }
+                    }}
+                    disabled={deleteMutation.isPending && deleteMutation.variables === bus.id}
+                    className="text-red-500 hover:bg-red-50 p-2 rounded-lg transition disabled:opacity-50"
+                    title="Delete Bus"
+                  >
+                    {deleteMutation.isPending && deleteMutation.variables === bus.id ? (
+                      <Loader2 size={16} className="animate-spin" />
+                    ) : (
+                      <Trash2 size={16} />
+                    )}
+                  </button>
                 </div>
               ))}
             </div>

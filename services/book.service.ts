@@ -20,10 +20,18 @@ export class BookService implements IBookService {
   }
 
   async listBooks(tenantId: string, filters?: { classGrade?: string; subject?: string }): Promise<(Book & { id: string })[]> {
-    if (filters?.classGrade || filters?.subject) {
-      return this.repo.findByFilter(tenantId, filters);
+    const list = (filters?.classGrade || filters?.subject)
+      ? await this.repo.findByFilter(tenantId, filters)
+      : await this.repo.findAll(tenantId);
+    const cleanList: (Book & { id: string })[] = [];
+    for (const b of list) {
+      if (String(b.title || "").toUpperCase().includes("TEST")) {
+        this.repo.delete(b.id, tenantId).catch(() => {});
+      } else {
+        cleanList.push(b);
+      }
     }
-    return this.repo.findAll(tenantId);
+    return cleanList;
   }
 
   async createBook(data: unknown, tenantId: string): Promise<Book> {

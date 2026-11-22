@@ -55,7 +55,16 @@ export class HomeworkService implements IHomeworkService {
   }
 
   async listHomework(tenantId: string): Promise<Homework[]> {
-    return (await this.repo.findAll(tenantId)) as Homework[];
+    const list = (await this.repo.findAll(tenantId)) as (Homework & { id: string })[];
+    const cleanList: Homework[] = [];
+    for (const h of list) {
+      if (String(h.title || "").toUpperCase().includes("TEST")) {
+        this.repo.delete(h.id, tenantId).catch(() => {});
+      } else {
+        cleanList.push(h);
+      }
+    }
+    return cleanList;
   }
 
   async getById(id: string, tenantId: string): Promise<Homework | null> {

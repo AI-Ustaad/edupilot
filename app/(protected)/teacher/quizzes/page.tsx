@@ -1,6 +1,6 @@
 "use client";
 import { useState, useMemo } from "react";
-import { Loader2, Plus, Eye, CheckCircle } from "lucide-react";
+import { Loader2, Plus, Eye, CheckCircle, Trash2 } from "lucide-react";
 import Link from "next/link";
 import RequirePermission from "@/components/RequirePermission";
 import { PERMISSIONS } from "@/lib/auth/permissions";
@@ -49,6 +49,15 @@ export default function TeacherQuizzesPage() {
       setQuestions([{ question: "", options: ["", "", "", ""], correct: "" }]);
     },
     onError: () => showToast("Failed to create quiz.", "error"),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => apiClient.delete(`/quizzes/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["quizzes", tenantId] });
+      showToast("Quiz deleted successfully!", "success");
+    },
+    onError: () => showToast("Failed to delete quiz.", "error"),
   });
 
   const availableSections = useMemo(() => {
@@ -137,9 +146,27 @@ export default function TeacherQuizzesPage() {
                   <td className="p-4 font-bold text-gray-900">{q.title}</td>
                   <td className="p-4 text-gray-700 font-medium">{q.classGrade} {q.section}</td>
                   <td className="p-4 text-right">
-                    <Link href={`/teacher/quizzes/results?quizId=${q.id}`} className="text-blue-600 hover:bg-blue-50 px-3 py-2 rounded-lg inline-flex items-center gap-1 text-sm font-bold border border-blue-100">
-                      <Eye size={16} /> Results
-                    </Link>
+                    <div className="flex justify-end items-center gap-2">
+                      <Link href={`/teacher/quizzes/results?quizId=${q.id}`} className="text-blue-600 hover:bg-blue-50 px-3 py-2 rounded-lg inline-flex items-center gap-1 text-sm font-bold border border-blue-100">
+                        <Eye size={16} /> Results
+                      </Link>
+                      <button
+                        onClick={() => {
+                          if (confirm("Are you sure you want to delete this quiz?")) {
+                            deleteMutation.mutate(q.id);
+                          }
+                        }}
+                        disabled={deleteMutation.isPending && deleteMutation.variables === q.id}
+                        className="text-red-500 hover:bg-red-50 p-2 rounded-lg transition disabled:opacity-50"
+                        title="Delete Quiz"
+                      >
+                        {deleteMutation.isPending && deleteMutation.variables === q.id ? (
+                          <Loader2 size={16} className="animate-spin" />
+                        ) : (
+                          <Trash2 size={16} />
+                        )}
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))

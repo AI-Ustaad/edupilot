@@ -250,7 +250,7 @@ export default function EnterpriseBillingPage() {
               <div className="flex justify-between text-sm mb-2">
                 <span className="font-medium text-blue-100">Students Usage Quota</span>
                 <span className="font-bold text-white">
-                  {isDashboardLoading ? "..." : `${studentsUsed} / ${currentPlan.limits.students >= 999999 ? "Unlimited" : currentPlan.limits.students}`}
+                  {isDashboardLoading && !dashboardData && !subData ? "..." : `${studentsUsed} / ${currentPlan.limits.students >= 999999 ? "Unlimited" : currentPlan.limits.students}`}
                 </span>
               </div>
               <div className="w-full bg-blue-800/50 rounded-full h-3">
@@ -265,7 +265,7 @@ export default function EnterpriseBillingPage() {
               <div className="flex justify-between text-sm mb-2">
                 <span className="font-medium text-blue-100">Staff Accounts Quota</span>
                 <span className="font-bold text-white">
-                  {isDashboardLoading ? "..." : `${staffUsed} / ${currentPlan.limits.staff >= 999999 ? "Unlimited" : currentPlan.limits.staff}`}
+                  {isDashboardLoading && !dashboardData && !subData ? "..." : `${staffUsed} / ${currentPlan.limits.staff >= 999999 ? "Unlimited" : currentPlan.limits.staff}`}
                 </span>
               </div>
               <div className="w-full bg-blue-800/50 rounded-full h-3">
@@ -280,7 +280,7 @@ export default function EnterpriseBillingPage() {
               <div className="flex justify-between text-sm mb-2">
                 <span className="font-medium text-blue-100">Monthly AI Generation Quota</span>
                 <span className="font-bold text-white">
-                  {isSubLoading ? "..." : `${aiUsed} / ${aiLimit} calls`}
+                  {isSubLoading && !subData && !dashboardData ? "..." : `${aiUsed} / ${aiLimit} calls`}
                 </span>
               </div>
               <div className="w-full bg-blue-800/50 rounded-full h-3">

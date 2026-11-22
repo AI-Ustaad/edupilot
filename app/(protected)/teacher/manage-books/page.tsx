@@ -1,11 +1,11 @@
 "use client";
 import { useState, useMemo } from "react";
-import { Loader2, Plus, Upload, Film } from "lucide-react";
+import { Loader2, Plus, Upload, Film, Trash2 } from "lucide-react";
 import RequirePermission from "@/components/RequirePermission";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 import { useClasses } from "@/hooks/useClasses";
 import { useSettings } from "@/hooks/useSettings";
-import { useBooks, useCreateBook } from "@/hooks/useTeacher";
+import { useBooks, useCreateBook, useDeleteBook } from "@/hooks/useTeacher";
 import { TableSkeleton } from "@/components/Skeletons";
 import { extractUniqueClasses } from "@/lib/utils/formatClassLabel";
 
@@ -16,6 +16,7 @@ export default function ManageBooksPage() {
   const subjects = settings?.subjects || [];
   const uniqueClasses = useMemo(() => extractUniqueClasses(classes), [classes]);
   const createMutation = useCreateBook();
+  const deleteMutation = useDeleteBook();
 
   const [form, setForm] = useState({ title: "", classGrade: "", subject: "", fileUrl: "" });
 
@@ -58,17 +59,36 @@ export default function ManageBooksPage() {
               <th className="p-4 text-left">Title</th>
               <th className="p-4 text-left">Class</th>
               <th className="p-4 text-left">Subject</th>
+              <th className="p-4 text-right">Actions</th>
             </tr>
           </thead>
           <tbody>
             {books.length === 0 ? (
-              <tr><td colSpan={3} className="p-6 text-center text-gray-400">No books added yet.</td></tr>
+              <tr><td colSpan={4} className="p-6 text-center text-gray-400">No books added yet.</td></tr>
             ) : (
               books.map(b => (
                 <tr key={b.id} className="border-t border-gray-100 hover:bg-gray-50">
                   <td className="p-4 font-medium text-gray-900">{b.title}</td>
                   <td className="p-4 text-gray-600">{b.classGrade}</td>
                   <td className="p-4 text-gray-600">{b.subject}</td>
+                  <td className="p-4 text-right">
+                    <button
+                      onClick={() => {
+                        if (confirm("Are you sure you want to delete this book?")) {
+                          deleteMutation.mutate(b.id);
+                        }
+                      }}
+                      disabled={deleteMutation.isPending && deleteMutation.variables === b.id}
+                      className="text-red-500 hover:bg-red-50 p-2 rounded-lg transition disabled:opacity-50"
+                      title="Delete Book"
+                    >
+                      {deleteMutation.isPending && deleteMutation.variables === b.id ? (
+                        <Loader2 size={16} className="animate-spin" />
+                      ) : (
+                        <Trash2 size={16} />
+                      )}
+                    </button>
+                  </td>
                 </tr>
               ))
             )}

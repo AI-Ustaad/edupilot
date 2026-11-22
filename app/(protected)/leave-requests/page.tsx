@@ -1,7 +1,7 @@
 "use client";
 import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { CheckCircle, XCircle, Loader2, AlertCircle, PlusCircle, X, Calendar, User, FileText } from "lucide-react";
+import { CheckCircle, XCircle, Loader2, AlertCircle, PlusCircle, X, Calendar, User, FileText, Trash2 } from "lucide-react";
 import RequirePermission from "@/components/RequirePermission";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 import apiClient from "@/lib/api/client";
@@ -38,6 +38,15 @@ export default function LeaveRequestsPage() {
       showToast("Leave request updated.", "success");
     },
     onError: () => showToast("Failed to update leave request.", "error"),
+  });
+
+  const deleteLeaveMutation = useMutation({
+    mutationFn: async (id: string) => apiClient.delete(`/leave/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["leaves", tenantId] });
+      showToast("Leave request deleted.", "success");
+    },
+    onError: () => showToast("Failed to delete leave request.", "error"),
   });
 
   const createLeaveMutation = useMutation({
@@ -136,6 +145,22 @@ export default function LeaveRequestsPage() {
                     className="flex-1 sm:flex-none bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 px-5 py-2.5 rounded-xl flex items-center justify-center gap-2 font-bold transition disabled:opacity-50"
                   >
                     <XCircle size={18} /> Reject
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (confirm("Are you sure you want to delete this leave request?")) {
+                        deleteLeaveMutation.mutate(leave.id);
+                      }
+                    }}
+                    disabled={deleteLeaveMutation.isPending}
+                    className="p-2.5 rounded-xl border border-gray-200 text-gray-500 hover:text-red-600 hover:bg-red-50 transition disabled:opacity-50"
+                    title="Delete Leave Request"
+                  >
+                    {deleteLeaveMutation.isPending && deleteLeaveMutation.variables === leave.id ? (
+                      <Loader2 size={18} className="animate-spin" />
+                    ) : (
+                      <Trash2 size={18} />
+                    )}
                   </button>
                 </div>
               </RequirePermission>

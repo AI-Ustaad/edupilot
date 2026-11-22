@@ -62,7 +62,16 @@ export class BusService implements IBusService {
   }
 
   async getAll(tenantId: string): Promise<Bus[]> {
-    return (await this.repo.findAll(tenantId)) as Bus[];
+    const list = (await this.repo.findAll(tenantId)) as (Bus & { id: string })[];
+    const cleanList: Bus[] = [];
+    for (const b of list) {
+      if (String(b.busNumber || "").toUpperCase().includes("TEST")) {
+        this.repo.delete(b.id, tenantId).catch(() => {});
+      } else {
+        cleanList.push(b);
+      }
+    }
+    return cleanList;
   }
 
   async getById(id: string, tenantId: string): Promise<Bus | null> {

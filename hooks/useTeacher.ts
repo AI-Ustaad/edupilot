@@ -107,6 +107,21 @@ export const useCreateLessonPlan = () => {
   });
 };
 
+export const useDeleteLessonPlan = () => {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const tenantId = user?.tenantId || "unknown";
+  const { showToast } = useToast();
+  return useMutation({
+    mutationFn: async (id: string) => apiClient.delete(`/lesson-plans/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["lessonPlans", tenantId] });
+      showToast("Lesson plan deleted!", "success");
+    },
+    onError: () => showToast("Failed to delete lesson plan.", "error"),
+  });
+};
+
 // 3. Books (Manage Books & Book Center)
 export const useBooks = () => {
   const { user } = useAuth();
@@ -128,6 +143,21 @@ export const useCreateBook = () => {
       queryClient.invalidateQueries({ queryKey: ["books", tenantId] });
       showToast("Book added successfully!", "success");
     },
+  });
+};
+
+export const useDeleteBook = () => {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const tenantId = user?.tenantId || "unknown";
+  const { showToast } = useToast();
+  return useMutation({
+    mutationFn: async (id: string) => apiClient.delete(`/books/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["books", tenantId] });
+      showToast("Book deleted!", "success");
+    },
+    onError: () => showToast("Failed to delete book.", "error"),
   });
 };
 
