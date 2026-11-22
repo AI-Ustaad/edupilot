@@ -21,9 +21,13 @@ export class LessonPlanService implements ILessonPlanService {
 
   async createLessonPlan(data: unknown, tenantId: string, userId: string): Promise<LessonPlan> {
     const parsed = this.validation.validateOrThrow(CreateLessonPlanSchema, data);
+    const effectiveClass = (parsed as any).classGrade || (parsed as any).className || "Class 1";
 
     const createData: Omit<LessonPlan, "id" | "createdAt" | "updatedAt"> = {
       ...parsed,
+      classGrade: effectiveClass,
+      className: effectiveClass,
+      subject: (parsed as any).subject || "General",
       tenantId,
       createdBy: userId,
     } as Omit<LessonPlan, "id" | "createdAt" | "updatedAt">;

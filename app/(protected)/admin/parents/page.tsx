@@ -14,7 +14,9 @@ import {
   CheckCircle2, 
   ChevronDown, 
   ChevronUp, 
-  Filter 
+  Filter,
+  UserCheck,
+  Send,
 } from "lucide-react";
 import RequirePermission from "@/components/RequirePermission";
 import { PERMISSIONS } from "@/lib/auth/permissions";
@@ -47,6 +49,23 @@ export default function ManageParents() {
       ...prev,
       studentIds: prev.studentIds.includes(id) ? prev.studentIds.filter(s => s !== id) : [...prev.studentIds, id]
     }));
+  };
+
+  const handleInviteGuardian = (parent: any) => {
+    const studentIds = (parent.students || []).map((s: any) => s.id);
+    const cleanName = parent.fullName || "Parent";
+    const safeSlug = cleanName.toLowerCase().replace(/[^a-z0-9]/g, "");
+    const defaultEmail = parent.email && parent.email !== "—" ? parent.email : `parent.${safeSlug || "contact"}@ghssahiwal.edu.pk`;
+    const defaultPhone = parent.phone && parent.phone !== "—" ? parent.phone : "";
+    setForm({
+      fullName: cleanName,
+      email: defaultEmail,
+      password: "Password123!",
+      phone: defaultPhone,
+      studentIds,
+    });
+    setIsFormOpen(true);
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   // Filter parents and guardians
@@ -294,6 +313,7 @@ export default function ManageParents() {
                     <th className="p-4 font-bold">Contact Details</th>
                     <th className="p-4 font-bold">Linked Children</th>
                     <th className="p-4 font-bold">Account Status</th>
+                    <th className="p-4 font-bold text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
@@ -352,6 +372,19 @@ export default function ManageParents() {
                           <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-gray-600 bg-gray-100 border border-gray-200 px-2.5 py-1 rounded-full">
                             Student Guardian Record
                           </span>
+                        )}
+                      </td>
+                      <td className="p-4 text-right">
+                        {parent.accountType === "Registered Portal User" ? (
+                          <span className="text-xs text-gray-400 font-medium italic">Active</span>
+                        ) : (
+                          <button
+                            onClick={() => handleInviteGuardian(parent)}
+                            className="bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 px-3 py-1.5 rounded-xl text-xs font-bold inline-flex items-center gap-1.5 transition shadow-2xs"
+                            title="Provision parent login account"
+                          >
+                            <Send size={13} /> Invite to Portal
+                          </button>
                         )}
                       </td>
                     </tr>

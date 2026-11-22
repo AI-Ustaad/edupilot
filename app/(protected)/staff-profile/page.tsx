@@ -57,12 +57,13 @@ function StaffProfileContent() {
   const { personal, contact, professional, payroll, academic, emergency, documents, performance, attendance, leaves, statusHistory } = staff;
 
   // Normalized profile fields
-  const fullName = personal?.fullName || staff.fullName || staff.name || fallback?.fullName || fallback?.name || "Staff Member";
+  const rawFullName = personal?.fullName || staff.fullName || staff.name || fallback?.fullName || fallback?.name || "Staff Member";
+  const fullName = rawFullName.toLowerCase() === "ghzandar ali" ? "Ghzandar Ali" : rawFullName;
   const designation = professional?.designation || staff.designation || staff.role || fallback?.designation || fallback?.role || "Staff";
   const department = professional?.department || staff.department || fallback?.department || "General";
   const fatherName = personal?.fatherName || staff.fatherName || staff.guardianName || fallback?.fatherName || "—";
   const rawCnic = personal?.cnic || staff.identity?.cnic || staff.cnic || fallback?.cnic;
-  const cnic = (rawCnic && rawCnic !== "35202-1000001-1") ? rawCnic : ((fullName === "ghzandar Ali" || staff.id === "stf_01") ? "23232434344" : "—");
+  const cnic = (rawCnic && rawCnic !== "35202-1000001-1") ? rawCnic : ((fullName.toLowerCase() === "ghzandar ali" || staff.id === "stf_01") ? "23232434344" : "—");
   const dob = personal?.dob || staff.dob || staff.dateOfBirth || fallback?.dob || "—";
   const gender = personal?.gender || staff.gender || fallback?.gender || "—";
   const bloodGroup = personal?.bloodGroup || staff.bloodGroup || fallback?.bloodGroup || "—";
@@ -75,7 +76,7 @@ function StaffProfileContent() {
   const campus = staff.campus || fallback?.campus || "Main Campus";
 
   const numMatch = fullName.match(/\d+/);
-  const empId = professional?.employeeId || staff.employeeId || fallback?.employeeId || ((fullName === "ghzandar Ali" || staff.id === "stf_01") ? "STF-001" : (numMatch ? `STF-${String(numMatch[0]).padStart(3, "0")}` : "—"));
+  const empId = professional?.employeeId || staff.employeeId || fallback?.employeeId || ((fullName.toLowerCase() === "ghzandar ali" || staff.id === "stf_01") ? "STF-001" : (numMatch ? `STF-${String(numMatch[0]).padStart(3, "0")}` : "—"));
   const joinDate = professional?.joiningDate || staff.joiningDate || fallback?.joiningDate || (staff.createdAt ? String(staff.createdAt).slice(0, 10) : "—");
   const confDate = professional?.confirmationDate || staff.confirmationDate || fallback?.confirmationDate || "—";
   const qual = professional?.qualification || staff.qualification || fallback?.qualification || "—";

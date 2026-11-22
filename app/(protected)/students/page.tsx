@@ -364,9 +364,16 @@ export default function StudentsPage() {
                       </span>
                     </td>
                     <td className="p-4 font-bold text-gray-900">
-                      <Link href={`/students/${s.id}`} className="hover:text-blue-600 hover:underline">
-                        {s.fullName || s.name || "N/A"}
-                      </Link>
+                      <div className="flex items-center gap-1.5">
+                        <Link href={`/students/${s.id}`} className="hover:text-blue-600 hover:underline">
+                          {s.fullName || s.name || "N/A"}
+                        </Link>
+                        {((s.fullName || s.name) === "Test Student Alpha" || s.isTestData) && (
+                          <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
+                            TEST
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="p-4 text-gray-600 font-medium">{s.classGrade || "N/A"}</td>
                     <td className="p-4 text-gray-600 font-medium">{s.section || "N/A"}</td>

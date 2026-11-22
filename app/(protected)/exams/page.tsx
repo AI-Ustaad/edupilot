@@ -1,7 +1,8 @@
 /* eslint-disable @next/next/no-img-element */
 /* eslint-disable jsx-a11y/alt-text */
 "use client";
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { PenTool, Save, CheckCircle2, AlertCircle, Users, BookOpen, Trash2, Database, Loader2 } from "lucide-react";
 import RequirePermission from "@/components/RequirePermission";
@@ -17,12 +18,17 @@ import { formatClassLabel, cleanSectionName, extractUniqueClasses, CANONICAL_SUB
 const EXAM_TERMS = ["Final Exams", "1st Term", "2nd Term", "Monthly Test", "Mock Exams", "SBA"];
 const norm = (str?: string) => (str || "").trim().toLowerCase();
 
-export default function ExamsAndMarksPage() {
+function ExamsAndMarksContent() {
   const { user } = useAuth();
   const { showToast } = useToast();
-  const [term, setTerm] = useState(EXAM_TERMS[0]);
-  const [cls, setCls] = useState("");
-  const [sec, setSec] = useState("");
+  const searchParams = useSearchParams();
+  const urlClass = searchParams.get("class");
+  const urlSection = searchParams.get("section");
+  const urlTerm = searchParams.get("term");
+
+  const [term, setTerm] = useState(urlTerm || EXAM_TERMS[0]);
+  const [cls, setCls] = useState(urlClass ? formatClassLabel(urlClass) : "");
+  const [sec, setSec] = useState(urlSection ? cleanSectionName(urlSection) : "");
   const [sub, setSub] = useState("");
   const [defTotal, setDefTotal] = useState("100");
   const [entry, setEntry] = useState<Record<string, { obtained: string; total: string }>>({});
@@ -30,6 +36,12 @@ export default function ExamsAndMarksPage() {
   const [savingAll, setSavingAll] = useState(false);
   const [err, setErr] = useState("");
   const [ok, setOk] = useState(false);
+
+  useEffect(() => {
+    if (urlClass) setCls(formatClassLabel(urlClass));
+    if (urlSection) setSec(cleanSectionName(urlSection));
+    if (urlTerm) setTerm(urlTerm);
+  }, [urlClass, urlSection, urlTerm]);
 
   // Canonical Data Hooks
   const { data: rawStudents = [], isLoading: ls } = useStudents();
@@ -588,5 +600,13 @@ export default function ExamsAndMarksPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function ExamsAndMarksPage() {
+  return (
+    <Suspense fallback={<div className="p-8 flex justify-center"><Loader2 className="animate-spin text-blue-600" size={32} /></div>}>
+      <ExamsAndMarksContent />
+    </Suspense>
   );
 }

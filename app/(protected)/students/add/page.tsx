@@ -93,6 +93,23 @@ export default function AddStudentPage() {
       setError("Name and Class are required.");
       return;
     }
+
+    if (form.phone) {
+      const clean = form.phone.replace(/\D/g, "");
+      if (clean.length > 0 && !/^03\d{9}$/.test(clean)) {
+        setError("Student phone must be in 11-digit Pakistani format: 03XXXXXXXXX");
+        return;
+      }
+    }
+
+    if (form.guardianPhone) {
+      const cleanG = form.guardianPhone.replace(/\D/g, "");
+      if (cleanG.length > 0 && !/^03\d{9}$/.test(cleanG)) {
+        setError("Guardian phone must be in 11-digit Pakistani format: 03XXXXXXXXX");
+        return;
+      }
+    }
+
     setError("");
     setIsCreating(true);
 

@@ -84,10 +84,28 @@ export default function EditStaffModal({ isOpen, onClose, staff, onSuccess }: Ed
       return;
     }
 
+    if (form.mobile) {
+      const cleanPhone = form.mobile.replace(/\D/g, "");
+      if (cleanPhone.length > 0 && !/^03\d{9}$/.test(cleanPhone)) {
+        showToast("Mobile number must be in 11-digit Pakistani format: 03XXXXXXXXX", "error");
+        return;
+      }
+    }
+
+    if (form.email && form.email.toLowerCase().includes("@example.com")) {
+      showToast("Please use a realistic school email domain (e.g. @ghssahiwal.edu.pk)", "error");
+      return;
+    }
+
+    const payload = {
+      ...form,
+      fullName: form.fullName.trim().toLowerCase() === "ghzandar ali" ? "Ghzandar Ali" : form.fullName.trim(),
+    };
+
     try {
       await updateMutation.mutateAsync({
         id: staff.id,
-        data: form,
+        data: payload,
       });
       showToast("Staff record updated and synchronized across all modules!", "success");
       onSuccess?.();

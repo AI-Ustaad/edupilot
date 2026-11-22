@@ -177,7 +177,7 @@ export class PayrollService {
       const staffDoc = await this.staffRepo.findById(staffId, tenantId);
       const fullName = (staffDoc?.personal?.fullName || staffDoc?.fullName || staffDoc?.name || "Staff Member").trim();
       const numMatch = fullName.match(/\d+/);
-      const employeeId = staffDoc?.professional?.employeeId || staffDoc?.employeeId || ((fullName === "ghzandar Ali" || staffId === "stf_01") ? "STF-01" : (numMatch ? `STF-${String(numMatch[0]).padStart(2, "0")}` : `STF-${String(staffId).slice(-4)}`));
+      const employeeId = staffDoc?.professional?.employeeId || staffDoc?.employeeId || ((fullName.toLowerCase() === "ghzandar ali" || staffId === "stf_01") ? "STF-001" : (numMatch ? `STF-${String(numMatch[0]).padStart(3, "0")}` : `STF-${String(staffId).slice(-4)}`));
       const designation = staffDoc?.professional?.designation || staffDoc?.designation || "Faculty";
       const department = staffDoc?.professional?.department || staffDoc?.department || "General";
       const basicSalary = getStaffSalary(staffDoc);

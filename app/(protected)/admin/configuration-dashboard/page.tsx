@@ -140,7 +140,14 @@ export default function ConfigurationDashboardPage() {
           <div><p className="text-xs text-gray-400 font-medium">School Name</p><p className="font-bold text-gray-900">{schoolInfo.name || "N/A"}</p></div>
           <div><p className="text-xs text-gray-400 font-medium">Type</p><p className="font-bold text-gray-900">{schoolInfo.type || "N/A"}</p></div>
           <div><p className="text-xs text-gray-400 font-medium">Board</p><p className="font-bold text-gray-900">{schoolInfo.boardName || "N/A"}</p></div>
-          <div><p className="text-xs text-gray-400 font-medium">Country</p><p className="font-bold text-gray-900">{schoolInfo.country || "N/A"}</p></div>
+          <div>
+            <p className="text-xs text-gray-400 font-medium">Country</p>
+            <p className="font-bold text-gray-900">
+              {String(schoolInfo.country || "").toUpperCase() === "PK" || String(schoolInfo.country || "").toUpperCase() === "PAK"
+                ? "Pakistan"
+                : schoolInfo.country || "Pakistan"}
+            </p>
+          </div>
         </div>
       </div>
 

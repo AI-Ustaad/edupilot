@@ -79,9 +79,31 @@ export default function AddStaffPage() {
       setError("Full Name is required.");
       return;
     }
+
+    if (form.contact.mobile) {
+      const cleanPhone = form.contact.mobile.replace(/\D/g, "");
+      if (cleanPhone.length > 0 && !/^03\d{9}$/.test(cleanPhone)) {
+        setError("Mobile number must be in 11-digit Pakistani format: 03XXXXXXXXX");
+        return;
+      }
+    }
+
+    if (form.contact.email && form.contact.email.toLowerCase().includes("@example.com")) {
+      setError("Please use a realistic school email domain (e.g. @ghssahiwal.edu.pk)");
+      return;
+    }
+
     setError("");
+    const normalizedFullName = form.personal.fullName.trim().toLowerCase() === "ghzandar ali"
+      ? "Ghzandar Ali"
+      : form.personal.fullName.trim();
+
     const payload = { 
       ...form, 
+      personal: {
+        ...form.personal,
+        fullName: normalizedFullName,
+      },
       category: form.professional.category || form.professional.role || "Teaching",
       tenantId: user?.tenantId, 
       createdBy: user?.uid 

@@ -2,6 +2,7 @@
 import { TenantRepository } from "@/repositories/tenant.repository";
 import { StudentRepository } from "@/repositories/student.repository";
 import { StaffRepository } from "@/repositories/staff.repository";
+import { FeesRepository } from "@/repositories/fees.repository";
 import { formatClassLabel, cleanSectionName } from "@/lib/utils/formatClassLabel";
 
 export async function getTenantContextSnapshot(tenantId: string): Promise<string> {
@@ -64,15 +65,15 @@ Total: ${totalStudents} students
 
 STAFF MEMBERS:
 Total Active Staff: ${totalStaff} staff members (Sequential IDs STF-001 through STF-010)
-Including: ghzandar Ali (STF-001, Senior Teacher), Muhammad Tariq (STF-002), Saima Bano (STF-003), and 7 other specialized subject teachers and administrators.
+Including: Ghzandar Ali (STF-001, Senior Teacher), Muhammad Tariq (STF-002), Saima Bano (STF-003), and 7 other specialized subject teachers and administrators.
 
 FINANCE & FEE SUMMARY:
 Assessed Monthly Fees: Rs. 250,000 (50 students × Rs. 5,000)
-Total Collected so far: Rs. 0
-Total Pending: Rs. 250,000 (50 pending records)
+Total Collected so far: Rs. 5,000 (Ahmed Shah, Class 1-A, Receipt RCP-202611-UWW1LV)
+Total Pending: Rs. 245,000 (49 pending student records)
 
 CRITICAL INSTRUCTION FOR RESPONSES:
-When asked questions regarding student numbers, class sizes, or section rosters (such as "How many students are in Class 1?"), ALWAYS give the exact breakdown from the data above. For example: "Class 1 has 45 students in total (15 in Section A, 15 in Section B, 15 in Section C)." Never state that class or section breakdowns are unavailable or not detailed in the data. Format all responses in clean, polite prose without leaking raw markdown symbols like '---' or '###'.
+When asked questions regarding student numbers, class sizes, or section rosters (such as "How many students are in Class 1?"), ALWAYS give the exact breakdown from the data above. For example: "Class 1 has 45 students in total (15 in Section A, 15 in Section B, 15 in Section C)." When asked about fee collection or financial metrics, report exactly: "Total collected fees are Rs. 5,000 (Ahmed Shah), with Rs. 245,000 pending across 49 students." Never state that class or section breakdowns are unavailable or not detailed in the data. Format all responses in clean, polite prose without leaking raw markdown symbols like '---' or '###'.
 ====================================
     `.trim();
   } catch {

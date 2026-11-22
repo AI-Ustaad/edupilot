@@ -18,6 +18,9 @@ export type UpdateAssignmentInput = z.infer<typeof UpdateAssignmentSchema>;
 // ─── Lesson Plan Validators ───────────────────────────────────
 export const CreateLessonPlanSchema = z.object({
   date: z.string().min(1, "Date is required"),
+  classGrade: z.string().optional().default("Class 1"),
+  className: z.string().optional(),
+  subject: z.string().optional().default("General"),
   topic: z.string().min(1, "Topic is required"),
   objective: z.string().min(1, "Objective is required"),
   materials: z.string().optional().default(""),

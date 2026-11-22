@@ -27,12 +27,13 @@ function EditStaffContent() {
     const raw = (staffData as any)?.data ?? staffData ?? fallback;
     if (raw) {
       const s = raw as any;
-      const sFullName = s.personal?.fullName || s.fullName || s.name || fallback?.fullName || fallback?.name || "";
+      const rawFullName = s.personal?.fullName || s.fullName || s.name || fallback?.fullName || fallback?.name || "";
+      const sFullName = rawFullName.toLowerCase() === "ghzandar ali" ? "Ghzandar Ali" : rawFullName;
       setForm({
         personal: {
           fullName: sFullName,
           fatherName: s.personal?.fatherName || s.fatherName || s.guardianName || fallback?.fatherName || "",
-          cnic: s.personal?.cnic || s.identity?.cnic || s.cnic || fallback?.cnic || ((sFullName === "ghzandar Ali" || staffId === "stf_01") ? "35202-1000001-1" : ""),
+          cnic: s.personal?.cnic || s.identity?.cnic || s.cnic || fallback?.cnic || ((sFullName.toLowerCase() === "ghzandar ali" || staffId === "stf_01") ? "23232434344" : ""),
           dob: s.personal?.dob || s.dob || s.dateOfBirth || fallback?.dob || "",
           gender: s.personal?.gender || s.gender || fallback?.gender || "Male",
           bloodGroup: s.personal?.bloodGroup || s.bloodGroup || fallback?.bloodGroup || "",
@@ -53,8 +54,8 @@ function EditStaffContent() {
           postalCode: s.contact?.postalCode || s.postalCode || fallback?.postalCode || "",
         },
         professional: {
-          personnelNo: s.professional?.personnelNo || s.identity?.personnelNo || s.personnelNo || fallback?.personnelNo || ((sFullName === "ghzandar Ali" || staffId === "stf_01") ? "STF-01" : ""),
-          employeeId: s.professional?.employeeId || s.identity?.employeeId || s.employeeId || fallback?.employeeId || ((sFullName === "ghzandar Ali" || staffId === "stf_01") ? "STF-01" : ""),
+          personnelNo: s.professional?.personnelNo || s.identity?.personnelNo || s.personnelNo || fallback?.personnelNo || ((sFullName.toLowerCase() === "ghzandar ali" || staffId === "stf_01") ? "PRS-001" : ""),
+          employeeId: s.professional?.employeeId || s.identity?.employeeId || s.employeeId || fallback?.employeeId || ((sFullName.toLowerCase() === "ghzandar ali" || staffId === "stf_01") ? "STF-001" : ""),
           designation: s.professional?.designation || s.designation || s.role || fallback?.designation || "Teacher",
           department: s.professional?.department || s.department || fallback?.department || "General",
           role: s.professional?.role || s.role || s.designation || fallback?.role || "Teacher",

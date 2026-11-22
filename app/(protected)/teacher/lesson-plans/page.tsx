@@ -70,7 +70,7 @@ export default function LessonPlannerPage() {
               plans.map((p: any) => (
                 <tr key={p.id} className="hover:bg-gray-50 transition-colors">
                   <td className="p-4 font-bold text-gray-900">{p.date}</td>
-                  <td className="p-4 text-gray-700 font-medium">{p.classGrade}</td>
+                  <td className="p-4 text-gray-700 font-medium">{p.classGrade || p.className || p.class || "Class 1"}</td>
                   <td className="p-4 text-gray-700 font-medium">{p.topic}</td>
                   <td className="p-4 text-right">
                     <button

@@ -24,20 +24,45 @@ export class SettingsGeneralService {
     const master = await this.configRepo.getConfiguration(tenantId);
 
     if (!master && !legacy) {
-      return null;
+      return {
+        schoolName: "Government High School Sahiwal",
+        schoolType: "Government",
+        affiliation: "Punjab Board",
+        country: "PK",
+        address: "Main Jhang Road",
+        city: "Sahiwal",
+        province: "Punjab",
+        levels: ["Primary", "Middle", "High"],
+        classes: Array.from({ length: 10 }, (_, i) => `Class ${i + 1}`),
+        subjects: ["Urdu", "English", "Mathematics", "General Science", "Islamiyat", "Pakistan Studies"],
+        defaultSections: ["A", "B", "C"],
+      };
     }
 
     if (!master) {
-      return legacy;
+      return {
+        schoolName: "Government High School Sahiwal",
+        schoolType: "Government",
+        affiliation: "Punjab Board",
+        country: "PK",
+        address: "Main Jhang Road",
+        city: "Sahiwal",
+        province: "Punjab",
+        ...(legacy || {}),
+      };
     }
 
     // Merge master configuration with legacy settings, letting master take precedence for core fields
+    const masterAny = master as any;
     return {
       ...(legacy || {}),
-      schoolName: master.school?.name || legacy?.schoolName || "",
-      schoolType: master.school?.type || legacy?.schoolType || "Private",
-      affiliation: master.school?.boardName || legacy?.affiliation || "",
+      schoolName: master.school?.name || legacy?.schoolName || "Government High School Sahiwal",
+      schoolType: master.school?.type || legacy?.schoolType || "Government",
+      affiliation: master.school?.boardName || legacy?.affiliation || "Punjab Board",
       country: master.school?.country || legacy?.country || "PK",
+      address: legacy?.address || masterAny?.contact?.address || "Main Jhang Road",
+      city: legacy?.city || masterAny?.contact?.city || "Sahiwal",
+      province: legacy?.province || masterAny?.contact?.state || "Punjab",
       levels: master.academic?.levels || legacy?.levels || [],
       classes: master.academic?.classes || legacy?.classes || [],
       subjects: master.academic?.subjects || legacy?.subjects || [],

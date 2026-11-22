@@ -48,8 +48,13 @@ export default function BusesPage() {
               {buses.map((bus: any) => (
                 <div key={bus.id} className="flex items-center justify-between border-b pb-3 pt-2 hover:bg-slate-50 px-2 rounded-lg transition-colors">
                   <div>
-                    <p className="font-bold text-gray-900">{bus.busNumber}</p>
-                    <p className="text-sm text-gray-500 font-medium">{bus.route} {bus.driverName && <span className="text-gray-400 ml-1">| Driver: {bus.driverName}</span>}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="font-bold text-gray-900">{bus.busNumber}</p>
+                      <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200">
+                        Capacity: {bus.capacity || 40} seats
+                      </span>
+                    </div>
+                    <p className="text-sm text-gray-500 font-medium mt-0.5">{bus.route} {bus.driverName && <span className="text-gray-400 ml-1">| Driver: {bus.driverName}</span>}</p>
                   </div>
                   <button
                     onClick={() => {

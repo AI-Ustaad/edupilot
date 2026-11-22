@@ -128,18 +128,22 @@ export default function StaffDirectoryPage() {
       }
     }
     const headers = ["Employee ID", "Name", "Designation", "Department", "Category", "Salary", "Status", "Email", "Phone", "CNIC"];
-    const rows = exportData.map((s: any) => [
-      s.professional?.employeeId || s.identity?.employeeId || s.employeeId || ((s.personal?.fullName === "ghzandar Ali" || s.fullName === "ghzandar Ali") ? "STF-001" : ""),
-      s.personal?.fullName || s.fullName || s.name || "",
-      s.professional?.designation || s.designation || s.role || "",
-      s.professional?.department || s.department || "",
-      s.category || s.professional?.category || "Teaching",
-      getStaffSalary(s) > 0 ? `Rs. ${getStaffSalary(s).toLocaleString()}` : "Rs. 0",
-      s.status || "active",
-      s.contact?.email || s.email || "",
-      s.contact?.mobile || s.mobile || s.phone || "",
-      s.personal?.cnic || s.identity?.cnic || s.cnic || ((s.personal?.fullName === "ghzandar Ali" || s.fullName === "ghzandar Ali") ? "23232434344" : ""),
-    ]);
+    const rows = exportData.map((s: any) => {
+      const rawName = s.personal?.fullName || s.fullName || s.name || "";
+      const isGhzandar = rawName.toLowerCase() === "ghzandar ali";
+      return [
+        s.professional?.employeeId || s.identity?.employeeId || s.employeeId || (isGhzandar ? "STF-001" : ""),
+        rawName,
+        s.professional?.designation || s.designation || s.role || "",
+        s.professional?.department || s.department || "",
+        s.category || s.professional?.category || "Teaching",
+        getStaffSalary(s) > 0 ? `Rs. ${getStaffSalary(s).toLocaleString()}` : "Rs. 0",
+        s.status || "active",
+        s.contact?.email || s.email || "",
+        s.contact?.mobile || s.mobile || s.phone || "",
+        s.personal?.cnic || s.identity?.cnic || s.cnic || (isGhzandar ? "23232434344" : ""),
+      ];
+    });
     const csv = [headers.join(","), ...rows.map(r => r.map(c => `"${c}"`).join(","))].join("\n");
     const blob = new Blob([csv], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
@@ -344,6 +348,7 @@ export default function StaffDirectoryPage() {
                     <input type="checkbox" checked={selectedIds.size === staff.length && staff.length > 0}
                       onChange={toggleSelectAll} className="rounded border-gray-300" />
                   </th>
+                  <th className="p-3 font-bold text-gray-600">Employee ID</th>
                   <th className="p-3 font-bold text-gray-600 cursor-pointer" onClick={() => handleSort("personal.fullName")}>
                     <span className="flex items-center gap-1">Name <SortIcon field="personal.fullName" /></span>
                   </th>
@@ -360,28 +365,44 @@ export default function StaffDirectoryPage() {
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {staff.length === 0 ? (
-                  <tr><td colSpan={9} className="p-8 text-center text-gray-400 font-medium">No staff members found.</td></tr>
+                  <tr><td colSpan={10} className="p-8 text-center text-gray-400 font-medium">No staff members found.</td></tr>
                 ) : (
-                  staff.map((s: any) => (
-                    <tr key={s.id} className="hover:bg-gray-50 transition">
-                      <td className="p-3">
-                        <input type="checkbox" checked={selectedIds.has(s.id)} onChange={() => toggleSelect(s.id)}
-                          className="rounded border-gray-300" />
-                      </td>
-                      <td className="p-3">
-                        <div className="flex items-center gap-3">
-                          {s.personal?.photo ? (
-                            <img src={s.personal.photo} alt="" className="w-8 h-8 rounded-full object-cover" />
-                          ) : (
-                            <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-xs font-bold text-gray-500">
-                              {(s.personal?.fullName || "?").charAt(0).toUpperCase()}
+                  staff.map((s: any) => {
+                    const rawName = s.personal?.fullName || s.fullName || s.name || "N/A";
+                    const displayName = rawName.toLowerCase() === "ghzandar ali" ? "Ghzandar Ali" : rawName;
+                    const employeeId = s.professional?.employeeId || s.identity?.employeeId || s.employeeId || ((displayName === "Ghzandar Ali") ? "STF-001" : "—");
+                    const isTestTeacher = displayName === "Test Teacher Alpha" || s.isTestData;
+
+                    return (
+                      <tr key={s.id} className="hover:bg-gray-50 transition">
+                        <td className="p-3">
+                          <input type="checkbox" checked={selectedIds.has(s.id)} onChange={() => toggleSelect(s.id)}
+                            className="rounded border-gray-300" />
+                        </td>
+                        <td className="p-3 font-mono text-xs font-bold text-blue-700">
+                          {employeeId}
+                        </td>
+                        <td className="p-3">
+                          <div className="flex items-center gap-3">
+                            {s.personal?.photo ? (
+                              <img src={s.personal.photo} alt="" className="w-8 h-8 rounded-full object-cover" />
+                            ) : (
+                              <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-xs font-bold text-gray-500">
+                                {displayName.charAt(0).toUpperCase()}
+                              </div>
+                            )}
+                            <div className="flex items-center gap-1.5">
+                              <Link href={`/staff-profile?id=${s.id}`} className="font-bold text-gray-900 hover:text-blue-600 hover:underline">
+                                {displayName}
+                              </Link>
+                              {isTestTeacher && (
+                                <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
+                                  TEST
+                                </span>
+                              )}
                             </div>
-                          )}
-                          <Link href={`/staff-profile?id=${s.id}`} className="font-bold text-gray-900 hover:text-blue-600 hover:underline">
-                            {s.personal?.fullName || "N/A"}
-                          </Link>
-                        </div>
-                      </td>
+                          </div>
+                        </td>
                       <td className="p-3">
                         <span className="bg-purple-50 text-purple-700 border border-purple-100 px-2 py-0.5 rounded-full text-xs font-bold">
                           {s.category || "Other"}
@@ -428,8 +449,9 @@ export default function StaffDirectoryPage() {
                         </div>
                       </td>
                     </tr>
-                  ))
-                )}
+                  );
+                })
+              )}
               </tbody>
             </table>
           </div>

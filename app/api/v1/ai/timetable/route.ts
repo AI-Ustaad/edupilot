@@ -21,7 +21,7 @@ export const POST = withErrorHandler(
       const classes = Array.isArray(rawClasses) ? rawClasses : [rawClasses];
       const rawSubjects = (body.subjects && body.subjects.length > 0) ? body.subjects : ["Mathematics", "English", "General Science", "Urdu", "Islamiat"];
       const subjects = Array.isArray(rawSubjects) ? rawSubjects : [rawSubjects];
-      const rawTeachers = body.teachers || ["Sir Ahmed", "Ms. Fatima", "ghzandar Ali"];
+      const rawTeachers = body.teachers || ["Sir Ahmed", "Ms. Fatima", "Ghzandar Ali"];
       const teachers = Array.isArray(rawTeachers) ? rawTeachers : String(rawTeachers).split(",").map((t: string) => t.trim());
       const rawDays = body.days || body.workingDays || ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
       const days = Array.isArray(rawDays) ? rawDays : [rawDays];

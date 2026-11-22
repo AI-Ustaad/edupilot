@@ -25,7 +25,7 @@ export default function LeaveRequestsPage() {
   const [endDate, setEndDate] = useState(new Date().toISOString().split("T")[0]);
   const [reason, setReason] = useState("");
 
-  const { data: leaves = [], isLoading, isError } = useQuery({
+  const { data: leaves = [], isLoading, isError, refetch } = useQuery({
     queryKey: ["leaves", tenantId],
     queryFn: async () => safeArray(await apiClient.get("/leave")),
   });
@@ -52,8 +52,9 @@ export default function LeaveRequestsPage() {
 
   const createLeaveMutation = useMutation({
     mutationFn: async (payload: any) => apiClient.post("/leave", payload),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["leaves", tenantId] });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["leaves", tenantId] });
+      await refetch();
       showToast("Leave request submitted successfully.", "success");
       setShowModal(false);
       setSelectedStaffId("");

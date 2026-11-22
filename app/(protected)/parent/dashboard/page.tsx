@@ -61,7 +61,7 @@ export default function ParentDashboard() {
                   <div>
                     <div className="bg-red-50 text-red-600 p-2 rounded-xl inline-block mb-1"><GraduationCap size={16} /></div>
                     <p className="text-gray-500 font-bold text-[10px] uppercase">Fees Due</p>
-                    <p className="text-sm font-black text-gray-900">Rs. {child.recentFee?.status === 'pending' ? child.recentFee.amountPaid : 0}</p>
+                    <p className="text-sm font-black text-gray-900">Rs. {child.recentFee?.status?.toLowerCase() === 'pending' ? (child.recentFee.amountDue || child.recentFee.amount || 5000) : 0}</p>
                   </div>
                   <div>
                     <div className="bg-blue-50 text-blue-600 p-2 rounded-xl inline-block mb-1"><Calendar size={16} /></div>

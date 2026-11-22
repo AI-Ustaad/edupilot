@@ -1,5 +1,6 @@
 "use client";
-import React from "react";
+import React, { useState, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import {
   Users, Briefcase, DollarSign, Activity, CalendarDays,
@@ -23,7 +24,12 @@ const staggerContainer = {
 };
 const CHART_COLORS = ["#3b82f6","#10b981","#f59e0b","#ef4444","#8b5cf6","#ec4899"];
 
-export default function DashboardPage() {
+function DashboardContent() {
+  const searchParams = useSearchParams();
+  const [showUnauthorizedAlert, setShowUnauthorizedAlert] = useState(
+    () => searchParams.get("error") === "unauthorized"
+  );
+
   // 1. Fetch Live Dashboard Data
   const { data, isLoading, error } = useDashboardMetrics();
   
@@ -88,6 +94,23 @@ export default function DashboardPage() {
           {new Date().toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
         </div>
       </motion.div>
+
+      {showUnauthorizedAlert && (
+        <div className="bg-amber-50 border-l-4 border-amber-500 p-4 rounded-xl flex items-center justify-between shadow-sm">
+          <div className="flex items-center gap-3">
+            <AlertTriangle className="text-amber-600 shrink-0" size={20} />
+            <p className="text-sm font-bold text-amber-900">
+              Access Denied: This section is for platform administrators only.
+            </p>
+          </div>
+          <button
+            onClick={() => setShowUnauthorizedAlert(false)}
+            className="text-amber-700 hover:text-amber-900 font-bold text-sm px-2 py-1 rounded-lg hover:bg-amber-100 transition"
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
       <motion.div variants={staggerContainer} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         <KpiCard title="Total Students" value={data.students || 0} icon={<Users size={24} className="text-blue-600" />} color="blue" />
@@ -342,5 +365,13 @@ function StatusCard({ label, value, color }: { label: string; value: number; col
       <p className="text-2xl font-black">{value}</p>
       <p className="text-xs font-medium">{label}</p>
     </div>
+  );
+}
+
+export default function DashboardPage() {
+  return (
+    <Suspense fallback={<div className="flex h-[70vh] items-center justify-center"><Loader2 className="animate-spin text-blue-600" size={40} /></div>}>
+      <DashboardContent />
+    </Suspense>
   );
 }

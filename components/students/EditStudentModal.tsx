@@ -71,6 +71,14 @@ export default function EditStudentModal({ isOpen, onClose, student, onSuccess }
       return;
     }
 
+    if (form.guardianPhone) {
+      const cleanPhone = form.guardianPhone.replace(/\D/g, "");
+      if (cleanPhone.length > 0 && !/^03\d{9}$/.test(cleanPhone)) {
+        showToast("Guardian phone must be in 11-digit format: 03XXXXXXXXX", "error");
+        return;
+      }
+    }
+
     try {
       await updateMutation.mutateAsync({
         id: student.id,

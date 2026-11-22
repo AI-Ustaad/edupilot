@@ -82,7 +82,7 @@ export default function ExamCenterPage() {
                   {exam.status}
                 </span>
                 <Link
-                  href="/exams"
+                  href={`/exams?class=${encodeURIComponent(exam.classGrade)}&section=${encodeURIComponent(exam.section)}&term=${encodeURIComponent(exam.term)}`}
                   className="inline-flex items-center gap-1 text-xs font-bold text-blue-600 hover:text-blue-700 transition"
                 >
                   View Ledger <ArrowRight size={14} />

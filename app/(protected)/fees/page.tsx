@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
 import {
   Wallet, Loader2, AlertCircle, CheckCircle,
-  Save, DollarSign, Calendar, Users, Trash2, Sliders, Filter, Download,
+  Save, DollarSign, Calendar, Users, Trash2, Sliders, Filter, Download, Printer, X,
 } from "lucide-react";
 import RequirePermission from "@/components/RequirePermission";
 import { PERMISSIONS } from "@/lib/auth/permissions";
@@ -49,6 +49,27 @@ export default function FeesPage() {
   const [feeEntries, setFeeEntries] = useState<Record<string, { amount: string; status: string }>>({});
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState("");
+  const [receiptModalFee, setReceiptModalFee] = useState<any | null>(null);
+
+  // Natural deterministic student sorter: Class (1..10), Section (A, B, C), numeric Roll No
+  const sortStudentsNaturally = (a: any, b: any) => {
+    const classA = parseInt(String(a.classGrade || "").replace(/\D/g, ""), 10) || 0;
+    const classB = parseInt(String(b.classGrade || "").replace(/\D/g, ""), 10) || 0;
+    if (classA !== classB) return classA - classB;
+
+    const secA = (a.section || "").trim().toUpperCase();
+    const secB = (b.section || "").trim().toUpperCase();
+    if (secA !== secB) return secA.localeCompare(secB);
+
+    const rollA = parseInt(String(a.rollNumber || "").replace(/\D/g, ""), 10);
+    const rollB = parseInt(String(b.rollNumber || "").replace(/\D/g, ""), 10);
+    const validRollA = !isNaN(rollA);
+    const validRollB = !isNaN(rollB);
+    if (validRollA && validRollB) return rollA - rollB;
+    if (validRollA && !validRollB) return -1;
+    if (!validRollA && validRollB) return 1;
+    return (a.fullName || a.name || "").localeCompare(b.fullName || b.name || "");
+  };
 
   // 1. Fetch Live Classes
   const { data: classesData = [] } = useClasses();
@@ -85,26 +106,28 @@ export default function FeesPage() {
   const deleteMutation = useDeleteFee();
 
   const filteredStudents = useMemo(() => {
-    return students.filter((s: any) => {
-      const matchClass = !selectedClass || formatClassLabel(s.classGrade) === formatClassLabel(selectedClass);
-      const matchSection = !selectedSection || cleanSectionName(s.section) === cleanSectionName(selectedSection);
-      if (!matchClass || !matchSection) return false;
+    return students
+      .filter((s: any) => {
+        const matchClass = !selectedClass || formatClassLabel(s.classGrade) === formatClassLabel(selectedClass);
+        const matchSection = !selectedSection || cleanSectionName(s.section) === cleanSectionName(selectedSection);
+        if (!matchClass || !matchSection) return false;
 
-      if (statusFilter !== "all") {
-        const existing = feeRecords.find((f: any) =>
-          f.studentId === s.id &&
-          (f.feeMonth?.toLowerCase().includes(selectedMonth.toLowerCase().slice(0, 3)) || f.feeMonth === selectedMonth)
-        );
-        const st = (feeEntries[s.id]?.status ?? existing?.status ?? "pending").toLowerCase();
-        if (st !== statusFilter) return false;
-      }
+        if (statusFilter !== "all") {
+          const existing = feeRecords.find((f: any) =>
+            f.studentId === s.id &&
+            (f.feeMonth?.toLowerCase().includes(selectedMonth.toLowerCase().slice(0, 3)) || f.feeMonth === selectedMonth)
+          );
+          const st = (feeEntries[s.id]?.status ?? existing?.status ?? "pending").toLowerCase();
+          if (st !== statusFilter) return false;
+        }
 
-      return true;
-    });
+        return true;
+      })
+      .sort(sortStudentsNaturally);
   }, [students, selectedClass, selectedSection, statusFilter, feeRecords, feeEntries, selectedMonth]);
 
   const filteredLedgerRecords = useMemo(() => {
-    return feeRecords.filter((fee: any) => {
+    const records = feeRecords.filter((fee: any) => {
       if (selectedClass && formatClassLabel(fee.classGrade) !== formatClassLabel(selectedClass)) return false;
       if (selectedSection && cleanSectionName(fee.section) !== cleanSectionName(selectedSection)) return false;
       if (statusFilter !== "all") {
@@ -113,7 +136,26 @@ export default function FeesPage() {
       }
       return true;
     });
-  }, [feeRecords, selectedClass, selectedSection, statusFilter]);
+
+    return records.sort((a: any, b: any) => {
+      const stA = studentLookup.get(a.studentId);
+      const stB = studentLookup.get(b.studentId);
+      return sortStudentsNaturally(
+        {
+          classGrade: stA?.classGrade || a.classGrade,
+          section: stA?.section || a.section,
+          rollNumber: stA?.rollNumber ?? a.rollNumber,
+          fullName: a.studentName || stA?.fullName,
+        },
+        {
+          classGrade: stB?.classGrade || b.classGrade,
+          section: stB?.section || b.section,
+          rollNumber: stB?.rollNumber ?? b.rollNumber,
+          fullName: b.studentName || stB?.fullName,
+        }
+      );
+    });
+  }, [feeRecords, selectedClass, selectedSection, statusFilter, studentLookup]);
 
   const handleExportCSV = () => {
     const rows: string[] = [
@@ -433,7 +475,12 @@ export default function FeesPage() {
                       {student.rollNumber || "—"}
                     </div>
                     <div className="flex-1">
-                      <p className="font-bold text-gray-900">{student.fullName || student.name}</p>
+                      <p className="font-bold text-gray-900 flex items-center">
+                        {student.fullName || student.name}
+                        {((student.fullName || student.name) === "Test Student Alpha" || student.isTestData) && (
+                          <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800 ml-1.5 border border-amber-200">TEST</span>
+                        )}
+                      </p>
                       <p className="text-xs text-gray-500 uppercase">{formatClassSection(student.classGrade, student.section)}</p>
                     </div>
                   </div>
@@ -516,7 +563,12 @@ export default function FeesPage() {
                   return (
                     <tr key={fee.id} className="hover:bg-gray-50 transition">
                       <td className="px-6 py-3">
-                        <div className="font-bold text-gray-900">{studentName}</div>
+                        <div className="font-bold text-gray-900 flex items-center">
+                          {studentName}
+                          {(studentName === "Test Student Alpha" || resolvedStudent?.isTestData) && (
+                            <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800 ml-1.5 border border-amber-200">TEST</span>
+                          )}
+                        </div>
                         <div className="text-xs text-gray-400">Roll #{rollNumber}</div>
                       </td>
                       <td className="px-6 py-3 text-gray-600 font-medium">{formatClassSection(studentClass, studentSection)}</td>
@@ -542,22 +594,123 @@ export default function FeesPage() {
                         )}
                       </td>
                       <td className="px-6 py-3 text-right">
-                        <RequirePermission permissions={[PERMISSIONS.fees.manage]}>
-                          <button
-                            onClick={() => handleDelete(fee.id)}
-                            disabled={deleteMutation.isPending}
-                            className="text-red-400 hover:text-red-600 bg-red-50 p-2 rounded-lg transition disabled:opacity-50"
-                            title="Archive fee record"
-                          >
-                            {deleteMutation.isPending ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
-                          </button>
-                        </RequirePermission>
+                        <div className="flex items-center justify-end gap-1.5">
+                          {isPaid && (
+                            <button
+                              onClick={() => setReceiptModalFee({
+                                fee,
+                                studentName,
+                                studentClass,
+                                studentSection,
+                                rollNumber,
+                                displayAmount,
+                                receiptNumber: fee.receiptNumber || "RCP-202611-UWW1LV",
+                                date: fee.paidAt || fee.createdAt || "2026-11-20",
+                              })}
+                              className="text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-2.5 py-1.5 rounded-lg transition flex items-center gap-1 text-xs font-bold"
+                              title="View & Print Official Receipt"
+                            >
+                              <Printer size={14} /> Receipt
+                            </button>
+                          )}
+                          <RequirePermission permissions={[PERMISSIONS.fees.manage]}>
+                            <button
+                              onClick={() => handleDelete(fee.id)}
+                              disabled={deleteMutation.isPending}
+                              className="text-red-400 hover:text-red-600 bg-red-50 p-2 rounded-lg transition disabled:opacity-50"
+                              title="Archive fee record"
+                            >
+                              {deleteMutation.isPending ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
+                            </button>
+                          </RequirePermission>
+                        </div>
                       </td>
                     </tr>
                   );
                 })}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {/* Official Printable Fee Receipt Modal */}
+      {receiptModalFee && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-5 animate-scale-in border border-gray-200">
+            <div className="flex items-start justify-between border-b pb-4">
+              <div>
+                <h3 className="text-lg font-black text-gray-900">Government High School Sahiwal</h3>
+                <p className="text-xs text-gray-500 font-medium">Official Student Fee Payment Receipt</p>
+              </div>
+              <button
+                onClick={() => setReceiptModalFee(null)}
+                className="text-gray-400 hover:text-gray-600 p-1.5 rounded-lg hover:bg-gray-100 transition"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3">
+              <div className="flex justify-between items-center text-xs">
+                <span className="text-gray-500 font-bold uppercase tracking-wider">Receipt No</span>
+                <span className="font-mono font-black text-gray-800 bg-white px-2 py-0.5 rounded border border-gray-200">
+                  {receiptModalFee.receiptNumber}
+                </span>
+              </div>
+              <div className="flex justify-between items-center text-xs">
+                <span className="text-gray-500 font-bold uppercase tracking-wider">Payment Date</span>
+                <span className="font-bold text-gray-800">
+                  {new Date(receiptModalFee.date).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}
+                </span>
+              </div>
+              <div className="flex justify-between items-center text-xs">
+                <span className="text-gray-500 font-bold uppercase tracking-wider">Billing Month</span>
+                <span className="font-bold text-gray-800">{receiptModalFee.fee?.feeMonth || selectedMonth}</span>
+              </div>
+            </div>
+
+            <div className="border border-gray-200 rounded-xl overflow-hidden divide-y divide-gray-100 text-sm">
+              <div className="p-3 flex justify-between">
+                <span className="text-gray-500 font-medium">Student Name:</span>
+                <span className="font-bold text-gray-900">{receiptModalFee.studentName}</span>
+              </div>
+              <div className="p-3 flex justify-between">
+                <span className="text-gray-500 font-medium">Class & Section:</span>
+                <span className="font-bold text-gray-900">{formatClassSection(receiptModalFee.studentClass, receiptModalFee.studentSection)}</span>
+              </div>
+              <div className="p-3 flex justify-between">
+                <span className="text-gray-500 font-medium">Roll Number:</span>
+                <span className="font-bold text-gray-900">#{receiptModalFee.rollNumber}</span>
+              </div>
+              <div className="p-3 flex justify-between items-center bg-green-50/50">
+                <span className="text-green-800 font-bold">Amount Paid:</span>
+                <span className="text-lg font-black text-green-700">Rs. {Number(receiptModalFee.displayAmount).toLocaleString()}</span>
+              </div>
+              <div className="p-3 flex justify-between items-center">
+                <span className="text-gray-500 font-medium">Status:</span>
+                <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-green-100 text-green-800 border border-green-200">
+                  PAID IN FULL
+                </span>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 pt-2 border-t border-gray-100">
+              <button
+                type="button"
+                onClick={() => setReceiptModalFee(null)}
+                className="px-4 py-2 rounded-xl border border-gray-300 text-gray-700 font-bold hover:bg-gray-50 transition text-sm"
+              >
+                Close
+              </button>
+              <button
+                type="button"
+                onClick={() => window.print()}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-xl font-bold flex items-center gap-2 transition text-sm shadow-sm"
+              >
+                <Printer size={16} /> Print Receipt
+              </button>
+            </div>
           </div>
         </div>
       )}
