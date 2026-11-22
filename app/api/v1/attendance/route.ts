@@ -3,7 +3,7 @@ import { withAuth, withTenant, withErrorHandler } from "@/route-helpers";
 import { withPermission } from "@/lib/auth/rbac";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 import { AttendanceService } from "@/services/attendance.service";
-import { createSuccessResponse, createApiResponse } from "@/lib/api/response";
+import { createSuccessResponse, createApiResponse, createErrorResponse } from "@/lib/api/response";
 import { GetAttendanceQuerySchema } from "@/validators/attendance";
 import type { TenantContext } from "@/types/api";
 
@@ -68,6 +68,31 @@ export const POST = withErrorHandler(
         const record = await service.createSingle(body, tenantId, user.uid);
         return createApiResponse(201, record, "Attendance saved");
       })
+    )
+  )
+);
+
+export const DELETE = withErrorHandler(
+  withAuth(
+    withTenant(
+      withPermission([PERMISSIONS.attendance.delete, PERMISSIONS.attendance.update, "attendance" as any])(
+        async (req: Request, { tenantId, user }: TenantContext) => {
+          const url = new URL(req.url);
+          const studentId = url.searchParams.get("studentId");
+          const date = url.searchParams.get("date");
+          const id = url.searchParams.get("id");
+          const service = new AttendanceService();
+          if (id) {
+            await service.deleteAttendance(tenantId, id, user.uid);
+            return createSuccessResponse(null, { message: "Attendance cleared successfully" });
+          }
+          if (studentId && date) {
+            await service.deleteAttendanceByStudentAndDate(tenantId, studentId, date, user.uid);
+            return createSuccessResponse(null, { message: "Attendance cleared successfully" });
+          }
+          return createErrorResponse(400, "studentId and date, or id, are required");
+        }
+      )
     )
   )
 );

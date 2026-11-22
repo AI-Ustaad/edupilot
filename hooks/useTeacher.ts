@@ -90,6 +90,7 @@ export const useLessonPlans = () => {
       const data = res.data;
       return safeArray(data?.data || data);
     },
+    enabled: !!tenantId && tenantId !== "unknown",
   });
 };
 
@@ -100,8 +101,9 @@ export const useCreateLessonPlan = () => {
   const { showToast } = useToast();
   return useMutation({
     mutationFn: async (data: CreateLessonPlanInput) => apiClient.post("/lesson-plans", data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["lessonPlans", tenantId] });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["lessonPlans", tenantId] });
+      await queryClient.refetchQueries({ queryKey: ["lessonPlans", tenantId] });
       showToast("Lesson plan saved!", "success");
     },
   });
@@ -114,8 +116,9 @@ export const useDeleteLessonPlan = () => {
   const { showToast } = useToast();
   return useMutation({
     mutationFn: async (id: string) => apiClient.delete(`/lesson-plans/${id}`),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["lessonPlans", tenantId] });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["lessonPlans", tenantId] });
+      await queryClient.refetchQueries({ queryKey: ["lessonPlans", tenantId] });
       showToast("Lesson plan deleted!", "success");
     },
     onError: () => showToast("Failed to delete lesson plan.", "error"),

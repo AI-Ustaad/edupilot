@@ -1,9 +1,11 @@
 "use client";
 import React, { useState, useMemo } from "react";
 import { useAuth } from "@/context/AuthContext";
-import { Calendar, Users, CheckCircle2, XCircle, Loader2, Save, Clock, BookOpen } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { Calendar, Users, CheckCircle2, XCircle, Loader2, Save, Clock, BookOpen, RotateCcw } from "lucide-react";
 import RequirePermission from "@/components/RequirePermission";
 import { PERMISSIONS } from "@/lib/auth/permissions";
+import apiClient from "@/lib/api/client";
 
 // 🚀 Layered Architecture Hooks
 import { useClasses } from "@/hooks/useClasses";
@@ -16,8 +18,11 @@ import { formatClassLabel, cleanSectionName } from "@/lib/utils/formatClassLabel
 export default function AttendancePage() {
   const { user } = useAuth();
   const { showToast } = useToast();
+  const queryClient = useQueryClient();
   
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [selectedDate, setSelectedDate] = useState(() => {
+    return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Karachi" }).format(new Date());
+  });
   const [selectedClass, setSelectedClass] = useState("");
   const [selectedSection, setSelectedSection] = useState("");
   const [entries, setEntries] = useState<Record<string, string>>({});
@@ -67,6 +72,21 @@ export default function AttendancePage() {
       showToast(`${student.fullName || student.name} marked ${status}`, "success");
     } catch {
       // Non-fatal, handleSaveAll is also available
+    }
+  };
+
+  const handleClearStatus = async (student: any) => {
+    setEntries(p => {
+      const copy = { ...p };
+      delete copy[student.id];
+      return copy;
+    });
+    try {
+      await apiClient.delete(`/attendance?studentId=${student.id}&date=${selectedDate}`);
+      await queryClient.invalidateQueries({ queryKey: ["attendance"] });
+      showToast(`${student.fullName || student.name} unmarked`, "info");
+    } catch {
+      showToast("Failed to clear attendance mark.", "error");
     }
   };
 
@@ -325,6 +345,15 @@ export default function AttendancePage() {
                     >
                       <Clock size={14} className="inline mr-1"/> Late
                     </button>
+                    {currentStatus !== "Not Marked" && (
+                      <button
+                        onClick={() => handleClearStatus(student)}
+                        className="px-2.5 py-1.5 rounded-lg text-xs font-bold text-gray-500 hover:text-red-600 hover:bg-gray-100 transition flex items-center gap-1"
+                        title="Clear mark"
+                      >
+                        <RotateCcw size={12} /> Unmark
+                      </button>
+                    )}
                   </div>
                 </div>
               );

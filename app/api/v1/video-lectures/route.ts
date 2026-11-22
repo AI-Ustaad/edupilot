@@ -40,7 +40,11 @@ export const POST = withErrorHandler(
               const buffer = Buffer.from(bytes);
               const { UploadService } = await import("@/services/upload.service");
               const uploadService = new UploadService();
-              videoUrl = await uploadService.uploadFile(buffer, `${Date.now()}_${file.name}`, file.type || "video/mp4", `videos/${tenantId}`);
+              const uploadRace = Promise.race([
+                uploadService.uploadFile(buffer, `${Date.now()}_${file.name}`, file.type || "video/mp4", `videos/${tenantId}`),
+                new Promise<string>((_, reject) => setTimeout(() => reject(new Error("Storage timeout")), 2500)),
+              ]);
+              videoUrl = await uploadRace;
             } catch {
               if (file.size < 2 * 1024 * 1024) {
                 const bytes = await file.arrayBuffer();

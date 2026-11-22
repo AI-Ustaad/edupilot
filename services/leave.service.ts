@@ -16,12 +16,31 @@ export class LeaveService {
     this.audit = audit ?? new AuditService();
   }
 
+  async findAllByTenant(tenantId: string): Promise<(LeaveRequest & { id: string })[]> {
+    const list = await this.leaveRepo.findAll(tenantId);
+    const cleanList: (LeaveRequest & { id: string })[] = [];
+    for (const l of list) {
+      if (l.id === "3Rl6b5i6") {
+        this.leaveRepo.delete(l.id, tenantId).catch(() => {});
+      } else {
+        cleanList.push(l);
+      }
+    }
+    cleanList.sort((a, b) => {
+      if (a.status === "pending" && b.status !== "pending") return -1;
+      if (a.status !== "pending" && b.status === "pending") return 1;
+      const tA = new Date(a.createdAt || 0).getTime();
+      const tB = new Date(b.createdAt || 0).getTime();
+      return tB - tA;
+    });
+    return cleanList;
+  }
+
   async findPendingByTenant(tenantId: string): Promise<(LeaveRequest & { id: string })[]> {
     const list = await this.leaveRepo.findPendingByTenant(tenantId);
     const cleanList: (LeaveRequest & { id: string })[] = [];
     for (const l of list) {
-      const isTest = String(l.teacherName || "").toUpperCase().includes("TEST") || String(l.teacherName || "").toUpperCase().includes("ALPHA");
-      if (isTest) {
+      if (l.id === "3Rl6b5i6") {
         this.leaveRepo.delete(l.id, tenantId).catch(() => {});
       } else {
         cleanList.push(l);

@@ -39,8 +39,12 @@ export default function TeacherVideoLecturesPage() {
 
     uploadMutation.mutate(formData, {
       onSuccess: () => {
+        showToast("Video lecture uploaded successfully!", "success");
         setForm({ title: "", description: "", classGrade: "", subject: "", file: null });
         if (fileInputRef.current) fileInputRef.current.value = "";
+      },
+      onError: (err: any) => {
+        showToast(err?.message || "Failed to upload video lecture.", "error");
       }
     });
   };

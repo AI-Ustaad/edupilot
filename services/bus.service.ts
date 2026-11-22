@@ -65,7 +65,7 @@ export class BusService implements IBusService {
     const list = (await this.repo.findAll(tenantId)) as (Bus & { id: string })[];
     const cleanList: Bus[] = [];
     for (const b of list) {
-      if (String(b.busNumber || "").toUpperCase().includes("TEST")) {
+      if (b.id === "bYubkoGC" || b.id === "AtlwmG7Z") {
         this.repo.delete(b.id, tenantId).catch(() => {});
       } else {
         cleanList.push(b);

@@ -91,7 +91,7 @@ export default function EnterpriseBillingPage() {
     ? 1 
     : Math.min((staffUsed / currentPlan.limits.staff) * 100, 100);
 
-  const aiLimit = currentPlan.limits.aiQuota || 50;
+  const aiLimit = (subData as any)?.limits?.maxAiQuota || (subData as any)?.limits?.aiMonthlyQuota || currentPlan.limits.aiQuota || 50;
   const aiUsagePercent = Math.min((aiUsed / aiLimit) * 100, 100);
 
   const isPastDue = (subData as any)?.status === "past_due";

@@ -39,7 +39,17 @@ export default function AITimetablePage() {
       { classes, days, periods, subjects, teachers: teacherList },
       {
         onSuccess: (data) => setTimetable(data),
-        onError: () => setError("Failed to generate timetable. Please try again."),
+        onError: (err: any) => {
+          const errorData = err?.response?.data;
+          if (err?.response?.status === 402 || errorData?.error === "AI_QUOTA_EXCEEDED") {
+            setError("Monthly AI quota reached for your current plan. Please upgrade your subscription to unlock additional AI capacity.");
+          } else if (err?.response?.status === 429 || errorData?.error === "RATE_LIMIT_EXCEEDED") {
+            const seconds = errorData?.retryAfterSeconds || 60;
+            setError(`Rate limit reached: Too many AI requests. Please wait ${seconds} seconds before trying again.`);
+          } else {
+            setError(errorData?.message || "Failed to generate timetable. Please try again.");
+          }
+        },
       }
     );
   };

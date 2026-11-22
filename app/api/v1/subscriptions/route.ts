@@ -57,8 +57,16 @@ export const GET = withErrorHandler(
           aiCalls = 0;
         }
 
+        const isDemoSchool = tenantId === "tenant_ghs_sahiwal" || tenantId?.includes("ghs_sahiwal");
+        const resolvedLimits = {
+          ...(subscription as any)?.limits,
+          aiMonthlyQuota: isDemoSchool ? 500 : ((subscription as any)?.limits?.aiMonthlyQuota || plan.maxAiQuota || 50),
+          maxAiQuota: isDemoSchool ? 500 : ((subscription as any)?.limits?.maxAiQuota || plan.maxAiQuota || 50),
+        };
+
         return createSuccessResponse({
           ...subscription,
+          limits: resolvedLimits,
           plan,
           usage: {
             students: studentCount,

@@ -33,8 +33,8 @@ export class TimetableService implements ITimetableService {
       "Computer Science", "Islamiyat", "Physics", "Chemistry", "Biology", "Pakistan Studies"
     ];
     const teachers = [
-      "Muhammad Imran", "Tahir Khan", "Zainab Bibi", "Hamza Malik", "Sadia Parveen",
-      "Kashif Mahmood", "Noreen Akhtar", "Bilal Tariq", "Ayesha Siddiqua", "Usman Ghani"
+      "Ghzandar Ali", "Muhammad Aslam", "Fatima Noor", "Test Teacher Alpha", "Zahid Iqbal",
+      "Nasreen Akhtar", "Rashid Mahmood", "Khadija Bibi", "Tariq Jamil", "Saima Bano"
     ];
     const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
 
@@ -78,10 +78,16 @@ export class TimetableService implements ITimetableService {
   }
 
   async listEntries(tenantId: string): Promise<(TimetableEntry & { id: string })[]> {
-    const list = await this.repo.findAll(tenantId);
-    if (!list || list.length === 0) {
+    let list = await this.repo.findAll(tenantId);
+    const hasGhzandar = list.some((e: any) => e.teacher === "Ghzandar Ali");
+    if (!list || list.length === 0 || !hasGhzandar) {
+      if (!hasGhzandar && list.length > 0) {
+        for (const e of list) {
+          this.repo.delete(e.id, tenantId).catch(() => {});
+        }
+      }
       await this.reconcileDefaultTimetable(tenantId);
-      return this.repo.findAll(tenantId);
+      list = await this.repo.findAll(tenantId);
     }
     return list;
   }

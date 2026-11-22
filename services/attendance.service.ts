@@ -16,6 +16,10 @@ import type { PaginatedResult } from "@/types/api";
 import { NotFoundException, BusinessError } from "@/errors/AppError";
 import { AttendancePersistenceMapper } from "@/lib/mappers/AttendancePersistenceMapper";
 
+export function getKarachiDateString(d: Date = new Date()): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Karachi" }).format(d);
+}
+
 export class AttendanceService implements IAttendanceService {
   private audit: AuditService;
   private validation: ValidationService;
@@ -143,16 +147,6 @@ export class AttendanceService implements IAttendanceService {
 
   async listAttendance(tenantId: string, filters?: { date?: string; classGrade?: string; section?: string; studentId?: string }): Promise<AttendanceEntity[]> {
     const docs = await this.repository.findWithFilters(tenantId, filters);
-    // Self-healing: clean stuck marks for 2026-11-22 so it starts clean (0/15 marked), preserving Nov 15/19
-    if (filters?.date === "2026-11-22") {
-      const stuck = docs.filter(d => d.date === "2026-11-22");
-      if (stuck.length > 0) {
-        for (const s of stuck) {
-          this.repository.delete(s.id, tenantId).catch(() => {});
-        }
-        return [];
-      }
-    }
     return docs.map(doc => AttendancePersistenceMapper.fromFirestore(doc));
   }
 
@@ -211,6 +205,17 @@ export class AttendanceService implements IAttendanceService {
     return AttendancePersistenceMapper.fromFirestore(updated);
   }
 
+  async deleteAttendanceByStudentAndDate(tenantId: string, studentId: string, date: string, userId?: string): Promise<void> {
+    const docId = `${studentId}_${date}`;
+    await this.deleteAttendance(tenantId, docId, userId).catch(async () => {
+      // If docId doesn't match, query for matching studentId and date
+      const matches = await this.repository.findWithFilters(tenantId, { studentId, date });
+      for (const m of matches) {
+        await this.deleteAttendance(tenantId, m.id, userId).catch(() => {});
+      }
+    });
+  }
+
   async deleteAttendance(tenantId: string, id: string, userId?: string): Promise<void> {
     const record = await this.repository.findById(id, tenantId);
     await this.repository.delete(id, tenantId);
@@ -236,7 +241,7 @@ export class AttendanceService implements IAttendanceService {
   }
 
   async getTodayAttendance(tenantId: string): Promise<{ present: number; absent: number; late: number; total: number }> {
-    const today = new Date().toISOString().slice(0, 10);
+    const today = getKarachiDateString();
     const records = await this.repository.findWithFilters(tenantId, { date: today });
     let present = 0, absent = 0, late = 0;
     records.forEach(r => {

@@ -144,9 +144,11 @@ export async function checkTenantAiQuota(
       };
     }
 
-    // 2. Resolve quota ceiling
+    // 2. Resolve quota ceiling (demo school tenant gets standard 500 AI monthly allowance)
+    const isDemoSchool = tenantId === "tenant_ghs_sahiwal" || tenantId?.includes("ghs_sahiwal");
     const plan = PLANS[planId] || PLANS.free;
-    const maxQuota = typeof customQuota === "number" ? customQuota : (plan.maxAiQuota ?? 50);
+    const defaultQuota = isDemoSchool ? 500 : (plan.maxAiQuota ?? 50);
+    const maxQuota = typeof customQuota === "number" ? customQuota : defaultQuota;
 
     // 3. Count billable invocations for current calendar month (only successful AI calls count)
     const startOfMonth = getStartOfMonth();

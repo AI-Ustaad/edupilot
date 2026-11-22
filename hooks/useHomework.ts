@@ -40,7 +40,7 @@ export const useDeleteHomework = () => {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      return apiClient.delete(`/homework?id=${id}`);
+      return apiClient.delete(`/homework/${id}`).catch(() => apiClient.delete(`/homework?id=${id}`));
     },
     onMutate: async (deletedId: string) => {
       await queryClient.cancelQueries({ queryKey: ["homework", tenantId] });
@@ -48,8 +48,8 @@ export const useDeleteHomework = () => {
       const previousHomework = queryClient.getQueryData(["homework", tenantId]);
       
       // Optimistically remove from UI
-      queryClient.setQueryData(["homework", tenantId], (old: any[]) => 
-        old.filter((h: any) => h.id !== deletedId)
+      queryClient.setQueryData(["homework", tenantId], (old: any) => 
+        Array.isArray(old) ? old.filter((h: any) => h.id !== deletedId) : []
       );
       
       return { previousHomework };
@@ -60,15 +60,15 @@ export const useDeleteHomework = () => {
       showToast("Failed to delete homework.", "error");
     },
     onSuccess: (_data, _deletedId, context) => {
-      // Show Toast with Undo option
       showToast("Homework deleted successfully.", "undo", () => {
         // Undo Logic: Restore in UI
         queryClient.setQueryData(["homework", tenantId], context?.previousHomework);
         showToast("Homework restored.", "success");
       });
     },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ["homework", tenantId] });
+    onSettled: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["homework", tenantId] });
+      await queryClient.refetchQueries({ queryKey: ["homework", tenantId] });
     },
   });
 };

@@ -22,8 +22,16 @@ export default function AIChatbotPage() {
       onSuccess: (data) => {
         setAnswer(data?.answer || "No response from AI.");
       },
-      onError: () => {
-        setAnswer("Network error or AI service is down. Please try again.");
+      onError: (err: any) => {
+        const errorData = err?.response?.data;
+        if (err?.response?.status === 402 || errorData?.error === "AI_QUOTA_EXCEEDED") {
+          setAnswer("Monthly AI quota reached for your current plan. Please upgrade your subscription to unlock additional AI capacity.");
+        } else if (err?.response?.status === 429 || errorData?.error === "RATE_LIMIT_EXCEEDED") {
+          const seconds = errorData?.retryAfterSeconds || 60;
+          setAnswer(`Rate limit reached: Too many AI requests. Please wait ${seconds} seconds before trying again.`);
+        } else {
+          setAnswer(errorData?.message || "AI service is temporarily unavailable. Please try again later.");
+        }
       }
     });
   };

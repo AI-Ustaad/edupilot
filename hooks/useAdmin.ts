@@ -63,8 +63,9 @@ export const useSaveBus = () => {
   const { showToast } = useToast();
   return useMutation({
     mutationFn: async (data: any) => apiClient.post("/buses", data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["buses", tenantId] });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["buses", tenantId] });
+      await queryClient.refetchQueries({ queryKey: ["buses", tenantId] });
       showToast("Bus added successfully!", "success");
     },
     onError: () => showToast("Failed to add bus.", "error"),
@@ -78,8 +79,9 @@ export const useDeleteBus = () => {
   const { showToast } = useToast();
   return useMutation({
     mutationFn: async (id: string) => apiClient.delete(`/buses/${id}`),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["buses", tenantId] });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["buses", tenantId] });
+      await queryClient.refetchQueries({ queryKey: ["buses", tenantId] });
       showToast("Bus deleted successfully!", "success");
     },
     onError: () => showToast("Failed to delete bus.", "error"),

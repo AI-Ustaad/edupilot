@@ -53,7 +53,7 @@ export default function TeacherHomeworkPage() {
   };
 
   const handleDelete = (id: string) => {
-    if (confirm("Are you sure?")) {
+    if (typeof window === "undefined" || confirm("Are you sure you want to delete this homework?")) {
       deleteMutation.mutate(id);
     }
   };

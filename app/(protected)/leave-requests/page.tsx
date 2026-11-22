@@ -125,6 +125,15 @@ export default function LeaveRequestsPage() {
                       {leave.leaveType}
                     </span>
                   )}
+                  {leave.status && (
+                    <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border ${
+                      leave.status === "approved" ? "bg-green-50 text-green-700 border-green-200" :
+                      leave.status === "rejected" ? "bg-red-50 text-red-700 border-red-200" :
+                      "bg-amber-50 text-amber-700 border-amber-200"
+                    }`}>
+                      {leave.status}
+                    </span>
+                  )}
                 </div>
                 <p className="text-xs text-blue-600 font-bold uppercase tracking-widest mt-1 bg-blue-50 inline-block px-2 py-0.5 rounded border border-blue-100">
                   {leave.startDate} TO {leave.endDate}
@@ -134,20 +143,24 @@ export default function LeaveRequestsPage() {
               
               <RequirePermission permissions={[PERMISSIONS.staff.update]}>
                 <div className="flex gap-3 w-full sm:w-auto mt-4 sm:mt-0">
-                  <button
-                    onClick={() => updateStatusMutation.mutate({ id: leave.id, status: "approved" })}
-                    disabled={updateStatusMutation.isPending}
-                    className="flex-1 sm:flex-none bg-green-600 hover:bg-green-700 text-white px-5 py-2.5 rounded-xl flex items-center justify-center gap-2 font-bold transition shadow-sm disabled:opacity-50"
-                  >
-                    <CheckCircle size={18} /> Approve
-                  </button>
-                  <button
-                    onClick={() => updateStatusMutation.mutate({ id: leave.id, status: "rejected" })}
-                    disabled={updateStatusMutation.isPending}
-                    className="flex-1 sm:flex-none bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 px-5 py-2.5 rounded-xl flex items-center justify-center gap-2 font-bold transition disabled:opacity-50"
-                  >
-                    <XCircle size={18} /> Reject
-                  </button>
+                  {leave.status === "pending" && (
+                    <>
+                      <button
+                        onClick={() => updateStatusMutation.mutate({ id: leave.id, status: "approved" })}
+                        disabled={updateStatusMutation.isPending}
+                        className="flex-1 sm:flex-none bg-green-600 hover:bg-green-700 text-white px-5 py-2.5 rounded-xl flex items-center justify-center gap-2 font-bold transition shadow-sm disabled:opacity-50"
+                      >
+                        <CheckCircle size={18} /> Approve
+                      </button>
+                      <button
+                        onClick={() => updateStatusMutation.mutate({ id: leave.id, status: "rejected" })}
+                        disabled={updateStatusMutation.isPending}
+                        className="flex-1 sm:flex-none bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 px-5 py-2.5 rounded-xl flex items-center justify-center gap-2 font-bold transition disabled:opacity-50"
+                      >
+                        <XCircle size={18} /> Reject
+                      </button>
+                    </>
+                  )}
                   <button
                     onClick={() => {
                       if (confirm("Are you sure you want to delete this leave request?")) {

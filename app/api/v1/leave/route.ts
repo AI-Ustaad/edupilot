@@ -11,8 +11,12 @@ export const GET = withErrorHandler(
   withAuth(
     withTenant(
       withPermission(PERMISSIONS.staff.view)(async (req: Request, { tenantId }: TenantContext) => {
+        const { searchParams } = new URL(req.url);
+        const status = searchParams.get("status");
         const leaveService = new LeaveService();
-        const leaves = await leaveService.findPendingByTenant(tenantId);
+        const leaves = status === "pending"
+          ? await leaveService.findPendingByTenant(tenantId)
+          : await leaveService.findAllByTenant(tenantId);
 
         const enrichedLeaves = await Promise.all(
           leaves.map(async (leave) => {

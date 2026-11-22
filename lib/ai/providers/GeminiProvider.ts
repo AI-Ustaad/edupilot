@@ -19,8 +19,8 @@ export class GeminiProvider implements AIProvider {
       model,
       apiKey,
       baseUrl,
-      timeout: 15000,
-      maxRetries: 2,
+      timeout: 10000,
+      maxRetries: 1,
     };
   }
 
