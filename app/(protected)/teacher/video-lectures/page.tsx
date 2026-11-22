@@ -1,27 +1,34 @@
 "use client";
-import { useState, useMemo } from "react";
-import { Loader2, Upload, Film } from "lucide-react";
+import { useState, useMemo, useRef } from "react";
+import { Loader2, Upload, Film, Trash2 } from "lucide-react";
 import RequirePermission from "@/components/RequirePermission";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 import { useClasses } from "@/hooks/useClasses";
 import { useSettings } from "@/hooks/useSettings";
-import { useVideos, useUploadVideo } from "@/hooks/useVideos";
+import { useVideos, useUploadVideo, useDeleteVideo } from "@/hooks/useVideos";
 import { extractUniqueClasses } from "@/lib/utils/formatClassLabel";
+import { useToast } from "@/components/ToastProvider";
 
 export default function TeacherVideoLecturesPage() {
   const [form, setForm] = useState({ title: "", description: "", classGrade: "", subject: "", file: null as File | null });
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: classes = [] } = useClasses();
   const { data: settings } = useSettings();
+  const { showToast } = useToast();
   const subjects = settings?.subjects || [];
   const uniqueClasses = useMemo(() => extractUniqueClasses(classes), [classes]);
   
   const { data: videos = [], isLoading } = useVideos();
   const uploadMutation = useUploadVideo();
+  const deleteMutation = useDeleteVideo();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.title || !form.classGrade || !form.subject || !form.file) return alert("Please fill all fields");
+    if (!form.title || !form.classGrade || !form.subject || !form.file) {
+      showToast("Please fill all required fields and select a video file.", "info");
+      return;
+    }
     
     const formData = new FormData();
     formData.append("file", form.file);
@@ -31,8 +38,17 @@ export default function TeacherVideoLecturesPage() {
     formData.append("subject", form.subject);
 
     uploadMutation.mutate(formData, {
-      onSuccess: () => setForm({ title: "", description: "", classGrade: "", subject: "", file: null })
+      onSuccess: () => {
+        setForm({ title: "", description: "", classGrade: "", subject: "", file: null });
+        if (fileInputRef.current) fileInputRef.current.value = "";
+      }
     });
+  };
+
+  const handleDelete = (id: string, title: string) => {
+    if (confirm(`Are you sure you want to delete "${title}"?`)) {
+      deleteMutation.mutate(id);
+    }
   };
 
   if (isLoading) return <div className="p-8 text-center"><Loader2 className="animate-spin text-blue-600 mx-auto" size={32} /></div>;
@@ -56,7 +72,7 @@ export default function TeacherVideoLecturesPage() {
             </select>
             <div className="col-span-2">
               <label className="text-sm font-bold block mb-2">Video File</label>
-              <input type="file" accept="video/*" onChange={e => setForm({ ...form, file: e.target.files?.[0] || null })} className="text-sm w-full file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-bold file:bg-blue-50 file:text-blue-700" required />
+              <input ref={fileInputRef} type="file" accept="video/*" onChange={e => setForm({ ...form, file: e.target.files?.[0] || null })} className="text-sm w-full file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-bold file:bg-blue-50 file:text-blue-700" required />
             </div>
             <button type="submit" disabled={uploadMutation.isPending} className="col-span-2 bg-blue-600 text-white py-3 rounded-xl font-bold flex items-center justify-center gap-2 disabled:opacity-50">
               {uploadMutation.isPending ? <Loader2 className="animate-spin" size={18} /> : <Upload size={18} />} Upload Video
@@ -69,16 +85,28 @@ export default function TeacherVideoLecturesPage() {
         <h2 className="text-lg font-bold text-gray-900 mb-4 border-b pb-2">Uploaded Videos</h2>
         {videos.length === 0 ? <div className="bg-gray-50 border rounded-2xl p-8 text-center text-gray-500">No videos uploaded yet.</div> : (
           <div className="grid gap-3">
-            {videos.map(v => (
+            {videos.map((v: any) => (
               <div key={v.id} className="bg-white border rounded-xl p-4 flex justify-between items-center">
                 <div className="flex items-center gap-3">
-                  <Film className="text-blue-600 w-8 h-8" />
+                  <Film className="text-blue-600 w-8 h-8 flex-shrink-0" />
                   <div>
                     <p className="font-bold text-gray-900">{v.title}</p>
                     <p className="text-sm text-gray-500">{v.classGrade} • {v.subject}</p>
                   </div>
                 </div>
-                <a href={v.videoUrl} target="_blank" rel="noopener noreferrer" className="bg-blue-50 text-blue-700 px-4 py-2 rounded-lg text-sm font-bold">Watch Video</a>
+                <div className="flex items-center gap-2">
+                  <a href={v.videoUrl} target="_blank" rel="noopener noreferrer" className="bg-blue-50 text-blue-700 hover:bg-blue-100 px-4 py-2 rounded-lg text-sm font-bold transition">Watch Video</a>
+                  <RequirePermission permissions={[PERMISSIONS.videoLectures.delete]}>
+                    <button
+                      onClick={() => handleDelete(v.id, v.title)}
+                      disabled={deleteMutation.isPending && deleteMutation.variables === v.id}
+                      className="text-red-500 hover:bg-red-50 p-2 rounded-lg transition disabled:opacity-50"
+                      title="Delete Video"
+                    >
+                      {deleteMutation.isPending && deleteMutation.variables === v.id ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
+                    </button>
+                  </RequirePermission>
+                </div>
               </div>
             ))}
           </div>

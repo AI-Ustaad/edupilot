@@ -19,8 +19,8 @@ export class GeminiProvider implements AIProvider {
       model,
       apiKey,
       baseUrl,
-      timeout: 55000,
-      maxRetries: 3,
+      timeout: 15000,
+      maxRetries: 2,
     };
   }
 
@@ -36,7 +36,7 @@ export class GeminiProvider implements AIProvider {
     prompt: string,
     systemInstruction?: string,
     file?: { data: string; mimeType: string },
-    options?: { responseMimeType?: string; temperature?: number }
+    options?: { responseMimeType?: string; temperature?: number; maxOutputTokens?: number }
   ): Promise<AIProviderResponse> {
     if (!this.isAvailable()) {
       throw new ProviderException("GEMINI_API_KEY is not configured");

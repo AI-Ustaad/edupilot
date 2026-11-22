@@ -1,11 +1,11 @@
 "use client";
 import { useState, useMemo } from "react";
-import { Loader2, Film, AlertCircle } from "lucide-react";
+import { Loader2, Film, AlertCircle, Trash2 } from "lucide-react";
 import RequirePermission from "@/components/RequirePermission";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 import { useClasses } from "@/hooks/useClasses";
 import { useSettings } from "@/hooks/useSettings";
-import { useVideos } from "@/hooks/useVideos";
+import { useVideos, useDeleteVideo } from "@/hooks/useVideos";
 import { TableSkeleton } from "@/components/Skeletons";
 import { extractUniqueClasses } from "@/lib/utils/formatClassLabel";
 
@@ -19,6 +19,7 @@ export default function VideoLecturesPage() {
   const uniqueClasses = useMemo(() => extractUniqueClasses(classesData), [classesData]);
 
   const { data: videos = [], isLoading, isError } = useVideos(filterClass, filterSubject);
+  const deleteMutation = useDeleteVideo();
 
   if (isLoading) {
     return (
@@ -97,14 +98,34 @@ export default function VideoLecturesPage() {
                   </div>
                 </div>
                 {v.description && <p className="text-sm text-gray-600 mb-4 line-clamp-2">{v.description}</p>}
-                <a
-                  href={v.videoUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-block bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-bold transition"
-                >
-                  Watch Now
-                </a>
+                <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-100">
+                  <a
+                    href={v.videoUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-block bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-bold transition"
+                  >
+                    Watch Now
+                  </a>
+                  <RequirePermission permissions={[PERMISSIONS.videoLectures.delete]}>
+                    <button
+                      onClick={() => {
+                        if (confirm(`Are you sure you want to delete "${v.title}"?`)) {
+                          deleteMutation.mutate(v.id);
+                        }
+                      }}
+                      disabled={deleteMutation.isPending && deleteMutation.variables === v.id}
+                      className="text-red-500 hover:bg-red-50 p-2 rounded-lg transition disabled:opacity-50"
+                      title="Delete Video"
+                    >
+                      {deleteMutation.isPending && deleteMutation.variables === v.id ? (
+                        <Loader2 size={16} className="animate-spin" />
+                      ) : (
+                        <Trash2 size={16} />
+                      )}
+                    </button>
+                  </RequirePermission>
+                </div>
               </div>
             ))}
           </div>

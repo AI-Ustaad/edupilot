@@ -33,9 +33,10 @@ export default function LeaveRequestsPage() {
   const updateStatusMutation = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: string }) => 
       apiClient.put(`/leave/${id}`, { status }),
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["leaves", tenantId] });
-      showToast("Leave request updated.", "success");
+      const statusTitle = variables.status.charAt(0).toUpperCase() + variables.status.slice(1);
+      showToast(`Leave request ${statusTitle} successfully!`, "success");
     },
     onError: () => showToast("Failed to update leave request.", "error"),
   });

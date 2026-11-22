@@ -41,7 +41,7 @@ export default function TeacherHomeworkPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     createMutation.mutate(
-      { title, description, classGrade, section, subject, dueDate },
+      { title, description, classGrade, section, subject, dueDate: dueDate || undefined },
       {
         onSuccess: () => {
           setSuccess("Homework posted successfully!");

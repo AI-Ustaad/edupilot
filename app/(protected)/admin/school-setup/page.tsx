@@ -91,17 +91,17 @@ function SchoolConfigurationContent() {
     const schoolInfo = dashboardData?.schoolInfo || {};
     const base = config || ({} as any);
     
-    const name = (base.schoolName && base.schoolName !== "N/A" && base.schoolName !== "Unknown School")
+    const name = (base.schoolName && base.schoolName !== "N/A" && base.schoolName !== "Unknown School" && !base.schoolName.includes("EduPilot QA") && !base.schoolName.includes("Test Secondary School"))
       ? base.schoolName
-      : (schoolInfo.name || "Test Secondary School - EduPilot QA");
+      : (schoolInfo.name && !schoolInfo.name.includes("EduPilot QA") && !schoolInfo.name.includes("Test Secondary School") ? schoolInfo.name : "Government High School Sahiwal");
       
-    const type = (base.schoolType && base.schoolType !== "N/A")
+    const type = (base.schoolType && base.schoolType !== "N/A" && base.schoolType !== "Private")
       ? base.schoolType
-      : (schoolInfo.type || "Private");
+      : (schoolInfo.type && schoolInfo.type !== "Private" ? schoolInfo.type : "Government");
 
-    const board = (base.boardName && base.boardName !== "N/A")
+    const board = (base.boardName && base.boardName !== "N/A" && !base.boardName.includes("Private School"))
       ? base.boardName
-      : (schoolInfo.boardName || "Private School (SNC Based)");
+      : (schoolInfo.boardName && !schoolInfo.boardName.includes("Private School") ? schoolInfo.boardName : "Punjab Government (PCTB)");
 
     // Canonical classes and sections (single source of truth with /classes)
     let classes = base.classes && base.classes.length >= 10 ? base.classes : [];

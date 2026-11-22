@@ -73,7 +73,7 @@ export class AgentRegistry {
         userPrompt,
         systemPrompt,
         undefined,
-        { temperature: agent.getTemperature() }
+        { temperature: agent.getTemperature(), maxOutputTokens: (context as any)?.maxOutputTokens || 768 }
       );
 
       success = true;

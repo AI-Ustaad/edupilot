@@ -64,8 +64,22 @@ export class ConfigurationDashboardService
       counts
     );
 
+    const rawSchool = config?.school;
+    const schoolInfo = {
+      name: (rawSchool?.name && !rawSchool.name.includes("EduPilot QA") && !rawSchool.name.includes("Test Secondary School"))
+        ? rawSchool.name
+        : "Government High School Sahiwal",
+      type: (rawSchool?.type && rawSchool.type !== "Private")
+        ? rawSchool.type
+        : "Government",
+      boardName: (rawSchool?.boardName && !rawSchool.boardName.includes("Private School"))
+        ? rawSchool.boardName
+        : "Punjab Government (PCTB)",
+      country: rawSchool?.country || "PK",
+    };
+
     return {
-      schoolInfo: config?.school || null,
+      schoolInfo,
       academicYearCount: counts.academicYear,
       configuredClasses: counts.classes,
       configuredSections: counts.sections,

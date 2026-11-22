@@ -157,7 +157,15 @@ export default function AITimetablePage() {
                   <tr key={idx} className="hover:bg-gray-50 transition-colors">
                     <td className="p-4 font-bold text-gray-900">{entry.day}</td>
                     <td className="p-4 font-medium text-gray-700">{entry.period}</td>
-                    <td className="p-4 font-bold text-blue-600">{entry.subject}</td>
+                    <td className="p-4 font-bold text-blue-600">
+                      {String(entry.subject || "").toLowerCase().includes("break") || String(entry.subject || "").toLowerCase().includes("recess") ? (
+                        <span className="px-2.5 py-1 rounded-md text-xs font-black uppercase tracking-wider bg-amber-100 text-amber-800 border border-amber-200">
+                          {entry.subject}
+                        </span>
+                      ) : (
+                        entry.subject
+                      )}
+                    </td>
                     <td className="p-4 text-gray-700">{entry.class || entry.classGrade}</td>
                     <td className="p-4 text-gray-700">{entry.teacher}</td>
                   </tr>

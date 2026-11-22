@@ -74,7 +74,7 @@ export const DELETE = withErrorHandler(
             return createErrorResponse(400, "Leave ID is required");
           }
           const leaveService = new LeaveService();
-          await leaveService.deleteLeave(id, context.tenantId);
+          await leaveService.deleteLeave(id, context.tenantId, context.user?.uid);
           return createSuccessResponse(null, { message: "Leave request deleted successfully" });
         }
       )

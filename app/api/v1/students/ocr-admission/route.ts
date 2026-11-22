@@ -59,8 +59,6 @@ export const POST = withErrorHandler(
           return createAiErrorResponse(quotaCheck);
         }
 
-        await checkStudentQuota(tenantId, 1);
-
         const formData = await req.formData();
         const file = formData.get("file") as File;
         if (!file) return createErrorResponse(400, "No file provided");

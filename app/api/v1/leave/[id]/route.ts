@@ -38,7 +38,8 @@ export const PUT = withErrorHandler(
               updatedAt: new Date(),
               approvedAt: normalizedStatus === "approved" ? new Date() : undefined,
             },
-            tenantId
+            tenantId,
+            context?.user?.uid
           );
 
           return createSuccessResponse({ id: leaveId, status: normalizedStatus }, { message: "Leave status updated successfully" });
@@ -62,7 +63,7 @@ export const DELETE = withErrorHandler(
           }
 
           const leaveService = new LeaveService();
-          await leaveService.deleteLeave(leaveId, tenantId);
+          await leaveService.deleteLeave(leaveId, tenantId, context?.user?.uid);
 
           return createSuccessResponse({ id: leaveId }, { message: "Leave request deleted successfully" });
         }

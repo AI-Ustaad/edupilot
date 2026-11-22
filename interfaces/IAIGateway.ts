@@ -16,6 +16,7 @@ export interface IAIGateway {
 export interface GenerateContentOptions {
   responseMimeType?: string;
   temperature?: number;
+  maxOutputTokens?: number;
 }
 
 export interface AIProvider {

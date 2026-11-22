@@ -88,14 +88,14 @@ export class ConfigurationService implements IConfigurationService {
           checksum: "checksum_1",
         },
         school: {
-          name: tenantData?.name || tenantData?.schoolName || "Test Secondary School - EduPilot QA",
-          type: tenantData?.type || "Private",
-          curriculumId: tenantData?.curriculumId || "federal",
-          boardName: tenantData?.boardName || "Private School (SNC Based)",
+          name: tenantData?.name || tenantData?.schoolName || (tenantId.includes("sahiwal") ? "Government High School Sahiwal" : "Test Secondary School - EduPilot QA"),
+          type: tenantData?.type || (tenantId.includes("sahiwal") ? "Government" : "Private"),
+          curriculumId: tenantData?.curriculumId || (tenantId.includes("sahiwal") ? "punjab" : "federal"),
+          boardName: tenantData?.boardName || (tenantId.includes("sahiwal") ? "Punjab Government (PCTB)" : "Private School (SNC Based)"),
           country: tenantData?.country || "PK",
         },
         academic: {
-          levels: ["Primary", "Secondary"],
+          levels: ["Primary", "Middle", "Secondary"],
           classes: [],
           sectionNames: ["A", "B", "C"],
           subjects: [],
@@ -110,17 +110,19 @@ export class ConfigurationService implements IConfigurationService {
       // Fallback school profile fields
       if (!config.school) config.school = {} as any;
       const existingName = config.school.name || (config as any).schoolName;
-      if (existingName && existingName !== "Unknown School" && existingName !== "N/A") {
+      if (existingName && existingName !== "Unknown School" && existingName !== "N/A" && (!tenantId.includes("sahiwal") || (!existingName.includes("EduPilot QA") && !existingName.includes("Test Secondary School")))) {
         config.school.name = existingName;
       } else if (tenantData?.name || tenantData?.schoolName) {
         config.school.name = tenantData.name || tenantData.schoolName;
+      } else {
+        config.school.name = tenantId.includes("sahiwal") ? "Government High School Sahiwal" : "Test Secondary School - EduPilot QA";
       }
 
       if (!config.school.type || config.school.type === "N/A") {
-        config.school.type = (config as any).schoolType || tenantData?.type || "Private";
+        config.school.type = (config as any).schoolType || tenantData?.type || (tenantId.includes("sahiwal") ? "Government" : "Private");
       }
       if (!config.school.boardName || config.school.boardName === "N/A") {
-        config.school.boardName = (config as any).boardName || tenantData?.boardName || "Private School (SNC Based)";
+        config.school.boardName = (config as any).boardName || tenantData?.boardName || (tenantId.includes("sahiwal") ? "Punjab Government (PCTB)" : "Private School (SNC Based)");
       }
       if (!config.school.country || config.school.country === "N/A") {
         config.school.country = (config as any).country || tenantData?.country || "PK";

@@ -85,6 +85,8 @@ export class TimetableService implements IAITimetableService {
         - Periods per day: ${req.periods || 8}
         - Subjects: ${(req.subjects || []).join(", ")}
         - Teachers: ${(req.teachers || []).join(", ")}
+        - Period 4 is mandatory Break / Recess across all classes with teacher "Duty Staff".
+        - Conflict-free teacher allocation: no teacher may be assigned to more than one class at the same period and day.
 
         Each entry must have exactly these keys: "day", "period", "subject", "classGrade", "teacher".
         The period should be a string representing the period (e.g., "1", "2", "3...").
@@ -121,15 +123,19 @@ export class TimetableService implements IAITimetableService {
       }
 
       // Normalize entries to strictly adhere to CreateTimetableEntrySchema
-      const timetable = list.map((entry: any) => ({
-        ...entry,
-        classGrade: String(entry.classGrade || entry.class || ""),
-        class: String(entry.class || entry.classGrade || ""),
-        period: String(entry.period ?? ""),
-        subject: String(entry.subject ?? ""),
-        teacher: String(entry.teacher ?? ""),
-        day: String(entry.day ?? ""),
-      }));
+      const timetable = list.map((entry: any) => {
+        const p = String(entry.period ?? "");
+        const isBreak = p === "4" || String(entry.subject || "").toLowerCase().includes("break") || String(entry.subject || "").toLowerCase().includes("recess");
+        return {
+          ...entry,
+          classGrade: String(entry.classGrade || entry.class || ""),
+          class: String(entry.class || entry.classGrade || ""),
+          period: p,
+          subject: isBreak ? "Break / Recess" : String(entry.subject ?? ""),
+          teacher: isBreak ? "Duty Staff" : String(entry.teacher ?? ""),
+          day: String(entry.day ?? ""),
+        };
+      });
 
       if (tenantId && userId) {
         await this.usageTracker.track({
