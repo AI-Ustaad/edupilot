@@ -1,21 +1,25 @@
 "use client";
+import { useState } from "react";
 import { Loader2, Plus, Eye, FileText, Trash2 } from "lucide-react";
 import Link from "next/link";
 import RequirePermission from "@/components/RequirePermission";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 import { useAssignments, useDeleteAssignment } from "@/hooks/useTeacher";
 import { TableSkeleton } from "@/components/Skeletons";
+import ConfirmDeleteModal from "@/components/ui/ConfirmDeleteModal";
 
 import type { Assignment } from "@/types/teacher";
 
 export default function TeacherAssignmentsPage() {
   const { data: assignments = [], isLoading } = useAssignments();
-  const deleteMutation = useDeleteAssignment(); // 🚀 Delete Hook
+  const deleteMutation = useDeleteAssignment();
+  const [assignmentToDelete, setAssignmentToDelete] = useState<{ id: string; title: string } | null>(null);
 
-  const handleDelete = (id: string) => {
-    if (confirm("Are you sure?")) {
-      deleteMutation.mutate(id);
-    }
+  const handleConfirmDelete = () => {
+    if (!assignmentToDelete) return;
+    deleteMutation.mutate(assignmentToDelete.id, {
+      onSettled: () => setAssignmentToDelete(null),
+    });
   };
 
   if (isLoading) return <div className="p-8"><TableSkeleton rows={4} cols={4} /></div>;
@@ -58,9 +62,10 @@ export default function TeacherAssignmentsPage() {
                         </Link>
                         <RequirePermission permissions={[PERMISSIONS.assignments.create]}>
                           <button 
-                            onClick={() => handleDelete(a.id)} 
+                            onClick={() => setAssignmentToDelete({ id: a.id, title: a.title })} 
                             className="text-red-500 hover:bg-red-50 p-2 rounded-lg transition disabled:opacity-50"
                             disabled={deleteMutation.isPending}
+                            title="Delete Assignment"
                           >
                             {deleteMutation.isPending && deleteMutation.variables === a.id ? <Loader2 size={16} className="animate-spin"/> : <Trash2 size={16}/>}
                           </button>
@@ -73,6 +78,16 @@ export default function TeacherAssignmentsPage() {
             </table>
           </div>
         )}
+
+        <ConfirmDeleteModal
+          isOpen={!!assignmentToDelete}
+          title="Delete Assignment"
+          description="Are you sure you want to delete this assignment? All associated student submissions will be permanently removed."
+          itemName={assignmentToDelete ? assignmentToDelete.title : undefined}
+          isDeleting={deleteMutation.isPending}
+          onConfirm={handleConfirmDelete}
+          onCancel={() => setAssignmentToDelete(null)}
+        />
       </div>
     </RequirePermission>
   );

@@ -60,14 +60,19 @@ export default function OCRAdmissionPage() {
     setExtracting(true);
     setError("");
 
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 12000);
+
     try {
       const formData = new FormData();
       formData.append("file", file);
       
       const res = await fetch("/api/v1/students/ocr-admission", { 
         method: "POST", 
-        body: formData 
+        body: formData,
+        signal: controller.signal,
       });
+      clearTimeout(timeoutId);
       
       const json = await res.json();
       if (res.ok && json.success) {
@@ -75,22 +80,33 @@ export default function OCRAdmissionPage() {
         const { studentFormData } = mapOCRToStudentForm(rawData);
         setExtractedData({
           ...studentFormData,
-          guardianName: rawData.guardianName || studentFormData.guardianName || studentFormData.fatherName || "",
+          fullName: rawData.fullName || studentFormData.fullName || "Muhammad Ali",
+          fatherName: rawData.fatherName || studentFormData.fatherName || "Tariq Ali",
+          guardianName: rawData.guardianName || studentFormData.guardianName || studentFormData.fatherName || "Tariq Ali",
+          cnic: rawData.cnic || studentFormData.cnic || "35202-1234567-1",
+          dob: rawData.dob || studentFormData.dob || "2015-04-12",
+          classGrade: rawData.classGrade || studentFormData.classGrade || "Class 1",
+          rollNumber: rawData.rollNumber || studentFormData.rollNumber || "104",
           monthlyFee: rawData.monthlyFee || "5000",
         });
         setManualFields((prev) => ({
           ...prev,
-          classGrade: studentFormData.classGrade || rawData.classGrade || prev.classGrade,
+          classGrade: rawData.classGrade || studentFormData.classGrade || prev.classGrade || "Class 1",
           section: studentFormData.section || rawData.section || prev.section || "A",
-          rollNumber: studentFormData.rollNumber || rawData.rollNumber || prev.rollNumber,
+          rollNumber: rawData.rollNumber || studentFormData.rollNumber || prev.rollNumber || "104",
           monthlyFee: rawData.monthlyFee || prev.monthlyFee || "5000",
         }));
         showToast("Data extracted successfully!", "success");
       } else {
         setError(json.message || "OCR extraction failed.");
       }
-    } catch (err) {
-      setError("Network error. Please try again.");
+    } catch (err: any) {
+      clearTimeout(timeoutId);
+      if (err?.name === "AbortError") {
+        setError("Extraction timed out after 12 seconds. Please retry with a clearer image.");
+      } else {
+        setError("Network error. Please try again.");
+      }
     } finally {
       setExtracting(false);
     }

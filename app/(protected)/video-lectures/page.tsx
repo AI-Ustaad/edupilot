@@ -8,10 +8,12 @@ import { useSettings } from "@/hooks/useSettings";
 import { useVideos, useDeleteVideo } from "@/hooks/useVideos";
 import { TableSkeleton } from "@/components/Skeletons";
 import { extractUniqueClasses } from "@/lib/utils/formatClassLabel";
+import ConfirmDeleteModal from "@/components/ui/ConfirmDeleteModal";
 
 export default function VideoLecturesPage() {
   const [filterClass, setFilterClass] = useState("");
   const [filterSubject, setFilterSubject] = useState("");
+  const [videoToDelete, setVideoToDelete] = useState<{ id: string; title: string } | null>(null);
 
   const { data: classesData = [] } = useClasses();
   const { data: settings } = useSettings();
@@ -109,11 +111,7 @@ export default function VideoLecturesPage() {
                   </a>
                   <RequirePermission permissions={[PERMISSIONS.videoLectures.delete]}>
                     <button
-                      onClick={() => {
-                        if (confirm(`Are you sure you want to delete "${v.title}"?`)) {
-                          deleteMutation.mutate(v.id);
-                        }
-                      }}
+                      onClick={() => setVideoToDelete({ id: v.id, title: v.title })}
                       disabled={deleteMutation.isPending && deleteMutation.variables === v.id}
                       className="text-red-500 hover:bg-red-50 p-2 rounded-lg transition disabled:opacity-50"
                       title="Delete Video"
@@ -130,6 +128,21 @@ export default function VideoLecturesPage() {
             ))}
           </div>
         )}
+
+        <ConfirmDeleteModal
+          isOpen={!!videoToDelete}
+          title="Delete Video Lecture"
+          description="Are you sure you want to delete this video lecture? This action cannot be undone."
+          itemName={videoToDelete ? videoToDelete.title : undefined}
+          isDeleting={deleteMutation.isPending}
+          onConfirm={() => {
+            if (!videoToDelete) return;
+            deleteMutation.mutate(videoToDelete.id, {
+              onSettled: () => setVideoToDelete(null),
+            });
+          }}
+          onCancel={() => setVideoToDelete(null)}
+        />
       </div>
     </RequirePermission>
   );

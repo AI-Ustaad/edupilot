@@ -22,16 +22,17 @@ export const useUploadVideo = () => {
 
   return useMutation({
     mutationFn: async (formData: FormData) => {
-      return apiClient.post("/video-lectures", formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
+      // NOTE: Do not set Content-Type manually so the browser/Axios properly attaches multipart boundary
+      return apiClient.post("/video-lectures", formData);
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["videos", tenantId] });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["videos"] });
+      await queryClient.refetchQueries({ queryKey: ["videos"] });
       showToast("Video lecture uploaded successfully!", "success");
     },
     onError: (err: any) => {
-      showToast(err?.message || "Failed to upload video lecture.", "error");
+      const msg = err?.response?.data?.error || err?.response?.data?.message || err?.message || "Failed to upload video lecture.";
+      showToast(msg, "error");
     },
   });
 };
@@ -46,12 +47,14 @@ export const useDeleteVideo = () => {
     mutationFn: async (id: string) => {
       return apiClient.delete(`/video-lectures?id=${id}`);
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["videos", tenantId] });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["videos"] });
+      await queryClient.refetchQueries({ queryKey: ["videos"] });
       showToast("Video lecture deleted successfully.", "success");
     },
     onError: (err: any) => {
-      showToast(err?.message || "Failed to delete video lecture.", "error");
+      const msg = err?.response?.data?.error || err?.response?.data?.message || err?.message || "Failed to delete video lecture.";
+      showToast(msg, "error");
     },
   });
 };

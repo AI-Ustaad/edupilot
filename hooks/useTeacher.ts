@@ -18,7 +18,7 @@ export const useAssignments = () => {
       const data = res.data;
       return safeArray(data?.data || data);
     },
-    staleTime: 30_000,
+    staleTime: 0,
   });
 };
 
@@ -29,15 +29,16 @@ export const useCreateAssignment = () => {
   const { showToast } = useToast();
   return useMutation({
     mutationFn: async (data: CreateAssignmentInput) => apiClient.post("/assignments", data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["assignments", tenantId] });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["assignments"] });
+      await queryClient.refetchQueries({ queryKey: ["assignments"] });
       showToast("Assignment created successfully!", "success");
     },
     onError: () => showToast("Failed to create assignment.", "error"),
   });
 };
 
-// Delete Assignment (With Optimistic Update & Undo)
+// Delete Assignment
 export const useDeleteAssignment = () => {
   const queryClient = useQueryClient();
   const { user } = useAuth();
@@ -48,33 +49,13 @@ export const useDeleteAssignment = () => {
     mutationFn: async (id: string) => {
       return apiClient.delete(`/assignments/${id}`);
     },
-    onMutate: async (deletedId: string) => {
-      await queryClient.cancelQueries({ queryKey: ["assignments", tenantId] });
-      
-      const previousAssignments = queryClient.getQueryData(["assignments", tenantId]);
-      
-      // Optimistically remove from UI
-      queryClient.setQueryData(["assignments", tenantId], (old: (Assignment & { id: string })[]) => 
-        old.filter((a) => a.id !== deletedId)
-      );
-      
-      return { previousAssignments };
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["assignments"] });
+      await queryClient.refetchQueries({ queryKey: ["assignments"] });
+      showToast("Assignment deleted successfully.", "success");
     },
-    onError: (_err, _deletedId, context) => {
-      // Rollback on error
-      queryClient.setQueryData(["assignments", tenantId], context?.previousAssignments);
+    onError: () => {
       showToast("Failed to delete assignment.", "error");
-    },
-    onSuccess: (_data, _deletedId, context) => {
-      // Show Toast with Undo option
-      showToast("Assignment deleted successfully.", "undo", () => {
-        // Undo Logic: Restore in UI
-        queryClient.setQueryData(["assignments", tenantId], context?.previousAssignments);
-        showToast("Assignment restored.", "success");
-      });
-    },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ["assignments", tenantId] });
     },
   });
 };
@@ -131,7 +112,12 @@ export const useBooks = () => {
   const tenantId = user?.tenantId || "unknown";
   return useQuery({
     queryKey: ["books", tenantId],
-    queryFn: async () => safeArray(await apiClient.get("/books")),
+    queryFn: async () => {
+      const res = await apiClient.get("/books");
+      const data = res.data;
+      return safeArray(data?.data || data);
+    },
+    staleTime: 0,
   });
 };
 
@@ -142,10 +128,12 @@ export const useCreateBook = () => {
   const { showToast } = useToast();
   return useMutation({
     mutationFn: async (data: CreateBookInput) => apiClient.post("/books", data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["books", tenantId] });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["books"] });
+      await queryClient.refetchQueries({ queryKey: ["books"] });
       showToast("Book added successfully!", "success");
     },
+    onError: () => showToast("Failed to create book.", "error"),
   });
 };
 
@@ -156,9 +144,10 @@ export const useDeleteBook = () => {
   const { showToast } = useToast();
   return useMutation({
     mutationFn: async (id: string) => apiClient.delete(`/books/${id}`),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["books", tenantId] });
-      showToast("Book deleted!", "success");
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["books"] });
+      await queryClient.refetchQueries({ queryKey: ["books"] });
+      showToast("Book deleted successfully!", "success");
     },
     onError: () => showToast("Failed to delete book.", "error"),
   });

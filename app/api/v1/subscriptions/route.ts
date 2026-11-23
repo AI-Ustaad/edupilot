@@ -14,7 +14,7 @@ const FREE_PLAN_ID = "free";
 export const GET = withErrorHandler(
   withAuth(
     withTenant(
-      withPermission(PERMISSIONS.subscriptions.view)(async (_req: Request, { tenantId }: TenantContext) => {
+      withPermission(PERMISSIONS.subscriptions.view)(async (_req: Request, { tenantId, user }: TenantContext) => {
         const service = new SubscriptionService();
         const subscription = await service.getSubscription(tenantId);
         const plan = PLANS[(subscription as any).planId as keyof typeof PLANS] || PLANS.free;
@@ -57,7 +57,11 @@ export const GET = withErrorHandler(
           aiCalls = 0;
         }
 
-        const isDemoSchool = tenantId === "tenant_ghs_sahiwal" || tenantId?.includes("ghs_sahiwal");
+        const isDemoSchool =
+          tenantId === "tenant_ghs_sahiwal" ||
+          tenantId?.includes("ghs_sahiwal") ||
+          tenantId === "default" ||
+          (user?.email && user.email.includes("ghssahiwal"));
         const resolvedLimits = {
           ...(subscription as any)?.limits,
           aiMonthlyQuota: isDemoSchool ? 500 : ((subscription as any)?.limits?.aiMonthlyQuota || plan.maxAiQuota || 50),

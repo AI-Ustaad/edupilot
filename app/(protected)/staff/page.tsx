@@ -12,6 +12,7 @@ import { useStaffDirectory, useDeleteStaff, useStaffAnalytics } from "@/hooks/us
 import { TableSkeleton } from "@/components/Skeletons";
 import EditStaffModal from "@/components/staff/EditStaffModal";
 import { getStaffSalary } from "@/lib/mappers/StaffPersistenceMapper";
+import ConfirmDeleteModal from "@/components/ui/ConfirmDeleteModal";
 
 const STATUS_COLORS: Record<string, string> = {
   active: "bg-green-50 text-green-700 border-green-200",
@@ -82,10 +83,17 @@ export default function StaffDirectoryPage() {
   const staff = result?.data || [];
   const totalPages = result?.totalPages || 1;
   const total = result?.total || 0;
+  const [staffToDelete, setStaffToDelete] = useState<{ id: string; name: string } | null>(null);
 
-  const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure you want to remove this staff member?")) return;
-    deleteMutation.mutate(id);
+  const handleDelete = (id: string, name: string) => {
+    setStaffToDelete({ id, name });
+  };
+
+  const handleConfirmDelete = () => {
+    if (!staffToDelete) return;
+    deleteMutation.mutate(staffToDelete.id, {
+      onSettled: () => setStaffToDelete(null),
+    });
   };
 
   const toggleSelect = (id: string) => {
@@ -439,9 +447,10 @@ export default function StaffDirectoryPage() {
                             <Edit3 size={16} />
                           </button>
                           <RequirePermission permissions={[PERMISSIONS.staff.delete]}>
-                            <button onClick={() => handleDelete(s.id)}
+                            <button onClick={() => handleDelete(s.id, s.personal?.fullName || s.fullName || "Staff")}
                               className="text-red-500 hover:bg-red-50 p-2 rounded-lg transition disabled:opacity-50"
-                              disabled={deleteMutation.isPending}>
+                              disabled={deleteMutation.isPending}
+                              title="Delete Staff Member">
                               {deleteMutation.isPending && deleteMutation.variables === s.id ?
                                 <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
                             </button>
@@ -590,6 +599,16 @@ export default function StaffDirectoryPage() {
             staff={editingStaff}
           />
         )}
+
+        <ConfirmDeleteModal
+          isOpen={!!staffToDelete}
+          title="Delete Staff Member"
+          description="Are you sure you want to remove this staff member? This record will be archived and removed from active staff."
+          itemName={staffToDelete ? staffToDelete.name : undefined}
+          isDeleting={deleteMutation.isPending}
+          onConfirm={handleConfirmDelete}
+          onCancel={() => setStaffToDelete(null)}
+        />
       </div>
     </RequirePermission>
   );

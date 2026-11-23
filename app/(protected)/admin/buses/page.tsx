@@ -5,12 +5,14 @@ import RequirePermission from "@/components/RequirePermission";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 import { useBuses, useSaveBus, useDeleteBus } from "@/hooks/useAdmin";
 import { TableSkeleton } from "@/components/Skeletons";
+import ConfirmDeleteModal from "@/components/ui/ConfirmDeleteModal";
 
 export default function BusesPage() {
   const { data: buses = [], isLoading } = useBuses();
   const saveMutation = useSaveBus();
   const deleteMutation = useDeleteBus();
   const [form, setForm] = useState({ busNumber: "", route: "", driverName: "", driverContact: "", capacity: "" });
+  const [busToDelete, setBusToDelete] = useState<{ id: string; busNumber: string } | null>(null);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -18,6 +20,13 @@ export default function BusesPage() {
       { ...form, capacity: form.capacity ? parseInt(form.capacity) : undefined },
       { onSuccess: () => setForm({ busNumber: "", route: "", driverName: "", driverContact: "", capacity: "" }) }
     );
+  };
+
+  const handleConfirmDelete = () => {
+    if (!busToDelete) return;
+    deleteMutation.mutate(busToDelete.id, {
+      onSettled: () => setBusToDelete(null),
+    });
   };
 
   return (
@@ -57,11 +66,7 @@ export default function BusesPage() {
                     <p className="text-sm text-gray-500 font-medium mt-0.5">{bus.route} {bus.driverName && <span className="text-gray-400 ml-1">| Driver: {bus.driverName}</span>}</p>
                   </div>
                   <button
-                    onClick={() => {
-                      if (confirm("Are you sure you want to delete this bus?")) {
-                        deleteMutation.mutate(bus.id);
-                      }
-                    }}
+                    onClick={() => setBusToDelete({ id: bus.id, busNumber: bus.busNumber })}
                     disabled={deleteMutation.isPending && deleteMutation.variables === bus.id}
                     className="text-red-500 hover:bg-red-50 p-2 rounded-lg transition disabled:opacity-50"
                     title="Delete Bus"
@@ -78,6 +83,16 @@ export default function BusesPage() {
           )}
         </div>
       )}
+
+      <ConfirmDeleteModal
+        isOpen={!!busToDelete}
+        title="Delete Bus"
+        description="Are you sure you want to remove this bus from the fleet? This action cannot be undone."
+        itemName={busToDelete ? `Bus: ${busToDelete.busNumber}` : undefined}
+        isDeleting={deleteMutation.isPending}
+        onConfirm={handleConfirmDelete}
+        onCancel={() => setBusToDelete(null)}
+      />
     </div>
   );
 }

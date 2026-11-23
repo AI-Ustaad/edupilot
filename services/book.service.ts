@@ -25,7 +25,8 @@ export class BookService implements IBookService {
       : await this.repo.findAll(tenantId);
     const cleanList: (Book & { id: string })[] = [];
     for (const b of list) {
-      if (String(b.title || "").toUpperCase().includes("TEST")) {
+      // Clean only specific stuck test residue from the 23 Nov audit
+      if (String(b.title || "").trim() === "TEST — Audit Book") {
         this.repo.delete(b.id, tenantId).catch(() => {});
       } else {
         cleanList.push(b);

@@ -8,10 +8,12 @@ import { useSettings } from "@/hooks/useSettings";
 import { useVideos, useUploadVideo, useDeleteVideo } from "@/hooks/useVideos";
 import { extractUniqueClasses } from "@/lib/utils/formatClassLabel";
 import { useToast } from "@/components/ToastProvider";
+import ConfirmDeleteModal from "@/components/ui/ConfirmDeleteModal";
 
 export default function TeacherVideoLecturesPage() {
   const [form, setForm] = useState({ title: "", description: "", classGrade: "", subject: "", file: null as File | null });
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [videoToDelete, setVideoToDelete] = useState<{ id: string; title: string } | null>(null);
 
   const { data: classes = [] } = useClasses();
   const { data: settings } = useSettings();
@@ -50,9 +52,14 @@ export default function TeacherVideoLecturesPage() {
   };
 
   const handleDelete = (id: string, title: string) => {
-    if (confirm(`Are you sure you want to delete "${title}"?`)) {
-      deleteMutation.mutate(id);
-    }
+    setVideoToDelete({ id, title });
+  };
+
+  const handleConfirmDelete = () => {
+    if (!videoToDelete) return;
+    deleteMutation.mutate(videoToDelete.id, {
+      onSettled: () => setVideoToDelete(null),
+    });
   };
 
   if (isLoading) return <div className="p-8 text-center"><Loader2 className="animate-spin text-blue-600 mx-auto" size={32} /></div>;
@@ -116,6 +123,16 @@ export default function TeacherVideoLecturesPage() {
           </div>
         )}
       </div>
+
+      <ConfirmDeleteModal
+        isOpen={!!videoToDelete}
+        title="Delete Video Lecture"
+        description="Are you sure you want to delete this video lecture? It will be removed from both teacher and student video libraries."
+        itemName={videoToDelete ? videoToDelete.title : undefined}
+        isDeleting={deleteMutation.isPending}
+        onConfirm={handleConfirmDelete}
+        onCancel={() => setVideoToDelete(null)}
+      />
     </div>
   );
 }

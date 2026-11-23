@@ -61,7 +61,11 @@ export class LessonPlanService implements ILessonPlanService {
     const result = await this.repo.paginate(tenantId, page, limit, "createdAt", "desc");
     const cleanData: (LessonPlan & { id: string })[] = [];
     for (const p of result.data) {
-      if (p.id === "qvdwaxqZ") {
+      if (
+        p.id === "qvdwaxqZ" ||
+        String(p.topic || "").trim() === "C1-TEST Fractions" ||
+        String(p.topic || "").trim() === "C1-TEST"
+      ) {
         this.repo.delete(p.id, tenantId).catch(() => {});
       } else {
         cleanData.push(p);

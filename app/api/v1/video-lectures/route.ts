@@ -35,9 +35,10 @@ export const POST = withErrorHandler(
 
           const file = formData.get("file") as File | null;
           if (file && file.size > 0 && !videoUrl) {
+            let buffer: Buffer | null = null;
             try {
               const bytes = await file.arrayBuffer();
-              const buffer = Buffer.from(bytes);
+              buffer = Buffer.from(bytes);
               const { UploadService } = await import("@/services/upload.service");
               const uploadService = new UploadService();
               const uploadRace = Promise.race([
@@ -46,9 +47,8 @@ export const POST = withErrorHandler(
               ]);
               videoUrl = await uploadRace;
             } catch {
-              if (file.size < 2 * 1024 * 1024) {
-                const bytes = await file.arrayBuffer();
-                videoUrl = `data:${file.type || "video/mp4"};base64,${Buffer.from(bytes).toString("base64")}`;
+              if (buffer && file.size < 2.5 * 1024 * 1024) {
+                videoUrl = `data:${file.type || "video/mp4"};base64,${buffer.toString("base64")}`;
               } else {
                 videoUrl = `https://storage.googleapis.com/edupilot-d262f.appspot.com/videos/${tenantId}/${encodeURIComponent(file.name)}`;
               }

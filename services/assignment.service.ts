@@ -63,7 +63,8 @@ export class AssignmentService implements IAssignmentService {
     const result = await this.repo.paginate(tenantId, page, limit, "createdAt", "desc");
     const cleanData: (Assignment & { id: string })[] = [];
     for (const a of result.data) {
-      if (String(a.title || "").toUpperCase().includes("TEST")) {
+      // Clean only specific stuck test residue from the 23 Nov audit
+      if (String(a.title || "").trim() === "TEST — Audit Assignment") {
         this.repo.delete(a.id, tenantId).catch(() => {});
       } else {
         cleanData.push(a);

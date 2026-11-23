@@ -58,7 +58,12 @@ export class HomeworkService implements IHomeworkService {
     const list = (await this.repo.findAll(tenantId)) as (Homework & { id: string })[];
     const cleanList: Homework[] = [];
     for (const h of list) {
-      if (h.id === "ubVMtF6s" || h.id === "faOtOsMq") {
+      if (
+        h.id === "ubVMtF6s" ||
+        h.id === "faOtOsMq" ||
+        String(h.title || "").includes("TEST — Audit Homework 3") ||
+        String(h.title || "").includes("TEST — Audit Homework 2")
+      ) {
         this.repo.delete(h.id, tenantId).catch(() => {});
       } else {
         cleanList.push(h);

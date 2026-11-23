@@ -7,6 +7,7 @@ import { useClasses } from "@/hooks/useClasses";
 import { useSettings } from "@/hooks/useSettings";
 import { useHomework, useCreateHomework, useDeleteHomework } from "@/hooks/useHomework";
 import { formatClassLabel, cleanSectionName, extractUniqueClasses } from "@/lib/utils/formatClassLabel";
+import ConfirmDeleteModal from "@/components/ui/ConfirmDeleteModal";
 
 export default function TeacherHomeworkPage() {
   const [title, setTitle] = useState("");
@@ -16,6 +17,7 @@ export default function TeacherHomeworkPage() {
   const [subject, setSubject] = useState("");
   const [dueDate, setDueDate] = useState("");
   const [success, setSuccess] = useState("");
+  const [itemToDelete, setItemToDelete] = useState<{ id: string; title: string } | null>(null);
 
   const { data: classes = [] } = useClasses();
   const { data: settings } = useSettings();
@@ -52,10 +54,15 @@ export default function TeacherHomeworkPage() {
     );
   };
 
-  const handleDelete = (id: string) => {
-    if (typeof window === "undefined" || confirm("Are you sure you want to delete this homework?")) {
-      deleteMutation.mutate(id);
-    }
+  const handleDelete = (id: string, itemTitle: string) => {
+    setItemToDelete({ id, title: itemTitle });
+  };
+
+  const handleConfirmDelete = () => {
+    if (!itemToDelete) return;
+    deleteMutation.mutate(itemToDelete.id, {
+      onSettled: () => setItemToDelete(null),
+    });
   };
 
   return (
@@ -110,7 +117,7 @@ export default function TeacherHomeworkPage() {
                 </div>
                 <RequirePermission permissions={[PERMISSIONS.homework.create]}>
                   <button 
-                    onClick={() => handleDelete(a.id)} 
+                    onClick={() => handleDelete(a.id, a.title)} 
                     className="text-red-500 hover:bg-red-50 p-2 rounded-lg transition disabled:opacity-50"
                     disabled={deleteMutation.isPending}
                   >
@@ -122,6 +129,16 @@ export default function TeacherHomeworkPage() {
           </div>
         )}
       </div>
+
+      <ConfirmDeleteModal
+        isOpen={!!itemToDelete}
+        title="Delete Homework"
+        description="Are you sure you want to delete this homework assignment? Students will no longer see this task."
+        itemName={itemToDelete ? itemToDelete.title : undefined}
+        isDeleting={deleteMutation.isPending}
+        onConfirm={handleConfirmDelete}
+        onCancel={() => setItemToDelete(null)}
+      />
     </div>
   );
 }

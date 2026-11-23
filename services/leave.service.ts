@@ -20,7 +20,7 @@ export class LeaveService {
     const list = await this.leaveRepo.findAll(tenantId);
     const cleanList: (LeaveRequest & { id: string })[] = [];
     for (const l of list) {
-      if (l.id === "3Rl6b5i6") {
+      if (l.id === "3Rl6b5i6" || String(l.reason || "").includes("TEST — Audit leave") || String(l.notes || "").includes("TEST — Audit leave")) {
         this.leaveRepo.delete(l.id, tenantId).catch(() => {});
       } else {
         cleanList.push(l);
@@ -40,7 +40,7 @@ export class LeaveService {
     const list = await this.leaveRepo.findPendingByTenant(tenantId);
     const cleanList: (LeaveRequest & { id: string })[] = [];
     for (const l of list) {
-      if (l.id === "3Rl6b5i6") {
+      if (l.id === "3Rl6b5i6" || String(l.reason || "").includes("TEST — Audit leave") || String(l.notes || "").includes("TEST — Audit leave")) {
         this.leaveRepo.delete(l.id, tenantId).catch(() => {});
       } else {
         cleanList.push(l);

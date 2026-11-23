@@ -55,7 +55,8 @@ export class QuizService implements IQuizService {
     const list = await this.repo.findAll(tenantId);
     const cleanList: (Quiz & { id: string })[] = [];
     for (const q of list) {
-      if (String(q.title || "").toUpperCase().includes("TEST")) {
+      // Clean only specific stuck test residue from the 23 Nov audit
+      if (String(q.title || "").trim() === "TEST — Audit Quiz") {
         this.repo.delete(q.id, tenantId).catch(() => {});
       } else {
         cleanList.push(q);

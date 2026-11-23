@@ -8,6 +8,7 @@ import { useSettings } from "@/hooks/useSettings";
 import { useLessonPlans, useCreateLessonPlan, useDeleteLessonPlan } from "@/hooks/useTeacher";
 import { TableSkeleton } from "@/components/Skeletons";
 import { extractUniqueClasses } from "@/lib/utils/formatClassLabel";
+import ConfirmDeleteModal from "@/components/ui/ConfirmDeleteModal";
 
 export default function LessonPlannerPage() {
   const { data: plans = [], isLoading } = useLessonPlans();
@@ -17,6 +18,7 @@ export default function LessonPlannerPage() {
   const uniqueClasses = useMemo(() => extractUniqueClasses(classes), [classes]);
   const createMutation = useCreateLessonPlan();
   const deleteMutation = useDeleteLessonPlan();
+  const [planToDelete, setPlanToDelete] = useState<{ id: string; topic: string } | null>(null);
 
   const [form, setForm] = useState({ date: new Date().toISOString().slice(0, 10), classGrade: "", subject: "", topic: "", objective: "", materials: "", notes: "" });
 
@@ -74,11 +76,7 @@ export default function LessonPlannerPage() {
                   <td className="p-4 text-gray-700 font-medium">{p.topic}</td>
                   <td className="p-4 text-right">
                     <button
-                      onClick={() => {
-                        if (confirm("Are you sure you want to delete this lesson plan?")) {
-                          deleteMutation.mutate(p.id);
-                        }
-                      }}
+                      onClick={() => setPlanToDelete({ id: p.id, topic: p.topic })}
                       disabled={deleteMutation.isPending && deleteMutation.variables === p.id}
                       className="text-red-500 hover:bg-red-50 p-2 rounded-lg transition disabled:opacity-50"
                       title="Delete Lesson Plan"
@@ -96,6 +94,21 @@ export default function LessonPlannerPage() {
           </tbody>
         </table>
       </div>
+
+      <ConfirmDeleteModal
+        isOpen={!!planToDelete}
+        title="Delete Lesson Plan"
+        description="Are you sure you want to delete this lesson plan?"
+        itemName={planToDelete ? planToDelete.topic : undefined}
+        isDeleting={deleteMutation.isPending}
+        onConfirm={() => {
+          if (!planToDelete) return;
+          deleteMutation.mutate(planToDelete.id, {
+            onSettled: () => setPlanToDelete(null),
+          });
+        }}
+        onCancel={() => setPlanToDelete(null)}
+      />
     </div>
   );
 }

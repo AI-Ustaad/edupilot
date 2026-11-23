@@ -13,6 +13,7 @@ import { safeArray } from "@/lib/api/safeResponse";
 import { useAuth } from "@/context/AuthContext";
 import { TableSkeleton } from "@/components/Skeletons";
 import { formatClassLabel, cleanSectionName, extractUniqueClasses } from "@/lib/utils/formatClassLabel";
+import ConfirmDeleteModal from "@/components/ui/ConfirmDeleteModal";
 
 interface Question { question: string; options: string[]; correct: string; }
 
@@ -21,11 +22,16 @@ export default function TeacherQuizzesPage() {
   const tenantId = user?.tenantId || "unknown";
   const queryClient = useQueryClient();
   const { showToast } = useToast();
+  const [quizToDelete, setQuizToDelete] = useState<{ id: string; title: string } | null>(null);
 
   const { data: quizzes = [], isLoading } = useQuery({
     queryKey: ["quizzes", tenantId],
-    queryFn: async () => safeArray(await apiClient.get("/quizzes")),
-    staleTime: 30_000,
+    queryFn: async () => {
+      const res = await apiClient.get("/quizzes");
+      const data = res.data;
+      return safeArray(data?.data || data);
+    },
+    staleTime: 0,
   });
 
   const { data: classesData = [] } = useClasses();
@@ -42,8 +48,9 @@ export default function TeacherQuizzesPage() {
 
   const createMutation = useMutation({
     mutationFn: async (data: any) => apiClient.post("/quizzes", data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["quizzes", tenantId] });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["quizzes"] });
+      await queryClient.refetchQueries({ queryKey: ["quizzes"] });
       showToast("Quiz published successfully!", "success");
       setTitle(""); setClassGrade(""); setSection(""); setSubject("");
       setQuestions([{ question: "", options: ["", "", "", ""], correct: "" }]);
@@ -53,8 +60,9 @@ export default function TeacherQuizzesPage() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => apiClient.delete(`/quizzes/${id}`),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["quizzes", tenantId] });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["quizzes"] });
+      await queryClient.refetchQueries({ queryKey: ["quizzes"] });
       showToast("Quiz deleted successfully!", "success");
     },
     onError: () => showToast("Failed to delete quiz.", "error"),
@@ -151,11 +159,7 @@ export default function TeacherQuizzesPage() {
                         <Eye size={16} /> Results
                       </Link>
                       <button
-                        onClick={() => {
-                          if (confirm("Are you sure you want to delete this quiz?")) {
-                            deleteMutation.mutate(q.id);
-                          }
-                        }}
+                        onClick={() => setQuizToDelete({ id: q.id, title: q.title })}
                         disabled={deleteMutation.isPending && deleteMutation.variables === q.id}
                         className="text-red-500 hover:bg-red-50 p-2 rounded-lg transition disabled:opacity-50"
                         title="Delete Quiz"
@@ -174,6 +178,21 @@ export default function TeacherQuizzesPage() {
           </tbody>
         </table>
       </div>
+
+      <ConfirmDeleteModal
+        isOpen={!!quizToDelete}
+        title="Delete Quiz"
+        description="Are you sure you want to delete this quiz? All student attempts and results for this quiz will be permanently removed."
+        itemName={quizToDelete ? quizToDelete.title : undefined}
+        isDeleting={deleteMutation.isPending}
+        onConfirm={() => {
+          if (!quizToDelete) return;
+          deleteMutation.mutate(quizToDelete.id, {
+            onSettled: () => setQuizToDelete(null),
+          });
+        }}
+        onCancel={() => setQuizToDelete(null)}
+      />
     </div>
   );
 }

@@ -91,7 +91,13 @@ export default function EnterpriseBillingPage() {
     ? 1 
     : Math.min((staffUsed / currentPlan.limits.staff) * 100, 100);
 
-  const aiLimit = (subData as any)?.limits?.maxAiQuota || (subData as any)?.limits?.aiMonthlyQuota || currentPlan.limits.aiQuota || 50;
+  const isDemoTenant = tenantId === "tenant_ghs_sahiwal" || tenantId?.includes("ghs_sahiwal") || user?.email?.includes("ghssahiwal");
+  const aiLimit = Number(
+    (subData as any)?.limits?.maxAiQuota ||
+    (subData as any)?.limits?.aiMonthlyQuota ||
+    (isDemoTenant ? 500 : currentPlan.limits.aiQuota) ||
+    500
+  );
   const aiUsagePercent = Math.min((aiUsed / aiLimit) * 100, 100);
 
   const isPastDue = (subData as any)?.status === "past_due";
@@ -193,8 +199,10 @@ export default function EnterpriseBillingPage() {
                   ? `Your student count (${studentsUsed}) exceeds your active plan limit (${currentPlan.limits.students}).`
                   : isStaffOverLimit
                   ? `Your staff count (${staffUsed}) exceeds your active plan limit (${currentPlan.limits.staff}).`
-                  : `Your monthly AI usage (${aiUsed}/${aiLimit}) has exceeded your plan limit.`}
-                {" "}All existing student and staff records remain fully accessible for viewing and management. However, creating or enrolling new records is blocked until you upgrade your plan.
+                  : `Your monthly AI usage (${aiUsed}/${aiLimit}) has reached your plan allowance.`}
+                {isStudentOverLimit || isStaffOverLimit
+                  ? " All existing student and staff records remain fully accessible for viewing and management. However, creating or enrolling new records is blocked until you upgrade your plan."
+                  : " All existing records and core school operations remain fully functional. Upgrade your subscription to unlock additional AI generation capacity."}
               </p>
             </div>
           </div>

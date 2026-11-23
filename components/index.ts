@@ -17,3 +17,4 @@ export * from "./ThemeProvider";
 export * from "./ThemeSwitcher";
 export * from "./ThemeToggle";
 export * from "./ToastProvider";
+export { default as ConfirmDeleteModal } from "./ui/ConfirmDeleteModal";

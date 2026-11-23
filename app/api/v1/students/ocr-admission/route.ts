@@ -78,10 +78,17 @@ export const POST = withErrorHandler(
         try {
           if (fileType === "image") {
             try {
-              const worker = await createWorker("eng");
-              const { data } = await worker.recognize(buffer);
-              await worker.terminate();
-              extractedText = data.text;
+              // Wrap Tesseract in a 4-second timeout race with instant safe fallback so it never hangs
+              const ocrPromise = (async () => {
+                const worker = await createWorker("eng");
+                const { data } = await worker.recognize(buffer);
+                await worker.terminate();
+                return data.text;
+              })();
+              const timeoutPromise = new Promise<string>((resolve) =>
+                setTimeout(() => resolve(""), 4000)
+              );
+              extractedText = await Promise.race([ocrPromise, timeoutPromise]);
             } catch {
               extractedText = "";
             }

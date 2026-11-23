@@ -10,6 +10,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/components/ToastProvider";
 import { TableSkeleton } from "@/components/Skeletons";
 import { useStaff } from "@/hooks/useStaff";
+import ConfirmDeleteModal from "@/components/ui/ConfirmDeleteModal";
 
 export default function LeaveRequestsPage() {
   const { user } = useAuth();
@@ -17,6 +18,7 @@ export default function LeaveRequestsPage() {
   const queryClient = useQueryClient();
   const { showToast } = useToast();
   const { data: staffList = [] } = useStaff();
+  const [leaveToDelete, setLeaveToDelete] = useState<{ id: string; name: string } | null>(null);
 
   const [showModal, setShowModal] = useState(false);
   const [selectedStaffId, setSelectedStaffId] = useState("");
@@ -162,11 +164,7 @@ export default function LeaveRequestsPage() {
                     </>
                   )}
                   <button
-                    onClick={() => {
-                      if (confirm("Are you sure you want to delete this leave request?")) {
-                        deleteLeaveMutation.mutate(leave.id);
-                      }
-                    }}
+                    onClick={() => setLeaveToDelete({ id: leave.id, name: `${leave.staffName || "Staff"} (${leave.leaveType || "Leave"})` })}
                     disabled={deleteLeaveMutation.isPending}
                     className="p-2.5 rounded-xl border border-gray-200 text-gray-500 hover:text-red-600 hover:bg-red-50 transition disabled:opacity-50"
                     title="Delete Leave Request"
@@ -183,6 +181,21 @@ export default function LeaveRequestsPage() {
           ))}
         </div>
       )}
+
+      <ConfirmDeleteModal
+        isOpen={!!leaveToDelete}
+        title="Delete Leave Request"
+        description="Are you sure you want to delete this leave request? This record will be permanently removed."
+        itemName={leaveToDelete ? leaveToDelete.name : undefined}
+        isDeleting={deleteLeaveMutation.isPending}
+        onConfirm={() => {
+          if (!leaveToDelete) return;
+          deleteLeaveMutation.mutate(leaveToDelete.id, {
+            onSettled: () => setLeaveToDelete(null),
+          });
+        }}
+        onCancel={() => setLeaveToDelete(null)}
+      />
 
       {/* Submit Leave Request Modal */}
       {showModal && (

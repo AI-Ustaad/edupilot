@@ -8,6 +8,7 @@ import { useSettings } from "@/hooks/useSettings";
 import { useBooks, useCreateBook, useDeleteBook } from "@/hooks/useTeacher";
 import { TableSkeleton } from "@/components/Skeletons";
 import { extractUniqueClasses } from "@/lib/utils/formatClassLabel";
+import ConfirmDeleteModal from "@/components/ui/ConfirmDeleteModal";
 
 export default function ManageBooksPage() {
   const { data: books = [], isLoading } = useBooks();
@@ -17,6 +18,7 @@ export default function ManageBooksPage() {
   const uniqueClasses = useMemo(() => extractUniqueClasses(classes), [classes]);
   const createMutation = useCreateBook();
   const deleteMutation = useDeleteBook();
+  const [bookToDelete, setBookToDelete] = useState<{ id: string; title: string } | null>(null);
 
   const [form, setForm] = useState({ title: "", classGrade: "", subject: "", fileUrl: "" });
 
@@ -73,11 +75,7 @@ export default function ManageBooksPage() {
                   <td className="p-4 text-gray-600">{b.subject}</td>
                   <td className="p-4 text-right">
                     <button
-                      onClick={() => {
-                        if (confirm("Are you sure you want to delete this book?")) {
-                          deleteMutation.mutate(b.id);
-                        }
-                      }}
+                      onClick={() => setBookToDelete({ id: b.id, title: b.title })}
                       disabled={deleteMutation.isPending && deleteMutation.variables === b.id}
                       className="text-red-500 hover:bg-red-50 p-2 rounded-lg transition disabled:opacity-50"
                       title="Delete Book"
@@ -95,6 +93,21 @@ export default function ManageBooksPage() {
           </tbody>
         </table>
       </div>
+
+      <ConfirmDeleteModal
+        isOpen={!!bookToDelete}
+        title="Delete Book"
+        description="Are you sure you want to remove this book from the library catalog?"
+        itemName={bookToDelete ? bookToDelete.title : undefined}
+        isDeleting={deleteMutation.isPending}
+        onConfirm={() => {
+          if (!bookToDelete) return;
+          deleteMutation.mutate(bookToDelete.id, {
+            onSettled: () => setBookToDelete(null),
+          });
+        }}
+        onCancel={() => setBookToDelete(null)}
+      />
     </div>
   );
 }
