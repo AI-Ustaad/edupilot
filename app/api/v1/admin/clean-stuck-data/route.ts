@@ -30,7 +30,9 @@ export async function runStuckDataCleanup(tenantId: string): Promise<Record<stri
       if (
         doc.id === "3Rl6b5i6" ||
         String(d.reason || "").includes("TEST — Audit leave") ||
-        String(d.notes || "").includes("TEST — Audit leave")
+        String(d.notes || "").includes("TEST — Audit leave") ||
+        String(d.reason || "").includes("TEST — Leave audit 24 Nov") ||
+        String(d.notes || "").includes("TEST — Leave audit 24 Nov")
       ) {
         await adminDb.collection(coll).doc(doc.id).delete().catch(() => {});
         deletedCounts.leaves++;
@@ -46,7 +48,8 @@ export async function runStuckDataCleanup(tenantId: string): Promise<Record<stri
       doc.id === "ubVMtF6s" ||
       doc.id === "faOtOsMq" ||
       String(d.title || "").includes("TEST — Audit Homework 3") ||
-      String(d.title || "").includes("TEST — Audit Homework 2")
+      String(d.title || "").includes("TEST — Audit Homework 2") ||
+      String(d.title || "").includes("TEST — Homework 2")
     ) {
       await adminDb.collection("homework").doc(doc.id).delete().catch(() => {});
       deletedCounts.homework++;
@@ -145,26 +148,23 @@ export async function runStuckDataCleanup(tenantId: string): Promise<Record<stri
     }
   } catch {}
 
-  // 10. Test Student Alpha with Roll #N/A (preserving real students)
+  // 10. Test Student Alpha (preserving real students)
   const stSnap = await adminDb.collection("students").where("tenantId", "==", tenantId).get().catch(() => ({ docs: [] } as any));
   for (const doc of stSnap.docs) {
     const d = doc.data() || {};
     const name = String(d.fullName || d.name || "").trim();
-    const roll = String(d.rollNumber || d.rollNo || "").trim();
-    if (name === "Test Student Alpha" && (roll === "#N/A" || roll === "N/A" || !roll)) {
+    if (name.toLowerCase().includes("test student alpha")) {
       await adminDb.collection("students").doc(doc.id).delete().catch(() => {});
       deletedCounts.students++;
     }
   }
 
-  // 11. Extra Test Teacher Alpha STF-002 (preserving real staff)
+  // 11. Extra Test Teacher Alpha STF-002 (preserving real staff STF-001..STF-010)
   const sfSnap = await adminDb.collection("staff").where("tenantId", "==", tenantId).get().catch(() => ({ docs: [] } as any));
   for (const doc of sfSnap.docs) {
     const d = doc.data() || {};
     const name = String(d.fullName || d.name || d.personal?.fullName || "").trim();
-    const empId = String(d.employeeId || d.professional?.employeeId || "").trim();
-    // Only delete if explicitly Test Teacher Alpha with STF-002 or marked as test
-    if (name === "Test Teacher Alpha" && empId === "STF-002") {
+    if (name.toLowerCase().includes("test teacher alpha")) {
       await adminDb.collection("staff").doc(doc.id).delete().catch(() => {});
       deletedCounts.staff++;
     }

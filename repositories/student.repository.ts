@@ -634,6 +634,21 @@ export class StudentRepository extends BaseRepository<StudentDocument> implement
       throw new RepositoryException("Failed to build student timeline", { tenantId, studentId, originalError: error });
     }
   }
+
+  async softDelete(studentId: string, tenantId: string): Promise<void> {
+    await this.delete(studentId, tenantId);
+  }
+
+  async delete(studentId: string, tenantId: string): Promise<void> {
+    const docRef = this.db.collection(this.collectionName).doc(studentId);
+    const snap = await docRef.get();
+    if (snap.exists) {
+      const data = snap.data();
+      if (!data?.tenantId || data.tenantId === tenantId || data.schoolId === tenantId) {
+        await docRef.delete();
+      }
+    }
+  }
 }
 
 export const studentRepository = new StudentRepository();

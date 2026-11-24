@@ -22,6 +22,7 @@ import { EVENTS } from "@/lib/events/event-types";
 import { GeminiProvider } from "@/lib/ai/providers/GeminiProvider";
 import { StaffPersistenceMapper } from "@/lib/mappers/StaffPersistenceMapper";
 import { adminDb } from "@/lib/firebase-admin";
+import { invalidateCache } from "@/lib/cache";
 
 function normalizeStaffInput(data: any): any {
   const result: any = { ...data };
@@ -496,7 +497,9 @@ export class StaffService implements IStaffService {
 
   async delete(tenantId: string, id: string, userId?: string): Promise<void> {
     const staff = await this.getById(tenantId, id);
-    await this.repository.softDelete(id, tenantId);
+    await this.repository.delete(id, tenantId);
+    await invalidateCache(`staff:${tenantId}`).catch(() => {});
+    await invalidateCache(`dashboard:${tenantId}`).catch(() => {});
 
     await this.audit.log({
       action: "staff.deleted",

@@ -31,7 +31,8 @@ export class BaseRepository<T> {
       ...data,
       createdAt: dbTimestamp,
       updatedAt: dbTimestamp,
-      tenantId
+      tenantId,
+      schoolId: (data as any)?.schoolId || tenantId,
     };
     const docRef = await this.db.collection(this.collectionName).add(newData);
     return docRef.id;
@@ -44,7 +45,8 @@ export class BaseRepository<T> {
     };
     const docRef = this.db.collection(this.collectionName).doc(id);
     const docSnap = await docRef.get();
-    if (!docSnap.exists || docSnap.data()?.tenantId !== tenantId) {
+    const docData = docSnap.data();
+    if (!docSnap.exists || (docData?.tenantId && docData.tenantId !== tenantId && docData.schoolId !== tenantId)) {
       throw new Error('Document not found or unauthorized');
     }
     await docRef.update(updateData);
@@ -53,7 +55,11 @@ export class BaseRepository<T> {
   async delete(id: string, tenantId: string): Promise<void> {
     const docRef = this.db.collection(this.collectionName).doc(id);
     const docSnap = await docRef.get();
-    if (!docSnap.exists || docSnap.data()?.tenantId !== tenantId) {
+    if (!docSnap.exists) {
+      return;
+    }
+    const docData = docSnap.data();
+    if (docData?.tenantId && docData.tenantId !== tenantId && docData.schoolId !== tenantId) {
       throw new Error('Document not found or unauthorized');
     }
     await docRef.delete();
@@ -62,7 +68,8 @@ export class BaseRepository<T> {
   async findById(id: string, tenantId: string): Promise<(T & { id: string }) | null> {
     const docRef = this.db.collection(this.collectionName).doc(id);
     const docSnap = await docRef.get();
-    if (!docSnap.exists || docSnap.data()?.tenantId !== tenantId) {
+    const docData = docSnap.data();
+    if (!docSnap.exists || (docData?.tenantId && docData.tenantId !== tenantId && docData.schoolId !== tenantId)) {
       return null;
     }
     // 🟢 Applied Serializer Here
@@ -70,12 +77,26 @@ export class BaseRepository<T> {
   }
 
   async findAll(tenantId: string): Promise<(T & { id: string })[]> {
-    const snapshot = await this.db
-      .collection(this.collectionName)
-      .where('tenantId', '==', tenantId)
-      .get();
-    // 🟢 Applied Serializer Here
-    return snapshot.docs.map(doc => serializeDoc<T>(doc));
+    try {
+      const snapByTenant = await this.db
+        .collection(this.collectionName)
+        .where('tenantId', '==', tenantId)
+        .get();
+      const snapBySchool = await this.db
+        .collection(this.collectionName)
+        .where('schoolId', '==', tenantId)
+        .get();
+      const map = new Map<string, T & { id: string }>();
+      snapByTenant.docs.forEach(doc => map.set(doc.id, serializeDoc<T>(doc)));
+      snapBySchool.docs.forEach(doc => map.set(doc.id, serializeDoc<T>(doc)));
+      return Array.from(map.values());
+    } catch {
+      const snapshot = await this.db
+        .collection(this.collectionName)
+        .where('tenantId', '==', tenantId)
+        .get();
+      return snapshot.docs.map(doc => serializeDoc<T>(doc));
+    }
   }
 
   async paginate(
@@ -114,8 +135,12 @@ export class BaseRepository<T> {
       return { data, total, page, totalPages };
     } catch {
       // Fast fallback without composite index requirement
-      const snapshot = await col.where('tenantId', '==', tenantId).limit(limit * 2).get();
-      let docs = snapshot.docs.map(doc => serializeDoc<T>(doc));
+      const snapByTenant = await col.where('tenantId', '==', tenantId).get().catch(() => null);
+      const snapBySchool = await col.where('schoolId', '==', tenantId).get().catch(() => null);
+      const map = new Map<string, T & { id: string }>();
+      if (snapByTenant) snapByTenant.docs.forEach(doc => map.set(doc.id, serializeDoc<T>(doc)));
+      if (snapBySchool) snapBySchool.docs.forEach(doc => map.set(doc.id, serializeDoc<T>(doc)));
+      let docs = Array.from(map.values());
       const field = orderBy || 'createdAt';
       docs.sort((a: any, b: any) => {
         const valA = a[field] || '';

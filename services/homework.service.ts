@@ -62,7 +62,8 @@ export class HomeworkService implements IHomeworkService {
         h.id === "ubVMtF6s" ||
         h.id === "faOtOsMq" ||
         String(h.title || "").includes("TEST — Audit Homework 3") ||
-        String(h.title || "").includes("TEST — Audit Homework 2")
+        String(h.title || "").includes("TEST — Audit Homework 2") ||
+        String(h.title || "").includes("TEST — Homework 2")
       ) {
         this.repo.delete(h.id, tenantId).catch(() => {});
       } else {

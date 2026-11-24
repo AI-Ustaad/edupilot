@@ -403,6 +403,21 @@ export class StaffRepository extends BaseRepository<StaffDocument> implements IS
       throw new RepositoryException("Failed to build staff timeline", { tenantId, staffId });
     }
   }
+
+  async softDelete(id: string, tenantId: string): Promise<void> {
+    await this.delete(id, tenantId);
+  }
+
+  async delete(id: string, tenantId: string): Promise<void> {
+    const docRef = this.db.collection(this.collectionName).doc(id);
+    const snap = await docRef.get();
+    if (snap.exists) {
+      const data = snap.data();
+      if (!data?.tenantId || data.tenantId === tenantId || data.schoolId === tenantId) {
+        await docRef.delete();
+      }
+    }
+  }
 }
 
 export const staffRepository = new StaffRepository();

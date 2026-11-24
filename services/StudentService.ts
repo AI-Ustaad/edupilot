@@ -21,6 +21,7 @@ import { EVENTS } from "@/lib/events/event-types";
 import { logger } from "@/lib/logger/logger";
 import { adminDb } from "@/lib/firebase-admin";
 import { formatClassLabel, cleanSectionName } from "@/lib/utils/formatClassLabel";
+import { invalidateCache } from "@/lib/cache";
 
 function normalizeCreateStudentInput(data: any): CreateStudentDTO {
   const rawClass = data?.academic?.classId || data?.classGrade || data?.className || data?.classId || "Class 10";
@@ -472,7 +473,9 @@ export class StudentService implements IStudentService {
   }
 
   async delete(tenantId: string, studentId: string, userId?: string): Promise<void> {
-    await this.repository.softDelete(studentId, tenantId);
+    await this.repository.delete(studentId, tenantId);
+    await invalidateCache(`students:${tenantId}`).catch(() => {});
+    await invalidateCache(`dashboard:${tenantId}`).catch(() => {});
 
     eventBus.publish(EVENTS.STUDENT_DELETED, {
       tenantId,

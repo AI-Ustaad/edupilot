@@ -26,6 +26,7 @@ import { PERMISSIONS } from "@/lib/auth/permissions";
 import EditStudentModal from "@/components/students/EditStudentModal";
 import { useToast } from "@/components/ToastProvider";
 import { formatClassLabel } from "@/lib/utils/formatClassLabel";
+import ConfirmDeleteModal from "@/components/ui/ConfirmDeleteModal";
 import * as XLSX from "xlsx";
 
 export default function StudentsPage() {
@@ -48,14 +49,21 @@ export default function StudentsPage() {
   const [previewRows, setPreviewRows] = useState<any[]>([]);
   const [previewErrors, setPreviewErrors] = useState<string[]>([]);
   const [bulkMessage, setBulkMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [studentToDelete, setStudentToDelete] = useState<{ id: string; name: string } | null>(null);
 
-  const handleDelete = async (id: string, name: string) => {
-    if (!confirm(`Are you sure you want to delete ${name}?`)) return;
+  const handleDelete = (id: string, name: string) => {
+    setStudentToDelete({ id, name });
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!studentToDelete) return;
     try {
-      await deleteMutation.mutateAsync(id);
-      showToast(`${name} deleted successfully!`, "success");
+      await deleteMutation.mutateAsync(studentToDelete.id);
+      showToast(`${studentToDelete.name} deleted successfully!`, "success");
     } catch (err: any) {
       showToast(err?.message || "Failed to delete student", "error");
+    } finally {
+      setStudentToDelete(null);
     }
   };
 
@@ -512,6 +520,16 @@ export default function StudentsPage() {
           </div>
         </div>
       )}
+
+      <ConfirmDeleteModal
+        isOpen={!!studentToDelete}
+        title="Delete Student"
+        description="Are you sure you want to delete this student? All associated attendance, fee, and academic records will be permanently removed."
+        itemName={studentToDelete ? studentToDelete.name : undefined}
+        isDeleting={deleteMutation.isPending}
+        onConfirm={handleConfirmDelete}
+        onCancel={() => setStudentToDelete(null)}
+      />
     </div>
   );
 }

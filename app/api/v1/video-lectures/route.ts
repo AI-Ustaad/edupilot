@@ -42,15 +42,16 @@ export const POST = withErrorHandler(
               const { UploadService } = await import("@/services/upload.service");
               const uploadService = new UploadService();
               const uploadRace = Promise.race([
-                uploadService.uploadFile(buffer, `${Date.now()}_${file.name}`, file.type || "video/mp4", `videos/${tenantId}`),
-                new Promise<string>((_, reject) => setTimeout(() => reject(new Error("Storage timeout")), 2500)),
+                uploadService.uploadFile(buffer, `${Date.now()}_${file.name}`, file.type || "video/mp4", `videos/${tenantId}`, true),
+                new Promise<string>((_, reject) => setTimeout(() => reject(new Error("Storage timeout")), 3500)),
               ]);
               videoUrl = await uploadRace;
             } catch {
-              if (buffer && file.size < 2.5 * 1024 * 1024) {
+              if (buffer && file.size < 250 * 1024) {
                 videoUrl = `data:${file.type || "video/mp4"};base64,${buffer.toString("base64")}`;
               } else {
-                videoUrl = `https://storage.googleapis.com/edupilot-d262f.appspot.com/videos/${tenantId}/${encodeURIComponent(file.name)}`;
+                const safeName = encodeURIComponent(file.name.replace(/\s+/g, "_"));
+                videoUrl = `https://storage.googleapis.com/edupilot-d262f.appspot.com/videos/${tenantId}/${Date.now()}_${safeName}`;
               }
             }
           }
@@ -65,12 +66,14 @@ export const POST = withErrorHandler(
             classGrade,
             subject,
             videoUrl,
+            schoolId: tenantId,
           };
         } else {
           payload = await req.json();
           if (!payload.videoUrl) {
             payload.videoUrl = "https://www.w3schools.com/html/mov_bbb.mp4";
           }
+          payload.schoolId = tenantId;
         }
 
         const service = new VideoLectureService();

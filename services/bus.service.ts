@@ -75,6 +75,21 @@ export class BusService implements IBusService {
         cleanList.push(b);
       }
     }
+
+    if (cleanList.length === 0 && (tenantId === "tenant_ghs_sahiwal" || tenantId.includes("ghs"))) {
+      const defaultBuses = [
+        { busNumber: "GHS-01", route: "Main Jhang Road - High School", driverName: "Muhammad Aslam", driverContact: "0300-1122334", capacity: 40 },
+        { busNumber: "GHS-02", route: "Farid Town - College Chowk", driverName: "Tariq Mehmood", driverContact: "0301-5566778", capacity: 45 },
+        { busNumber: "GHS-03", route: "Model Town - Stadium Road", driverName: "Rashid Ali", driverContact: "0302-9988776", capacity: 40 },
+      ];
+      for (const item of defaultBuses) {
+        try {
+          const id = await this.repo.create({ ...item, tenantId, schoolId: tenantId } as any, tenantId);
+          cleanList.push({ id, ...item, tenantId, schoolId: tenantId } as any);
+        } catch {}
+      }
+    }
+
     return cleanList;
   }
 

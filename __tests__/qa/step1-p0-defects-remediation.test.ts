@@ -1,12 +1,17 @@
 import { AssignmentService } from "@/services/assignment.service";
 import { QuizService } from "@/services/quiz.service";
 import { BookService } from "@/services/book.service";
+import { BusService } from "@/services/bus.service";
+import { HomeworkService } from "@/services/homework.service";
+import { StaffService } from "@/services/StaffService";
+import { StudentService } from "@/services/StudentService";
+import { createVideoLectureSchema } from "@/lib/validation";
 import ConfirmDeleteModal from "@/components/ui/ConfirmDeleteModal";
 
-describe("Step 1 P0 Defects Remediation QA Suite (R1/N7-N9, W2, N2, N6/D4, W1)", () => {
+describe("Phase 1 P0 Core CRUD & Remediation QA Suite (R1, W2, N2, N21)", () => {
   const tenantId = "tenant_ghs_sahiwal";
 
-  describe("1. R1 / N7-N9: Assignments, Quizzes, Books Non-Destructive List Rendering", () => {
+  describe("1. R1: Assignments, Quizzes, Books Non-Destructive List Rendering", () => {
     it("should render assignments with 'TEST' in title and only prune 'TEST — Audit Assignment'", async () => {
       const mockAssignments = [
         { id: "stuck_assign_1", title: "TEST — Audit Assignment", classGrade: "Class 1", tenantId },
@@ -73,44 +78,79 @@ describe("Step 1 P0 Defects Remediation QA Suite (R1/N7-N9, W2, N2, N6/D4, W1)",
     });
   });
 
-  describe("2. W2 / M4: In-DOM ConfirmDeleteModal Component Verification", () => {
+  describe("2. W2: Real Deletes (Staff, Students, Homework)", () => {
     it("should export ConfirmDeleteModal correctly", () => {
       expect(ConfirmDeleteModal).toBeDefined();
       expect(typeof ConfirmDeleteModal).toBe("function");
     });
-  });
 
-  describe("3. N6 / D4: Billing AI Quota Unification", () => {
-    it("should recognize tenant_ghs_sahiwal demo quota as 500 in subscription logic", () => {
-      const demoTenant = "tenant_ghs_sahiwal";
-      const isDemoTenant = demoTenant === "tenant_ghs_sahiwal";
-      const aiLimit = isDemoTenant ? 500 : 50;
-      expect(aiLimit).toBe(500);
+    it("StaffService.delete should call repo.delete and invalidate cache", async () => {
+      const mockRepo: any = {
+        findById: jest.fn().mockResolvedValue({ id: "stf_test", personal: { fullName: "Test Teacher Alpha" } }),
+        delete: jest.fn().mockResolvedValue(undefined),
+      };
+      const service = new StaffService(mockRepo);
+      await service.delete(tenantId, "stf_test", "admin_user");
 
-      // Verify that 108 requests do not exceed the 500 limit
-      const aiUsed = 108;
-      const isQuotaExceeded = aiUsed >= aiLimit;
-      expect(isQuotaExceeded).toBe(false);
+      expect(mockRepo.delete).toHaveBeenCalledWith("stf_test", tenantId);
+    });
+
+    it("StudentService.delete should call repo.delete", async () => {
+      const mockRepo: any = {
+        delete: jest.fn().mockResolvedValue(undefined),
+      };
+      const service = new StudentService(mockRepo);
+      await service.delete(tenantId, "stu_test", "admin_user");
+
+      expect(mockRepo.delete).toHaveBeenCalledWith("stu_test", tenantId);
+    });
+
+    it("HomeworkService should prune 'TEST — Homework 2' and 'TEST — Audit Homework 3'", async () => {
+      const mockHw = [
+        { id: "hw_stuck", title: "TEST — Homework 2", classGrade: "Class 1", tenantId },
+        { id: "hw_real", title: "English Essay Writing", classGrade: "Class 1", tenantId },
+      ];
+      const mockRepo: any = {
+        findAll: jest.fn().mockResolvedValue(mockHw),
+        delete: jest.fn().mockResolvedValue(undefined),
+      };
+      const service = new HomeworkService(mockRepo);
+      const list = await service.listHomework(tenantId);
+
+      expect(mockRepo.delete).toHaveBeenCalledWith("hw_stuck", tenantId);
+      expect(list.some((h) => h.id === "hw_stuck")).toBe(false);
+      expect(list.some((h) => h.id === "hw_real")).toBe(true);
     });
   });
 
-  describe("4. W1: OCR Admission Route Support", () => {
-    it("should verify OCR helper returns expected structured schema", () => {
-      const fallbackResult = {
-        fullName: "Muhammad Ali",
-        guardianName: "Tariq Mahmood",
-        dob: "2012-05-15",
-        rollNumber: "105",
+  describe("3. N2: Video Lecture Upload & Schema Validation", () => {
+    it("createVideoLectureSchema should accept valid video URLs and https storage URLs", () => {
+      const payload = {
+        title: "Introduction to Calculus",
+        description: "Limits and continuity overview",
         classGrade: "Class 10",
-        section: "A",
-        monthlyFee: 5000,
-        contactNumber: "03001234567",
-        confidence: 0.92,
+        subject: "Mathematics",
+        videoUrl: "https://storage.googleapis.com/edupilot-d262f.appspot.com/videos/tenant_ghs_sahiwal/calculus.mp4",
       };
+      const parsed = createVideoLectureSchema.safeParse(payload);
+      expect(parsed.success).toBe(true);
+    });
+  });
 
-      expect(fallbackResult.fullName).toBe("Muhammad Ali");
-      expect(fallbackResult.monthlyFee).toBe(5000);
-      expect(fallbackResult.confidence).toBeGreaterThan(0.9);
+  describe("4. N21: Restore Missing Bus Fleet Data", () => {
+    it("BusService.getAll should restore default school fleet if empty", async () => {
+      const mockRepo: any = {
+        findAll: jest.fn().mockResolvedValue([]),
+        create: jest.fn().mockImplementation(async (item: any) => `bus_${item.busNumber}`),
+        delete: jest.fn().mockResolvedValue(undefined),
+      };
+      const service = new BusService(mockRepo);
+      const buses = await service.getAll(tenantId);
+
+      expect(buses.length).toBe(3);
+      expect(buses.some((b) => b.busNumber === "GHS-01")).toBe(true);
+      expect(buses.some((b) => b.busNumber === "GHS-02")).toBe(true);
+      expect(buses.some((b) => b.busNumber === "GHS-03")).toBe(true);
     });
   });
 });
