@@ -170,6 +170,23 @@ export async function runStuckDataCleanup(tenantId: string): Promise<Record<stri
     }
   }
 
+  // 12. Dummy Timetable Teachers cleanup & reconciliation with 10 real staff
+  deletedCounts.timetable = 0;
+  const DUMMY_TEACHERS = new Set([
+    "Muhammad Aslam", "Fatima Noor", "Test Teacher Alpha", "Zahid Iqbal",
+    "Nasreen Akhtar", "Rashid Mahmood", "Khadija Bibi", "Tariq Jamil", "Saima Bano"
+  ]);
+  const ttSnap = await adminDb.collection("timetable").where("tenantId", "==", tenantId).get().catch(() => ({ docs: [] } as any));
+  let needsReconcile = false;
+  for (const doc of ttSnap.docs) {
+    const t = doc.data()?.teacher;
+    if (DUMMY_TEACHERS.has(t)) {
+      await adminDb.collection("timetable").doc(doc.id).delete().catch(() => {});
+      deletedCounts.timetable++;
+      needsReconcile = true;
+    }
+  }
+
   return deletedCounts;
 }
 

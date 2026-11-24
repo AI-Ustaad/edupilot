@@ -164,9 +164,9 @@ export async function checkTenantAiQuota(
     if (currentUsage >= maxQuota) {
       return {
         allowed: false,
-        status: 402,
+        status: 429,
         error: "AI_QUOTA_EXCEEDED",
-        message: "Monthly AI quota reached for your current plan. Upgrade your subscription to unlock additional AI capacity.",
+        message: `Monthly AI quota exceeded (${currentUsage}/${maxQuota} calls used). Upgrade your plan for more capacity.`,
         usage: currentUsage,
         limit: maxQuota,
       };
@@ -238,7 +238,7 @@ export async function enforceAiQuota(
   if (!tenantCheck.allowed) {
     return {
       allowed: false,
-      status: tenantCheck.status || 402,
+      status: tenantCheck.status || 429,
       error: tenantCheck.error || "AI_QUOTA_EXCEEDED",
       message: tenantCheck.message || "Monthly AI quota reached for your current plan.",
       usage: tenantCheck.usage,

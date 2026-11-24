@@ -33,8 +33,8 @@ export class TimetableService implements ITimetableService {
       "Computer Science", "Islamiyat", "Physics", "Chemistry", "Biology", "Pakistan Studies"
     ];
     const teachers = [
-      "Ghzandar Ali", "Muhammad Aslam", "Fatima Noor", "Test Teacher Alpha", "Zahid Iqbal",
-      "Nasreen Akhtar", "Rashid Mahmood", "Khadija Bibi", "Tariq Jamil", "Saima Bano"
+      "Ghzandar Ali", "Fahad Siddiqui", "Hamza Nawaz", "Hassan Hussain", "Hamza Khan",
+      "Bilal Sheikh", "Ali Ansari", "Usman Haider", "Iqra Qureshi", "STF-002"
     ];
     const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
 
@@ -79,9 +79,15 @@ export class TimetableService implements ITimetableService {
 
   async listEntries(tenantId: string): Promise<(TimetableEntry & { id: string })[]> {
     let list = await this.repo.findAll(tenantId);
-    const hasGhzandar = list.some((e: any) => e.teacher === "Ghzandar Ali");
-    if (!list || list.length === 0 || !hasGhzandar) {
-      if (!hasGhzandar && list.length > 0) {
+    const DUMMY_TEACHERS = new Set([
+      "Muhammad Aslam", "Fatima Noor", "Test Teacher Alpha", "Zahid Iqbal",
+      "Nasreen Akhtar", "Rashid Mahmood", "Khadija Bibi", "Tariq Jamil", "Saima Bano"
+    ]);
+    const hasDummyTeacher = (list || []).some((e: any) => DUMMY_TEACHERS.has(e.teacher));
+    const hasGhzandar = (list || []).some((e: any) => e.teacher === "Ghzandar Ali");
+
+    if (!list || list.length === 0 || !hasGhzandar || hasDummyTeacher) {
+      if (list && list.length > 0) {
         for (const e of list) {
           this.repo.delete(e.id, tenantId).catch(() => {});
         }

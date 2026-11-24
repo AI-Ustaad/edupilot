@@ -91,7 +91,7 @@ export default function EnterpriseBillingPage() {
     ? 1 
     : Math.min((staffUsed / currentPlan.limits.staff) * 100, 100);
 
-  const isDemoTenant = tenantId === "tenant_ghs_sahiwal" || tenantId?.includes("ghs_sahiwal") || user?.email?.includes("ghssahiwal");
+  const isDemoTenant = tenantId === "tenant_ghs_sahiwal" || tenantId?.includes("ghs_sahiwal") || tenantId === "default" || user?.email?.includes("ghssahiwal");
   const aiLimit = Number(
     (subData as any)?.limits?.maxAiQuota ||
     (subData as any)?.limits?.aiMonthlyQuota ||
@@ -104,7 +104,7 @@ export default function EnterpriseBillingPage() {
   const isCancelAtPeriodEnd = !!(subData as any)?.cancelAtPeriodEnd;
   const isStudentOverLimit = currentPlan.limits.students < 999999 && studentsUsed > currentPlan.limits.students;
   const isStaffOverLimit = currentPlan.limits.staff < 999999 && staffUsed > currentPlan.limits.staff;
-  const isAiOverLimit = aiUsed > aiLimit;
+  const isAiOverLimit = aiUsed >= aiLimit;
   const isQuotaExceeded = isStudentOverLimit || isStaffOverLimit || isAiOverLimit;
   const isAtStudentLimit = currentPlan.limits.students < 999999 && studentsUsed === currentPlan.limits.students;
   const isAtStaffLimit = currentPlan.limits.staff < 999999 && staffUsed === currentPlan.limits.staff;

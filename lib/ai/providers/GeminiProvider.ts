@@ -10,7 +10,8 @@ export class GeminiProvider implements AIProvider {
   private readonly config: AIProviderConfig;
 
   constructor() {
-    const model = (process.env.GEMINI_MODEL ?? "gemini-2.5-flash").trim();
+    const rawModel = (process.env.GEMINI_MODEL ?? "gemini-1.5-flash").trim();
+    const model = (!rawModel || rawModel === "gemini-2.5-flash" || rawModel.includes("2.5")) ? "gemini-1.5-flash" : rawModel;
     const baseUrl = (process.env.GEMINI_BASE ?? "https://generativelanguage.googleapis.com/v1beta").trim();
     const apiKey = process.env.GEMINI_API_KEY?.trim() ?? "";
 
@@ -19,8 +20,8 @@ export class GeminiProvider implements AIProvider {
       model,
       apiKey,
       baseUrl,
-      timeout: 10000,
-      maxRetries: 1,
+      timeout: 25000,
+      maxRetries: 2,
     };
   }
 

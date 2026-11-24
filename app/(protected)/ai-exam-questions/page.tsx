@@ -43,8 +43,9 @@ export default function AIExamQuestionsPage() {
         onSuccess: (data) => {
           setExamData(data);
         },
-        onError: () => {
-          setError("Failed to generate questions. Please try again.");
+        onError: (err: any) => {
+          const errMsg = err?.response?.data?.message || err?.response?.data?.error || err?.message || "Failed to generate questions. Please try again.";
+          setError(errMsg);
         }
       }
     );

@@ -26,7 +26,7 @@ export class TimetableService implements IAITimetableService {
     const periods = Number(req.periods) || 8;
     const subjects = req.subjects && req.subjects.length >= 5 ? req.subjects : CANONICAL_SUBJECTS;
     const teachers = req.teachers && req.teachers.length > 0 ? req.teachers : [
-      "Sir Ahmed", "Ms. Fatima", "Ghzandar Ali", "Tahir Khan", "Zainab Bibi", "Hamza Malik", "Sadia Parveen", "Kashif Mahmood", "Noreen Akhtar", "Bilal Tariq"
+      "Ghzandar Ali", "Fahad Siddiqui", "Hamza Nawaz", "Hassan Hussain", "Hamza Khan", "Bilal Sheikh", "Ali Ansari", "Usman Haider", "Iqra Qureshi", "STF-002"
     ];
 
     const schedule: any[] = [];
