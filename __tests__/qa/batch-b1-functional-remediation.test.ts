@@ -65,7 +65,7 @@ describe("Batch B1 Functional Defects Remediation", () => {
       expect(result.success).toBe(true);
     });
 
-    it("should sort homework newest first and filter stuck test homework", async () => {
+    it("should sort homework newest first and return every saved record (N29: no delete-on-read)", async () => {
       const mockRepo = {
         findAll: jest.fn().mockResolvedValue([
           { id: "h1", title: "Older Homework", createdAt: "2026-11-20T10:00:00.000Z", tenantId },
@@ -80,10 +80,11 @@ describe("Batch B1 Functional Defects Remediation", () => {
 
       const list = await service.listHomework(tenantId);
 
-      expect(list.length).toBe(2);
+      expect(list.length).toBe(3);
       expect(list[0].id).toBe("h2"); // Newest first
-      expect(list[1].id).toBe("h1");
-      expect(mockRepo.delete).toHaveBeenCalledWith("faOtOsMq", tenantId);
+      expect(list[1].id).toBe("faOtOsMq");
+      expect(list[2].id).toBe("h1");
+      expect(mockRepo.delete).not.toHaveBeenCalled();
     });
 
     it("should ensure admin and teacher have delete permissions for all content modules", () => {

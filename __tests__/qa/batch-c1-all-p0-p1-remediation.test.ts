@@ -68,7 +68,7 @@ describe("Batch C1 Comprehensive QA Remediation Suite (R1, N2, N5, N6, W1, D2, D
       expect(result.some((b) => b.id === "valid_bus_1")).toBe(true);
     });
 
-    it("should render homework with TEST in title and only prune stuck IDs ubVMtF6s and faOtOsMq", async () => {
+    it("should render every saved homework, including TEST-titled records (N29: no delete-on-read)", async () => {
       const mockHomework = [
         { id: "ubVMtF6s", title: "TEST — Homework 2", classGrade: "Class 1", tenantId },
         { id: "faOtOsMq", title: "TEST — Delete Check", classGrade: "Class 1", tenantId },
@@ -81,10 +81,9 @@ describe("Batch C1 Comprehensive QA Remediation Suite (R1, N2, N5, N6, W1, D2, D
       const homeworkService = new HomeworkService(mockHwRepo);
       const result = await homeworkService.listHomework(tenantId);
 
-      expect(mockHwRepo.delete).toHaveBeenCalledWith("ubVMtF6s", tenantId);
-      expect(mockHwRepo.delete).toHaveBeenCalledWith("faOtOsMq", tenantId);
-      expect(result.some((h) => h.id === "ubVMtF6s")).toBe(false);
-      expect(result.some((h) => h.id === "faOtOsMq")).toBe(false);
+      expect(mockHwRepo.delete).not.toHaveBeenCalled();
+      expect(result.some((h) => h.id === "ubVMtF6s")).toBe(true);
+      expect(result.some((h) => h.id === "faOtOsMq")).toBe(true);
       expect(result.some((h) => h.id === "valid_hw_1")).toBe(true);
     });
   });
