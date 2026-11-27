@@ -9,6 +9,7 @@ import { useVideos, useDeleteVideo } from "@/hooks/useVideos";
 import { TableSkeleton } from "@/components/Skeletons";
 import { extractUniqueClasses } from "@/lib/utils/formatClassLabel";
 import ConfirmDeleteModal from "@/components/ui/ConfirmDeleteModal";
+import VideoUploadForm from "@/components/VideoUploadForm";
 
 export default function VideoLecturesPage() {
   const [filterClass, setFilterClass] = useState("");
@@ -46,6 +47,14 @@ export default function VideoLecturesPage() {
         <h1 className="text-2xl font-black text-gray-900 flex items-center gap-2">
           <Film className="text-blue-600" /> Video Library
         </h1>
+
+        {/* B12: the upload control. Before this fix the Video Library had no
+            upload control at all — the only form lived on the separate
+            Teacher Lectures page — so no video lecture could be added from
+            here. Shown only to users with videoLectures.create. */}
+        <RequirePermission permissions={[PERMISSIONS.videoLectures.create]}>
+          <VideoUploadForm />
+        </RequirePermission>
 
         <div className="flex flex-wrap gap-3">
           <select

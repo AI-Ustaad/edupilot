@@ -23,7 +23,9 @@ export const useUploadVideo = () => {
   return useMutation({
     mutationFn: async (formData: FormData) => {
       // NOTE: Do not set Content-Type manually so the browser/Axios properly attaches multipart boundary
-      return apiClient.post("/video-lectures", formData);
+      // B12: video files are multi-MB — the shared 15s client timeout is
+      // too short for the browser -> API route -> Cloud Storage round trip.
+      return apiClient.post("/video-lectures", formData, { timeout: 120000 });
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["videos"] });

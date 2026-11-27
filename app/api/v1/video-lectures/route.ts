@@ -34,30 +34,35 @@ export const POST = withErrorHandler(
           let videoUrl = String(formData.get("videoUrl") || "").trim();
 
           const file = formData.get("file") as File | null;
+          // B12: validate the required fields BEFORE touching storage so a
+          // rejected upload never leaves an orphaned object in the bucket.
+          if (!title || !classGrade || !subject) {
+            return createErrorResponse(400, "Title, class and subject are required");
+          }
+          if (!file && !videoUrl) {
+            return createErrorResponse(400, "A video file or a video URL is required");
+          }
           if (file && file.size > 0 && !videoUrl) {
-            let buffer: Buffer | null = null;
+            const buffer = Buffer.from(await file.arrayBuffer());
             try {
-              const bytes = await file.arrayBuffer();
-              buffer = Buffer.from(bytes);
               const { UploadService } = await import("@/services/upload.service");
               const uploadService = new UploadService();
-              const uploadRace = Promise.race([
-                uploadService.uploadFile(buffer, `${Date.now()}_${file.name}`, file.type || "video/mp4", `videos/${tenantId}`, true),
-                new Promise<string>((_, reject) => setTimeout(() => reject(new Error("Storage timeout")), 3500)),
-              ]);
-              videoUrl = await uploadRace;
+              // B12: await the real storage write — no artificial race
+              // timeout. A real video upload must finish (or fail honestly);
+              // the old 3.5s race lost to any multi-MB file.
+              videoUrl = await uploadService.uploadFile(buffer, `${Date.now()}_${file.name}`, file.type || "video/mp4", `videos/${tenantId}`, true);
             } catch {
-              if (buffer && file.size < 250 * 1024) {
+              // Small files can be stored inline as a data URL and still
+              // play back. Anything larger must fail honestly — never
+              // record a storage URL for an object that was never stored
+              // (the old code fabricated one here, so "Watch Now" 404'd
+              // while the toast claimed success).
+              if (file.size < 250 * 1024) {
                 videoUrl = `data:${file.type || "video/mp4"};base64,${buffer.toString("base64")}`;
               } else {
-                const safeName = encodeURIComponent(file.name.replace(/\s+/g, "_"));
-                videoUrl = `https://storage.googleapis.com/edupilot-d262f.appspot.com/videos/${tenantId}/${Date.now()}_${safeName}`;
+                throw new Error("Video upload to storage failed. Please check your connection and try again.");
               }
             }
-          }
-
-          if (!videoUrl) {
-            videoUrl = "https://www.w3schools.com/html/mov_bbb.mp4";
           }
 
           payload = {
@@ -70,9 +75,8 @@ export const POST = withErrorHandler(
           };
         } else {
           payload = await req.json();
-          if (!payload.videoUrl) {
-            payload.videoUrl = "https://www.w3schools.com/html/mov_bbb.mp4";
-          }
+          // B12: no placeholder video — a missing videoUrl must fail
+          // validation honestly instead of silently attaching a sample clip.
           payload.schoolId = tenantId;
         }
 
