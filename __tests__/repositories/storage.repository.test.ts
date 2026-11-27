@@ -27,6 +27,7 @@ describe("Storage Security - StorageRepository & UploadService", () => {
       name: "tenant_123/test.pdf",
       save: jest.fn().mockResolvedValue(undefined),
       makePublic: jest.fn().mockResolvedValue(undefined),
+      setMetadata: jest.fn().mockResolvedValue(undefined),
       getSignedUrl: jest.fn().mockResolvedValue(["https://storage.googleapis.com/signed-url-for-private-file"]),
       delete: jest.fn().mockResolvedValue(undefined),
     };
@@ -78,8 +79,31 @@ describe("Storage Security - StorageRepository & UploadService", () => {
       expect(url).toBe("https://storage.googleapis.com/edupilot-d262f.appspot.com/tenant_123/test.pdf");
     });
 
-    it("throws a controlled error and does not swallow failure when makePublic fails", async () => {
+    // B12: uniform bucket-level access (the Firebase default) rejects
+    // object ACLs, so makePublic() fails on such buckets even though the
+    // object was stored. The upload must still return a URL that serves
+    // the stored object — a Firebase download-token URL — instead of
+    // throwing and leaving the caller to fabricate a dead link.
+    it("falls back to a Firebase download-token URL when makePublic fails (B12)", async () => {
       mockFile.makePublic.mockRejectedValue(new Error("Uniform bucket-level access enabled"));
+      const repo = new StorageRepository();
+      const buffer = Buffer.from("test-content");
+
+      const url = await repo.uploadFile(buffer, "lecture.mp4", "video/mp4", "videos/tenant_123", true);
+
+      expect(mockFile.save).toHaveBeenCalledWith(buffer, { contentType: "video/mp4" });
+      expect(mockFile.makePublic).toHaveBeenCalled();
+      expect(mockFile.setMetadata).toHaveBeenCalledWith({
+        metadata: { firebaseStorageDownloadTokens: expect.any(String) },
+      });
+      expect(url).toMatch(
+        /^https:\/\/firebasestorage\.googleapis\.com\/v0\/b\/edupilot-d262f\.appspot\.com\/o\/.+\?alt=media&token=[0-9a-f-]+$/
+      );
+    });
+
+    it("throws a controlled error when both makePublic and the token fallback fail", async () => {
+      mockFile.makePublic.mockRejectedValue(new Error("Uniform bucket-level access enabled"));
+      mockFile.setMetadata.mockRejectedValue(new Error("metadata write denied"));
       const repo = new StorageRepository();
       const buffer = Buffer.from("test-content");
 
