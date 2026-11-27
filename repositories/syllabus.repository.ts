@@ -9,6 +9,11 @@ export interface Syllabus {
   subject: string;
   title?: string;
   description?: string;
+  // B11: the Add Material form sends these and the list renders them, but
+  // the interface did not declare them.
+  type?: string;
+  fileUrl?: string;
+  linkUrl?: string;
   content?: any;
   deleted?: boolean;
   createdBy?: string;

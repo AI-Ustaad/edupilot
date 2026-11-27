@@ -2,6 +2,7 @@
 import { useState, useMemo } from "react";
 import { Loader2, Plus, Trash2, Eye, FileText, Video, Image as ImageIcon, Link as LinkIcon, BookOpen } from "lucide-react";
 import RequirePermission from "@/components/RequirePermission";
+import { useToast } from "@/components/ToastProvider";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 import { useClasses } from "@/hooks/useClasses";
 import { useSettings } from "@/hooks/useSettings";
@@ -19,10 +20,26 @@ export default function AdminSyllabusPage() {
   const { data: materials = [], isLoading } = useSyllabus();
   const createMutation = useCreateSyllabus();
   const deleteMutation = useDeleteSyllabus();
+  const { showToast } = useToast();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    createMutation.mutate(form, { onSuccess: () => setForm({ classGrade: "", subject: "", title: "", description: "", type: "pdf", fileUrl: "", linkUrl: "" }) });
+    // B11 (26 Nov audit): the old submit had no feedback at all — a failed
+    // save left the form filled with no toast and no error. Surface both.
+    createMutation.mutate(form, {
+      onSuccess: () => {
+        setForm({ classGrade: "", subject: "", title: "", description: "", type: "pdf", fileUrl: "", linkUrl: "" });
+        showToast("Material added successfully", "success");
+      },
+      onError: (err: any) => {
+        const message =
+          err?.response?.data?.message ||
+          err?.response?.data?.error ||
+          err?.message ||
+          "Failed to add material. Please try again.";
+        showToast(message, "error");
+      },
+    });
   };
 
   const getTypeIcon = (type: string) => {
