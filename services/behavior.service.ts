@@ -22,8 +22,18 @@ export class BehaviorService implements IBehaviorService {
     this.studentRepo = new StudentRepository();
   }
 
-  async recordBehavior(data: unknown, tenantId: string, userId: string): Promise<{ success: boolean }> {
+  async recordBehavior(data: unknown, tenantId: string, userId: string): Promise<{ success: boolean; duplicate?: boolean }> {
     const parsed = this.validation.validateOrThrow(RecordBehaviorSchema, data);
+
+    // B14 (N15) — idempotency: a retried submit carrying the same client key
+    // must not create a second log, double-count points, or write a second
+    // audit entry. Return success without any further writes.
+    if (parsed.idempotencyKey) {
+      const existing = await this.repo.findByIdempotencyKey(parsed.idempotencyKey, tenantId);
+      if (existing) {
+        return { success: true, duplicate: true };
+      }
+    }
 
     // Verify student exists and belongs to tenantId
     const student = await this.studentRepo.findById(parsed.studentId, tenantId);
@@ -37,6 +47,8 @@ export class BehaviorService implements IBehaviorService {
       reason: parsed.reason,
       recordedBy: userId,
       tenantId,
+      // Firestore rejects `undefined` values — only store the key when present.
+      ...(parsed.idempotencyKey ? { idempotencyKey: parsed.idempotencyKey } : {}),
     }, tenantId);
     await invalidateCache(`behavior:${tenantId}:${parsed.studentId}`);
 
@@ -50,7 +62,7 @@ export class BehaviorService implements IBehaviorService {
       tenantId,
       entityId: parsed.studentId,
       entityType: "behavior_log",
-      metadata: { points: parsed.points, reason: parsed.reason },
+      metadata: { points: parsed.points, reason: parsed.reason, idempotencyKey: parsed.idempotencyKey },
     });
 
     await eventBus.publish(EVENTS.BEHAVIOR_RECORDED, {

@@ -1,11 +1,21 @@
 "use client";
 import { useState, useMemo } from "react";
-import { Loader2, UserCheck, Star } from "lucide-react";
+import { Loader2, UserCheck, Star, History } from "lucide-react";
 import RequirePermission from "@/components/RequirePermission";
 import { useClasses } from "@/hooks/useClasses";
 import { useStudents } from "@/hooks/useStudents";
-import { useRecordBehavior } from "@/hooks/useTeacher";
+import { useRecordBehavior, useBehaviorLogs } from "@/hooks/useTeacher";
 import { formatClassLabel, cleanSectionName, extractUniqueClasses } from "@/lib/utils/formatClassLabel";
+
+function formatLogDate(value: any): string {
+  if (!value) return "";
+  // Firestore timestamps arrive as { seconds, nanoseconds } (or _seconds)
+  // after JSON serialization; plain ISO strings pass through as-is.
+  const seconds = value?.seconds ?? value?._seconds;
+  const d = typeof seconds === "number" ? new Date(seconds * 1000) : new Date(value);
+  if (isNaN(d.getTime())) return typeof value === "string" ? value : "";
+  return d.toLocaleString("en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: true });
+}
 
 export default function BehaviorPage() {
   const { data: classesData = [] } = useClasses();
@@ -22,6 +32,8 @@ export default function BehaviorPage() {
   );
   
   const recordMutation = useRecordBehavior();
+  // B14 (N15) — visible history: what was actually recorded for this student.
+  const { data: behaviorLogs = [], isLoading: logsLoading } = useBehaviorLogs(studentId || undefined);
 
   const availableSections = useMemo(() => {
     if (!classGrade) return [];
@@ -38,9 +50,13 @@ export default function BehaviorPage() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!studentId || !points || !reason) return;
-    recordMutation.mutate({ studentId, points, reason }, {
+    // B14 (N15) — one idempotency key per submit: a retried/double submit
+    // with the same key is dropped server-side instead of recording twice.
+    recordMutation.mutate({ studentId, points, reason, idempotencyKey: crypto.randomUUID() }, {
       onSuccess: () => {
-        setStudentId(""); setPoints(0); setReason("");
+        // Keep the selected student so more points can be recorded for them;
+        // only clear the per-entry fields.
+        setPoints(0); setReason("");
       }
     });
   };
@@ -97,6 +113,35 @@ export default function BehaviorPage() {
             {recordMutation.isPending ? <Loader2 className="animate-spin" size={18} /> : <UserCheck size={18} />} Record Behavior
           </button>
         </form>
+
+        {/* B14 (N15) — history: one row per recorded entry, so a duplicate
+            (or a missing record) is visible on the page itself. */}
+        {studentId && (
+          <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
+            <h2 className="text-lg font-black text-gray-900 flex items-center gap-2 mb-4">
+              <History className="text-blue-600" size={20} /> Behavior History
+            </h2>
+            {logsLoading ? (
+              <p className="text-sm text-gray-400">Loading history…</p>
+            ) : behaviorLogs.length === 0 ? (
+              <p className="text-sm text-gray-400">No behavior points recorded for this student yet.</p>
+            ) : (
+              <ul className="divide-y divide-gray-100">
+                {behaviorLogs.map((log: any) => (
+                  <li key={log.id} className="py-3 flex items-center justify-between gap-4">
+                    <div>
+                      <p className="text-sm font-bold text-gray-800">{log.reason}</p>
+                      <p className="text-xs text-gray-400">{formatLogDate(log.createdAt)}</p>
+                    </div>
+                    <span className={`text-sm font-black px-3 py-1 rounded-full ${log.points > 0 ? "bg-green-50 text-green-700" : log.points < 0 ? "bg-red-50 text-red-700" : "bg-gray-100 text-gray-700"}`}>
+                      {log.points > 0 ? `+${log.points}` : log.points}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
       </div>
     </RequirePermission>
   );

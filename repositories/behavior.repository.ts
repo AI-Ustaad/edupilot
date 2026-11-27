@@ -39,4 +39,18 @@ export class BehaviorRepository extends BaseRepository<BehaviorLog> implements I
     });
     return docs;
   }
+
+  // B14 (N15) — idempotency lookup: returns the log created with this client
+  // key for the tenant, or null. Used to drop retried/duplicate submits.
+  async findByIdempotencyKey(idempotencyKey: string, tenantId: string): Promise<(BehaviorLog & { id: string }) | null> {
+    if (!idempotencyKey) return null;
+    const snapshot = await this.db
+      .collection(this.collectionName)
+      .where("idempotencyKey", "==", idempotencyKey)
+      .where("tenantId", "==", tenantId)
+      .limit(1)
+      .get();
+    if (snapshot.empty) return null;
+    return serializeDoc<BehaviorLog>(snapshot.docs[0]);
+  }
 }

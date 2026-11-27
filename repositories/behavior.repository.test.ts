@@ -179,4 +179,41 @@ describe('BehaviorRepository', () => {
     const exists = await repo.exists('behavior-1', tenantId);
     expect(exists).toBe(true);
   });
+
+  // B14 (N15) — idempotency lookup
+  test('should find behavior log by idempotency key', async () => {
+    const { mockQuery } = require('@/lib/firebase-admin');
+    mockQuery.get.mockResolvedValue({
+      empty: false,
+      docs: [
+        { id: 'b-key-1', data: () => ({ studentId: 'student-1', points: 1, reason: 'Helped a classmate', idempotencyKey: 'key-123', tenantId }) },
+      ],
+    });
+
+    const log = await repo.findByIdempotencyKey('key-123', tenantId);
+    expect(log).not.toBeNull();
+    expect(log!.id).toBe('b-key-1');
+    expect(log!.idempotencyKey).toBe('key-123');
+    // First where() lands on the collection mock, the chained one on the query mock.
+    const { mockCollection } = require('@/lib/firebase-admin');
+    expect(mockCollection.where).toHaveBeenCalledWith('idempotencyKey', '==', 'key-123');
+    expect(mockQuery.where).toHaveBeenCalledWith('tenantId', '==', tenantId);
+    expect(mockQuery.limit).toHaveBeenCalledWith(1);
+  });
+
+  test('should return null when no log matches the idempotency key', async () => {
+    const { mockQuery } = require('@/lib/firebase-admin');
+    mockQuery.get.mockResolvedValue({ empty: true, docs: [] });
+
+    const log = await repo.findByIdempotencyKey('key-missing', tenantId);
+    expect(log).toBeNull();
+  });
+
+  test('should return null for an empty idempotency key without querying', async () => {
+    const { mockQuery } = require('@/lib/firebase-admin');
+
+    const log = await repo.findByIdempotencyKey('', tenantId);
+    expect(log).toBeNull();
+    expect(mockQuery.get).not.toHaveBeenCalled();
+  });
 });

@@ -337,7 +337,7 @@ export class MarksService implements IMarksService {
     } else {
       await this.repo.upsert(existingMarks[0].id, { skills: parsed.skills, updatedBy: userId }, tenantId);
     }
-    await this.audit.log({ action: "mark.skillsSaved", userId, tenantId, entityType: "mark", metadata: { studentId: parsed.studentId, subject: parsed.subject, term: parsed.term } });
+    await this.audit.log({ action: "skill.recorded", userId, tenantId, entityId: parsed.studentId, entityType: "skill", metadata: { studentId: parsed.studentId, subject: parsed.subject, term: parsed.term, skills: parsed.skills } });
   }
 
   async getSkills(tenantId: string, studentId: string, term?: string): Promise<Record<string, number>[]> {

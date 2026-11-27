@@ -8,6 +8,8 @@ export interface IBehaviorRepository {
   findAll(...args: any[]): Promise<any>;
   findById(...args: any[]): Promise<any>;
   findByStudent(...args: any[]): Promise<any>;
+  // B14 (N15) — idempotency lookup: find a log created with a given client key.
+  findByIdempotencyKey(...args: any[]): Promise<any>;
   paginate(...args: any[]): Promise<any>;
   softDelete(...args: any[]): Promise<any>;
   update(...args: any[]): Promise<any>;

@@ -5,7 +5,8 @@ import { safeArray } from "@/lib/api/safeResponse";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/components/ToastProvider";
 import type { CreateAssignmentInput, CreateLessonPlanInput, CreateBookInput, RecordBehaviorInput } from "@/validators/teacher";
-import type { Assignment } from "@/types/teacher";
+import type { SkillsInput } from "@/validators/marks/MarksValidator";
+import type { Assignment, BehaviorLog } from "@/types/teacher";
 
 // 1. Assignments
 export const useAssignments = () => {
@@ -165,5 +166,53 @@ export const useRecordBehavior = () => {
       showToast("Behavior recorded!", "success");
     },
     onError: () => showToast("Failed to record behavior.", "error"),
+  });
+};
+
+// Behavior history for a student (B14/N15 — the page must show what was recorded)
+export const useBehaviorLogs = (studentId?: string) => {
+  const { user } = useAuth();
+  const tenantId = user?.tenantId || "unknown";
+  return useQuery<(BehaviorLog & { id: string })[]>({
+    queryKey: ["behaviorLogs", tenantId, studentId],
+    queryFn: async () => {
+      const res = await apiClient.get(`/behavior?studentId=${studentId}`);
+      const data = res.data;
+      return safeArray(data?.data || data);
+    },
+    enabled: !!studentId,
+    staleTime: 0,
+  });
+};
+
+// 5. Skills & Achievements (B13/N10) — records via the dedicated skills
+// endpoint (/marks/skills), NOT the behavior endpoint. The old wiring posted
+// skills to /behavior, so no skill was ever saved and the Audit Center
+// showed a phantom second behavior entry instead.
+export const useSkills = (studentId?: string) => {
+  const { user } = useAuth();
+  const tenantId = user?.tenantId || "unknown";
+  return useQuery<Record<string, number>[]>({
+    queryKey: ["skills", tenantId, studentId],
+    queryFn: async () => {
+      const res = await apiClient.get(`/marks/skills?studentId=${studentId}`);
+      const data = res.data;
+      return safeArray(data?.data || data);
+    },
+    enabled: !!studentId,
+    staleTime: 0,
+  });
+};
+
+export const useRecordSkill = () => {
+  const queryClient = useQueryClient();
+  const { showToast } = useToast();
+  return useMutation({
+    mutationFn: async (data: SkillsInput) => apiClient.post("/marks/skills", data),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["skills"] });
+      showToast("Skill recorded!", "success");
+    },
+    onError: () => showToast("Failed to record skill.", "error"),
   });
 };
