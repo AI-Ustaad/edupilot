@@ -65,5 +65,8 @@ export interface BehaviorLog {
   points: number;
   reason: string;
   recordedBy: string;
+  // B14 (N15) — client-generated idempotency key, stored so a retried submit
+  // with the same key is recognised as a duplicate and skipped.
+  idempotencyKey?: string;
   createdAt: Date;
 }

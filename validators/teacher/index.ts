@@ -51,5 +51,8 @@ export const RecordBehaviorSchema = z.object({
   studentId: z.string().min(1, "Student ID is required"),
   points: z.number(),
   reason: z.string().min(1, "Reason is required"),
+  // B14 (N15) — client-generated idempotency key: a retried/duplicate submit
+  // with the same key must not create a second behavior log.
+  idempotencyKey: z.string().optional(),
 });
 export type RecordBehaviorInput = z.infer<typeof RecordBehaviorSchema>;

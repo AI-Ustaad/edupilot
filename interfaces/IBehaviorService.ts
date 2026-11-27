@@ -2,6 +2,6 @@
 import type { BehaviorLog } from "@/types/teacher";
 
 export interface IBehaviorService {
-  recordBehavior(data: unknown, tenantId: string, userId: string): Promise<{ success: boolean }>;
+  recordBehavior(data: unknown, tenantId: string, userId: string): Promise<{ success: boolean; duplicate?: boolean }>;
   getBehaviorLogs(studentId: string, tenantId: string): Promise<(BehaviorLog & { id: string })[]>;
 }
