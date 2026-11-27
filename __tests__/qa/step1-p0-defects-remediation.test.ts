@@ -105,8 +105,9 @@ describe("Phase 1 P0 Core CRUD & Remediation QA Suite (R1, W2, N2, N21)", () => 
       expect(mockRepo.delete).toHaveBeenCalledWith("stu_test", tenantId);
     });
 
-    it("HomeworkService should prune 'TEST — Homework 2' and 'TEST — Audit Homework 3'", async () => {
+    it("N29 regression: listHomework must return homework titled 'TEST — Audit Homework 26 Nov' (the old prune matched it by substring 'TEST — Audit Homework 2' and deleted it on read)", async () => {
       const mockHw = [
+        { id: "hw_audit_26nov", title: "TEST — Audit Homework 26 Nov", classGrade: "Class 1", tenantId },
         { id: "hw_stuck", title: "TEST — Homework 2", classGrade: "Class 1", tenantId },
         { id: "hw_real", title: "English Essay Writing", classGrade: "Class 1", tenantId },
       ];
@@ -117,8 +118,9 @@ describe("Phase 1 P0 Core CRUD & Remediation QA Suite (R1, W2, N2, N21)", () => 
       const service = new HomeworkService(mockRepo);
       const list = await service.listHomework(tenantId);
 
-      expect(mockRepo.delete).toHaveBeenCalledWith("hw_stuck", tenantId);
-      expect(list.some((h) => h.id === "hw_stuck")).toBe(false);
+      expect(mockRepo.delete).not.toHaveBeenCalled();
+      expect(list.some((h) => h.id === "hw_audit_26nov")).toBe(true);
+      expect(list.some((h) => h.id === "hw_stuck")).toBe(true);
       expect(list.some((h) => h.id === "hw_real")).toBe(true);
     });
   });

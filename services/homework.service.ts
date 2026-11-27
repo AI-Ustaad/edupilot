@@ -55,27 +55,21 @@ export class HomeworkService implements IHomeworkService {
   }
 
   async listHomework(tenantId: string): Promise<Homework[]> {
+    // N29: a list read must never delete records. An earlier "prune stuck
+    // test data" block here deleted any homework whose title contained
+    // "TEST — Audit Homework 2" — which also matches the legitimate title
+    // "TEST — Audit Homework 26 Nov" (substring prefix), so every newly
+    // posted homework was deleted by the very next list fetch even though
+    // the create had succeeded (toast + homework.created audit entry).
+    // Stuck test data is removed by a one-off live-data cleanup, never by a read.
     const list = (await this.repo.findAll(tenantId)) as (Homework & { id: string })[];
-    const cleanList: Homework[] = [];
-    for (const h of list) {
-      if (
-        h.id === "ubVMtF6s" ||
-        h.id === "faOtOsMq" ||
-        String(h.title || "").includes("TEST — Audit Homework 3") ||
-        String(h.title || "").includes("TEST — Audit Homework 2") ||
-        String(h.title || "").includes("TEST — Homework 2")
-      ) {
-        this.repo.delete(h.id, tenantId).catch(() => {});
-      } else {
-        cleanList.push(h);
-      }
-    }
-    cleanList.sort((a: any, b: any) => {
+    const sorted = [...list];
+    sorted.sort((a: any, b: any) => {
       const tA = new Date(a.createdAt || 0).getTime();
       const tB = new Date(b.createdAt || 0).getTime();
       return tB - tA;
     });
-    return cleanList;
+    return sorted;
   }
 
   async getById(id: string, tenantId: string): Promise<Homework | null> {
