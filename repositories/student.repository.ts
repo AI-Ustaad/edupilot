@@ -86,6 +86,26 @@ export class StudentRepository extends BaseRepository<StudentDocument> implement
     }
   }
 
+  // B23: every roll number in use for the tenant, so the service can
+  // assign the smallest missing one (gap-filling) to a new admission
+  // instead of leaving the roll blank or re-using max+1 forever.
+  async findAllRollNumbers(tenantId: string): Promise<(string | number)[]> {
+    try {
+      const snapshot = await this.db
+        .collection(this.collectionName)
+        .where("tenantId", "==", tenantId)
+        .select("rollNumber")
+        .get();
+      return snapshot.docs
+        .map((doc) => doc.data()?.rollNumber)
+        .filter((v) => v !== undefined && v !== null && v !== "");
+    } catch (error) {
+      throw new RepositoryException("Failed to list student roll numbers", {
+        tenantId,
+      });
+    }
+  }
+
   async findByClass(
     className: string,
     tenantId: string
