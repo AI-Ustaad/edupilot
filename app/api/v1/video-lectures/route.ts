@@ -1,4 +1,9 @@
 export const dynamic = 'force-dynamic';
+// B12 rework: the route had no maxDuration, so a slow upload ran into the
+// plan default and Vercel killed the invocation (504). The bytes now go
+// straight from the browser to Storage, but the metadata POST still
+// deserves headroom (same 60s the OCR route uses).
+export const maxDuration = 60;
 import { withAuth, withTenant, withErrorHandler } from "@/route-helpers";
 import { createSuccessResponse, createErrorResponse, createApiResponse } from "@/lib/api/response";
 import { VideoLectureService } from "@/services/video-lecture.service";

@@ -2,6 +2,8 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import apiClient from "@/lib/api/client";
 import { safeArray } from "@/lib/api/safeResponse";
+import { extractErrorMessage } from "@/lib/api/errorMessage";
+import { uploadVideoToStorage } from "@/lib/storage/clientUpload";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/components/ToastProvider";
 
@@ -22,10 +24,27 @@ export const useUploadVideo = () => {
 
   return useMutation({
     mutationFn: async (formData: FormData) => {
-      // NOTE: Do not set Content-Type manually so the browser/Axios properly attaches multipart boundary
-      // B12: video files are multi-MB — the shared 15s client timeout is
-      // too short for the browser -> API route -> Cloud Storage round trip.
-      return apiClient.post("/video-lectures", formData, { timeout: 120000 });
+      // B12 rework: upload the bytes straight from the browser to Firebase
+      // Storage (see lib/storage/clientUpload). Routing a multi-MB video
+      // through the serverless function hits Vercel's 4.5 MB request-body
+      // cap (413) and the function timeout — and the platform's structured
+      // error body crashed the app via the toast (see errorMessage.ts).
+      // The function now only receives the small metadata JSON + the
+      // download URL, which the POST /video-lectures JSON branch accepts.
+      const file = formData.get("file") as File | null;
+      if (!file) throw new Error("A video file is required.");
+      const videoUrl = await uploadVideoToStorage(file, tenantId);
+      return apiClient.post(
+        "/video-lectures",
+        {
+          title: String(formData.get("title") || ""),
+          description: String(formData.get("description") || ""),
+          classGrade: String(formData.get("classGrade") || ""),
+          subject: String(formData.get("subject") || ""),
+          videoUrl,
+        },
+        { timeout: 120000 }
+      );
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["videos"] });
@@ -33,8 +52,11 @@ export const useUploadVideo = () => {
       showToast("Video lecture uploaded successfully!", "success");
     },
     onError: (err: any) => {
-      const msg = err?.response?.data?.error || err?.response?.data?.message || err?.message || "Failed to upload video lecture.";
-      showToast(msg, "error");
+      // B12 rework: the toast message MUST be a string. The old code passed
+      // err?.response?.data?.error straight through; Vercel platform errors
+      // carry that field as an OBJECT, React threw rendering it, and the
+      // whole app landed on the "Critical System Error" page.
+      showToast(extractErrorMessage(err, "Failed to upload video lecture."), "error");
     },
   });
 };
@@ -55,8 +77,8 @@ export const useDeleteVideo = () => {
       showToast("Video lecture deleted successfully.", "success");
     },
     onError: (err: any) => {
-      const msg = err?.response?.data?.error || err?.response?.data?.message || err?.message || "Failed to delete video lecture.";
-      showToast(msg, "error");
+      // Same crash vector as the upload handler: coerce to a string first.
+      showToast(extractErrorMessage(err, "Failed to delete video lecture."), "error");
     },
   });
 };
