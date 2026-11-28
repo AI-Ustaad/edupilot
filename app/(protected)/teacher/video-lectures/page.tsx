@@ -1,6 +1,11 @@
 "use client";
 import { useState } from "react";
 import { Loader2, Upload, Film, Trash2 } from "lucide-react";
+
+// B12 round 3: see app/(protected)/video-lectures/page.tsx — this page
+// shares the upload form and must likewise never be served from a stale
+// static prerender pointing at an old bundle.
+export const dynamic = "force-dynamic";
 import RequirePermission from "@/components/RequirePermission";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 import { useVideos, useDeleteVideo } from "@/hooks/useVideos";

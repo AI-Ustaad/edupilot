@@ -39,7 +39,33 @@
 // POST). On timeout the task is cancelled and a clear Error is thrown, so
 // the mutation settles, the button un-sticks, and the user gets an honest
 // toast naming the cause. A hang with no feedback is never acceptable.
+// B12 ROUND 3 (28 Nov live verification): the round-2 fix bounded the
+// upload, but the 12:05 verification STILL saw a silent hang — spinner
+// over 2 minutes, NO toast, then idle, library empty, reproduced twice.
+// The timer logic itself is sound (verified against the Firebase SDK
+// source: setTimeout + reject is unconditional, and task.cancel() returns
+// a boolean, never throws). The 13-minute gap between the round-2 merge
+// (11:52) and the verification (12:05), plus the fact that this page is
+// statically prerendered (its HTML can keep pointing at the old bundle's
+// chunks), makes a stale bundle the most likely explanation — the
+// verification ran the round-1 code, which has no timer at all. But a
+// stale deploy must not be an excuse, and the failure exposed a real
+// product gap: the ONLY failure signal was a toast that auto-dismisses
+// after 5 seconds. If it is missed (or the page is reloaded, killing the
+// in-flight mutation), the user sees a spinner stop with NO explanation
+// and NO persistent record of what happened — exactly the observed
+// symptom. So round 3 makes failure impossible to miss:
+//   - the form now shows the error INLINE, persistently, until the next
+//     retry (in addition to the toast);
+//   - the upload reports live progress (bytes transferred), so a stall is
+//     visible as a stuck percentage instead of a bare spinner;
+//   - the timeout can never be silenced by the cancellation itself
+//     (onTimeout is wrapped so the rejection always fires);
+//   - both video pages are force-dynamic, so the browser can never be
+//     served a stale statically-prerendered page pointing at an old
+//     bundle (see the page files).
 import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
+import type { UploadTaskSnapshot } from "firebase/storage";
 import { storage } from "@/lib/firebase";
 
 /** Bound for each Storage phase (upload, then download-URL lookup). Same
@@ -99,7 +125,17 @@ function withTimeout<T>(
   let timer: ReturnType<typeof setTimeout> | undefined;
   const timeoutPromise = new Promise<T>((_, reject) => {
     timer = setTimeout(() => {
-      onTimeout();
+      // B12 ROUND 3: the rejection must ALWAYS fire. If onTimeout itself
+      // threw (e.g. a future SDK change makes task.cancel() throw), the
+      // reject below would never run and the caller would hang forever —
+      // the exact symptom round 2 was supposed to kill. cancel() cannot
+      // throw today (verified in the installed SDK source), but the
+      // timeout must not depend on that.
+      try {
+        onTimeout();
+      } catch {
+        // Cancellation failing must never swallow the timeout itself.
+      }
       reject(new Error(message));
     }, timeoutMs);
   });
@@ -117,7 +153,13 @@ function withTimeout<T>(
 export async function uploadVideoToStorage(
   file: File,
   tenantId: string,
-  opts?: { timeoutMs?: number }
+  opts?: {
+    timeoutMs?: number;
+    /** Called with live progress while the upload runs, so the UI can show
+     *  a percentage instead of a bare spinner — a stalled upload is then
+     *  visible as a stuck percentage, not a silent hang. */
+    onProgress?: (bytesTransferred: number, totalBytes: number) => void;
+  }
 ): Promise<string> {
   const timeoutMs = opts?.timeoutMs ?? VIDEO_UPLOAD_TIMEOUT_MS;
   const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
@@ -129,11 +171,14 @@ export async function uploadVideoToStorage(
   // Settle explicitly through the task's state_changed observer instead of
   // `await task`: the observer callbacks are the SDK's only settlement
   // path, and wiring them here makes the promise settle exactly once —
-  // success, error, or (via the timeout race) cancellation.
+  // success, error, or (via the timeout race) cancellation. The `next`
+  // callback reports live progress (B12 round 3).
   const uploadPromise = new Promise<void>((resolve, reject) => {
     const unsubscribe = task.on(
       "state_changed",
-      null,
+      (snapshot: UploadTaskSnapshot) => {
+        opts?.onProgress?.(snapshot.bytesTransferred, snapshot.totalBytes);
+      },
       (err) => {
         unsubscribe();
         reject(toStorageError(err, objectPath));
