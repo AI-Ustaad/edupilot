@@ -7,6 +7,8 @@ import { Loader2 } from "lucide-react";
 import RequirePermission from "@/components/RequirePermission";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 import { useSchoolConfiguration, useSaveSchoolConfiguration } from "@/hooks/useSchoolConfiguration";
+import { useGeneralSettings } from "@/hooks/useGeneralSettings";
+import { countryDisplayName } from "@/lib/utils/country";
 import { useConfigurationDashboard } from "@/hooks/useConfigurationDashboard";
 import { useClasses } from "@/hooks/useClasses";
 import { formatClassLabel, cleanSectionName } from "@/lib/utils/formatClassLabel";
@@ -21,6 +23,7 @@ function SchoolConfigurationContent() {
   const searchParams = useSearchParams();
   const { data, isLoading } = useSchoolConfiguration();
   const { data: dashboardData, isLoading: isDashboardLoading } = useConfigurationDashboard();
+  const { data: generalSettings } = useGeneralSettings();
   const { data: classesData = [], isLoading: isClassesLoading } = useClasses();
   const saveMutation = useSaveSchoolConfiguration();
   
@@ -163,6 +166,11 @@ function SchoolConfigurationContent() {
       schoolName: name,
       schoolType: type,
       boardName: board,
+      // B24: show the editable Country + Established Year from General Settings.
+      country: countryDisplayName(
+        dashboardData?.schoolInfo?.country || (generalSettings as any)?.country
+      ),
+      establishedYear: (generalSettings as any)?.establishedYear,
       classes,
       sectionNames,
       subjectCount: base.subjectCount || dashboardData?.configuredSubjects || 8,
@@ -171,7 +179,7 @@ function SchoolConfigurationContent() {
       versionLabel: activeVersionLabel,
       completionLabel: activeCompletionLabel,
     };
-  }, [config, dashboardData, classesData, history]);
+  }, [config, dashboardData, classesData, history, generalSettings]);
 
   const isConfigured = Boolean(resolvedConfig?.state === "Published" || dashboardData?.schoolInfo?.name);
 
