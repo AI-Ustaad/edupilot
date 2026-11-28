@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { Loader2, UserPlus, Upload, Camera } from "lucide-react";
@@ -67,6 +67,22 @@ export default function AddStudentPage() {
     medicalConditions: "",
     photoBase64: "",
   });
+
+  // B23: pre-fill the smallest unused roll number (gap-filling) so the
+  // form never submits a blank roll; the user can still change it, and
+  // the server assigns one anyway if it is left blank.
+  useEffect(() => {
+    let cancelled = false;
+    apiClient.get("/students/next-roll-number")
+      .then((res: any) => {
+        const next = res?.data?.data?.rollNumber ?? res?.data?.rollNumber;
+        if (!cancelled && next !== undefined && next !== null && String(next).trim() !== "") {
+          setForm((prev) => (prev.rollNumber ? prev : { ...prev, rollNumber: String(next) }));
+        }
+      })
+      .catch(() => { /* leave blank — the server assigns one on save */ });
+    return () => { cancelled = true; };
+  }, []);
 
   // Canonical section list derived for the selected class
   const availableSections = useMemo(() => {

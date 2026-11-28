@@ -22,6 +22,7 @@ import { logger } from "@/lib/logger/logger";
 import { adminDb } from "@/lib/firebase-admin";
 import { formatClassLabel, cleanSectionName } from "@/lib/utils/formatClassLabel";
 import { invalidateCache } from "@/lib/cache";
+import { findSmallestMissingRollNumber } from "@/lib/students/rollNumbers";
 
 function normalizeCreateStudentInput(data: any): CreateStudentDTO {
   const rawClass = data?.academic?.classId || data?.classGrade || data?.className || data?.classId || "Class 10";
@@ -104,9 +105,36 @@ export class StudentService implements IStudentService {
     };
   }
 
+  // B23: smallest unused roll number for the tenant (gap-filling). Rolls
+  // are one school-wide sequence, so the next admission reuses the lowest
+  // free number (e.g. #45 after its holder was deleted) instead of
+  // max+1, which would leave the gap forever.
+  async getNextRollNumber(tenantId: string): Promise<number> {
+    if (typeof (this.repository as any).findAllRollNumbers === "function") {
+      const used = await (this.repository as any).findAllRollNumbers(tenantId);
+      return findSmallestMissingRollNumber(used ?? []);
+    }
+    return 1;
+  }
+
   async create(data: CreateStudentDTO | any, tenantId: string, userId: string): Promise<StudentEntity> {
     const normalizedInput = normalizeCreateStudentInput(data);
     const validatedDTO = CreateStudentSchema.parse(normalizedInput);
+
+    // B23: roll numbers are never left blank — a new admission without an
+    // explicit roll number receives the smallest unused roll number for
+    // the school, so a deleted student's number is reused by the next
+    // admission instead of leaving a permanent gap. Explicitly provided
+    // roll numbers are kept as-is (the duplicate check below guards
+    // them); existing students are never renumbered.
+    const providedRoll = validatedDTO.identity?.rollNumber;
+    if (providedRoll === undefined || providedRoll === null || String(providedRoll).trim() === "") {
+      validatedDTO.identity = {
+        ...validatedDTO.identity,
+        rollNumber: String(await this.getNextRollNumber(tenantId)),
+      };
+    }
+
     const entity = StudentPersistenceMapper.fromDTO(validatedDTO);
     const document = StudentPersistenceMapper.toFirestore(entity, userId);
 
@@ -267,6 +295,19 @@ export class StudentService implements IStudentService {
       status: flatStatus ?? data.status ?? current.status,
       metadata: { ...current.metadata, ...(data.metadata || {}) },
     };
+
+    // B23: a live student without a roll number ("N/A" in the list) gets
+    // the smallest unused roll number on their next edit, unless the edit
+    // itself provides one. Never renumbers a student who already has one.
+    const existingRoll = (existing as any).rollNumber;
+    const hasRoll = existingRoll !== undefined && existingRoll !== null && String(existingRoll).trim() !== "";
+    const updateProvidesRoll = flatRoll !== undefined && flatRoll !== null && String(flatRoll).trim() !== "";
+    if (!hasRoll && !updateProvidesRoll) {
+      merged.identity = {
+        ...merged.identity,
+        rollNumber: String(await this.getNextRollNumber(tenantId)),
+      };
+    }
 
     const entity = StudentPersistenceMapper.fromDTO(merged);
     const document = StudentPersistenceMapper.toFirestore(entity, userId);

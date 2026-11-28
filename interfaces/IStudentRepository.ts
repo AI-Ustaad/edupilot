@@ -14,6 +14,7 @@ export interface IStudentRepository {
   exists(...args: any[]): Promise<any>;
   findActiveStudents(...args: any[]): Promise<any>;
   findAll(...args: any[]): Promise<any>;
+  findAllRollNumbers(tenantId: string): Promise<(string | number)[]>;
   findByAdmissionNo(...args: any[]): Promise<any>;
   findByClass(...args: any[]): Promise<any>;
   findByHostel(...args: any[]): Promise<any>;
