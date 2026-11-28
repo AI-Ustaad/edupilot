@@ -3,6 +3,19 @@ import { NextResponse } from "next/server";
 import { SessionService } from "@/services/session.service";
 import { adminAuth } from "@/lib/firebase-admin";
 import { logger } from "@/lib/logger/logger";
+import { getSessionUser } from "@/lib/auth/auth-server";
+import { getClientIp } from "@/lib/http/client-ip";
+
+// B20 — returns the real client IP of the current session. The app runs
+// behind Vercel's proxy, so the IP must be read from the forwarding
+// headers (x-forwarded-for, first entry), never from the socket address.
+export async function GET(req: Request) {
+  const user = await getSessionUser();
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  return NextResponse.json({ ip: getClientIp(req) });
+}
 
 export async function POST(req: Request) {
   try {
