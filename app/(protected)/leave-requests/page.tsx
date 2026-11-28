@@ -97,7 +97,7 @@ export default function LeaveRequestsPage() {
     <div className="p-6 max-w-4xl mx-auto space-y-6">
       <div className="border-b pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-black text-gray-900">Pending Leave Requests</h1>
+          <h1 className="text-2xl font-black text-gray-900">Leave Requests</h1>
           <p className="text-gray-500 mt-1">Review, approve, and submit staff leave applications.</p>
         </div>
 
@@ -112,8 +112,8 @@ export default function LeaveRequestsPage() {
       {leaves.length === 0 ? (
         <div className="bg-white border border-gray-200 rounded-2xl p-12 text-center text-gray-500 shadow-sm">
           <CheckCircle className="mx-auto mb-4 text-green-500" size={48} />
-          <p className="font-bold text-lg text-gray-800">No pending leave requests.</p>
-          <p className="text-sm">All staff are present and accounted for!</p>
+          <p className="font-bold text-lg text-gray-800">No leave requests.</p>
+          <p className="text-sm">No staff leave requests have been submitted yet.</p>
         </div>
       ) : (
         <div className="space-y-4">
