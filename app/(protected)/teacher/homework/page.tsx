@@ -10,12 +10,18 @@ import { formatClassLabel, cleanSectionName, extractUniqueClasses } from "@/lib/
 import ConfirmDeleteModal from "@/components/ui/ConfirmDeleteModal";
 
 export default function TeacherHomeworkPage() {
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [classGrade, setClassGrade] = useState("");
-  const [section, setSection] = useState("");
-  const [subject, setSubject] = useState("");
-  const [dueDate, setDueDate] = useState("");
+  // B25: single form object (same pattern that fixed the cross-reset on
+  // Lesson Plans) — a dropdown change spreads the existing values, so it
+  // can never drop an already-entered field. Only `section` is reset when
+  // the class changes, because the section list depends on the class.
+  const [form, setForm] = useState({
+    title: "",
+    description: "",
+    classGrade: "",
+    section: "",
+    subject: "",
+    dueDate: "",
+  });
   const [success, setSuccess] = useState("");
   const [itemToDelete, setItemToDelete] = useState<{ id: string; title: string } | null>(null);
 
@@ -25,8 +31,8 @@ export default function TeacherHomeworkPage() {
   
   const uniqueClasses = useMemo(() => extractUniqueClasses(classes), [classes]);
   const availableSections = useMemo(() => {
-    if (!classGrade) return [];
-    const norm = formatClassLabel(classGrade);
+    if (!form.classGrade) return [];
+    const norm = formatClassLabel(form.classGrade);
     const matched = classes.filter((c: any) => formatClassLabel(c.classGrade || c.name) === norm);
     const set = new Set<string>();
     matched.forEach((c: any) => {
@@ -34,7 +40,7 @@ export default function TeacherHomeworkPage() {
       if (s) set.add(s);
     });
     return set.size > 0 ? Array.from(set).sort() : ["A", "B", "C"];
-  }, [classes, classGrade]);
+  }, [classes, form.classGrade]);
 
   const { data: assignments = [], isLoading: listLoading } = useHomework();
   const createMutation = useCreateHomework();
@@ -43,11 +49,13 @@ export default function TeacherHomeworkPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     createMutation.mutate(
-      { title, description, classGrade, section, subject, dueDate: dueDate || undefined },
+      { title: form.title, description: form.description, classGrade: form.classGrade, section: form.section, subject: form.subject, dueDate: form.dueDate || undefined },
       {
         onSuccess: () => {
           setSuccess("Homework posted successfully!");
-          setTitle(""); setDescription(""); setDueDate("");
+          // Only the free-text fields are cleared after a successful post;
+          // class / section / subject stay so the next homework can reuse them.
+          setForm({ ...form, title: "", description: "", dueDate: "" });
           setTimeout(() => setSuccess(""), 3000);
         }
       }
@@ -73,23 +81,23 @@ export default function TeacherHomeworkPage() {
       <RequirePermission permissions={[PERMISSIONS.homework.create]}>
         <form onSubmit={handleSubmit} className="bg-white border border-gray-200 rounded-2xl p-6 space-y-4 shadow-sm">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <input type="text" placeholder="Title" value={title} onChange={e => setTitle(e.target.value)} className="bg-gray-50 border rounded-xl p-3" required />
-            <input type="text" placeholder="Subject" value={subject} onChange={e => setSubject(e.target.value)} list="subject-list" className="bg-gray-50 border rounded-xl p-3" required />
+            <input type="text" placeholder="Title" value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} className="bg-gray-50 border rounded-xl p-3" required />
+            <input type="text" placeholder="Subject" value={form.subject} onChange={e => setForm({ ...form, subject: e.target.value })} list="subject-list" className="bg-gray-50 border rounded-xl p-3" required />
             <datalist id="subject-list">{subjects.map(s => <option key={s} value={s} />)}</datalist>
-            <select value={classGrade} onChange={e => { setClassGrade(e.target.value); setSection(""); }} className="bg-gray-50 border rounded-xl p-3" required>
+            <select value={form.classGrade} onChange={e => setForm({ ...form, classGrade: e.target.value, section: "" })} className="bg-gray-50 border rounded-xl p-3" required>
               <option value="">Select Class</option>
               {uniqueClasses.map((cls: string) => <option key={cls} value={cls}>{cls}</option>)}
             </select>
-            <select value={section} onChange={e => setSection(e.target.value)} className="bg-gray-50 border rounded-xl p-3 disabled:opacity-50" required disabled={!classGrade}>
+            <select value={form.section} onChange={e => setForm({ ...form, section: e.target.value })} className="bg-gray-50 border rounded-xl p-3 disabled:opacity-50" required disabled={!form.classGrade}>
               <option value="">Select Section</option>
               {availableSections.map((s: string) => <option key={s} value={s}>{s}</option>)}
             </select>
             <div className="flex items-center gap-2 border bg-gray-50 rounded-xl p-3">
               <Calendar size={18} className="text-gray-400" />
-              <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} className="bg-transparent outline-none w-full" />
+              <input type="date" value={form.dueDate} onChange={e => setForm({ ...form, dueDate: e.target.value })} className="bg-transparent outline-none w-full" />
             </div>
           </div>
-          <textarea placeholder="Description" rows={3} value={description} onChange={e => setDescription(e.target.value)} className="w-full bg-gray-50 border rounded-xl p-3" required />
+          <textarea placeholder="Description" rows={3} value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} className="w-full bg-gray-50 border rounded-xl p-3" required />
           <button type="submit" disabled={createMutation.isPending} className="bg-blue-600 text-white px-6 py-3 rounded-xl font-bold flex items-center gap-2 disabled:opacity-50">
             {createMutation.isPending ? <Loader2 className="animate-spin" size={18} /> : <Send size={18} />} Post Homework
           </button>
