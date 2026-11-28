@@ -8,6 +8,10 @@ import { createErrorResponse, createApiResponse } from "@/lib/api/response";
 import { StaffService } from "@/services/StaffService";
 import { SubscriptionService } from "@/services/subscription.service";
 import { resolveStaffCategory } from "@/lib/mappers/StaffPersistenceMapper";
+import {
+  resolvePhoneForCreate,
+  isPlaceholderEmail,
+} from "@/lib/validation/contact";
 import type { CreateStaffDTO } from "@/dto";
 import type { TenantContext } from "@/types/api";
 import * as XLSX from "xlsx";
@@ -75,6 +79,20 @@ export const POST = withErrorHandler(
               return;
             }
 
+            // B21: no placeholder emails and no invalid phones may be
+            // created via bulk import (this is how the legacy 10-digit
+            // phones and teacherNN.test@example.com rows got in).
+            if (email && isPlaceholderEmail(email)) {
+              errors.push(`Row ${index + 2}: placeholder email "${email}" is not allowed — use a real school email`);
+              return;
+            }
+
+            const mobileResult = resolvePhoneForCreate(mobile);
+            if ("error" in mobileResult) {
+              errors.push(`Row ${index + 2} ("${fullName}"): ${mobileResult.error}`);
+              return;
+            }
+
             const staffDTO: any = {
               personal: {
                 fullName,
@@ -83,7 +101,7 @@ export const POST = withErrorHandler(
               },
               contact: {
                 email: email || "",
-                mobile: mobile || "",
+                mobile: mobileResult.value || "",
               },
               professional: {
                 designation,

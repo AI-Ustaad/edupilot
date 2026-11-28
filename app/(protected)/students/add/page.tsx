@@ -9,6 +9,11 @@ import apiClient from "@/lib/api/client";
 import toast from "react-hot-toast";
 import { useClasses } from "@/hooks/useClasses";
 import { formatClassLabel, cleanSectionName } from "@/lib/utils/formatClassLabel";
+import {
+  resolvePhoneForCreate,
+  isPlaceholderEmail,
+  PLACEHOLDER_EMAIL_MESSAGE,
+} from "@/lib/validation/contact";
 
 export default function AddStudentPage() {
   const router = useRouter();
@@ -94,21 +99,28 @@ export default function AddStudentPage() {
       return;
     }
 
-    if (form.phone) {
-      const clean = form.phone.replace(/\D/g, "");
-      if (clean.length > 0 && !/^03\d{9}$/.test(clean)) {
-        setError("Student phone must be in 11-digit Pakistani format: 03XXXXXXXXX");
-        return;
-      }
+    // B21: new phones must normalise to canonical 11-digit form
+    // (+92… / 300… accepted, stored as 03…); legacy 10-digit values are
+    // rejected for NEW records, and placeholder emails are not accepted.
+    const studentPhoneResult = resolvePhoneForCreate(form.phone);
+    if ("error" in studentPhoneResult) {
+      setError(studentPhoneResult.error);
+      return;
     }
 
-    if (form.guardianPhone) {
-      const cleanG = form.guardianPhone.replace(/\D/g, "");
-      if (cleanG.length > 0 && !/^03\d{9}$/.test(cleanG)) {
-        setError("Guardian phone must be in 11-digit Pakistani format: 03XXXXXXXXX");
-        return;
-      }
+    const guardianPhoneResult = resolvePhoneForCreate(form.guardianPhone);
+    if ("error" in guardianPhoneResult) {
+      setError(guardianPhoneResult.error);
+      return;
     }
+
+    if (form.email && isPlaceholderEmail(form.email)) {
+      setError(PLACEHOLDER_EMAIL_MESSAGE);
+      return;
+    }
+
+    const studentPhone = studentPhoneResult.value;
+    const guardianPhone = guardianPhoneResult.value;
 
     setError("");
     setIsCreating(true);
@@ -143,17 +155,17 @@ export default function AddStudentPage() {
         },
         parentReferences: {
           primaryParentId: null,
-          emergencyContactPhone: form.guardianPhone || form.phone || undefined,
+          emergencyContactPhone: guardianPhone || studentPhone || undefined,
         },
         contacts: {
-          phone: form.phone || undefined,
+          phone: studentPhone || undefined,
           email: form.email || undefined,
           address: form.address || undefined,
         },
         guardian: {
           name: form.guardianName || form.fatherName || undefined,
           relation: form.guardianRelation || undefined,
-          phone: form.guardianPhone || undefined,
+          phone: guardianPhone || undefined,
         },
         medical: {
           bloodGroup: form.bloodGroup || undefined,

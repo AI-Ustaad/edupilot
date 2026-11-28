@@ -8,6 +8,11 @@ import { useCreateStaff, useStaffOCR } from "@/hooks/useStaff";
 import { useToast } from "@/components/ToastProvider";
 import { type StaffFormData } from "@/lib/mappers/staff.mapper";
 import { logger } from "@/lib/logger/logger";
+import {
+  resolvePhoneForCreate,
+  isPlaceholderEmail,
+  PLACEHOLDER_EMAIL_MESSAGE,
+} from "@/lib/validation/contact";
 import { Input, Select, Section, DocumentUpload } from "@/components/staff/form-primitives";
 
 export default function AddStaffPage() {
@@ -80,16 +85,17 @@ export default function AddStaffPage() {
       return;
     }
 
-    if (form.contact.mobile) {
-      const cleanPhone = form.contact.mobile.replace(/\D/g, "");
-      if (cleanPhone.length > 0 && !/^03\d{9}$/.test(cleanPhone)) {
-        setError("Mobile number must be in 11-digit Pakistani format: 03XXXXXXXXX");
-        return;
-      }
+    // B21: a new mobile must normalise to canonical 11-digit form
+    // (+92… / 300… accepted, stored as 03…); placeholder emails are not
+    // accepted as a real staff email.
+    const mobileResult = resolvePhoneForCreate(form.contact.mobile);
+    if ("error" in mobileResult) {
+      setError(mobileResult.error);
+      return;
     }
 
-    if (form.contact.email && form.contact.email.toLowerCase().includes("@example.com")) {
-      setError("Please use a realistic school email domain (e.g. @ghssahiwal.edu.pk)");
+    if (form.contact.email && isPlaceholderEmail(form.contact.email)) {
+      setError(PLACEHOLDER_EMAIL_MESSAGE);
       return;
     }
 
@@ -100,6 +106,10 @@ export default function AddStaffPage() {
 
     const payload = { 
       ...form, 
+      contact: {
+        ...form.contact,
+        mobile: mobileResult.value,
+      },
       personal: {
         ...form.personal,
         fullName: normalizedFullName,

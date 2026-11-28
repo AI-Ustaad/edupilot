@@ -7,6 +7,7 @@ import { withPermission } from "@/lib/auth/rbac";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 import { StudentService } from "@/services/StudentService";
 import { SubscriptionService } from "@/services/subscription.service";
+import { resolvePhoneForCreate } from "@/lib/validation/contact";
 import type { TenantContext } from "@/types/api";
 import * as XLSX from 'xlsx';
 
@@ -73,6 +74,15 @@ export const POST = withErrorHandler(
             return;
           }
 
+          // B21: a bulk-imported guardian phone must normalise to a valid
+          // 11-digit number (legacy 10-digit values are rejected for NEW
+          // records, exactly as on the Add Student form).
+          const guardianPhoneResult = resolvePhoneForCreate(guardianPhone);
+          if ("error" in guardianPhoneResult) {
+            errors.push(`Row ${index + 2} ("${fullName}"): ${guardianPhoneResult.error}`);
+            return;
+          }
+
           studentsToAdd.push({
             fullName,
             fatherName: fatherName || guardianName || "N/A",
@@ -83,7 +93,7 @@ export const POST = withErrorHandler(
             gender: (gender === "Female" || gender === "Other") ? gender : "Male",
             dob: dob || undefined,
             guardianRelation: guardianRelation || "Guardian",
-            guardianPhone: guardianPhone || undefined,
+            guardianPhone: guardianPhoneResult.value || undefined,
             monthlyFee: monthlyFee ? Number(monthlyFee) : 5000,
           });
         });
