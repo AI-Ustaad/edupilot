@@ -21,6 +21,7 @@ import { EVENTS } from "@/lib/events/event-types";
 import { logger } from "@/lib/logger/logger";
 import { adminDb } from "@/lib/firebase-admin";
 import { formatClassLabel, cleanSectionName } from "@/lib/utils/formatClassLabel";
+import { dedupeMarksBySubjectAndTerm } from "@/lib/aggregations/shared-metrics";
 import { invalidateCache } from "@/lib/cache";
 import { findSmallestMissingRollNumber } from "@/lib/students/rollNumbers";
 
@@ -606,6 +607,10 @@ export class StudentService implements IStudentService {
     const safeAttendance = Array.isArray(attendanceRecords) ? attendanceRecords : [];
     const safeFees = Array.isArray(feeRecords) ? feeRecords : [];
     const safeMarks = Array.isArray(marks) ? marks : [];
+    // N25 — one row per subject per exam: the marks collection can hold the
+    // same logical mark under more than one doc id, and without this the 360
+    // "Recent Marks" list (and the average below) double-counts it.
+    const dedupedMarks = dedupeMarksBySubjectAndTerm(safeMarks);
     const safeBehavior = Array.isArray(behaviorLogs) ? behaviorLogs : [];
     const safeTimeline = Array.isArray(timeline) ? timeline : [];
 
@@ -651,7 +656,7 @@ export class StudentService implements IStudentService {
     const totalPaid = finalFees.reduce((sum, f) => sum + f.amountPaid, 0);
     const outstanding = Math.max(0, totalDue - totalPaid);
 
-    const markPercentages = safeMarks.map((mark) => {
+    const markPercentages = dedupedMarks.map((mark) => {
       if (!mark) return 0;
       const supplied = Number(mark.percentage);
       if (Number.isFinite(supplied)) return supplied;
@@ -671,7 +676,7 @@ export class StudentService implements IStudentService {
       },
       attendance: { present, absent, late, percentage: attendancePercentage, records: safeAttendance },
       fees: { totalDue, totalPaid, outstanding, records: finalFees },
-      marks: { exams: safeMarks, average: markAverage, trend: "stable", records: safeMarks },
+      marks: { exams: dedupedMarks, average: markAverage, trend: "stable", records: dedupedMarks },
       behavior: { logs: safeBehavior, incidents },
       transport: null,
       hostel: null,
