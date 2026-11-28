@@ -16,6 +16,7 @@ import { useStudents } from "@/hooks/useStudents";
 import { useFees, useSaveFee, useDeleteFee } from "@/hooks/useFees";
 import { formatClassLabel, cleanSectionName } from "@/lib/utils/formatClassLabel";
 import { computeFeeSummary } from "@/lib/aggregations/shared-metrics";
+import { compareLedgerRecords } from "@/lib/students/rollNumbers";
 
 const MONTHS = [
   "January 2026", "February 2026", "March 2026", "April 2026",
@@ -137,10 +138,12 @@ export default function FeesPage() {
       return true;
     });
 
+    // B29 — the Fee Ledger sorts strictly by roll number (same shared rule
+    // as the API); records without a roll number go last, never interleaved.
     return records.sort((a: any, b: any) => {
       const stA = studentLookup.get(a.studentId);
       const stB = studentLookup.get(b.studentId);
-      return sortStudentsNaturally(
+      return compareLedgerRecords(
         {
           classGrade: stA?.classGrade || a.classGrade,
           section: stA?.section || a.section,
@@ -166,7 +169,10 @@ export default function FeesPage() {
     students.forEach((s: any) => studentMap.set(s.id, s));
     const processedStudentIds = new Set<string>();
 
-    feeRecords.forEach((f: any) => {
+    // B29 — export rows follow the same strict roll-number order as the
+    // ledger table (API order is already sorted, this keeps the file
+    // correct even if it ever regresses); roll-less records go last.
+    [...feeRecords].sort(compareLedgerRecords).forEach((f: any) => {
       const student = studentMap.get(f.studentId);
       const roll = f.rollNumber || student?.rollNumber || "—";
       const name = (f.studentName || student?.fullName || student?.name || "Student").replace(/,/g, " ");
@@ -183,20 +189,21 @@ export default function FeesPage() {
       rows.push(`"${roll}","${name}","${cls}","${sec}","${month}",${amount},${amountPaid},"${status}","${receipt}","${date}"`);
     });
 
-    students.forEach((s: any) => {
-      if (!processedStudentIds.has(s.id)) {
-        const roll = s.rollNumber || "—";
-        const name = (s.fullName || s.name || "Student").replace(/,/g, " ");
-        const cls = formatClassLabel(s.classGrade || "");
-        const sec = cleanSectionName(s.section || "A");
-        const month = selectedMonth;
-        const amount = s.monthlyFee ? Number(s.monthlyFee) : 5000;
-        const amountPaid = 0;
-        const status = "PENDING";
-        const receipt = "";
-        const date = "";
-        rows.push(`"${roll}","${name}","${cls}","${sec}","${month}",${amount},${amountPaid},"${status}","${receipt}","${date}"`);
-      }
+    const studentsWithoutRecords = students
+      .filter((s: any) => !processedStudentIds.has(s.id))
+      .sort(compareLedgerRecords);
+    studentsWithoutRecords.forEach((s: any) => {
+      const roll = s.rollNumber || "—";
+      const name = (s.fullName || s.name || "Student").replace(/,/g, " ");
+      const cls = formatClassLabel(s.classGrade || "");
+      const sec = cleanSectionName(s.section || "A");
+      const month = selectedMonth;
+      const amount = s.monthlyFee ? Number(s.monthlyFee) : 5000;
+      const amountPaid = 0;
+      const status = "PENDING";
+      const receipt = "";
+      const date = "";
+      rows.push(`"${roll}","${name}","${cls}","${sec}","${month}",${amount},${amountPaid},"${status}","${receipt}","${date}"`);
     });
 
     const csvContent = rows.join("\n");
