@@ -5,6 +5,69 @@
  * Ensures /dashboard, /fees, /attendance, and /result agree 100%.
  */
 
+import { normalizeTerm, canonicalizeSubject } from "@/lib/utils/formatClassLabel";
+
+/**
+ * N25 — collapse duplicate mark rows to one row per subject per exam.
+ *
+ * Student 360 "Recent Marks" renders MarksRepository.findByStudent() verbatim,
+ * and the collection can hold the same logical mark under more than one doc id:
+ * saveSkills() creates a fresh random-id doc whenever no existing mark matches,
+ * and normalizeTerm() passes unrecognised term spellings through verbatim, so
+ * the same exam saved under two spellings lands in two deterministic doc ids.
+ * The Marks/Exams pages never show this because they filter strictly by one
+ * normalized term; the 360 aggregate has no term filter, so every duplicate
+ * surfaces there (Ahmed Shah: English 88 and Mathematics 92 each twice).
+ *
+ * Key: normalized term + canonical subject. When several rows share a key the
+ * most recently updated one wins (updatedAt, then createdAt); ties keep the
+ * first-seen row. Rows without a subject cannot be proven to duplicate another
+ * row, so each is kept. First-seen order is preserved.
+ */
+function markTimestamp(value: unknown): number {
+  if (value == null) return Number.NEGATIVE_INFINITY;
+  if (value instanceof Date) return value.getTime();
+  if (typeof value === "number") return value;
+  if (typeof value === "string") {
+    const parsed = Date.parse(value);
+    return Number.isFinite(parsed) ? parsed : Number.NEGATIVE_INFINITY;
+  }
+  if (typeof value === "object") {
+    const obj = value as any;
+    if (typeof obj.toDate === "function") {
+      try {
+        return obj.toDate().getTime();
+      } catch {
+        return Number.NEGATIVE_INFINITY;
+      }
+    }
+    if (typeof obj._seconds === "number") return obj._seconds * 1000;
+  }
+  return Number.NEGATIVE_INFINITY;
+}
+
+export function dedupeMarksBySubjectAndTerm<T extends Record<string, any>>(marks: T[]): T[] {
+  if (!Array.isArray(marks)) return [];
+  const winners = new Map<string, { record: T; recency: number; firstIndex: number }>();
+  marks.forEach((mark, index) => {
+    if (!mark) return;
+    const subject = canonicalizeSubject(mark.subject).toLowerCase();
+    const key = subject
+      ? `${normalizeTerm(mark.term || mark.examType)}|||${subject}`
+      : `__unidentified__${index}`;
+    const recency = Math.max(markTimestamp(mark.updatedAt), markTimestamp(mark.createdAt));
+    const existing = winners.get(key);
+    if (!existing) {
+      winners.set(key, { record: mark, recency, firstIndex: index });
+    } else if (recency > existing.recency) {
+      winners.set(key, { record: mark, recency, firstIndex: existing.firstIndex });
+    }
+  });
+  return [...winners.values()]
+    .sort((a, b) => a.firstIndex - b.firstIndex)
+    .map((entry) => entry.record);
+}
+
 export interface FeeSummary {
   totalRecords: number;
   totalCollected: number;
