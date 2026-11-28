@@ -23,6 +23,7 @@ import { adminDb } from "@/lib/firebase-admin";
 import { formatClassLabel, cleanSectionName } from "@/lib/utils/formatClassLabel";
 import { invalidateCache } from "@/lib/cache";
 import { findSmallestMissingRollNumber } from "@/lib/students/rollNumbers";
+import { cascadeDeleteStudent } from "@/lib/deletion/cascade";
 
 function normalizeCreateStudentInput(data: any): CreateStudentDTO {
   const rawClass = data?.academic?.classId || data?.classGrade || data?.className || data?.classId || "Class 10";
@@ -515,23 +516,41 @@ export class StudentService implements IStudentService {
 
   async delete(tenantId: string, studentId: string, userId?: string): Promise<void> {
     await this.repository.delete(studentId, tenantId);
+
+    // N28: deleting the student must not leave orphans — cascade to the
+    // student's fee, invoice, attendance, marks, behavior and leave records
+    // and unlink the guardian link (the cascade never throws; a failing
+    // step only logs a warning and is visible in the returned counts).
+    const db = (this.repository as any).db || adminDb;
+    const cascade = await cascadeDeleteStudent(db, tenantId, studentId);
+    logger.info("[StudentService] Cascade delete completed", {
+      metadata: { tenantId, studentId, cascade },
+    });
+
     await invalidateCache(`students:${tenantId}`).catch(() => {});
     await invalidateCache(`dashboard:${tenantId}`).catch(() => {});
 
     eventBus.publish(EVENTS.STUDENT_DELETED, {
       tenantId,
       studentId,
-      studentData: { studentId },
+      studentData: { studentId, cascade },
     }, tenantId);
   }
 
   async hardDelete(tenantId: string, studentId: string, userId: string): Promise<void> {
     await this.repository.delete(studentId, tenantId);
 
+    // N28: same cascade as delete() — the admin delete route reaches here.
+    const db = (this.repository as any).db || adminDb;
+    const cascade = await cascadeDeleteStudent(db, tenantId, studentId);
+    logger.info("[StudentService] Cascade delete completed", {
+      metadata: { tenantId, studentId, cascade },
+    });
+
     eventBus.publish(EVENTS.STUDENT_DELETED, {
       tenantId,
       studentId,
-      studentData: { studentId },
+      studentData: { studentId, cascade },
     }, tenantId);
   }
 
