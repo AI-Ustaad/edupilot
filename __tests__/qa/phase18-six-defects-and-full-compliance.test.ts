@@ -328,7 +328,7 @@ describe("Phase 18 — Six Live Defects & Full Compliance Suite", () => {
       ]);
 
       expect(rows[0][0]).toBe("STF-001");
-      expect(rows[0][1]).toBe("ghzandar Ali");
+      expect(rows[0][1]).toBe("Ghzandar Ali");
       expect(rows[0][5]).toBe("Rs. 50,000");
       expect(rows[0][9]).toBe("23232434344");
 

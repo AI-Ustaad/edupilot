@@ -165,7 +165,7 @@ describe("Phase 18 Batch 1 Post-Hotfix Remediation QA Verification", () => {
       ]);
 
       // Verify ghzandar Ali is STF-001 with 50,000 salary
-      const ghzandar = reconciled.find(s => s.fullName === "ghzandar Ali");
+      const ghzandar = reconciled.find(s => s.fullName === "Ghzandar Ali");
       expect(ghzandar?.employeeId).toBe("STF-001");
       expect(ghzandar?.basicSalary).toBe(50000);
 

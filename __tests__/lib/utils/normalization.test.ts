@@ -1,4 +1,4 @@
-import { normalizeNaturalKey, sectionNaturalKey, sectionDocId, departmentNaturalKey } from "@/lib/utils/normalization";
+import { normalizeNaturalKey, sectionNaturalKey, sectionDocId, departmentNaturalKey, normalizePersonName } from "@/lib/utils/normalization";
 
 describe("normalization", () => {
   describe("normalizeNaturalKey", () => {
@@ -48,6 +48,40 @@ describe("normalization", () => {
       const k = departmentNaturalKey("t", "Computer Science");
       expect(departmentNaturalKey("t", " computer science ")).toBe(k);
       expect(departmentNaturalKey("t", "COMPUTER SCIENCE")).toBe(k);
+    });
+  });
+
+  describe("normalizePersonName (B22)", () => {
+    test("title-cases the audit case: 'ghzandar Ali' -> 'Ghzandar Ali'", () => {
+      expect(normalizePersonName("ghzandar Ali")).toBe("Ghzandar Ali");
+      expect(normalizePersonName("GHZANDAR ALI")).toBe("Ghzandar Ali");
+    });
+
+    test("trims and collapses internal whitespace", () => {
+      expect(normalizePersonName("  ahmed   shah  ")).toBe("Ahmed Shah");
+      expect(normalizePersonName("muhammad\t ali\n")).toBe("Muhammad Ali");
+    });
+
+    test("capitalises after hyphens and apostrophes", () => {
+      expect(normalizePersonName("abdul-rehman khan")).toBe("Abdul-Rehman Khan");
+      expect(normalizePersonName("o'brien")).toBe("O'Brien");
+    });
+
+    test("leaves intentionally mixed-case words untouched (Ph.D, McDonald)", () => {
+      expect(normalizePersonName("Dr. Sarah Jenkins Ph.D")).toBe("Dr. Sarah Jenkins Ph.D");
+      expect(normalizePersonName("john McDonald")).toBe("John McDonald");
+    });
+
+    test("leaves already-correct names unchanged", () => {
+      expect(normalizePersonName("Ghzandar Ali")).toBe("Ghzandar Ali");
+      expect(normalizePersonName("Imran Haider Sandhu")).toBe("Imran Haider Sandhu");
+    });
+
+    test("resolves empty and nullish inputs to empty string", () => {
+      expect(normalizePersonName("")).toBe("");
+      expect(normalizePersonName("   ")).toBe("");
+      expect(normalizePersonName(null as any)).toBe("");
+      expect(normalizePersonName(undefined as any)).toBe("");
     });
   });
 });

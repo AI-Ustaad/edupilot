@@ -258,7 +258,7 @@ describe("Phase 18 / Phase 6 Unification, Per-Section Roll Numbers, Marks, Atten
       expect(summary.records).toHaveLength(3);
 
       // ghzandar Ali: 65000 basic + 5000 allowance = 70000 net
-      const ghzandar = summary.records.find(r => r.name === "ghzandar Ali");
+      const ghzandar = summary.records.find(r => r.name === "Ghzandar Ali");
       expect(ghzandar).toBeDefined();
       expect(ghzandar?.basicSalary).toBe(65000);
       expect(ghzandar?.totalAllowances).toBe(5000);

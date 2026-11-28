@@ -2,6 +2,7 @@ import type { CreateStaffDTO, UpdateStaffDTO } from "@/dto";
 import type { StaffStatus } from "@/entities/staff.entity";
 import type { StaffEntity } from "@/entities/staff.entity";
 import type { StaffDocument } from "@/documents/StaffDocument";
+import { normalizePersonName } from "@/lib/utils/normalization";
 
 export function getStaffSalary(staff: any): number {
   if (!staff) return 0;
@@ -60,7 +61,9 @@ export class StaffPersistenceMapper {
         cnic: dto.personal?.cnic,
       },
       personal: {
-        fullName: dto.personal?.fullName || "",
+        // B22: normalise the stored name so a lowercase entry can never
+        // be saved again ("ghzandar Ali" -> "Ghzandar Ali").
+        fullName: normalizePersonName(dto.personal?.fullName || ""),
         fatherName: dto.personal?.fatherName,
         dob: dto.personal?.dob,
         gender: dto.personal?.gender,
@@ -190,7 +193,10 @@ export class StaffPersistenceMapper {
     const academicRaw = raw.academic || {};
     const identityRaw = raw.identity || {};
 
-    const fullName = personalRaw.fullName || raw.fullName || raw.name || "";
+    // B22: normalise on read so the legacy stored "ghzandar Ali" displays
+    // as "Ghzandar Ali" on every surface that reads staff through this
+    // mapper (staff list, payroll, payslip, teacher dropdowns).
+    const fullName = normalizePersonName(personalRaw.fullName || raw.fullName || raw.name || "");
     const nameParts = fullName.split(" ");
     const firstName = nameParts[0] || "";
     const lastName = nameParts.slice(1).join(" ") || "";
@@ -293,7 +299,7 @@ export class StaffPersistenceMapper {
         postalCode: contactRaw.postalCode || raw.postalCode || "",
       },
       professional: {
-        personnelNo: professionalRaw.personnelNo || identityRaw.personnelNo || raw.personnelNo || (numMatch ? `PRS-${String(numMatch[0]).padStart(2, "0")}` : ((fullName === "ghzandar Ali" || raw.id === "stf_01") ? "PRS-01" : "")),
+        personnelNo: professionalRaw.personnelNo || identityRaw.personnelNo || raw.personnelNo || (numMatch ? `PRS-${String(numMatch[0]).padStart(2, "0")}` : ((fullName.toLowerCase() === "ghzandar ali" || raw.id === "stf_01") ? "PRS-01" : "")),
         employeeId: deterministicEmpId,
         designation,
         department,
