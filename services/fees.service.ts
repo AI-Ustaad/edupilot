@@ -16,6 +16,7 @@ import type { PaginatedResult } from "@/types/api";
 import { FeePersistenceMapper } from "@/lib/mappers/FeePersistenceMapper";
 import { formatClassLabel, cleanSectionName } from "@/lib/utils/formatClassLabel";
 import { computeFeeSummary } from "@/lib/aggregations/shared-metrics";
+import { compareLedgerRecords } from "@/lib/students/rollNumbers";
 
 import { adminDb } from "@/lib/firebase-admin";
 
@@ -373,14 +374,11 @@ export class FeesService implements IFeesService {
       });
     }
 
-    fees.sort((a, b) => {
-      const rollA = Number(String(a.rollNumber || "").replace(/\D/g, "")) || 0;
-      const rollB = Number(String(b.rollNumber || "").replace(/\D/g, "")) || 0;
-      if (rollA !== rollB && rollA > 0 && rollB > 0) return rollA - rollB;
-      const nameA = (a.studentName || "").toLowerCase();
-      const nameB = (b.studentName || "").toLowerCase();
-      return nameA.localeCompare(nameB);
-    });
+    // B29 — sort strictly by roll number; records without one go last.
+    // (The old comparator fell back to a name comparison whenever either
+    // record lacked a roll number, which is intransitive and interleaved
+    // roll-less records in the middle of the sequence.)
+    fees.sort(compareLedgerRecords);
 
     const start = (page - 1) * limit;
     const end = start + limit;
