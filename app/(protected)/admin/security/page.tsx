@@ -19,6 +19,24 @@ export default function SecurityCenterPage() {
 
   // Real Active Session derived from authenticated user
   const [activeSessions, setActiveSessions] = useState<any[]>([]);
+  // B20 — the real client IP, read server-side from the forwarding
+  // headers (the app sits behind Vercel's proxy). Never hardcode an IP.
+  const [sessionIp, setSessionIp] = useState<string>("Unknown");
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/v1/auth/session")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (!cancelled && data?.ip) setSessionIp(data.ip);
+      })
+      .catch(() => {
+        // Keep "Unknown" — never fall back to a fabricated loopback IP.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     const deviceName = typeof navigator !== "undefined"
@@ -30,14 +48,14 @@ export default function SecurityCenterPage() {
         id: "current-user-session",
         device: deviceName,
         location: "Sahiwal, Pakistan",
-        ip: "127.0.0.1 (Current Session)",
+        ip: sessionIp,
         lastActive: "Active now",
         isCurrent: true,
         email: user?.email || "admin@ghssahiwal.edu.pk",
         role: user?.role || "admin",
       },
     ]);
-  }, [user]);
+  }, [user, sessionIp]);
 
   const handleAddIP = () => {
     if (!newIP.trim()) return;
