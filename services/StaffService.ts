@@ -24,6 +24,7 @@ import { StaffPersistenceMapper } from "@/lib/mappers/StaffPersistenceMapper";
 import { normalizePersonName } from "@/lib/utils/normalization";
 import { adminDb } from "@/lib/firebase-admin";
 import { invalidateCache } from "@/lib/cache";
+import { cascadeDeleteStaff } from "@/lib/deletion/cascade";
 
 function normalizeStaffInput(data: any): any {
   const result: any = { ...data };
@@ -501,6 +502,18 @@ export class StaffService implements IStaffService {
   async delete(tenantId: string, id: string, userId?: string): Promise<void> {
     const staff = await this.getById(tenantId, id);
     await this.repository.delete(id, tenantId);
+
+    // N28: deleting the staff member must not leave orphans — cascade to
+    // their leave requests, payroll records and timetable assignments,
+    // clear the class-teacher link and the linked login account (the
+    // cascade never throws; a failing step only logs a warning and is
+    // visible in the returned counts).
+    const db = (this.repository as any).db || adminDb;
+    const cascade = await cascadeDeleteStaff(db, tenantId, id, staff?.personal?.fullName);
+    logger.info("[StaffService] Cascade delete completed", {
+      metadata: { tenantId, staffId: id, cascade },
+    });
+
     await invalidateCache(`staff:${tenantId}`).catch(() => {});
     await invalidateCache(`dashboard:${tenantId}`).catch(() => {});
 
@@ -510,7 +523,7 @@ export class StaffService implements IStaffService {
       tenantId,
       entityId: id,
       entityType: "staff",
-      metadata: { fullName: staff.personal?.fullName },
+      metadata: { fullName: staff.personal?.fullName, cascade },
     });
 
     await eventBus.publish(EVENTS.STAFF_DELETED, {
