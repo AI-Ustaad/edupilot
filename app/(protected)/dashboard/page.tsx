@@ -13,6 +13,7 @@ import {
 
 // 🚀 Layered Architecture Hooks
 import { useDashboardMetrics, useRiskStudents } from "@/hooks/useDashboard";
+import { computeTodayAttendancePercent } from "@/lib/aggregations/shared-metrics";
 
 const fadeInUp = {
   hidden: { opacity: 0, y: 20 },
@@ -53,7 +54,10 @@ function DashboardContent() {
     );
   }
 
-  // Safe Data Extraction - Late counts as attended: (present + late) / totalMarked
+  // Safe Data Extraction — N17: Late counts as attended, and the percentage
+  // is computed over ALL enrolled students: (present + late) / totalStudents.
+  // Unmarked pupils count in the denominator, so 15P/0A/0L/35U of 50 is 30%,
+  // never 100%. The marked count is shown alongside in the subtitle.
   const presentCount = data.todayAttendance?.present || 0;
   const lateCount = data.todayAttendance?.late || 0;
   const absentCount = data.todayAttendance?.absent || 0;
@@ -62,11 +66,10 @@ function DashboardContent() {
   const unmarkedCount = data.todayAttendance?.unmarked !== undefined 
     ? data.todayAttendance.unmarked 
     : Math.max(0, totalStudents - totalMarked);
-  const attendancePercent = totalMarked > 0 
-    ? Math.round(((presentCount + lateCount) / totalMarked) * 100).toString() 
-    : "0";
+  const attendancePercent = computeTodayAttendancePercent(presentCount, lateCount, totalStudents).toString();
   const todayDateStr = data.todayAttendance?.date ? data.todayAttendance.date.slice(5) : new Date().toISOString().slice(5, 10);
-  const todayDisplayPercent = totalMarked > 0 ? `${attendancePercent}%` : "0%";
+  const todayDisplayPercent = `${attendancePercent}%`;
+  const todayMarkedLabel = totalStudents > 0 ? ` • ${totalMarked}/${totalStudents} marked` : "";
   
   // Option A (Honest Semantics): Plot ONLY marked days.
   // Unmarked days (totalMarked === 0) are "no data", NEVER 0% attendance.
@@ -116,7 +119,7 @@ function DashboardContent() {
         <KpiCard title="Total Students" value={data.students || 0} icon={<Users size={24} className="text-blue-600" />} color="blue" />
         <KpiCard title="Total Staff" value={data.staff || 0} icon={<Briefcase size={24} className="text-purple-600" />} color="purple" />
         <KpiCard title="Revenue (Month)" value={"Rs " + (data.revenue || 0).toLocaleString()} icon={<DollarSign size={24} className="text-green-600" />} color="green" />
-        <KpiCard title="Today Attendance" value={todayDisplayPercent} subtitle={`${data.todayAttendance?.date || new Date().toISOString().slice(0, 10)} • ${presentCount}P / ${absentCount}A / ${lateCount}L / ${unmarkedCount}U`} icon={<Activity size={24} className="text-cyan-600" />} color="cyan" />
+        <KpiCard title="Today Attendance" value={todayDisplayPercent} subtitle={`${data.todayAttendance?.date || new Date().toISOString().slice(0, 10)} • ${presentCount}P / ${absentCount}A / ${lateCount}L / ${unmarkedCount}U${todayMarkedLabel}`} icon={<Activity size={24} className="text-cyan-600" />} color="cyan" />
       </motion.div>
 
       {riskStudents.length > 0 && (

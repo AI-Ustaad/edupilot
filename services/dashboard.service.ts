@@ -6,7 +6,7 @@ import { AttendanceService } from "./attendance.service";
 import type { IDashboardService, DashboardData } from "@/interfaces/IDashboardService";
 import { formatClassLabel, cleanSectionName } from "@/lib/utils/formatClassLabel";
 import { resolveStaffCategory } from "@/lib/mappers/StaffPersistenceMapper";
-import { computeAttendanceTrend } from "@/lib/aggregations/shared-metrics";
+import { computeAttendanceTrend, computeTodayAttendancePercent } from "@/lib/aggregations/shared-metrics";
 
 export class DashboardService implements IDashboardService {
   private studentService: StudentService;
@@ -233,9 +233,13 @@ export class DashboardService implements IDashboardService {
 
       const totalMarked = presentCount + lateCount + absentCount;
       const unmarkedCount = Math.max(0, activeStudentList.length - totalMarked);
-      const percentage = totalMarked > 0 
-        ? Math.round(((presentCount + lateCount) / totalMarked) * 100) 
-        : 0;
+      // N17: percentage over ALL enrolled students, not marked-only.
+      // Unmarked pupils count in the denominator: 15P/0A/0L/35U of 50 => 30%.
+      const percentage = computeTodayAttendancePercent(
+        presentCount,
+        lateCount,
+        activeStudentList.length
+      );
 
       const todayAttendance = {
         date: todayStr,
