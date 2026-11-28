@@ -13,6 +13,34 @@ export interface FeeSummary {
 }
 
 /**
+ * Resolves the collected / pending amounts of ONE fee record, using the same
+ * rules as computeFeeSummary. Every consumer (Fees page, Dashboard,
+ * Analytics) must use this helper so the same record always contributes the
+ * same amounts everywhere (N26: the Dashboard used to re-derive these
+ * per-student and disagreed with the Fees page).
+ */
+export function resolveFeeRecordAmounts(record: any): { collected: number; pending: number } {
+  const status = (record.status || record.financial?.status || "").toString().toLowerCase().trim();
+  const isPaid = status === "paid";
+
+  // Resolve collected amount (verified cash)
+  const rawPaid = Number(record.amountPaid ?? record.financial?.amountPaid ?? 0);
+  const rawAssessed = Number(record.amount ?? record.financial?.amount ?? record.paymentDetails?.amount ?? 0);
+  const assessed = rawAssessed > 0 ? rawAssessed : 5000;
+
+  const collected = isPaid ? (rawPaid > 0 ? rawPaid : assessed) : Math.max(0, rawPaid);
+
+  // Resolve pending amount
+  const rawDue = Number(record.amountDue ?? record.financial?.amountDue ?? 0);
+  const due = isPaid ? 0 : (rawDue > 0 ? rawDue : Math.max(0, assessed - collected));
+
+  return {
+    collected,
+    pending: isPaid ? 0 : (due > 0 ? due : assessed),
+  };
+}
+
+/**
  * Computes exact financial conservation invariants for a set of fee records.
  * Collected + Pending === Gross
  */
@@ -30,22 +58,9 @@ export function computeFeeSummary(records: any[]): FeeSummary {
   let totalPending = 0;
 
   for (const r of records) {
-    const status = (r.status || r.financial?.status || "").toString().toLowerCase().trim();
-    const isPaid = status === "paid";
-    
-    // Resolve collected amount (verified cash)
-    const rawPaid = Number(r.amountPaid ?? r.financial?.amountPaid ?? 0);
-    const rawAssessed = Number(r.amount ?? r.financial?.amount ?? r.paymentDetails?.amount ?? 0);
-    const assessed = rawAssessed > 0 ? rawAssessed : 5000;
-
-    const collected = isPaid ? (rawPaid > 0 ? rawPaid : assessed) : Math.max(0, rawPaid);
-
-    // Resolve pending amount
-    const rawDue = Number(r.amountDue ?? r.financial?.amountDue ?? 0);
-    const due = isPaid ? 0 : (rawDue > 0 ? rawDue : Math.max(0, assessed - collected));
-
+    const { collected, pending } = resolveFeeRecordAmounts(r);
     totalCollected += collected;
-    totalPending += (isPaid ? 0 : (due > 0 ? due : assessed));
+    totalPending += pending;
   }
 
   return {
