@@ -1,5 +1,6 @@
 // services/timetable.service.ts
 import { TimetableRepository } from "@/repositories/timetable.repository";
+import { StaffRepository } from "@/repositories/staff.repository";
 import { AuditService } from "./AuditService";
 import { ValidationService } from "./ValidationService";
 import { CreateTimetableEntrySchema } from "@/validators/timetable";
@@ -7,19 +8,75 @@ import { eventBus } from "@/lib/events";
 import { EVENTS } from "@/lib/events/event-types";
 import { invalidateCache } from "@/lib/cache";
 import type { ITimetableRepository } from "@/interfaces/ITimetableRepository";
+import type { IStaffRepository } from "@/interfaces/IStaffRepository";
 import type { TimetableEntry } from "@/types/timetable";
 import type { ITimetableService } from "@/interfaces/ITimetableService";
+
+// B15 — fallback seed teachers: the real names the old hardcoded list used.
+// "STF-002" (a deleted staff member's employee ID, not a teacher name) is
+// deliberately NOT here: the old list planted it in ~1 in 10 seeded rows, so
+// every reseed re-created the deleted teacher in the grid.
+const FALLBACK_TEACHERS = [
+  "Ghzandar Ali", "Fahad Siddiqui", "Hamza Nawaz", "Hassan Hussain", "Hamza Khan",
+  "Bilal Sheikh", "Ali Ansari", "Usman Haider", "Iqra Qureshi",
+];
+
+function normalizeTeacherName(value: unknown): string {
+  return typeof value === "string" ? value.trim().toLowerCase() : "";
+}
+
+/** Break / Recess rows are staffed by "Duty Staff", never a subject teacher. */
+function isBreakRow(entry: { subject?: unknown; teacher?: unknown }): boolean {
+  const subject = normalizeTeacherName(entry.subject);
+  return (
+    subject === "break / recess" ||
+    subject === "break" ||
+    normalizeTeacherName(entry.teacher) === "duty staff"
+  );
+}
 
 export class TimetableService implements ITimetableService {
   private audit: AuditService;
   private validation: ValidationService;
 
-  constructor(private repo: ITimetableRepository = new TimetableRepository()) {
+  constructor(
+    private repo: ITimetableRepository = new TimetableRepository(),
+    private staffRepo: IStaffRepository = new StaffRepository()
+  ) {
     this.audit = new AuditService();
     this.validation = new ValidationService();
   }
 
-  async reconcileDefaultTimetable(tenantId: string): Promise<void> {
+  /**
+   * B15 — current staff roster names for one tenant. Deleted / archived
+   * staff are excluded (findAll does not filter them). Never throws: a
+   * roster load failure yields [] and callers fall back to the old
+   * self-heal / hardcoded real names instead of wiping the grid.
+   * Name shape follows the N23 precedent (top-level fullName first, with
+   * personal.fullName / name as fallbacks).
+   */
+  private async loadRosterNames(tenantId: string): Promise<string[]> {
+    try {
+      const staff = await this.staffRepo.findAll(tenantId);
+      const seen = new Set<string>();
+      const names: string[] = [];
+      for (const member of staff || []) {
+        const m: any = member as any;
+        if (m?.deleted || m?.status === "archived") continue;
+        const name = String(m?.fullName || m?.personal?.fullName || m?.name || "").trim();
+        if (!name) continue;
+        const key = normalizeTeacherName(name);
+        if (seen.has(key)) continue;
+        seen.add(key);
+        names.push(name);
+      }
+      return names;
+    } catch {
+      return [];
+    }
+  }
+
+  async reconcileDefaultTimetable(tenantId: string, rosterNames?: string[]): Promise<void> {
     const activeClassSections = [
       { classGrade: "Class 1", section: "A" },
       { classGrade: "Class 1", section: "B" },
@@ -32,10 +89,14 @@ export class TimetableService implements ITimetableService {
       "English", "Urdu", "Mathematics", "General Science", "Social Studies",
       "Computer Science", "Islamiyat", "Physics", "Chemistry", "Biology", "Pakistan Studies"
     ];
-    const teachers = [
-      "Ghzandar Ali", "Fahad Siddiqui", "Hamza Nawaz", "Hassan Hussain", "Hamza Khan",
-      "Bilal Sheikh", "Ali Ansari", "Usman Haider", "Iqra Qureshi", "STF-002"
-    ];
+    // B15: seed ONLY from the current staff roster. The old hardcoded list
+    // ended with "STF-002", so every reseed re-planted the deleted teacher
+    // in the grid — the N28 delete cascade removes rows at delete time but
+    // can never stop the seeder re-creating them. The live roster wins when
+    // available; the fallback is known real names only.
+    const passed = (rosterNames || []).filter((n) => typeof n === "string" && n.trim().length > 0);
+    const loaded = passed.length > 0 ? [] : await this.loadRosterNames(tenantId);
+    const teachers = passed.length > 0 ? passed : loaded.length > 0 ? loaded : FALLBACK_TEACHERS;
     const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
 
     for (let dayIdx = 0; dayIdx < days.length; dayIdx++) {
@@ -79,20 +140,41 @@ export class TimetableService implements ITimetableService {
 
   async listEntries(tenantId: string): Promise<(TimetableEntry & { id: string })[]> {
     let list = await this.repo.findAll(tenantId);
-    const DUMMY_TEACHERS = new Set([
-      "Muhammad Aslam", "Fatima Noor", "Test Teacher Alpha", "Zahid Iqbal",
-      "Nasreen Akhtar", "Rashid Mahmood", "Khadija Bibi", "Tariq Jamil", "Saima Bano"
-    ]);
-    const hasDummyTeacher = (list || []).some((e: any) => DUMMY_TEACHERS.has(e.teacher));
-    const hasGhzandar = (list || []).some((e: any) => e.teacher === "Ghzandar Ali");
+    // B15: the grid must show ONLY the current roster. Any stored row naming
+    // a deleted / non-roster teacher (e.g. STF-002, deleted 26 Nov before the
+    // N28 delete cascade existed, so the cascade can never reach its rows)
+    // is healed by wiping + reseeding from the live roster — the same
+    // self-heal this function already applied to dummy-teacher rows.
+    // Break rows staffed by "Duty Staff" are never orphans.
+    const roster = await this.loadRosterNames(tenantId);
+    const rosterSet = new Set(roster.map((n) => normalizeTeacherName(n)));
+    const hasOrphanTeacher = (rows: (TimetableEntry & { id: string })[]): boolean => {
+      if (rosterSet.size > 0) {
+        return rows.some(
+          (e: any) => !isBreakRow(e) && !rosterSet.has(normalizeTeacherName(e.teacher))
+        );
+      }
+      // Roster unavailable: keep the old self-heal (dummy names / missing
+      // Ghzandar). The Ghzandar check is safe here only because the
+      // fallback seed still contains him; with a known roster it is dropped
+      // — otherwise deleting Ghzandar would reseed on every read, since no
+      // roster-driven seed could ever contain him again.
+      const DUMMY_TEACHERS = new Set([
+        "Muhammad Aslam", "Fatima Noor", "Test Teacher Alpha", "Zahid Iqbal",
+        "Nasreen Akhtar", "Rashid Mahmood", "Khadija Bibi", "Tariq Jamil", "Saima Bano"
+      ]);
+      const hasDummyTeacher = rows.some((e: any) => DUMMY_TEACHERS.has(e.teacher));
+      const hasGhzandar = rows.some((e: any) => e.teacher === "Ghzandar Ali");
+      return hasDummyTeacher || !hasGhzandar;
+    };
 
-    if (!list || list.length === 0 || !hasGhzandar || hasDummyTeacher) {
+    if (!list || list.length === 0 || hasOrphanTeacher(list || [])) {
       if (list && list.length > 0) {
         for (const e of list) {
           this.repo.delete(e.id, tenantId).catch(() => {});
         }
       }
-      await this.reconcileDefaultTimetable(tenantId);
+      await this.reconcileDefaultTimetable(tenantId, roster);
       list = await this.repo.findAll(tenantId);
     }
     return list;
