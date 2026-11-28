@@ -1,6 +1,16 @@
 "use client";
 import { useState, useMemo } from "react";
 import { Loader2, Film, AlertCircle, Trash2 } from "lucide-react";
+
+// B12 round 3: this page must never be served from a stale static
+// prerender. The 12:05 live verification ran 13 minutes after the round-2
+// merge and still saw the round-1 behaviour (unbounded hang, no timeout
+// toast) — the statically prerendered HTML can keep pointing at the old
+// build's JS chunks. Forcing dynamic rendering makes every load fetch the
+// current build's chunks, so a verification can never test yesterday's
+// bundle again. (The page is behind auth and loads its data client-side
+// anyway, so prerendering buys nothing here.)
+export const dynamic = "force-dynamic";
 import RequirePermission from "@/components/RequirePermission";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 import { useClasses } from "@/hooks/useClasses";

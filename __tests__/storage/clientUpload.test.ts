@@ -37,6 +37,7 @@ const mockUpload = uploadBytesResumable as jest.Mock;
 const mockGetUrl = getDownloadURL as jest.Mock;
 
 type TaskCallbacks = {
+  next?: (snapshot: { bytesTransferred: number; totalBytes: number }) => void;
   error?: (err: unknown) => void;
   complete?: () => void;
 };
@@ -47,10 +48,11 @@ function makeFakeTask() {
   const on = jest.fn(
     (
       _event: string,
-      _next: null,
+      next: ((snapshot: { bytesTransferred: number; totalBytes: number }) => void) | null,
       errorCb: (err: unknown) => void,
       completeCb: () => void
     ) => {
+      callbacks.next = next ?? undefined;
       callbacks.error = errorCb;
       callbacks.complete = completeCb;
       return jest.fn(); // unsubscribe
@@ -154,5 +156,39 @@ describe("uploadVideoToStorage", () => {
     await expect(uploadVideoToStorage(file, "tenant1", { timeoutMs: 50 })).rejects.toThrow(
       /download link timed out/i
     );
+  });
+
+  it("still rejects with a timeout error even if cancelling the task throws", async () => {
+    // Round-3 regression: the 12:05 verification saw a silent hang with NO
+    // toast even though the round-2 timer should have fired. One way the
+    // timeout can be silenced is if the cancellation itself throws — the
+    // reject after onTimeout() would then never run and the caller would
+    // hang forever. The rejection must fire no matter what cancel() does.
+    const { task } = makeFakeTask();
+    (task.cancel as jest.Mock).mockImplementation(() => {
+      throw new Error("cancel exploded");
+    });
+    mockUpload.mockReturnValue(task);
+    const file = new File(["x"], "test.mp4", { type: "video/mp4" });
+    await expect(uploadVideoToStorage(file, "tenant1", { timeoutMs: 50 })).rejects.toThrow(
+      /timed out/i
+    );
+  });
+
+  it("reports live upload progress through onProgress", async () => {
+    // Round 3: a stall must be visible as a stuck percentage, not a bare
+    // spinner. The observer's next callback feeds the form's progress bar.
+    const { task, callbacks } = makeFakeTask();
+    mockUpload.mockImplementation(() => {
+      queueMicrotask(() => {
+        callbacks.next?.({ bytesTransferred: 100, totalBytes: 400 });
+        callbacks.complete?.();
+      });
+      return task;
+    });
+    const file = new File(["x"], "test.mp4", { type: "video/mp4" });
+    const onProgress = jest.fn();
+    await uploadVideoToStorage(file, "tenant1", { onProgress });
+    expect(onProgress).toHaveBeenCalledWith(100, 400);
   });
 });

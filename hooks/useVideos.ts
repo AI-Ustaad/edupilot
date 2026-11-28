@@ -16,7 +16,7 @@ export const useVideos = (classGrade?: string, subject?: string) => {
   });
 };
 
-export const useUploadVideo = () => {
+export const useUploadVideo = (onProgress?: (bytesTransferred: number, totalBytes: number) => void) => {
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const tenantId = user?.tenantId || "unknown";
@@ -33,7 +33,9 @@ export const useUploadVideo = () => {
       // download URL, which the POST /video-lectures JSON branch accepts.
       const file = formData.get("file") as File | null;
       if (!file) throw new Error("A video file is required.");
-      const videoUrl = await uploadVideoToStorage(file, tenantId);
+      // B12 round 3: onProgress lets the form show live upload progress
+      // instead of a bare spinner, so a stall is visible as a stuck %.
+      const videoUrl = await uploadVideoToStorage(file, tenantId, { onProgress });
       return apiClient.post(
         "/video-lectures",
         {
