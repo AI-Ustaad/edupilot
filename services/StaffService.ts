@@ -21,6 +21,7 @@ import { eventBus } from "@/lib/events";
 import { EVENTS } from "@/lib/events/event-types";
 import { GeminiProvider } from "@/lib/ai/providers/GeminiProvider";
 import { StaffPersistenceMapper } from "@/lib/mappers/StaffPersistenceMapper";
+import { normalizePersonName } from "@/lib/utils/normalization";
 import { adminDb } from "@/lib/firebase-admin";
 import { invalidateCache } from "@/lib/cache";
 
@@ -352,7 +353,9 @@ export class StaffService implements IStaffService {
       personal: {
         ...(existing?.personal || {}),
         ...(validation.data?.personal || {}),
-        fullName: validation.data?.personal?.fullName || document.fullName,
+        // B22: the raw validated name must not bypass the mapper's
+        // normalisation — an edit would otherwise re-store "ghzandar Ali".
+        fullName: normalizePersonName(validation.data?.personal?.fullName || document.fullName),
       },
       contact: {
         ...(existing?.contact || {}),

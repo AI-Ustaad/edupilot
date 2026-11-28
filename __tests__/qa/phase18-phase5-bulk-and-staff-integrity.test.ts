@@ -204,7 +204,7 @@ describe("Phase 18 — Phase 5: Bulk Import Engine, Staff Data Integrity & Billi
 
       const entity = StaffPersistenceMapper.fromFirestore(ghzandarDoc as any);
 
-      expect(entity.fullName).toBe("ghzandar Ali");
+      expect(entity.fullName).toBe("Ghzandar Ali");
       expect(entity.employeeId).toBe("STF-001");
       expect(entity.cnic).toBe("23232434344");
       expect(entity.basicSalary).toBe(50000);
@@ -238,6 +238,11 @@ describe("Phase 18 — Phase 5: Bulk Import Engine, Staff Data Integrity & Billi
       const repo = new StaffRepository();
       jest.spyOn(repo, "findAll").mockResolvedValue(staffMembers as any);
 
+      // NOTE (B22): the repository returns stored documents verbatim, so
+      // these assertions keep the raw stored value. Display normalisation
+      // ("ghzandar Ali" -> "Ghzandar Ali") happens in
+      // StaffPersistenceMapper.fromFirestore, which the service layer
+      // (StaffService.advancedFilter/list) applies — see the B22 mapper tests.
       // 1. Filter by category "Teaching"
       const teachingRes = await repo.advancedFilter(tenantId, { category: "Teaching" });
       expect(teachingRes.data.length).toBe(1);
