@@ -6,7 +6,7 @@ import { AttendanceService } from "./attendance.service";
 import type { IDashboardService, DashboardData } from "@/interfaces/IDashboardService";
 import { formatClassLabel, cleanSectionName } from "@/lib/utils/formatClassLabel";
 import { resolveStaffCategory } from "@/lib/mappers/StaffPersistenceMapper";
-import { computeAttendanceTrend } from "@/lib/aggregations/shared-metrics";
+import { computeAttendanceTrend, computeFeeSummary, resolveFeeRecordAmounts } from "@/lib/aggregations/shared-metrics";
 
 export class DashboardService implements IDashboardService {
   private studentService: StudentService;
@@ -109,7 +109,7 @@ export class DashboardService implements IDashboardService {
         byCampus[campusName] = (byCampus[campusName] || 0) + 1;
       }
 
-      // 3. Fees & Revenue Aggregation — Deduplicated Single Source of Truth for Active Month
+      // 3. Fees & Revenue Aggregation — see below (N26)
       const targetMonthLabel = "November 2026";
       const targetMonthPrefix = "nov";
 
@@ -122,81 +122,67 @@ export class DashboardService implements IDashboardService {
         .map((d: any) => ({ id: d.id, ...d.data() }))
         .filter((f: any) => !f.deleted);
 
-      // Index tenant fee records by studentId for the target billing month
-      const feesByStudent = new Map<string, any>();
-      for (const f of rawFees) {
+      // 3. Fees & Revenue Aggregation — N26: same fee source as the Fees page.
+      // The Dashboard used to index fee records by studentId (one record per
+      // student, paid preferred) and then iterate STUDENTS, imputing Rs 5,000
+      // pending for students with no record — while the Fees page sums the
+      // month's fee RECORDS via the shared computeFeeSummary. A record the
+      // per-student loop never counted (e.g. an orphan record for a deleted
+      // student) therefore made the two pages disagree by exactly Rs 5,000
+      // (dashboard Rs 250,000 total / Rs 240,000 pending vs Fees page
+      // Rs 255,000 / Rs 245,000 for 51 records). Both pages now aggregate
+      // the same record set with the same helper, so Collected + Pending
+      // === Total on both, and the class rows sum to the headline totals.
+      const monthFeeRecords = rawFees.filter((f: any) => {
         const m = (f.feeMonth || f.financial?.feeMonth || f.month || targetMonthLabel).toString().trim().toLowerCase();
-        if (!m.includes(targetMonthPrefix)) continue;
+        return m.includes(targetMonthPrefix);
+      });
 
-        const sId = f.studentId || f.identity?.studentId;
-        if (!sId) continue;
+      const feeSummary = computeFeeSummary(monthFeeRecords);
+      const collectedFees = feeSummary.totalCollected;
+      const pendingFees = feeSummary.totalPending;
+      const grossTotal = feeSummary.grossTotal;
 
-        if (!feesByStudent.has(sId)) {
-          feesByStudent.set(sId, f);
-        } else {
-          // If duplicates exist in DB, prioritize "paid" record over pending/unpaid
-          const existing = feesByStudent.get(sId);
-          const existingStatus = (existing.status || existing.financial?.status || "").toLowerCase().trim();
-          const newStatus = (f.status || f.financial?.status || "").toLowerCase().trim();
-          if (newStatus === "paid" && existingStatus !== "paid") {
-            feesByStudent.set(sId, f);
-          }
-        }
+      // Per-class breakdown from the SAME records, so the class rows always
+      // sum to the headline totals. Class comes from the record itself
+      // (reconciled to the roster), falling back to the owning student's
+      // class, then "Class 10".
+      const studentClassById = new Map<string, string>();
+      for (const s of rawStudents) {
+        studentClassById.set(s.id, formatClassLabel(s.classGrade || s.className || "Class 10"));
       }
-
-      let collectedFees = 0;
-      let pendingFees = 0;
-      const recentPayments: any[] = [];
       const classFeeSummaryMap = new Map<string, { collected: number; pending: number; total: number }>();
-
-      // Compute fee metrics strictly across all active students (ensuring exactly 50 students / Rs 250,000 gross)
-      for (const student of activeStudentList) {
-        const cls = formatClassLabel(student.classGrade || student.className || "Class 10");
+      for (const f of monthFeeRecords) {
+        const cls = formatClassLabel(
+          f.classGrade || f.className || studentClassById.get(f.studentId || f.identity?.studentId) || "Class 10"
+        );
         if (!classFeeSummaryMap.has(cls)) {
           classFeeSummaryMap.set(cls, { collected: 0, pending: 0, total: 0 });
         }
         const clsSummary = classFeeSummaryMap.get(cls)!;
-
-        const fee = feesByStudent.get(student.id);
-        const status = (fee?.status || fee?.financial?.status || "pending").toLowerCase().trim();
-        const assessed = Number(fee?.amount || fee?.financial?.amount || student.monthlyFee || 5000) || 5000;
-        const paid = Number(fee?.amountPaid || fee?.financial?.amountPaid || 0);
-        const due = Number(fee?.amountDue || fee?.financial?.amountDue || Math.max(0, assessed - paid));
-
-        if (status === "paid") {
-          const effectivePaid = paid > 0 ? paid : assessed;
-          collectedFees += effectivePaid;
-          clsSummary.collected += effectivePaid;
-          clsSummary.total += effectivePaid;
-
-          recentPayments.push({
-            id: fee?.id || `fee_${student.id}_nov2026`,
-            studentName: student.fullName || student.name || fee?.studentName || "Student",
-            amountPaid: effectivePaid,
-            feeMonth: targetMonthLabel,
-            status: "paid",
-            createdAt: fee?.createdAt || fee?.metadata?.createdAt || new Date().toISOString(),
-          });
-        } else {
-          if (paid > 0) {
-            collectedFees += paid;
-            clsSummary.collected += paid;
-          }
-          const effectiveDue = due > 0 ? due : Math.max(0, assessed - paid);
-          pendingFees += effectiveDue;
-          clsSummary.pending += effectiveDue;
-          clsSummary.total += (paid + effectiveDue);
-        }
+        const { collected, pending } = resolveFeeRecordAmounts(f);
+        clsSummary.collected += collected;
+        clsSummary.pending += pending;
+        clsSummary.total += collected + pending;
       }
 
-      const grossTotal = collectedFees + pendingFees;
-
-      recentPayments.sort((a, b) => {
-        const tA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-        const tB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-        return tB - tA;
-      });
-      const topRecentPayments = recentPayments.slice(0, 5);
+      // Recent payments: paid records for the month, newest first.
+      const recentPayments = monthFeeRecords
+        .filter((f: any) => (f.status || f.financial?.status || "").toString().toLowerCase().trim() === "paid")
+        .map((f: any) => ({
+          id: f.id,
+          studentName: f.studentName || f.identity?.studentName || "Student",
+          amountPaid: resolveFeeRecordAmounts(f).collected,
+          feeMonth: targetMonthLabel,
+          status: "paid",
+          createdAt: f.createdAt || f.metadata?.createdAt || new Date().toISOString(),
+        }))
+        .sort((a, b) => {
+          const tA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+          const tB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+          return tB - tA;
+        })
+        .slice(0, 5);
 
       const classFeeSummary = Array.from(classFeeSummaryMap.entries()).map(([cls, totals]) => ({
         class: cls,
@@ -269,7 +255,7 @@ export class DashboardService implements IDashboardService {
           totalStudents: activeStudentList.length,
         },
         classFeeSummary,
-        recentPayments: topRecentPayments,
+        recentPayments,
         classDistribution,
         studentStatusBreakdown: {
           active: activeStudents,
