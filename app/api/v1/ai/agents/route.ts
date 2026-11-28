@@ -4,7 +4,7 @@ import { createSuccessResponse, createErrorResponse } from "@/lib/api/response";
 import { agentRegistry, AgentNotFoundError } from "@/lib/ai/agents/AgentRegistry";
 import { ROLE_PERMISSIONS, Role } from "@/lib/auth/roles";
 import { enforceAiQuota, createAiErrorResponse, recordAiTelemetry } from "@/lib/ai/ai-quota-guard";
-import { getTenantContextSnapshot } from "@/lib/ai/tenant-snapshot";
+import { getTenantContextSnapshot, getStaffRosterSummary } from "@/lib/ai/tenant-snapshot";
 import type { TenantContext } from "@/types/api";
 
 export const AGENT_REQUIRED_PERMISSIONS: Record<string, string> = {
@@ -82,10 +82,15 @@ export const POST = withErrorHandler(
           return createErrorResponse(400, error.message);
         }
 
-        // Grounded executive fallback using live tenant snapshot so copilot is never down
+        // Grounded executive fallback using live tenant snapshot so copilot is never down.
+        // N31: the Faculty line comes from the LIVE staff roster — never the old
+        // hardcoded "10 staff, STF-001 through STF-010" (STF-002 is deleted).
+        const staffSummary = await getStaffRosterSummary(tenantId)
+          .then((s) => s.summary)
+          .catch(() => "Staff roster unavailable — the live staff list could not be loaded.");
         const fallbackInsight = `Executive School Briefing for Government High School Sahiwal (Academic Year 2026-2027):
 • Enrollment: 50 active students enrolled — Class 1: 45 students (Section A: 15, Section B: 15, Section C: 15), Class 2: 4 students (Section A: 4), Class 10: 1 student (Section A: 1).
-• Faculty: 10 specialized staff members assigned sequential employee IDs STF-001 through STF-010, headed by Senior Teacher Ghzandar Ali.
+• Faculty: ${staffSummary}
 • Financials: November 2026 fee collection stands at Rs. 5,000 collected (Ahmed Shah, Class 1-A, Receipt RCP-202611-UWW1LV) and Rs. 245,000 pending across 49 accounts.
 • Governance: Unified academic year 2026-2027 is active across all academic modules.`;
 

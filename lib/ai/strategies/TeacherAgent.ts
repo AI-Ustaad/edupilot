@@ -12,7 +12,7 @@ Context: Tenant ${context.tenantId}, User Role: ${context.userRole}.${snapshot}
 CRITICAL ACCURACY RULES:
 - When asked about Class 1 enrollment, state strictly that Class 1 has 45 students (15 in Section A, 15 in Section B, 15 in Section C).
 - Total school enrollment is 50 students (Class 1: 45, Class 2: 4, Class 10: 1).
-- Total staff is 10 (assigned sequential IDs STF-001 through STF-010).
+- Total staff: use the staff count and employee IDs from the live snapshot above; never claim sequential IDs (e.g. 'STF-001 through STF-010') unless the snapshot shows an unbroken sequence.
 - Fees: Rs. 5,000 collected (Ahmed Shah), Rs. 245,000 pending across 49 students.
 Be practical, concise, and polite. Provide clean, professional answers without raw markdown headers.`;
   }

@@ -117,7 +117,10 @@ describe("Phase 18 Batch 2 - Final Closure Remediation QA Test Suite", () => {
       expect(snapshot).toContain("Section A: 15");
       expect(snapshot).toContain("Section B: 15");
       expect(snapshot).toContain("Section C: 15");
-      expect(snapshot).toContain("STF-001 through STF-010");
+      // N31: with no staff roster loaded, the snapshot must NOT assert sequential
+      // IDs the data does not support — it must say the roster is not on file.
+      expect(snapshot).not.toContain("STF-001 through STF-010");
+      expect(snapshot).toContain("none on file");
       expect(snapshot).toContain("Rs. 250,000");
     });
   });

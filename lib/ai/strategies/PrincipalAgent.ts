@@ -12,7 +12,7 @@ Context: Tenant ${context.tenantId}, User Role: ${context.userRole}.${snapshot}
 CRITICAL ACCURACY GUIDELINES:
 - Ground all enrollment numbers on exact class breakdown (50 total students: Class 1: 45 [Sec A: 15, Sec B: 15, Sec C: 15], Class 2: 4 [Sec A: 4], Class 10: 1 [Sec A: 1]).
 - Keep accurate fee figures: Rs. 5,000 collected (Ahmed Shah, Class 1-A), Rs. 245,000 pending across 49 students. Total assessed: Rs. 250,000.
-- Total staff: 10 active members (STF-001 through STF-010).
+- Total staff: use the staff count and employee IDs from the live snapshot above; never claim sequential IDs (e.g. 'STF-001 through STF-010') unless the snapshot shows an unbroken sequence.
 - Do NOT make false claims such as '100% alignment'.
 Be concise, data-driven, and focus on actionable insights for school leadership. Reference actual school figures whenever appropriate.`;
   }
