@@ -194,3 +194,24 @@ export function computeAttendanceTrend(
   };
 }
 
+/**
+ * N17 — "Today Attendance" percentage.
+ *
+ * The dashboard KPI must be computed over ALL enrolled students
+ * (marked present + late) / total students — never over marked pupils only.
+ * Unmarked pupils count in the denominator: with 15P / 0A / 0L / 35U out of
+ * 50 enrolled students the result is 30%, never 100%. Late counts as
+ * attended, matching the dashboard's existing present+late semantics.
+ * Zero enrolled students (or no marks at all) yields 0%, never NaN.
+ */
+export function computeTodayAttendancePercent(
+  present: number,
+  late: number,
+  totalStudents: number
+): number {
+  const total = Number(totalStudents) || 0;
+  if (total <= 0) return 0;
+  const attended = (Number(present) || 0) + (Number(late) || 0);
+  return Math.round((attended / total) * 100);
+}
+

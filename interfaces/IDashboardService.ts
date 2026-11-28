@@ -9,6 +9,9 @@ export interface DashboardData {
     absent: number;
     late: number;
     total: number;
+    unmarked?: number;
+    totalStudents?: number;
+    percentage?: number;
   };
   attendanceTrend: { day: string; percent: number; date?: string; isMarked?: boolean; markedCount?: number; label?: string; percentage?: number }[];
   markedTrendSeries?: { day: string; percent: number; date: string; label: string; percentage: number; present: number; absent: number; late: number; totalMarked: number; marked: boolean; isMarked: boolean }[];
