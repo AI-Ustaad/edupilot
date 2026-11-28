@@ -4,6 +4,7 @@ import { Loader2, Save, Building2, Globe, MapPin } from "lucide-react";
 import RequirePermission from "@/components/RequirePermission";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 import { useGeneralSettings, useUpdateGeneralSettings } from "@/hooks/useGeneralSettings";
+import { COUNTRY_OPTIONS, normalizeCountryCode } from "@/lib/utils/country";
 
 export default function GeneralSettingsPage() {
   const { data: settings, isLoading } = useGeneralSettings();
@@ -113,6 +114,14 @@ export default function GeneralSettingsPage() {
             <div>
               <label className="block text-sm font-bold text-gray-700 mb-1">Province / State</label>
               <input type="text" value={form.province || ""} onChange={(e) => setForm({ ...form, province: e.target.value })} className={inputClass} placeholder="e.g. Punjab" />
+            </div>
+            <div>
+              <label className="block text-sm font-bold text-gray-700 mb-1">Country</label>
+              <select value={normalizeCountryCode(form.country)} onChange={(e) => setForm({ ...form, country: e.target.value })} className={inputClass}>
+                {COUNTRY_OPTIONS.map((c) => (
+                  <option key={c.code} value={c.code}>{c.name}</option>
+                ))}
+              </select>
             </div>
           </div>
         </div>

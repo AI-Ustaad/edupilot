@@ -9,6 +9,11 @@ export function SchoolProfileCard({ config }: { config: SchoolConfigurationViewM
       <InfoRow label="School Name" value={config.schoolName} />
       <InfoRow label="School Type" value={config.schoolType} />
       <InfoRow label="Board" value={config.boardName} />
+      <InfoRow label="Country" value={config.country || "Pakistan"} />
+      <InfoRow
+        label="Established Year"
+        value={config.establishedYear ? String(config.establishedYear) : undefined}
+      />
     </InfoCard>
   );
 }

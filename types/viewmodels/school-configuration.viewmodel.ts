@@ -13,6 +13,8 @@ export interface SchoolConfigurationViewModel extends BaseViewModel {
   schoolName: string;
   schoolType: string;
   boardName: string;
+  country?: string;
+  establishedYear?: number | string;
   
   // Academic Structure
   levels: string[];
