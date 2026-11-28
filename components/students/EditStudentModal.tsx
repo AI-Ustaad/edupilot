@@ -5,6 +5,11 @@ import { X, Save, Loader2, User, GraduationCap, Phone, Mail, DollarSign, Calenda
 import { useUpdateStudent } from "@/hooks/useStudents";
 import { useClasses } from "@/hooks/useClasses";
 import { useToast } from "@/components/ToastProvider";
+import {
+  resolvePhoneForEdit,
+  isPlaceholderEmail,
+  PLACEHOLDER_EMAIL_MESSAGE,
+} from "@/lib/validation/contact";
 
 interface EditStudentModalProps {
   isOpen: boolean;
@@ -71,18 +76,28 @@ export default function EditStudentModal({ isOpen, onClose, student, onSuccess }
       return;
     }
 
-    if (form.guardianPhone) {
-      const cleanPhone = form.guardianPhone.replace(/\D/g, "");
-      if (cleanPhone.length > 0 && !/^03\d{9}$/.test(cleanPhone)) {
-        showToast("Guardian phone must be in 11-digit format: 03XXXXXXXXX", "error");
-        return;
-      }
+    // B21: an unchanged stored phone passes through untouched, so a legacy
+    // 10-digit guardian phone (e.g. 0303341057) never blocks saving an
+    // unrelated field; a CHANGED phone must normalise to 11 digits.
+    const originalGuardianPhone = getInitialForm(student).guardianPhone;
+    const phoneResult = resolvePhoneForEdit(
+      form.guardianPhone,
+      originalGuardianPhone,
+    );
+    if ("error" in phoneResult) {
+      showToast(phoneResult.error, "error");
+      return;
+    }
+
+    if (form.guardianEmail && isPlaceholderEmail(form.guardianEmail)) {
+      showToast(PLACEHOLDER_EMAIL_MESSAGE, "error");
+      return;
     }
 
     try {
       await updateMutation.mutateAsync({
         id: student.id,
-        data: form,
+        data: { ...form, guardianPhone: phoneResult.value },
       });
       showToast("Student profile updated and synchronized across all modules!", "success");
       onSuccess?.();

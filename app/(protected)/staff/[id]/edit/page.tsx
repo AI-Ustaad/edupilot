@@ -7,6 +7,11 @@ import { logger } from "@/lib/logger/logger";
 import { Input, Select, Section } from "@/components/staff/form-primitives";
 import type { StaffFormData } from "@/lib/mappers/staff.mapper";
 import { getStaffSalary } from "@/lib/mappers/StaffPersistenceMapper";
+import {
+  resolvePhoneForEdit,
+  isPlaceholderEmail,
+  PLACEHOLDER_EMAIL_MESSAGE,
+} from "@/lib/validation/contact";
 
 function EditStaffContent() {
   const searchParams = useSearchParams();
@@ -21,6 +26,16 @@ function EditStaffContent() {
   const [activeTab, setActiveTab] = useState(0);
   const [error, setError] = useState("");
   const [form, setForm] = useState<StaffFormData | null>(null);
+  // B21: the contact values as loaded, so edit validation can tell an
+  // unchanged legacy 10-digit phone (pass through, never blocks the save)
+  // from a changed one (must normalise to 11 digits).
+  const [initialContact, setInitialContact] = useState({
+    mobile: "",
+    whatsapp: "",
+    email: "",
+    emergencyPhone: "",
+    emergencyAlternatePhone: "",
+  });
 
   useEffect(() => {
     const fallback = staffList.find((st: any) => st.id === staffId);
@@ -29,7 +44,7 @@ function EditStaffContent() {
       const s = raw as any;
       const rawFullName = s.personal?.fullName || s.fullName || s.name || fallback?.fullName || fallback?.name || "";
       const sFullName = rawFullName.toLowerCase() === "ghzandar ali" ? "Ghzandar Ali" : rawFullName;
-      setForm({
+      const nextForm: StaffFormData = {
         personal: {
           fullName: sFullName,
           fatherName: s.personal?.fatherName || s.fatherName || s.guardianName || fallback?.fatherName || "",
@@ -95,6 +110,14 @@ function EditStaffContent() {
           experienceCert: s.documents?.experienceCert || "",
           cv: s.documents?.cv || "",
         },
+      };
+      setForm(nextForm);
+      setInitialContact({
+        mobile: nextForm.contact.mobile,
+        whatsapp: nextForm.contact.whatsapp,
+        email: nextForm.contact.email,
+        emergencyPhone: nextForm.emergency.phone,
+        emergencyAlternatePhone: nextForm.emergency.alternatePhone,
       });
     }
   }, [staffData, staffList, staffId]);
@@ -122,10 +145,50 @@ function EditStaffContent() {
       setError("Designation is required.");
       return;
     }
+    // B21: unchanged stored phones pass through (a legacy 10-digit mobile
+    // never blocks the save); changed phones must normalise to 11 digits
+    // and are stored canonical; placeholder emails are not accepted.
+    const mobileResult = resolvePhoneForEdit(form.contact.mobile, initialContact.mobile);
+    if ("error" in mobileResult) {
+      setError(mobileResult.error);
+      return;
+    }
+    const whatsappResult = resolvePhoneForEdit(form.contact.whatsapp, initialContact.whatsapp);
+    if ("error" in whatsappResult) {
+      setError(whatsappResult.error);
+      return;
+    }
+    const emergencyPhoneResult = resolvePhoneForEdit(form.emergency.phone, initialContact.emergencyPhone);
+    if ("error" in emergencyPhoneResult) {
+      setError(emergencyPhoneResult.error);
+      return;
+    }
+    const emergencyAltResult = resolvePhoneForEdit(form.emergency.alternatePhone, initialContact.emergencyAlternatePhone);
+    if ("error" in emergencyAltResult) {
+      setError(emergencyAltResult.error);
+      return;
+    }
+    if (form.contact.email && isPlaceholderEmail(form.contact.email)) {
+      setError(PLACEHOLDER_EMAIL_MESSAGE);
+      return;
+    }
+    const resolvedForm: StaffFormData = {
+      ...form,
+      contact: {
+        ...form.contact,
+        mobile: mobileResult.value,
+        whatsapp: whatsappResult.value,
+      },
+      emergency: {
+        ...form.emergency,
+        phone: emergencyPhoneResult.value,
+        alternatePhone: emergencyAltResult.value,
+      },
+    };
     setError("");
     logger.info("[EditStaff] Submitting payload", { metadata: { staffId, payroll: form.payroll } });
     updateMutation.mutate(
-      { id: staffId!, data: form },
+      { id: staffId!, data: resolvedForm },
       { onSuccess: () => router.push(`/staff-profile?id=${staffId}`) }
     );
   };

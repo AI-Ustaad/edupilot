@@ -5,6 +5,11 @@ import { X, Save, Loader2, Briefcase, Mail, Phone, DollarSign, Award, BookOpen, 
 import { useUpdateStaff } from "@/hooks/useStaff";
 import { useClasses } from "@/hooks/useClasses";
 import { useToast } from "@/components/ToastProvider";
+import {
+  resolvePhoneForEdit,
+  isPlaceholderEmail,
+  PLACEHOLDER_EMAIL_MESSAGE,
+} from "@/lib/validation/contact";
 import { getStaffSalary } from "@/lib/mappers/StaffPersistenceMapper";
 
 interface EditStaffModalProps {
@@ -84,21 +89,24 @@ export default function EditStaffModal({ isOpen, onClose, staff, onSuccess }: Ed
       return;
     }
 
-    if (form.mobile) {
-      const cleanPhone = form.mobile.replace(/\D/g, "");
-      if (cleanPhone.length > 0 && !/^03\d{9}$/.test(cleanPhone)) {
-        showToast("Mobile number must be in 11-digit Pakistani format: 03XXXXXXXXX", "error");
-        return;
-      }
+    // B21: an unchanged stored mobile passes through untouched, so a legacy
+    // 10-digit staff phone never blocks saving an unrelated field; a
+    // CHANGED mobile must normalise to 11 digits.
+    const originalMobile = getInitialForm(staff).mobile;
+    const phoneResult = resolvePhoneForEdit(form.mobile, originalMobile);
+    if ("error" in phoneResult) {
+      showToast(phoneResult.error, "error");
+      return;
     }
 
-    if (form.email && form.email.toLowerCase().includes("@example.com")) {
-      showToast("Please use a realistic school email domain (e.g. @ghssahiwal.edu.pk)", "error");
+    if (form.email && isPlaceholderEmail(form.email)) {
+      showToast(PLACEHOLDER_EMAIL_MESSAGE, "error");
       return;
     }
 
     const payload = {
       ...form,
+      mobile: phoneResult.value,
       fullName: form.fullName.trim().toLowerCase() === "ghzandar ali" ? "Ghzandar Ali" : form.fullName.trim(),
     };
 
