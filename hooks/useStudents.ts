@@ -3,6 +3,10 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import apiClient from "@/lib/api/client";
 import { safeArray, safeObject } from "@/lib/api/safeResponse";
 import { QueryKeys } from "@/lib/api/queryKeys";
+import {
+  optimisticallyRemove,
+  restoreSnapshot,
+} from "@/lib/api/optimistic";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/components/ToastProvider";
 import { logger } from "@/lib/logger/logger";
@@ -123,21 +127,25 @@ export const useDeleteStudent = () => {
     mutationFn: async (id: string) => {
       return apiClient.delete(`/students/${id}`);
     },
+    // N30: the rendered list queries carry extra key segments (useStudents
+    // appends the params object -> ["students", tenantId, undefined]), so
+    // an exact setQueryData on the base key never touched the visible list.
+    // optimisticallyRemove updates every list under the base key instead.
     onMutate: async (deletedId: string) => {
-      await queryClient.cancelQueries({ queryKey: QueryKeys.students(tenantId) });
-      const previousStudents = queryClient.getQueryData(QueryKeys.students(tenantId));
-      queryClient.setQueryData(QueryKeys.students(tenantId), (old: any[]) => 
-        old?.filter((s: any) => s.id !== deletedId) || []
+      const previous = await optimisticallyRemove(
+        queryClient,
+        QueryKeys.students(tenantId),
+        deletedId
       );
-      return { previousStudents };
+      return { previous };
     },
     onError: (err, deletedId, context) => {
-      queryClient.setQueryData(QueryKeys.students(tenantId), context?.previousStudents);
+      restoreSnapshot(queryClient, context?.previous);
       showToast("Failed to delete student.", "error");
     },
     onSuccess: (_data, _deletedId, context) => {
       showToast("Student deleted successfully.", "undo", () => {
-        queryClient.setQueryData(QueryKeys.students(tenantId), context?.previousStudents);
+        restoreSnapshot(queryClient, context?.previous);
         showToast("Student restored.", "success");
       });
     },
