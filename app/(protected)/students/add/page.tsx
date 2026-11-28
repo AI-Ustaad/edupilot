@@ -8,6 +8,7 @@ import Image from "next/image";
 import apiClient from "@/lib/api/client";
 import toast from "react-hot-toast";
 import { useClasses } from "@/hooks/useClasses";
+import { useCreateStudent } from "@/hooks/useStudents";
 import { formatClassLabel, cleanSectionName } from "@/lib/utils/formatClassLabel";
 import {
   resolvePhoneForCreate,
@@ -18,6 +19,13 @@ import {
 export default function AddStudentPage() {
   const router = useRouter();
   const { user } = useAuth();
+
+  // N30: create through the hook, not a bare apiClient.post — the hook
+  // invalidates the students/classes/fees/attendance/results/dashboard
+  // queries on success, so the /students list shows the new student
+  // immediately after navigation instead of serving 60s-stale cache
+  // (the live client's staleTime) until a manual reload.
+  const createStudent = useCreateStudent();
 
   const [error, setError] = useState("");
   const [isCreating, setIsCreating] = useState(false);
@@ -206,7 +214,7 @@ export default function AddStudentPage() {
         },
       };
 
-      await apiClient.post("/students", payload);
+      await createStudent.mutateAsync(payload);
 
       toast.success("Student successfully onboarded!");
       router.push("/students");

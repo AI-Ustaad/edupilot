@@ -4,6 +4,10 @@ import { useState, useCallback } from "react";
 import apiClient from "@/lib/api/client";
 import { safeArray, safeObject, unwrapApiResponse } from "@/lib/api/safeResponse";
 import { QueryKeys } from "@/lib/api/queryKeys";
+import {
+  optimisticallyRemove,
+  restoreSnapshot,
+} from "@/lib/api/optimistic";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/components/ToastProvider";
 import { mapOCRToStaffForm, type StaffFormData } from "@/lib/mappers/staff.mapper";
@@ -114,18 +118,20 @@ export const useDeleteStaff = () => {
     mutationFn: async (id: string) => {
       return apiClient.delete(`/staff/${id}`);
     },
+    // N30: the staff page renders useStaffDirectory
+    // (["staff", tenantId, "directory", ...]), so an exact setQueryData on
+    // the base key never touched the visible list. optimisticallyRemove
+    // updates every list under the base key instead.
     onMutate: async (deletedId: string) => {
-      await queryClient.cancelQueries({ queryKey: QueryKeys.staff(tenantId) });
-      const previousStaff = queryClient.getQueryData(QueryKeys.staff(tenantId));
-
-      queryClient.setQueryData(QueryKeys.staff(tenantId), (old: any[]) =>
-        old?.filter((s: any) => s.id !== deletedId) ?? []
+      const previous = await optimisticallyRemove(
+        queryClient,
+        QueryKeys.staff(tenantId),
+        deletedId
       );
-
-      return { previousStaff };
+      return { previous };
     },
     onError: (err, deletedId, context) => {
-      queryClient.setQueryData(QueryKeys.staff(tenantId), context?.previousStaff);
+      restoreSnapshot(queryClient, context?.previous);
       showToast("Failed to delete staff.", "error");
     },
     onSuccess: () => {
