@@ -1,11 +1,14 @@
 "use client";
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { Clock, Users, CheckCircle2, XCircle, AlertCircle, Calendar, Save, Loader2, UserCheck, RefreshCw } from "lucide-react";
 import { useStaff } from "@/hooks/useStaff";
 import { useToast } from "@/components/ToastProvider";
 import apiClient from "@/lib/api/client";
-
-type AttendanceStatus = "present" | "absent" | "late" | "leave" | "not_marked";
+import {
+  applyMarkAllPresent,
+  getStaffOnApprovedLeave,
+  type AttendanceStatus,
+} from "@/lib/attendance/approved-leave";
 
 export default function StaffAttendancePage() {
   const { data: staffList = [], isLoading: loadingStaff } = useStaff();
@@ -17,6 +20,39 @@ export default function StaffAttendancePage() {
   const [entries, setEntries] = useState<Record<string, { status: AttendanceStatus; remarks: string }>>({});
   const [loadingRecords, setLoadingRecords] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  // N24: approved leave requests, so "Mark All Present" never marks a staff
+  // member on approved leave as Present.
+  const [approvedLeaves, setApprovedLeaves] = useState<any[]>([]);
+
+  // N24: load leave requests once; staff with an APPROVED leave covering the
+  // selected date are On Leave, never Present. A failed fetch leaves the list
+  // empty (old behaviour) rather than blocking the page.
+  useEffect(() => {
+    let isMounted = true;
+    apiClient
+      .get("/leave")
+      .then((res: any) => {
+        if (!isMounted) return;
+        const data = (res as any)?.data || (res as any) || [];
+        setApprovedLeaves(Array.isArray(data) ? data : data.records || []);
+      })
+      .catch((err) => {
+        console.error("Failed to load leave requests for staff attendance:", err);
+      });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const onLeaveStaffIds = useMemo(
+    () => getStaffOnApprovedLeave(approvedLeaves, selectedDate),
+    [approvedLeaves, selectedDate]
+  );
+  // N24: the attendance fetch below is async — read the CURRENT leave set via
+  // a ref when its response lands, so a late-arriving leaves fetch can never
+  // be wiped by (or wipe) the attendance map.
+  const onLeaveStaffIdsRef = useRef<Set<string>>(new Set());
+  onLeaveStaffIdsRef.current = onLeaveStaffIds;
 
   // Load existing records for selectedDate
   useEffect(() => {
@@ -40,6 +76,16 @@ export default function StaffAttendancePage() {
               };
             }
           });
+          // N24: staff on approved leave with no saved record for this date
+          // show as On Leave — so the page shows the truth on arrival and
+          // Save never records them as Present by default. Never overrides
+          // a saved record or a manual choice. The ref holds the CURRENT
+          // leave set even if leaves loaded after this fetch started.
+          onLeaveStaffIdsRef.current.forEach((sid) => {
+            if (!map[sid]) {
+              map[sid] = { status: "leave", remarks: "" };
+            }
+          });
           setEntries(map);
         }
       } catch (err) {
@@ -54,6 +100,25 @@ export default function StaffAttendancePage() {
       isMounted = false;
     };
   }, [selectedDate]);
+
+  // N24: if the leaves fetch resolves after the attendance fetch, pre-fill
+  // On Leave for staff with an approved leave covering the selected date
+  // who have no entry yet. Only adds entries — never overrides a saved
+  // record or a manual choice.
+  useEffect(() => {
+    if (onLeaveStaffIds.size === 0) return;
+    setEntries((prev) => {
+      let changed = false;
+      const next = { ...prev };
+      onLeaveStaffIds.forEach((sid) => {
+        if (!next[sid]) {
+          next[sid] = { status: "leave", remarks: "" };
+          changed = true;
+        }
+      });
+      return changed ? next : prev;
+    });
+  }, [onLeaveStaffIds]);
 
   const activeStaff = useMemo(() => {
     return (staffList as any[]).filter(s => (s.status || "active").toLowerCase() === "active");
@@ -75,18 +140,19 @@ export default function StaffAttendancePage() {
   };
 
   const handleMarkAllPresent = () => {
-    const updated: Record<string, { status: AttendanceStatus; remarks: string }> = { ...entries };
-    activeStaff.forEach(s => {
-      const sid = s.staffId || s.id;
-      if (sid) {
-        updated[sid] = {
-          status: "present",
-          remarks: updated[sid]?.remarks || "",
-        };
-      }
-    });
+    // N24: staff on approved leave are marked On Leave, never Present.
+    const { entries: updated, onLeaveCount } = applyMarkAllPresent(
+      activeStaff,
+      entries,
+      onLeaveStaffIds
+    );
     setEntries(updated);
-    showToast("All active staff marked as Present", "info");
+    showToast(
+      onLeaveCount > 0
+        ? `All active staff marked as Present (${onLeaveCount} on approved leave marked On Leave)`
+        : "All active staff marked as Present",
+      "info"
+    );
   };
 
   const handleSave = async () => {
