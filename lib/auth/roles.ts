@@ -19,6 +19,13 @@ export const ROLE_PERMISSIONS: Record<string, string[]> = {
     "quizzes.view", "quizzes.create", "quizzes.grade", "quizzes.delete",
     "lessonPlans.create", "lessonPlans.view", "lessonPlans.delete",
     "videoLectures.view", "videoLectures.create", "videoLectures.delete",
+    // B11 rework (27 Nov): PR #20 added withPermission(PERMISSIONS.syllabus.create)
+    // to POST /api/v1/syllabus, but no role held any syllabus.* permission, so
+    // even ADMIN got 403 "Forbidden: Insufficient permissions" on save (and the
+    // [id] route's syllabus.update / syllabus.delete gates failed the same way).
+    // The client form rendered anyway because the page gates on settings.manage
+    // and the menu on academics.view, which admin does hold.
+    "syllabus.view", "syllabus.create", "syllabus.update", "syllabus.delete",
     "bookCenter.view", "bookCenter.create", "bookCenter.update", "bookCenter.delete",
     "behavior.view", "behavior.create",
     "skills.view", "skills.create",
