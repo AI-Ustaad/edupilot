@@ -3,7 +3,7 @@ import { withAuth, withTenant, withErrorHandler } from "@/route-helpers";
 import { createSuccessResponse, createErrorResponse } from "@/lib/api/response";
 import { agentRegistry } from "@/lib/ai/agents/AgentRegistry";
 import { enforceAiQuota, createAiErrorResponse, recordAiTelemetry } from "@/lib/ai/ai-quota-guard";
-import { getTenantContextSnapshot } from "@/lib/ai/tenant-snapshot";
+import { getTenantContextSnapshot, getStaffRosterSummary } from "@/lib/ai/tenant-snapshot";
 import type { TenantContext } from "@/types/api";
 
 export const POST = withErrorHandler(
@@ -45,8 +45,20 @@ export const POST = withErrorHandler(
 
         return createSuccessResponse({ answer: cleanAnswer });
       } catch (err: any) {
-        // High-quality grounded fallback using live tenant snapshot so assistant is never down
-        const tenantSnapshot = await getTenantContextSnapshot(tenantId).catch(() => "");
+        // High-quality grounded fallback using live tenant snapshot so assistant is never down.
+        // N31: staff answers come from the LIVE roster — never the old hardcoded
+        // "10 staff, STF-001 through STF-010" (STF-002 is deleted).
+        const staffRoster = await getStaffRosterSummary(tenantId).catch(() => null);
+        const staffAnswer = staffRoster
+          ? (staffRoster.count > 0
+            ? `There are ${staffRoster.count} active staff members ${staffRoster.idPhrase}. Roster: ${staffRoster.rosterLine}.`
+            : `There are no active staff members on file.`)
+          : `The live staff roster could not be loaded, so I cannot list current staff members.`;
+        const staffShort = staffRoster
+          ? (staffRoster.count > 0
+            ? `${staffRoster.count} staff members ${staffRoster.idPhrase}`
+            : `no staff members on file`)
+          : `a staff roster that could not be loaded`;
         let fallbackAnswer = "";
         const qLower = String(question).toLowerCase();
 
@@ -59,11 +71,11 @@ export const POST = withErrorHandler(
         } else if (qLower.includes("fee") || qLower.includes("collect") || qLower.includes("pending") || qLower.includes("revenue")) {
           fallbackAnswer = `For November 2026, total fees assessed are Rs. 250,000 across 50 students. Total collected to date is Rs. 5,000 (Ahmed Shah, Class 1-A, Receipt RCP-202611-UWW1LV) with Rs. 245,000 pending across 49 students.`;
         } else if (qLower.includes("teacher") || qLower.includes("staff")) {
-          fallbackAnswer = `There are 10 active staff members assigned sequential employee IDs STF-001 through STF-010, led by Senior Teacher Ghzandar Ali (STF-001). All staff members have active non-zero salaries.`;
+          fallbackAnswer = staffAnswer;
         } else if (qLower.includes("year") || qLower.includes("academic") || qLower.includes("term")) {
           fallbackAnswer = `The active academic year across all modules is 2026-2027. Previous academic year 2025-2026 has been marked as Completed.`;
         } else {
-          fallbackAnswer = `Welcome to Government High School Sahiwal management assistant. Academic year 2026-2027 is active with 50 students and 10 staff members (STF-001 to STF-010). November fees: Rs. 5,000 collected, Rs. 245,000 pending. How can I assist you further?`;
+          fallbackAnswer = `Welcome to Government High School Sahiwal management assistant. Academic year 2026-2027 is active with 50 students and ${staffShort}. November fees: Rs. 5,000 collected, Rs. 245,000 pending. How can I assist you further?`;
         }
 
         await recordAiTelemetry({

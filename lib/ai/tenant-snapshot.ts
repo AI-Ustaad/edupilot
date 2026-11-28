@@ -5,6 +5,94 @@ import { StaffRepository } from "@/repositories/staff.repository";
 import { FeesRepository } from "@/repositories/fees.repository";
 import { formatClassLabel, cleanSectionName } from "@/lib/utils/formatClassLabel";
 
+/** Minimal shape of a staff record needed to describe the live roster. */
+export interface StaffRosterMember {
+  employeeId?: string | null;
+  personnelNo?: string | null;
+  fullName?: string | null;
+  designation?: string | null;
+}
+
+export interface StaffRosterSummary {
+  count: number;
+  ids: string[];
+  /** "(Sequential IDs STF-001 through STF-010)" only when the IDs really are an unbroken run, else "(Employee IDs: ...)". */
+  idPhrase: string;
+  /** "Name (ID, Designation), ..." — "" when the roster is empty. */
+  rosterLine: string;
+  /** One-sentence header for the snapshot, e.g. "Active Staff Members: 10 (Employee IDs: ...)". */
+  header: string;
+  /** Full one-paragraph summary for snapshot / fallback use. */
+  summary: string;
+}
+
+/** The employee ID a staff record is actually filed under (never invented). */
+export function staffIdOf(member: StaffRosterMember): string {
+  return member.employeeId?.trim() || member.personnelNo?.trim() || "no ID on file";
+}
+
+/**
+ * Describe a set of employee IDs honestly: claim a sequential run only when
+ * the IDs really are STF-001..STF-00N with no gaps (N31: after STF-002 was
+ * deleted the roster is NOT sequential, so the old claim was false).
+ */
+export function describeStaffIds(ids: string[]): string {
+  const numbers = ids.map((id) => {
+    const m = /^STF-(\d+)$/.exec(id);
+    return m ? parseInt(m[1], 10) : null;
+  });
+  if (numbers.length > 0 && numbers.every((n) => n !== null)) {
+    const sorted = [...(numbers as number[])].sort((a, b) => a - b);
+    const sequential = sorted[0] === 1 && sorted.every((n, i) => n === sorted[0] + i);
+    if (sequential) {
+      const last = `STF-${String(sorted[sorted.length - 1]).padStart(3, "0")}`;
+      return `(Sequential IDs STF-001 through ${last})`;
+    }
+  }
+  return `(Employee IDs: ${ids.join(", ")})`;
+}
+
+/** Build the staff summary from the LIVE roster — never a hardcoded count or ID range. */
+export function summarizeStaffRoster(staff: readonly StaffRosterMember[]): StaffRosterSummary {
+  if (staff.length === 0) {
+    return {
+      count: 0,
+      ids: [],
+      idPhrase: "",
+      rosterLine: "",
+      header: "Active Staff Members: none on file.",
+      summary: "Active Staff Members: none on file.",
+    };
+  }
+  const sorted = [...staff].sort((a, b) =>
+    staffIdOf(a).localeCompare(staffIdOf(b), undefined, { numeric: true })
+  );
+  const ids = sorted.map(staffIdOf);
+  const idPhrase = describeStaffIds(ids);
+  const rosterLine = sorted
+    .map((s) => {
+      const name = (s.fullName || "").trim() || "Unnamed staff member";
+      const designation = (s.designation || "").trim();
+      return `${name} (${staffIdOf(s)}${designation ? `, ${designation}` : ""})`;
+    })
+    .join(", ");
+  return {
+    count: staff.length,
+    ids,
+    idPhrase,
+    rosterLine,
+    header: `Active Staff Members: ${staff.length} ${idPhrase}`,
+    summary: `Active Staff Members: ${staff.length} ${idPhrase}. Roster: ${rosterLine}.`,
+  };
+}
+
+/** Live staff roster summary for a tenant; throws when the roster cannot be loaded. */
+export async function getStaffRosterSummary(tenantId: string): Promise<StaffRosterSummary> {
+  const staffRepo = new StaffRepository();
+  const staff = await staffRepo.findAll(tenantId);
+  return summarizeStaffRoster(staff as StaffRosterMember[]);
+}
+
 export async function getTenantContextSnapshot(tenantId: string): Promise<string> {
   try {
     const tenantRepo = new TenantRepository();
@@ -14,12 +102,21 @@ export async function getTenantContextSnapshot(tenantId: string): Promise<string
     const [tenant, students, staff] = await Promise.all([
       tenantRepo.findById(tenantId, tenantId).catch(() => null),
       studentRepo.findAll(tenantId).catch(() => []),
-      staffRepo.findAll(tenantId).catch(() => []),
+      // null (not []) on failure so a failed load is never reported as an empty roster
+      staffRepo.findAll(tenantId).catch(() => null),
     ]);
 
     const schoolName = tenant?.name || "Government High School Sahiwal";
     const totalStudents = students.length || 50;
-    const totalStaff = staff.length || 10;
+    // N31: staff count, IDs and names come from the live roster only — never
+    // the old hardcoded "10 staff, STF-001 through STF-010" (STF-002 is deleted).
+    const staffRoster = staff === null ? null : summarizeStaffRoster(staff as StaffRosterMember[]);
+    const staffHeader = staffRoster
+      ? staffRoster.header
+      : "Active Staff Members: roster unavailable — the live staff list could not be loaded.";
+    const staffSection = staffRoster
+      ? staffRoster.summary
+      : "Staff roster unavailable — the live staff list could not be loaded.";
 
     // Compute exact per-class and per-section breakdowns
     const classMap = new Map<string, { total: number; sections: Map<string, number> }>();
@@ -56,7 +153,7 @@ export async function getTenantContextSnapshot(tenantId: string): Promise<string
 - School / Institution: ${schoolName}
 - Current Academic Year: 2026-2027
 - Enrolled Students: ${totalStudents} (Classes 1–10 across Sections A, B, C)
-- Active Staff Members: ${totalStaff} (Sequential IDs STF-001 through STF-010)
+- ${staffHeader}
 - Current Term: 1st Term / Final Exams 2026-2027
 
 STUDENT ENROLLMENT BY CLASS & SECTION:
@@ -64,8 +161,7 @@ ${classBreakdownLines}
 Total: ${totalStudents} students
 
 STAFF MEMBERS:
-Total Active Staff: ${totalStaff} staff members (Sequential IDs STF-001 through STF-010)
-Including: Ghzandar Ali (STF-001, Senior Teacher), Muhammad Tariq (STF-002), Saima Bano (STF-003), and 7 other specialized subject teachers and administrators.
+${staffSection}
 
 FINANCE & FEE SUMMARY:
 Assessed Monthly Fees: Rs. 250,000 (50 students × Rs. 5,000)
@@ -77,6 +173,6 @@ When asked questions regarding student numbers, class sizes, or section rosters 
 ====================================
     `.trim();
   } catch {
-    return "School: Government High School Sahiwal, Academic Year: 2026-2027, Total Students: 50 (Class 1: 45 [Sec A: 15, Sec B: 15, Sec C: 15], Class 2: 4 [Sec A: 4], Class 10: 1 [Sec A: 1]), Total Staff: 10";
+    return "School: Government High School Sahiwal, Academic Year: 2026-2027, Total Students: 50 (Class 1: 45 [Sec A: 15, Sec B: 15, Sec C: 15], Class 2: 4 [Sec A: 4], Class 10: 1 [Sec A: 1]), Total Staff: unavailable (snapshot failed to load)";
   }
 }

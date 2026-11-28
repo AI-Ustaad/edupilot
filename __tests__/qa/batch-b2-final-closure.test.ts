@@ -36,7 +36,9 @@ describe("Batch B2 (Final Closure) Comprehensive QA Verification Suite", () => {
       const snapshot = await getTenantContextSnapshot("tenant_ghs_sahiwal");
       expect(snapshot).toContain("Total Collected so far: Rs. 5,000");
       expect(snapshot).toContain("Total Pending: Rs. 245,000");
-      expect(snapshot).toContain("Ghzandar Ali");
+      // N31: with no staff roster loaded, the snapshot names nobody — the old
+      // hardcoded "Ghzandar Ali (STF-001, Senior Teacher)..." line is gone.
+      expect(snapshot).not.toContain("Ghzandar Ali");
     });
   });
 
